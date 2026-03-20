@@ -129,18 +129,16 @@ public class SettingsViewModel : ViewModelBase
         set => SetProperty(ref _startMinimized, value);
     }
 
-    public string[] AvailableThemes { get; } = ["Dark", "Light"];
+    public string[] AvailableThemes { get; } = ["Dark", "Light", "Purple"];
 
     public string SelectedTheme
     {
         get => _selectedTheme;
         set
         {
-            if (SetProperty(ref _selectedTheme, value) && global::Avalonia.Application.Current != null)
+            if (SetProperty(ref _selectedTheme, value))
             {
-                global::Avalonia.Application.Current.RequestedThemeVariant = value == "Light"
-                    ? global::Avalonia.Styling.ThemeVariant.Light
-                    : global::Avalonia.Styling.ThemeVariant.Dark;
+                App.SwitchTheme(value);
             }
         }
     }

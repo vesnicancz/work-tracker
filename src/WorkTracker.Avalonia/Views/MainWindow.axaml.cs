@@ -1,5 +1,7 @@
 using Avalonia.Controls;
+using Avalonia.Input;
 using WorkTracker.Avalonia.ViewModels;
+using WorkTracker.Domain.Entities;
 using WorkTracker.UI.Shared.Models;
 using WorkTracker.UI.Shared.Services;
 
@@ -13,6 +15,11 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+
+        MinimizeButton.Click += (_, _) => WindowState = WindowState.Minimized;
+        CloseButton.Click += (_, _) => Close();
+        TitleBar.PointerPressed += OnTitleBarPointerPressed;
+
         Closing += OnWindowClosing;
     }
 
@@ -42,6 +49,25 @@ public partial class MainWindow : Window
         else
         {
             _trayIconService?.Dispose();
+        }
+    }
+
+    private void OnTitleBarPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+        {
+            BeginMoveDrag(e);
+        }
+    }
+
+    private void OnDataGridDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (DataContext is MainViewModel vm && vm.SelectedWorkEntry is WorkEntry entry)
+        {
+            if (vm.EditWorkEntryCommand.CanExecute(entry))
+            {
+                vm.EditWorkEntryCommand.Execute(entry);
+            }
         }
     }
 }

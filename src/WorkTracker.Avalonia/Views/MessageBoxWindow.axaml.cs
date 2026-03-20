@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Input;
 
 namespace WorkTracker.Avalonia.Views;
 
@@ -15,14 +16,21 @@ public partial class MessageBoxWindow : Window
         InitializeComponent();
 
         Title = title;
-        TitleText.Text = title;
+        DialogTitleText.Text = title;
         MessageText.Text = message;
+
+        CloseButton.Click += (_, _) => Close(false);
+        DialogTitleBar.PointerPressed += OnDragPointerPressed;
+        DialogBorder.PointerPressed += (_, e) =>
+        {
+            if (!DialogTitleBar.IsVisible)
+                OnDragPointerPressed(null, e);
+        };
 
         if (isConfirmation)
         {
             OkPanel.IsVisible = false;
             YesNoPanel.IsVisible = true;
-
             YesButton.Click += (_, _) => { Result = true; Close(true); };
             NoButton.Click += (_, _) => { Result = false; Close(false); };
         }
@@ -30,8 +38,13 @@ public partial class MessageBoxWindow : Window
         {
             OkPanel.IsVisible = true;
             YesNoPanel.IsVisible = false;
-
             OkButton.Click += (_, _) => { Result = true; Close(true); };
         }
+    }
+
+    private void OnDragPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+            BeginMoveDrag(e);
     }
 }

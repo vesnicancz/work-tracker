@@ -1,16 +1,26 @@
 using Avalonia.Controls;
+using Avalonia.Input;
 using WorkTracker.Avalonia.ViewModels;
 
 namespace WorkTracker.Avalonia.Views;
 
-/// <summary>
-/// Modal dialog for creating and editing work entries.
-/// </summary>
 public partial class WorkEntryEditDialog : Window
 {
     public WorkEntryEditDialog()
     {
         InitializeComponent();
+
+        // Close button (visible when titlebar is shown)
+        CloseButton.Click += (_, _) => Close(false);
+
+        // Drag: titlebar when visible, whole border otherwise
+        DialogTitleBar.PointerPressed += OnDragPointerPressed;
+        DialogBorder.PointerPressed += (_, e) =>
+        {
+            // Only drag from border if titlebar is hidden (Purple theme)
+            if (!DialogTitleBar.IsVisible)
+                OnDragPointerPressed(null, e);
+        };
 
         DataContextChanged += (_, _) =>
         {
@@ -19,5 +29,11 @@ public partial class WorkEntryEditDialog : Window
                 vm.CloseAction = () => Close(vm.DialogResult);
             }
         };
+    }
+
+    private void OnDragPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+            BeginMoveDrag(e);
     }
 }

@@ -14,166 +14,211 @@
         MinHeight="450"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False"
-        Background="{DynamicResource AppBackground}">
+        CanResize="True"
+        SystemDecorations="None"
+        Background="Transparent">
 
-    <Grid Margin="20" RowDefinitions="Auto,*,Auto,Auto">
+    <Border CornerRadius="{DynamicResource WindowCornerRadius}"
+            Background="{DynamicResource DialogBackground}"
+            BorderBrush="{DynamicResource SeparatorColor}"
+            BorderThickness="1"
+            BoxShadow="0 4 24 0 #40000000"
+            ClipToBounds="True"
+            Margin="8"
+            x:Name="DialogBorder">
 
-        <!-- Options row -->
-        <Grid Grid.Row="0" ColumnDefinitions="Auto,16,Auto,*,Auto" Margin="0,0,0,12">
-            <CalendarDatePicker Grid.Column="0"
-                                SelectedDate="{Binding SelectedDate}"
-                                Width="180"
-                                VerticalAlignment="Center" />
-            <CheckBox Grid.Column="2"
-                      IsChecked="{Binding IsWeekly}"
-                      Content="Submit entire week"
-                      VerticalAlignment="Center" />
-            <ComboBox Grid.Column="4"
-                      ItemsSource="{Binding AvailableProviders}"
-                      SelectedItem="{Binding SelectedProvider}"
-                      DisplayMemberBinding="{ReflectionBinding Name}"
-                      MinWidth="200"
-                      VerticalAlignment="Center"
-                      PlaceholderText="Select provider" />
-        </Grid>
+        <Grid RowDefinitions="Auto,*">
 
-        <!-- Preview list -->
-        <Border Grid.Row="1"
-                Background="{DynamicResource SidebarBackground}"
-                BorderBrush="{DynamicResource CardBorder}"
-                BorderThickness="1"
-                CornerRadius="4"
-                Padding="6">
-            <Grid>
-                <!-- Loading -->
-                <StackPanel IsVisible="{Binding IsLoading}"
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center" Spacing="10">
-                    <ProgressBar IsIndeterminate="True" Width="180" Height="3" />
-                    <TextBlock Text="Loading..." HorizontalAlignment="Center"
-                               Foreground="{DynamicResource TextMuted}" FontSize="12" />
-                </StackPanel>
+            <!-- Dialog titlebar -->
+            <Border Grid.Row="0" x:Name="DialogTitleBar"
+                    Background="{DynamicResource TitleBarBackground}"
+                    BorderBrush="{DynamicResource SeparatorColor}"
+                    BorderThickness="{DynamicResource TitleBarBorderThickness}"
+                    CornerRadius="{DynamicResource WindowTopCornerRadius}"
+                    Height="36"
+                    IsVisible="{DynamicResource ShowDialogTitleBar}">
+                <Panel>
+                    <TextBlock Text="{Binding DialogTitle}" FontSize="12"
+                               Foreground="{DynamicResource TextMuted}"
+                               HorizontalAlignment="{DynamicResource TitleBarAlignment}"
+                               VerticalAlignment="Center"
+                               Margin="12,0,12,0" />
+                    <Button x:Name="CloseButton"
+                            Width="36" Height="28" Padding="0"
+                            Background="Transparent" BorderThickness="0"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Center" Margin="0,0,6,0"
+                            ToolTip.Tip="Close">
+                        <material:MaterialIcon Kind="Close"
+                                              Width="{DynamicResource WindowControlIconSize}"
+                                              Height="{DynamicResource WindowControlIconSize}"
+                                              Foreground="{DynamicResource WindowControlForeground}" />
+                    </Button>
+                </Panel>
+            </Border>
 
-                <!-- Items -->
-                <ScrollViewer IsVisible="{Binding !IsLoading}"
-                              VerticalScrollBarVisibility="Auto">
-                    <ItemsControl ItemsSource="{Binding PreviewItems}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="vm:WorklogPreviewItem">
-                                <Panel>
-                                    <!-- Date header -->
-                                    <StackPanel IsVisible="{Binding IsDateHeader}" Margin="4,10,4,2">
-                                        <TextBlock Text="{Binding DateDisplay}"
-                                                   FontWeight="SemiBold" FontSize="12"
-                                                   Foreground="{DynamicResource AccentBlue}" Margin="0,0,0,4" />
-                                        <Separator />
-                                    </StackPanel>
+            <!-- Content -->
+            <Grid Grid.Row="1" Margin="20" RowDefinitions="Auto,*,Auto,Auto">
 
-                                    <!-- Work entry row -->
-                                    <Grid IsVisible="{Binding !IsDateHeader}"
-                                          ColumnDefinitions="110,*,75,75,55"
-                                          Margin="4,1">
-                                        <TextBox Grid.Column="0"
-                                                 Text="{Binding TicketId, Mode=TwoWay}"
-                                                 FontSize="12" FontWeight="Medium"
-                                                 Background="{DynamicResource InputBackground}"
-                                                 BorderBrush="{DynamicResource InputBorder}"
-                                                 BorderThickness="1" Padding="6,4"
-                                                 Margin="0,0,3,0" />
-                                        <TextBox Grid.Column="1"
-                                                 Text="{Binding Description, Mode=TwoWay}"
-                                                 FontSize="12"
-                                                 Background="{DynamicResource InputBackground}"
-                                                 BorderBrush="{DynamicResource InputBorder}"
-                                                 BorderThickness="1" Padding="6,4"
-                                                 Margin="0,0,3,0" />
-                                        <TextBox Grid.Column="2"
-                                                 Text="{Binding StartTimeDisplay, Mode=TwoWay}"
-                                                 FontSize="12"
-                                                 FontFamily="JetBrains Mono,Consolas,monospace"
-                                                 Background="{DynamicResource InputBackground}"
-                                                 BorderBrush="{DynamicResource InputBorder}"
-                                                 BorderThickness="1" Padding="6,4"
-                                                 Margin="0,0,3,0" />
-                                        <TextBox Grid.Column="3"
-                                                 Text="{Binding EndTimeDisplay, Mode=TwoWay}"
-                                                 FontSize="12"
-                                                 FontFamily="JetBrains Mono,Consolas,monospace"
-                                                 Background="{DynamicResource InputBackground}"
-                                                 BorderBrush="{DynamicResource InputBorder}"
-                                                 BorderThickness="1" Padding="6,4"
-                                                 Margin="0,0,3,0" />
-                                        <TextBlock Grid.Column="4"
-                                                   Text="{Binding DurationDisplay}"
-                                                   FontSize="12" FontWeight="Medium"
-                                                   FontFamily="JetBrains Mono,Consolas,monospace"
-                                                   Foreground="{DynamicResource TextMuted}"
-                                                   HorizontalAlignment="Right"
-                                                   VerticalAlignment="Center"
-                                                   Margin="4,0,0,0" />
-                                    </Grid>
-                                </Panel>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </ScrollViewer>
-            </Grid>
-        </Border>
+                <!-- Options row -->
+                <Grid Grid.Row="0" ColumnDefinitions="Auto,16,Auto,*,Auto" Margin="0,0,0,12">
+                    <CalendarDatePicker Grid.Column="0"
+                                        SelectedDate="{Binding SelectedDate}"
+                                        Width="180"
+                                        VerticalAlignment="Center" />
+                    <CheckBox Grid.Column="2"
+                              IsChecked="{Binding IsWeekly}"
+                              Content="Submit entire week"
+                              VerticalAlignment="Center" />
+                    <ComboBox Grid.Column="4"
+                              ItemsSource="{Binding AvailableProviders}"
+                              SelectedItem="{Binding SelectedProvider}"
+                              DisplayMemberBinding="{ReflectionBinding Name}"
+                              MinWidth="200"
+                              VerticalAlignment="Center"
+                              PlaceholderText="Select provider" />
+                </Grid>
 
-        <!-- Status bar -->
-        <Grid Grid.Row="2" ColumnDefinitions="*,Auto"
-              Margin="0,10,0,0">
-            <TextBlock Grid.Column="0"
-                       Text="{Binding StatusMessage}"
-                       FontSize="12" Foreground="{DynamicResource TextMuted}"
-                       TextWrapping="Wrap" VerticalAlignment="Center" />
-            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8"
-                        VerticalAlignment="Center">
-                <TextBlock Text="Total:" FontSize="12" Foreground="{DynamicResource TextMuted}"
-                           VerticalAlignment="Center" />
-                <TextBlock Text="{Binding TotalTimeDisplay}"
-                           FontSize="16" FontWeight="Bold"
-                           FontFamily="JetBrains Mono,Consolas,monospace"
-                           Foreground="{DynamicResource TextBright}" VerticalAlignment="Center" />
-            </StackPanel>
-        </Grid>
+                <!-- Preview list -->
+                <Border Grid.Row="1"
+                        Background="{DynamicResource SidebarBackground}"
+                        BorderBrush="{DynamicResource CardBorder}"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        Padding="6">
+                    <Grid>
+                        <!-- Loading -->
+                        <StackPanel IsVisible="{Binding IsLoading}"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center" Spacing="10">
+                            <ProgressBar IsIndeterminate="True" Width="180" Height="3" />
+                            <TextBlock Text="Loading..." HorizontalAlignment="Center"
+                                       Foreground="{DynamicResource TextMuted}" FontSize="12" />
+                        </StackPanel>
 
-        <!-- Buttons -->
-        <DockPanel Grid.Row="3" Margin="0,14,0,0">
-            <Button DockPanel.Dock="Left"
-                    Command="{Binding ResetCommand}"
-                    Padding="14,8"
-                    Background="Transparent" BorderThickness="0"
-                    ToolTip.Tip="Restore original values">
-                <StackPanel Orientation="Horizontal" Spacing="6">
-                    <material:MaterialIcon Kind="Undo" Width="16" Height="16" Foreground="{DynamicResource TextMuted}" />
-                    <TextBlock Text="Reset" Foreground="{DynamicResource TextSecondary}" />
-                </StackPanel>
-            </Button>
+                        <!-- Items -->
+                        <ScrollViewer IsVisible="{Binding !IsLoading}"
+                                      VerticalScrollBarVisibility="Auto">
+                            <ItemsControl ItemsSource="{Binding PreviewItems}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:WorklogPreviewItem">
+                                        <Panel>
+                                            <!-- Date header -->
+                                            <StackPanel IsVisible="{Binding IsDateHeader}" Margin="4,10,4,2">
+                                                <TextBlock Text="{Binding DateDisplay}"
+                                                           FontWeight="SemiBold" FontSize="12"
+                                                           Foreground="{DynamicResource AccentBlue}" Margin="0,0,0,4" />
+                                                <Separator />
+                                            </StackPanel>
 
-            <StackPanel Orientation="Horizontal"
-                        HorizontalAlignment="Right" Spacing="8">
-                <Button Command="{Binding CancelCommand}"
-                        Content="Close" Padding="20,8"
-                        Background="{DynamicResource ButtonSecondaryBg}"
-                        Foreground="{DynamicResource ButtonSecondaryFg}" />
+                                            <!-- Work entry row -->
+                                            <Grid IsVisible="{Binding !IsDateHeader}"
+                                                  ColumnDefinitions="110,*,75,75,55"
+                                                  Margin="4,1">
+                                                <TextBox Grid.Column="0"
+                                                         Text="{Binding TicketId, Mode=TwoWay}"
+                                                         FontSize="12" FontWeight="Medium"
+                                                         Background="{DynamicResource InputBackground}"
+                                                         BorderBrush="{DynamicResource InputBorder}"
+                                                         BorderThickness="1" Padding="6,4"
+                                                         Margin="0,0,3,0" />
+                                                <TextBox Grid.Column="1"
+                                                         Text="{Binding Description, Mode=TwoWay}"
+                                                         FontSize="12"
+                                                         Background="{DynamicResource InputBackground}"
+                                                         BorderBrush="{DynamicResource InputBorder}"
+                                                         BorderThickness="1" Padding="6,4"
+                                                         Margin="0,0,3,0" />
+                                                <TextBox Grid.Column="2"
+                                                         Text="{Binding StartTimeDisplay, Mode=TwoWay}"
+                                                         FontSize="12"
+                                                         FontFamily="JetBrains Mono,Consolas,monospace"
+                                                         Background="{DynamicResource InputBackground}"
+                                                         BorderBrush="{DynamicResource InputBorder}"
+                                                         BorderThickness="1" Padding="6,4"
+                                                         Margin="0,0,3,0" />
+                                                <TextBox Grid.Column="3"
+                                                         Text="{Binding EndTimeDisplay, Mode=TwoWay}"
+                                                         FontSize="12"
+                                                         FontFamily="JetBrains Mono,Consolas,monospace"
+                                                         Background="{DynamicResource InputBackground}"
+                                                         BorderBrush="{DynamicResource InputBorder}"
+                                                         BorderThickness="1" Padding="6,4"
+                                                         Margin="0,0,3,0" />
+                                                <TextBlock Grid.Column="4"
+                                                           Text="{Binding DurationDisplay}"
+                                                           FontSize="12" FontWeight="Medium"
+                                                           FontFamily="JetBrains Mono,Consolas,monospace"
+                                                           Foreground="{DynamicResource TextMuted}"
+                                                           HorizontalAlignment="Right"
+                                                           VerticalAlignment="Center"
+                                                           Margin="4,0,0,0" />
+                                            </Grid>
+                                        </Panel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Grid>
+                </Border>
 
-                <Button Command="{Binding SendCommand}"
-                        Padding="20,8"
-                        Classes="accent">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <material:MaterialIcon Kind="CloudUpload" Width="16" Height="16"
-                                              IsVisible="{Binding !IsSending}" />
-                        <ProgressBar IsVisible="{Binding IsSending}"
-                                     IsIndeterminate="True"
-                                     Width="16" Height="16" />
-                        <TextBlock Text="Submit" IsVisible="{Binding !IsSending}"
-                                   FontWeight="SemiBold" />
-                        <TextBlock Text="Submitting..." IsVisible="{Binding IsSending}" />
+                <!-- Status bar -->
+                <Grid Grid.Row="2" ColumnDefinitions="*,Auto"
+                      Margin="0,10,0,0">
+                    <TextBlock Grid.Column="0"
+                               Text="{Binding StatusMessage}"
+                               FontSize="12" Foreground="{DynamicResource TextMuted}"
+                               TextWrapping="Wrap" VerticalAlignment="Center" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8"
+                                VerticalAlignment="Center">
+                        <TextBlock Text="Total:" FontSize="12" Foreground="{DynamicResource TextMuted}"
+                                   VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding TotalTimeDisplay}"
+                                   FontSize="16" FontWeight="Bold"
+                                   FontFamily="JetBrains Mono,Consolas,monospace"
+                                   Foreground="{DynamicResource TextBright}" VerticalAlignment="Center" />
                     </StackPanel>
-                </Button>
-            </StackPanel>
-        </DockPanel>
+                </Grid>
 
-    </Grid>
+                <!-- Buttons -->
+                <DockPanel Grid.Row="3" Margin="0,14,0,0">
+                    <Button DockPanel.Dock="Left"
+                            Command="{Binding ResetCommand}"
+                            Padding="14,8"
+                            Background="Transparent" BorderThickness="0"
+                            ToolTip.Tip="Restore original values">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <material:MaterialIcon Kind="Undo" Width="16" Height="16" Foreground="{DynamicResource TextMuted}" />
+                            <TextBlock Text="Reset" Foreground="{DynamicResource TextSecondary}" />
+                        </StackPanel>
+                    </Button>
+
+                    <StackPanel Orientation="Horizontal"
+                                HorizontalAlignment="Right" Spacing="8">
+                        <Button Command="{Binding CancelCommand}"
+                                Content="Close" Padding="20,8"
+                                Background="{DynamicResource ButtonSecondaryBg}"
+                                Foreground="{DynamicResource ButtonSecondaryFg}" />
+
+                        <Button Command="{Binding SendCommand}"
+                                Padding="20,8"
+                                Classes="accent">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <material:MaterialIcon Kind="CloudUpload" Width="16" Height="16"
+                                                      IsVisible="{Binding !IsSending}" />
+                                <ProgressBar IsVisible="{Binding IsSending}"
+                                             IsIndeterminate="True"
+                                             Width="16" Height="16" />
+                                <TextBlock Text="Submit" IsVisible="{Binding !IsSending}"
+                                           FontWeight="SemiBold" />
+                                <TextBlock Text="Submitting..." IsVisible="{Binding IsSending}" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </DockPanel>
+
+            </Grid>
+
+        </Grid>
+    </Border>
 </Window>

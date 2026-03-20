@@ -14,86 +14,129 @@
         WindowStartupLocation="CenterOwner"
         CanResize="False"
         ShowInTaskbar="False"
-        Background="{DynamicResource AppBackground}">
+        SystemDecorations="None"
+        Background="Transparent">
 
     <Window.Resources>
         <converters:NullToBoolConverter x:Key="NullToBoolConverter" />
         <converters:TimeSpanToStringConverter x:Key="TimeSpanToStringConverter" />
     </Window.Resources>
 
-    <StackPanel Margin="20" Spacing="12">
+    <Border CornerRadius="{DynamicResource WindowCornerRadius}"
+            Background="{DynamicResource DialogBackground}"
+            BorderBrush="{DynamicResource SeparatorColor}"
+            BorderThickness="1"
+            BoxShadow="0 4 24 0 #40000000"
+            ClipToBounds="True"
+            Margin="8"
+            x:Name="DialogBorder">
 
-        <!-- Ticket ID -->
-        <TextBox Text="{Binding TicketId, Mode=TwoWay}"
-                 Watermark="Ticket ID (e.g. PROJ-123)"
-                 MaxLength="50" />
+        <Grid RowDefinitions="Auto,*">
 
-        <!-- Description -->
-        <TextBox Text="{Binding Description, Mode=TwoWay}"
-                 Watermark="Description"
-                 MaxLength="500"
-                 AcceptsReturn="True"
-                 TextWrapping="Wrap"
-                 MinHeight="50"
-                 MaxHeight="90" />
+            <!-- Dialog titlebar (visible in Dark/Light, hidden in Purple) -->
+            <Border Grid.Row="0" x:Name="DialogTitleBar"
+                    Background="{DynamicResource TitleBarBackground}"
+                    BorderBrush="{DynamicResource SeparatorColor}"
+                    BorderThickness="{DynamicResource TitleBarBorderThickness}"
+                    CornerRadius="{DynamicResource WindowTopCornerRadius}"
+                    Height="36"
+                    IsVisible="{DynamicResource ShowDialogTitleBar}">
+                <Panel>
+                    <TextBlock Text="{Binding DialogTitle}" FontSize="12"
+                               Foreground="{DynamicResource TextMuted}"
+                               HorizontalAlignment="{DynamicResource TitleBarAlignment}"
+                               VerticalAlignment="Center"
+                               Margin="12,0,12,0" />
+                    <Button x:Name="CloseButton"
+                            Width="36" Height="28" Padding="0"
+                            Background="Transparent" BorderThickness="0"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Center" Margin="0,0,6,0"
+                            ToolTip.Tip="Close">
+                        <material:MaterialIcon Kind="Close"
+                                              Width="{DynamicResource WindowControlIconSize}"
+                                              Height="{DynamicResource WindowControlIconSize}"
+                                              Foreground="{DynamicResource WindowControlForeground}" />
+                    </Button>
+                </Panel>
+            </Border>
 
-        <!-- Start Time -->
-        <TextBlock Text="Start Time" FontSize="12" Foreground="{DynamicResource TextMuted}" />
-        <Grid ColumnDefinitions="*,10,Auto">
-            <CalendarDatePicker Grid.Column="0"
-                                SelectedDate="{Binding StartDate}"
-                                HorizontalAlignment="Stretch" />
-            <TextBox Grid.Column="2"
-                     Text="{Binding StartTime, Mode=TwoWay, Converter={StaticResource TimeSpanToStringConverter}, ConverterParameter='HH:mm'}"
-                     Watermark="HH:mm"
-                     FontFamily="JetBrains Mono,Consolas,monospace"
-                     Width="80" />
-        </Grid>
+            <!-- Content -->
+            <StackPanel Grid.Row="1" Margin="20" Spacing="12">
 
-        <!-- Has End Time -->
-        <CheckBox IsChecked="{Binding HasEndTime}"
-                  Content="Set end time" />
+                <!-- Ticket ID -->
+                <TextBox Text="{Binding TicketId, Mode=TwoWay}"
+                         Watermark="Ticket ID (e.g. PROJ-123)"
+                         MaxLength="50" />
 
-        <!-- End Time -->
-        <StackPanel IsVisible="{Binding HasEndTime}" Spacing="8">
-            <TextBlock Text="End Time" FontSize="12" Foreground="{DynamicResource TextMuted}" />
-            <Grid ColumnDefinitions="*,10,Auto">
-                <CalendarDatePicker Grid.Column="0"
-                                    SelectedDate="{Binding EndDate}"
-                                    HorizontalAlignment="Stretch" />
-                <TextBox Grid.Column="2"
-                         Text="{Binding EndTime, Mode=TwoWay, Converter={StaticResource TimeSpanToStringConverter}, ConverterParameter='HH:mm'}"
-                         Watermark="HH:mm"
-                         FontFamily="JetBrains Mono,Consolas,monospace"
-                         Width="80" />
-            </Grid>
-        </StackPanel>
+                <!-- Description -->
+                <TextBox Text="{Binding Description, Mode=TwoWay}"
+                         Watermark="Description"
+                         MaxLength="500"
+                         AcceptsReturn="True"
+                         TextWrapping="Wrap"
+                         MinHeight="50"
+                         MaxHeight="90" />
 
-        <!-- Validation error -->
-        <TextBlock Text="{Binding ValidationError}"
-                   IsVisible="{Binding ValidationError, Converter={StaticResource NullToBoolConverter}}"
-                   Foreground="{DynamicResource DangerRed}"
-                   FontSize="12"
-                   TextWrapping="Wrap" />
+                <!-- Start Time -->
+                <TextBlock Text="Start Time" FontSize="12" Foreground="{DynamicResource TextMuted}" />
+                <Grid ColumnDefinitions="*,10,Auto">
+                    <CalendarDatePicker Grid.Column="0"
+                                        SelectedDate="{Binding StartDate}"
+                                        HorizontalAlignment="Stretch" />
+                    <TextBox Grid.Column="2"
+                             Text="{Binding StartTime, Mode=TwoWay, Converter={StaticResource TimeSpanToStringConverter}, ConverterParameter='HH:mm'}"
+                             Watermark="HH:mm"
+                             FontFamily="JetBrains Mono,Consolas,monospace"
+                             Width="80" />
+                </Grid>
 
-        <!-- Buttons -->
-        <Grid ColumnDefinitions="*,Auto,8,Auto" Margin="0,4,0,0">
-            <Button Grid.Column="1"
-                    Content="Cancel"
-                    Command="{Binding CancelCommand}"
-                    Padding="20,8"
-                    Background="{DynamicResource ButtonSecondaryBg}"
-                    Foreground="{DynamicResource ButtonSecondaryFg}" />
-            <Button Grid.Column="3"
-                    Command="{Binding SaveCommand}"
-                    Padding="20,8"
-                    Classes="accent">
-                <StackPanel Orientation="Horizontal" Spacing="6">
-                    <material:MaterialIcon Kind="ContentSave" Width="16" Height="16" />
-                    <TextBlock Text="Save" FontWeight="SemiBold" />
+                <!-- Has End Time -->
+                <CheckBox IsChecked="{Binding HasEndTime}"
+                          Content="Set end time" />
+
+                <!-- End Time -->
+                <StackPanel IsVisible="{Binding HasEndTime}" Spacing="8">
+                    <TextBlock Text="End Time" FontSize="12" Foreground="{DynamicResource TextMuted}" />
+                    <Grid ColumnDefinitions="*,10,Auto">
+                        <CalendarDatePicker Grid.Column="0"
+                                            SelectedDate="{Binding EndDate}"
+                                            HorizontalAlignment="Stretch" />
+                        <TextBox Grid.Column="2"
+                                 Text="{Binding EndTime, Mode=TwoWay, Converter={StaticResource TimeSpanToStringConverter}, ConverterParameter='HH:mm'}"
+                                 Watermark="HH:mm"
+                                 FontFamily="JetBrains Mono,Consolas,monospace"
+                                 Width="80" />
+                    </Grid>
                 </StackPanel>
-            </Button>
-        </Grid>
 
-    </StackPanel>
+                <!-- Validation error -->
+                <TextBlock Text="{Binding ValidationError}"
+                           IsVisible="{Binding ValidationError, Converter={StaticResource NullToBoolConverter}}"
+                           Foreground="{DynamicResource DangerRed}"
+                           FontSize="12"
+                           TextWrapping="Wrap" />
+
+                <!-- Buttons -->
+                <Grid ColumnDefinitions="*,Auto,8,Auto" Margin="0,4,0,0">
+                    <Button Grid.Column="1"
+                            Content="Cancel"
+                            Command="{Binding CancelCommand}"
+                            Padding="20,8"
+                            Background="{DynamicResource ButtonSecondaryBg}"
+                            Foreground="{DynamicResource ButtonSecondaryFg}" />
+                    <Button Grid.Column="3"
+                            Command="{Binding SaveCommand}"
+                            Padding="20,8"
+                            Classes="accent">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <material:MaterialIcon Kind="ContentSave" Width="16" Height="16" />
+                            <TextBlock Text="Save" FontWeight="SemiBold" />
+                        </StackPanel>
+                    </Button>
+                </Grid>
+
+            </StackPanel>
+        </Grid>
+    </Border>
 </Window>

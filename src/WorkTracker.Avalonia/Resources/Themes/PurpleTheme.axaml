@@ -1,0 +1,100 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        Purple theme
+        Palette: Blueberry (backgrounds), Purple (accent), faint violet tones throughout.
+    -->
+
+    <!-- Background / Surface -->
+    <SolidColorBrush x:Key="AppBackground"       Color="#13101B" />
+    <SolidColorBrush x:Key="SidebarBackground"   Color="#1C1827" />
+    <SolidColorBrush x:Key="SidebarBorder"       Color="#262136" />
+    <SolidColorBrush x:Key="CardBackground"      Color="#1E1524" />
+    <SolidColorBrush x:Key="CardBorder"          Color="#322C43" />
+    <SolidColorBrush x:Key="InputBackground"     Color="#1C1827" />
+    <SolidColorBrush x:Key="InputBorder"         Color="#3E3852" />
+
+    <!-- Text — faint violet tones on secondary -->
+    <SolidColorBrush x:Key="TextPrimary"         Color="#E0E1E4" />
+    <SolidColorBrush x:Key="TextSecondary"       Color="#968FB0" />
+    <SolidColorBrush x:Key="TextMuted"           Color="#5D5775" />
+    <SolidColorBrush x:Key="TextBright"          Color="#FFFFFF" />
+
+    <!-- Accent — Purple -->
+    <SolidColorBrush x:Key="AccentBlue"          Color="#A660D4" />
+    <SolidColorBrush x:Key="AccentBlueDark"      Color="#9D4FCF" />
+    <SolidColorBrush x:Key="AccentBluePressed"   Color="#9049BE" />
+
+    <!-- Status -->
+    <SolidColorBrush x:Key="SuccessGreen"        Color="#69B090" />
+    <SolidColorBrush x:Key="SuccessGreenDark"    Color="#409D78" />
+    <SolidColorBrush x:Key="SuccessGreenPressed" Color="#14835E" />
+    <SolidColorBrush x:Key="DangerRed"           Color="#F87C88" />
+    <SolidColorBrush x:Key="DangerRedDark"       Color="#EC5D6F" />
+    <SolidColorBrush x:Key="DangerRedPressed"    Color="#D73251" />
+    <SolidColorBrush x:Key="WarningYellow"       Color="#CD984D" />
+    <SolidColorBrush x:Key="InfoBlue"            Color="#71A3EF" />
+    <SolidColorBrush x:Key="SeparatorColor"      Color="#322C43" />
+
+    <!-- Active tracking card — purple-tinted, not green -->
+    <SolidColorBrush x:Key="ActiveCardBackground" Color="#1A152A" />
+    <SolidColorBrush x:Key="ActiveCardBorder"     Color="#412B50" />
+
+    <!-- Buttons -->
+    <SolidColorBrush x:Key="ButtonSecondaryBg"   Color="#322C43" />
+    <SolidColorBrush x:Key="ButtonSecondaryFg"   Color="#E0E1E4" />
+    <SolidColorBrush x:Key="AccentButtonFg"      Color="#FFFFFF" />
+
+    <!-- Avalonia system overrides -->
+    <SolidColorBrush x:Key="SolidBackgroundFillColorBaseBrush"           Color="#13101B" />
+    <SolidColorBrush x:Key="ApplicationPageBackgroundThemeBrush"          Color="#13101B" />
+    <SolidColorBrush x:Key="LayerFillColorDefaultBrush"                   Color="#13101B" />
+    <SolidColorBrush x:Key="LayerOnMicaBaseAltFillColorDefaultBrush"      Color="#1C1827" />
+    <SolidColorBrush x:Key="CardBackgroundFillColorDefaultBrush"          Color="#1E1524" />
+    <SolidColorBrush x:Key="CardStrokeColorDefaultBrush"                  Color="#322C43" />
+    <SolidColorBrush x:Key="ControlFillColorDefaultBrush"                 Color="#1C1827" />
+    <SolidColorBrush x:Key="ControlFillColorSecondaryBrush"               Color="#262136" />
+    <SolidColorBrush x:Key="ControlFillColorTertiaryBrush"                Color="#322C43" />
+    <SolidColorBrush x:Key="ControlStrokeColorDefaultBrush"               Color="#3E3852" />
+    <SolidColorBrush x:Key="ControlStrokeColorSecondaryBrush"             Color="#322C43" />
+    <SolidColorBrush x:Key="TextFillColorPrimaryBrush"                    Color="#E0E1E4" />
+    <SolidColorBrush x:Key="TextFillColorSecondaryBrush"                  Color="#968FB0" />
+    <SolidColorBrush x:Key="TextFillColorTertiaryBrush"                   Color="#5D5775" />
+    <SolidColorBrush x:Key="TextFillColorDisabledBrush"                   Color="#4C4662" />
+    <SolidColorBrush x:Key="DividerStrokeColorDefaultBrush"               Color="#322C43" />
+    <Color x:Key="SystemAccentColor">#A660D4</Color>
+    <Color x:Key="SystemAccentColorLight1">#B174D9</Color>
+    <Color x:Key="SystemAccentColorLight2">#C08FE0</Color>
+    <Color x:Key="SystemAccentColorDark1">#9D4FCF</Color>
+    <Color x:Key="SystemAccentColorDark2">#9049BE</Color>
+    <SolidColorBrush x:Key="SuccessBrush"    Color="#69B090" />
+    <SolidColorBrush x:Key="WarningBrush"    Color="#CD984D" />
+    <SolidColorBrush x:Key="ErrorBrush"      Color="#F87C88" />
+    <SolidColorBrush x:Key="InfoBrush"       Color="#71A3EF" />
+
+    <!-- Extended parameters -->
+    <CornerRadius x:Key="CardCornerRadius">6</CornerRadius>
+    <Thickness x:Key="CardPadding">12</Thickness>
+
+    <!-- Window chrome -->
+    <SolidColorBrush x:Key="TitleBarBackground" Color="Transparent" />
+    <Thickness x:Key="TitleBarBorderThickness">0</Thickness>
+    <CornerRadius x:Key="WindowCornerRadius">8</CornerRadius>
+    <CornerRadius x:Key="WindowTopCornerRadius">8,8,0,0</CornerRadius>
+    <CornerRadius x:Key="SidebarCornerRadius">6</CornerRadius>
+    <Thickness x:Key="SidebarMargin">8,0,4,8</Thickness>
+    <Thickness x:Key="SidebarBorderThickness">0</Thickness>
+    <SolidColorBrush x:Key="DialogBackground" Color="#262136" />
+    <SolidColorBrush x:Key="WindowControlForeground" Color="#EEEFF0" />
+    <x:Double x:Key="WindowControlIconSize">10</x:Double>
+    <x:Double x:Key="ToolbarIconSize">12</x:Double>
+    <HorizontalAlignment x:Key="TitleBarAlignment">Center</HorizontalAlignment>
+    <x:Boolean x:Key="ShowDialogTitleBar">False</x:Boolean>
+    <Thickness x:Key="ToasterMargin">0,0,0,8</Thickness>
+    <x:Double x:Key="RowActionsDefaultOpacity">0</x:Double>
+    <SolidColorBrush x:Key="RowActionPlayColor" Color="#169068" />
+    <SolidColorBrush x:Key="RowActionEditColor" Color="#2a7deb" />
+    <SolidColorBrush x:Key="RowActionDeleteColor" Color="#e1465e" />
+
+</ResourceDictionary>

@@ -12,7 +12,7 @@
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <ResourceInclude Source="avares://WorkTracker.Avalonia/Resources/Styles/Colors.axaml" />
+                <ResourceInclude Source="avares://WorkTracker.Avalonia/Resources/Themes/OneDarkTheme.axaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>

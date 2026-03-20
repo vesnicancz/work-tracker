@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:material="using:Material.Icons.Avalonia"
         x:Class="WorkTracker.Avalonia.Views.MessageBoxWindow"
         mc:Ignorable="d"
         Width="400"
@@ -9,51 +10,91 @@
         SizeToContent="Height"
         WindowStartupLocation="CenterOwner"
         CanResize="False"
-        ShowInTaskbar="False">
+        ShowInTaskbar="False"
+        SystemDecorations="None"
+        Background="Transparent">
 
-    <StackPanel Margin="24" Spacing="20">
+    <Border CornerRadius="{DynamicResource WindowCornerRadius}"
+            Background="{DynamicResource DialogBackground}"
+            BorderBrush="{DynamicResource SeparatorColor}"
+            BorderThickness="1"
+            BoxShadow="0 4 24 0 #40000000"
+            ClipToBounds="True"
+            Margin="8"
+            x:Name="DialogBorder">
 
-        <!-- Title as header inside content -->
-        <TextBlock x:Name="TitleText"
-                   FontSize="15"
-                   FontWeight="SemiBold" />
+        <Grid RowDefinitions="Auto,*">
 
-        <TextBlock x:Name="MessageText"
-                   TextWrapping="Wrap"
-                   FontSize="13"
-                   LineHeight="20" />
+            <!-- Dialog titlebar -->
+            <Border Grid.Row="0" x:Name="DialogTitleBar"
+                    Background="{DynamicResource TitleBarBackground}"
+                    BorderBrush="{DynamicResource SeparatorColor}"
+                    BorderThickness="{DynamicResource TitleBarBorderThickness}"
+                    CornerRadius="{DynamicResource WindowTopCornerRadius}"
+                    Height="36"
+                    IsVisible="{DynamicResource ShowDialogTitleBar}">
+                <Panel>
+                    <TextBlock x:Name="DialogTitleText" FontSize="12"
+                               Foreground="{DynamicResource TextMuted}"
+                               HorizontalAlignment="{DynamicResource TitleBarAlignment}"
+                               VerticalAlignment="Center"
+                               Margin="12,0,12,0" />
+                    <Button x:Name="CloseButton"
+                            Width="36" Height="28" Padding="0"
+                            Background="Transparent" BorderThickness="0"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Center" Margin="0,0,6,0"
+                            ToolTip.Tip="Close">
+                        <material:MaterialIcon Kind="Close"
+                                              Width="{DynamicResource WindowControlIconSize}"
+                                              Height="{DynamicResource WindowControlIconSize}"
+                                              Foreground="{DynamicResource WindowControlForeground}" />
+                    </Button>
+                </Panel>
+            </Border>
 
-        <!-- Buttons - OK or Yes/No depending on mode -->
-        <StackPanel x:Name="OkPanel"
-                    Orientation="Horizontal"
-                    HorizontalAlignment="Right">
-            <Button x:Name="OkButton"
-                    Content="OK"
-                    Width="90"
-                    HorizontalContentAlignment="Center"
-                    Classes="accent"
-                    CornerRadius="4" />
-        </StackPanel>
+            <!-- Content -->
+            <StackPanel Grid.Row="1" Margin="24" Spacing="20">
 
-        <StackPanel x:Name="YesNoPanel"
-                    IsVisible="False"
-                    Orientation="Horizontal"
-                    HorizontalAlignment="Right"
-                    Spacing="8">
-            <Button x:Name="NoButton"
-                    Content="No"
-                    Width="90"
-                    HorizontalContentAlignment="Center"
-                    Background="{DynamicResource ButtonSecondaryBg}"
-                    Foreground="{DynamicResource ButtonSecondaryFg}"
-                    CornerRadius="4" />
-            <Button x:Name="YesButton"
-                    Content="Yes"
-                    Width="90"
-                    HorizontalContentAlignment="Center"
-                    Classes="accent"
-                    CornerRadius="4" />
-        </StackPanel>
+                <TextBlock x:Name="MessageText"
+                           TextWrapping="Wrap"
+                           FontSize="13"
+                           LineHeight="20" />
 
-    </StackPanel>
+                <!-- Buttons - OK or Yes/No depending on mode -->
+                <StackPanel x:Name="OkPanel"
+                            Orientation="Horizontal"
+                            HorizontalAlignment="Right">
+                    <Button x:Name="OkButton"
+                            Content="OK"
+                            Width="90"
+                            HorizontalContentAlignment="Center"
+                            Classes="accent"
+                            CornerRadius="4" />
+                </StackPanel>
+
+                <StackPanel x:Name="YesNoPanel"
+                            IsVisible="False"
+                            Orientation="Horizontal"
+                            HorizontalAlignment="Right"
+                            Spacing="8">
+                    <Button x:Name="NoButton"
+                            Content="No"
+                            Width="90"
+                            HorizontalContentAlignment="Center"
+                            Background="{DynamicResource ButtonSecondaryBg}"
+                            Foreground="{DynamicResource ButtonSecondaryFg}"
+                            CornerRadius="4" />
+                    <Button x:Name="YesButton"
+                            Content="Yes"
+                            Width="90"
+                            HorizontalContentAlignment="Center"
+                            Classes="accent"
+                            CornerRadius="4" />
+                </StackPanel>
+
+            </StackPanel>
+
+        </Grid>
+    </Border>
 </Window>

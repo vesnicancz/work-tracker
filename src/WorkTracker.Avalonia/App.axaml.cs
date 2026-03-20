@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Threading;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -71,10 +72,7 @@ public partial class App : global::Avalonia.Application
             var startMinimized = earlySettings.Settings.StartMinimized;
 
             // Apply saved theme early to avoid flash of wrong theme
-            if (earlySettings.Settings.Theme == "Light")
-            {
-                RequestedThemeVariant = global::Avalonia.Styling.ThemeVariant.Light;
-            }
+            SwitchTheme(earlySettings.Settings.Theme ?? "Dark");
 
             var mainWindow = new MainWindow();
 
@@ -150,4 +148,41 @@ public partial class App : global::Avalonia.Application
     }
 
     public static IServiceProvider? Services => ((App)global::Avalonia.Application.Current!)._host?.Services;
+
+    /// <summary>
+    /// Switches the active theme at runtime by swapping the top-level MergedDictionary entry
+    /// and aligning Avalonia's built-in FluentTheme variant for native controls.
+    /// </summary>
+    public static void SwitchTheme(string themeName)
+    {
+        var app = (App)global::Avalonia.Application.Current!;
+        var resources = app.Resources as global::Avalonia.Controls.ResourceDictionary;
+        if (resources?.MergedDictionaries == null)
+        {
+            return;
+        }
+
+        // Remove the currently loaded theme dictionary, if any
+        var existing = resources.MergedDictionaries
+            .OfType<ResourceInclude>()
+            .FirstOrDefault(r => r.Source?.ToString().Contains("/Themes/") == true);
+        if (existing != null)
+        {
+            resources.MergedDictionaries.Remove(existing);
+        }
+
+        // Resolve the URI for the requested theme
+        var uri = themeName switch
+        {
+            "Light" => new Uri("avares://WorkTracker.Avalonia/Resources/Themes/OneLightTheme.axaml"),
+            "Purple" => new Uri("avares://WorkTracker.Avalonia/Resources/Themes/PurpleTheme.axaml"),
+            _ => new Uri("avares://WorkTracker.Avalonia/Resources/Themes/OneDarkTheme.axaml")
+        };
+        resources.MergedDictionaries.Add(new ResourceInclude(uri) { Source = uri });
+
+        // Keep Avalonia's built-in FluentTheme variant in sync for native controls
+        app.RequestedThemeVariant = themeName == "Light"
+            ? global::Avalonia.Styling.ThemeVariant.Light
+            : global::Avalonia.Styling.ThemeVariant.Dark;
+    }
 }

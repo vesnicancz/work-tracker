@@ -13,267 +13,311 @@
         WindowStartupLocation="CenterOwner"
         CanResize="False"
         ShowInTaskbar="False"
-        Background="{DynamicResource AppBackground}">
+        SystemDecorations="None"
+        Background="Transparent">
 
-    <Grid RowDefinitions="*,Auto">
+    <Border CornerRadius="{DynamicResource WindowCornerRadius}"
+            Background="{DynamicResource DialogBackground}"
+            BorderBrush="{DynamicResource SeparatorColor}"
+            BorderThickness="1"
+            BoxShadow="0 4 24 0 #40000000"
+            ClipToBounds="True"
+            Margin="8"
+            x:Name="DialogBorder">
 
-        <TabControl Grid.Row="0" Margin="0,4,0,0">
+        <Grid RowDefinitions="Auto,*">
 
-            <!-- ===== General ===== -->
-            <TabItem Header="General">
-                <ScrollViewer VerticalScrollBarVisibility="Auto"
-                              HorizontalScrollBarVisibility="Disabled">
-                    <StackPanel Margin="20,12" Spacing="0">
+            <!-- Dialog titlebar -->
+            <Border Grid.Row="0" x:Name="DialogTitleBar"
+                    Background="{DynamicResource TitleBarBackground}"
+                    BorderBrush="{DynamicResource SeparatorColor}"
+                    BorderThickness="{DynamicResource TitleBarBorderThickness}"
+                    CornerRadius="{DynamicResource WindowTopCornerRadius}"
+                    Height="36"
+                    IsVisible="{DynamicResource ShowDialogTitleBar}">
+                <Panel>
+                    <TextBlock Text="Settings" FontSize="12"
+                               Foreground="{DynamicResource TextMuted}"
+                               HorizontalAlignment="{DynamicResource TitleBarAlignment}"
+                               VerticalAlignment="Center"
+                               Margin="12,0,12,0" />
+                    <Button x:Name="CloseButton"
+                            Width="36" Height="28" Padding="0"
+                            Background="Transparent" BorderThickness="0"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Center" Margin="0,0,6,0"
+                            ToolTip.Tip="Close">
+                        <material:MaterialIcon Kind="Close"
+                                              Width="{DynamicResource WindowControlIconSize}"
+                                              Height="{DynamicResource WindowControlIconSize}"
+                                              Foreground="{DynamicResource WindowControlForeground}" />
+                    </Button>
+                </Panel>
+            </Border>
 
-                        <TextBlock Text="Window Behavior" FontSize="13" Foreground="{DynamicResource TextMuted}"
-                                   Margin="0,0,0,8" />
+            <!-- Content -->
+            <Grid Grid.Row="1" RowDefinitions="*,Auto">
 
-                        <RadioButton IsChecked="{Binding IsMinimizeToTray}" Margin="0,0,0,6">
-                            <StackPanel>
-                                <TextBlock Text="Minimize to tray" FontWeight="Medium" />
-                                <TextBlock Text="The application continues running in the system tray."
-                                           Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,2,0,0" />
-                            </StackPanel>
-                        </RadioButton>
+                <TabControl Grid.Row="0" Margin="0,4,0,0">
 
-                        <RadioButton IsChecked="{Binding IsExitApplication}">
-                            <StackPanel>
-                                <TextBlock Text="Exit application" FontWeight="Medium" />
-                                <TextBlock Text="The application exits completely."
-                                           Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,2,0,0" />
-                            </StackPanel>
-                        </RadioButton>
+                    <!-- ===== General ===== -->
+                    <TabItem Header="General">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled">
+                            <StackPanel Margin="20,12" Spacing="0">
 
-                        <Separator Margin="0,16" />
+                                <TextBlock Text="Window Behavior" FontSize="13" Foreground="{DynamicResource TextMuted}"
+                                           Margin="0,0,0,8" />
 
-                        <TextBlock Text="Startup" FontSize="13" Foreground="{DynamicResource TextMuted}"
-                                   Margin="0,0,0,8" />
-
-                        <CheckBox IsChecked="{Binding StartWithWindows}" Margin="0,0,0,6">
-                            <StackPanel>
-                                <TextBlock Text="Start with Windows" FontWeight="Medium" />
-                                <TextBlock Text="Launch automatically when you log in."
-                                           Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,2,0,0" />
-                            </StackPanel>
-                        </CheckBox>
-
-                        <CheckBox IsChecked="{Binding StartMinimized}">
-                            <StackPanel>
-                                <TextBlock Text="Start minimized" FontWeight="Medium" />
-                                <TextBlock Text="Start in the system tray without showing the main window."
-                                           Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,2,0,0" />
-                            </StackPanel>
-                        </CheckBox>
-
-                        <Separator Margin="0,16" />
-
-                        <TextBlock Text="Appearance" FontSize="13" Foreground="{DynamicResource TextMuted}"
-                                   Margin="0,0,0,8" />
-
-                        <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                            <TextBlock Text="Theme" FontWeight="Medium" VerticalAlignment="Center" />
-                            <ComboBox SelectedItem="{Binding SelectedTheme}"
-                                      ItemsSource="{Binding AvailableThemes}"
-                                      MinWidth="150" />
-                        </StackPanel>
-
-                    </StackPanel>
-                </ScrollViewer>
-            </TabItem>
-
-            <!-- ===== Plugins ===== -->
-            <TabItem Header="Plugins">
-                <ScrollViewer VerticalScrollBarVisibility="Auto"
-                              HorizontalScrollBarVisibility="Disabled">
-                    <StackPanel Margin="20,12" Spacing="10">
-
-                        <ComboBox ItemsSource="{Binding Plugins}"
-                                  SelectedItem="{Binding SelectedPlugin}"
-                                  DisplayMemberBinding="{ReflectionBinding Name}"
-                                  HorizontalAlignment="Stretch"
-                                  PlaceholderText="Select plugin" />
-
-                        <Border Background="{DynamicResource SidebarBackground}"
-                                BorderBrush="{DynamicResource CardBorder}"
-                                BorderThickness="1" CornerRadius="4" Padding="14">
-                            <StackPanel Spacing="10">
-
-                                <CheckBox IsChecked="{Binding SelectedPlugin.IsEnabled}"
-                                          Content="Enable plugin" />
-
-                                <Separator />
-
-                                <!-- Metadata -->
-                                <Grid ColumnDefinitions="80,*" RowDefinitions="Auto,Auto,Auto"
-                                      Margin="0,0,0,4">
-                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Version" Foreground="{DynamicResource TextMuted}" FontSize="12" Margin="0,0,0,4" />
-                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding SelectedPlugin.Version}" FontSize="12" Margin="0,0,0,4" />
-                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Author" Foreground="{DynamicResource TextMuted}" FontSize="12" Margin="0,0,0,4" />
-                                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SelectedPlugin.Author}" FontSize="12" Margin="0,0,0,4" />
-                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Info" Foreground="{DynamicResource TextMuted}" FontSize="12" VerticalAlignment="Top" />
-                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SelectedPlugin.Description}" FontSize="12" TextWrapping="Wrap" />
-                                </Grid>
-
-                                <Separator />
-
-                                <TextBlock Text="Configuration" FontSize="12" Foreground="{DynamicResource TextMuted}" />
-
-                                <!-- Config fields -->
-                                <ItemsControl ItemsSource="{Binding SelectedPlugin.ConfigurationFields}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate x:DataType="vm:ConfigurationFieldViewModel">
-                                            <StackPanel Margin="0,0,0,8" Spacing="3">
-                                                <TextBlock Text="{Binding Label}" FontSize="12" FontWeight="Medium" />
-                                                <TextBox Text="{Binding Value, Mode=TwoWay}"
-                                                         Watermark="{Binding Placeholder}"
-                                                         FontSize="12" />
-                                            </StackPanel>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-
-                                <!-- Test Connection -->
-                                <Button IsVisible="{Binding SelectedPlugin.SupportsTestConnection}"
-                                        Command="{Binding TestConnectionCommand}"
-                                        Background="Transparent" Padding="10,6"
-                                        BorderBrush="{DynamicResource CardBorder}" BorderThickness="1">
-                                    <StackPanel Orientation="Horizontal" Spacing="6">
-                                        <material:MaterialIcon Kind="LanConnect" Width="16" Height="16"
-                                                              Foreground="{DynamicResource TextMuted}" />
-                                        <TextBlock Text="Test Connection" FontSize="12"
-                                                   Foreground="{DynamicResource TextSecondary}" />
+                                <RadioButton IsChecked="{Binding IsMinimizeToTray}" Margin="0,0,0,6">
+                                    <StackPanel>
+                                        <TextBlock Text="Minimize to tray" FontWeight="Medium" />
+                                        <TextBlock Text="The application continues running in the system tray."
+                                                   Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,2,0,0" />
                                     </StackPanel>
-                                </Button>
+                                </RadioButton>
 
-                                <TextBlock Text="{Binding TestConnectionResult}"
-                                           FontSize="12" TextWrapping="Wrap" />
+                                <RadioButton IsChecked="{Binding IsExitApplication}">
+                                    <StackPanel>
+                                        <TextBlock Text="Exit application" FontWeight="Medium" />
+                                        <TextBlock Text="The application exits completely."
+                                                   Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,2,0,0" />
+                                    </StackPanel>
+                                </RadioButton>
+
+                                <Separator Margin="0,16" />
+
+                                <TextBlock Text="Startup" FontSize="13" Foreground="{DynamicResource TextMuted}"
+                                           Margin="0,0,0,8" />
+
+                                <CheckBox IsChecked="{Binding StartWithWindows}" Margin="0,0,0,6">
+                                    <StackPanel>
+                                        <TextBlock Text="Start with Windows" FontWeight="Medium" />
+                                        <TextBlock Text="Launch automatically when you log in."
+                                                   Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,2,0,0" />
+                                    </StackPanel>
+                                </CheckBox>
+
+                                <CheckBox IsChecked="{Binding StartMinimized}">
+                                    <StackPanel>
+                                        <TextBlock Text="Start minimized" FontWeight="Medium" />
+                                        <TextBlock Text="Start in the system tray without showing the main window."
+                                                   Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,2,0,0" />
+                                    </StackPanel>
+                                </CheckBox>
+
+                                <Separator Margin="0,16" />
+
+                                <TextBlock Text="Appearance" FontSize="13" Foreground="{DynamicResource TextMuted}"
+                                           Margin="0,0,0,8" />
+
+                                <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                                    <TextBlock Text="Theme" FontWeight="Medium" VerticalAlignment="Center" />
+                                    <ComboBox SelectedItem="{Binding SelectedTheme}"
+                                              ItemsSource="{Binding AvailableThemes}"
+                                              MinWidth="150" />
+                                </StackPanel>
 
                             </StackPanel>
-                        </Border>
+                        </ScrollViewer>
+                    </TabItem>
 
-                    </StackPanel>
-                </ScrollViewer>
-            </TabItem>
+                    <!-- ===== Plugins ===== -->
+                    <TabItem Header="Plugins">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled">
+                            <StackPanel Margin="20,12" Spacing="10">
 
-            <!-- ===== Favorites ===== -->
-            <TabItem Header="Favorites">
-                <Grid Margin="20,12" RowDefinitions="*,Auto">
+                                <ComboBox ItemsSource="{Binding Plugins}"
+                                          SelectedItem="{Binding SelectedPlugin}"
+                                          DisplayMemberBinding="{ReflectionBinding Name}"
+                                          HorizontalAlignment="Stretch"
+                                          PlaceholderText="Select plugin" />
 
-                    <!-- Two-column: list | edit -->
-                    <Grid Grid.Row="0" ColumnDefinitions="*,12,*">
+                                <Border Background="{DynamicResource SidebarBackground}"
+                                        BorderBrush="{DynamicResource CardBorder}"
+                                        BorderThickness="1" CornerRadius="4" Padding="14">
+                                    <StackPanel Spacing="10">
 
-                        <!-- List -->
-                        <Border Grid.Column="0"
-                                Background="{DynamicResource SidebarBackground}"
-                                BorderBrush="{DynamicResource CardBorder}"
-                                BorderThickness="1" CornerRadius="4">
-                            <Grid RowDefinitions="*,Auto">
-                                <ListBox Grid.Row="0"
-                                         ItemsSource="{Binding FavoriteWorkItems}"
-                                         SelectedItem="{Binding SelectedFavorite}"
-                                         Background="Transparent">
-                                    <ListBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <StackPanel Margin="6,3" Spacing="1">
-                                                <TextBlock Text="{Binding Name}" FontWeight="Medium" FontSize="13" />
-                                                <TextBlock FontSize="11" Foreground="{DynamicResource TextMuted}">
-                                                    <Run Text="{Binding TicketId, TargetNullValue='(no ticket)'}" />
-                                                </TextBlock>
+                                        <CheckBox IsChecked="{Binding SelectedPlugin.IsEnabled}"
+                                                  Content="Enable plugin" />
+
+                                        <Separator />
+
+                                        <!-- Metadata -->
+                                        <Grid ColumnDefinitions="80,*" RowDefinitions="Auto,Auto,Auto"
+                                              Margin="0,0,0,4">
+                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Version" Foreground="{DynamicResource TextMuted}" FontSize="12" Margin="0,0,0,4" />
+                                            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding SelectedPlugin.Version}" FontSize="12" Margin="0,0,0,4" />
+                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Author" Foreground="{DynamicResource TextMuted}" FontSize="12" Margin="0,0,0,4" />
+                                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SelectedPlugin.Author}" FontSize="12" Margin="0,0,0,4" />
+                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Info" Foreground="{DynamicResource TextMuted}" FontSize="12" VerticalAlignment="Top" />
+                                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SelectedPlugin.Description}" FontSize="12" TextWrapping="Wrap" />
+                                        </Grid>
+
+                                        <Separator />
+
+                                        <TextBlock Text="Configuration" FontSize="12" Foreground="{DynamicResource TextMuted}" />
+
+                                        <!-- Config fields -->
+                                        <ItemsControl ItemsSource="{Binding SelectedPlugin.ConfigurationFields}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="vm:ConfigurationFieldViewModel">
+                                                    <StackPanel Margin="0,0,0,8" Spacing="3">
+                                                        <TextBlock Text="{Binding Label}" FontSize="12" FontWeight="Medium" />
+                                                        <TextBox Text="{Binding Value, Mode=TwoWay}"
+                                                                 Watermark="{Binding Placeholder}"
+                                                                 FontSize="12" />
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+
+                                        <!-- Test Connection -->
+                                        <Button IsVisible="{Binding SelectedPlugin.SupportsTestConnection}"
+                                                Command="{Binding TestConnectionCommand}"
+                                                Background="Transparent" Padding="10,6"
+                                                BorderBrush="{DynamicResource CardBorder}" BorderThickness="1">
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <material:MaterialIcon Kind="LanConnect" Width="16" Height="16"
+                                                                      Foreground="{DynamicResource TextMuted}" />
+                                                <TextBlock Text="Test Connection" FontSize="12"
+                                                           Foreground="{DynamicResource TextSecondary}" />
                                             </StackPanel>
-                                        </DataTemplate>
-                                    </ListBox.ItemTemplate>
-                                </ListBox>
+                                        </Button>
 
-                                <StackPanel Grid.Row="1" Orientation="Horizontal"
-                                            HorizontalAlignment="Right" Margin="6" Spacing="2">
-                                    <Button Command="{Binding MoveFavoriteUpCommand}"
-                                            Width="28" Height="28" Padding="0"
-                                            Background="Transparent" BorderThickness="0"
-                                            ToolTip.Tip="Move up">
-                                        <material:MaterialIcon Kind="ArrowUp" Width="16" Height="16"
-                                                              Foreground="{DynamicResource TextMuted}" />
-                                    </Button>
-                                    <Button Command="{Binding MoveFavoriteDownCommand}"
-                                            Width="28" Height="28" Padding="0"
-                                            Background="Transparent" BorderThickness="0"
-                                            ToolTip.Tip="Move down">
-                                        <material:MaterialIcon Kind="ArrowDown" Width="16" Height="16"
-                                                              Foreground="{DynamicResource TextMuted}" />
-                                    </Button>
-                                </StackPanel>
-                            </Grid>
-                        </Border>
+                                        <TextBlock Text="{Binding TestConnectionResult}"
+                                                   FontSize="12" TextWrapping="Wrap" />
 
-                        <!-- Edit form -->
-                        <Border Grid.Column="2"
-                                Background="{DynamicResource SidebarBackground}"
-                                BorderBrush="{DynamicResource CardBorder}"
-                                BorderThickness="1"
-                                CornerRadius="4" Padding="14">
-                            <StackPanel Spacing="8">
-                                <TextBlock Text="Edit Favorite" FontSize="12" Foreground="{DynamicResource TextMuted}" />
-                                <TextBox Text="{Binding EditingFavoriteName, Mode=TwoWay}"
-                                         Watermark="Name (required)" FontSize="12" />
-                                <TextBox Text="{Binding EditingFavoriteTicket, Mode=TwoWay}"
-                                         Watermark="Ticket ID" FontSize="12" />
-                                <TextBox Text="{Binding EditingFavoriteDescription, Mode=TwoWay}"
-                                         Watermark="Description"
-                                         FontSize="12" TextWrapping="Wrap"
-                                         AcceptsReturn="True" MinHeight="50" />
+                                    </StackPanel>
+                                </Border>
 
-                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <Button Command="{Binding AddFavoriteCommand}"
-                                            Background="Transparent" BorderThickness="0" Padding="8,6">
-                                        <StackPanel Orientation="Horizontal" Spacing="4">
-                                            <material:MaterialIcon Kind="Plus" Width="14" Height="14"
-                                                                  Foreground="{DynamicResource TextMuted}" />
-                                            <TextBlock Text="Add" FontSize="12" Foreground="{DynamicResource TextSecondary}" />
-                                        </StackPanel>
-                                    </Button>
-                                    <Button Command="{Binding RemoveFavoriteCommand}"
-                                            Background="Transparent" BorderThickness="0" Padding="8,6">
-                                        <StackPanel Orientation="Horizontal" Spacing="4">
-                                            <material:MaterialIcon Kind="Delete" Width="14" Height="14"
-                                                                  Foreground="{DynamicResource DangerRed}" />
-                                            <TextBlock Text="Remove" FontSize="12" Foreground="{DynamicResource DangerRed}" />
-                                        </StackPanel>
-                                    </Button>
-                                    <Button Command="{Binding SaveFavoriteCommand}"
-                                            Padding="8,6" Classes="accent">
-                                        <StackPanel Orientation="Horizontal" Spacing="4">
-                                            <material:MaterialIcon Kind="ContentSave" Width="14" Height="14" />
-                                            <TextBlock Text="Save" FontSize="12" FontWeight="SemiBold" />
-                                        </StackPanel>
-                                    </Button>
-                                </StackPanel>
                             </StackPanel>
-                        </Border>
+                        </ScrollViewer>
+                    </TabItem>
 
-                    </Grid>
+                    <!-- ===== Favorites ===== -->
+                    <TabItem Header="Favorites">
+                        <Grid Margin="20,12" RowDefinitions="*,Auto">
 
-                </Grid>
-            </TabItem>
+                            <!-- Two-column: list | edit -->
+                            <Grid Grid.Row="0" ColumnDefinitions="*,12,*">
 
-        </TabControl>
+                                <!-- List -->
+                                <Border Grid.Column="0"
+                                        Background="{DynamicResource SidebarBackground}"
+                                        BorderBrush="{DynamicResource CardBorder}"
+                                        BorderThickness="1" CornerRadius="4">
+                                    <Grid RowDefinitions="*,Auto">
+                                        <ListBox Grid.Row="0"
+                                                 ItemsSource="{Binding FavoriteWorkItems}"
+                                                 SelectedItem="{Binding SelectedFavorite}"
+                                                 Background="Transparent">
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <StackPanel Margin="6,3" Spacing="1">
+                                                        <TextBlock Text="{Binding Name}" FontWeight="Medium" FontSize="13" />
+                                                        <TextBlock FontSize="11" Foreground="{DynamicResource TextMuted}">
+                                                            <Run Text="{Binding TicketId, TargetNullValue='(no ticket)'}" />
+                                                        </TextBlock>
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
 
-        <!-- Bottom bar -->
-        <StackPanel Grid.Row="1" Orientation="Horizontal"
-                    HorizontalAlignment="Right"
-                    Spacing="8" Margin="20,0,20,14">
-            <Button Content="Cancel"
-                    Command="{Binding CancelCommand}"
-                    Padding="20,8"
-                    Background="{DynamicResource ButtonSecondaryBg}"
-                    Foreground="{DynamicResource ButtonSecondaryFg}" />
-            <Button Command="{Binding SaveCommand}"
-                    Padding="20,8"
-                    Classes="accent">
-                <StackPanel Orientation="Horizontal" Spacing="6">
-                    <material:MaterialIcon Kind="ContentSave" Width="16" Height="16" />
-                    <TextBlock Text="Save" FontWeight="SemiBold" />
+                                        <StackPanel Grid.Row="1" Orientation="Horizontal"
+                                                    HorizontalAlignment="Right" Margin="6" Spacing="2">
+                                            <Button Command="{Binding MoveFavoriteUpCommand}"
+                                                    Width="28" Height="28" Padding="0"
+                                                    Background="Transparent" BorderThickness="0"
+                                                    ToolTip.Tip="Move up">
+                                                <material:MaterialIcon Kind="ArrowUp" Width="16" Height="16"
+                                                                      Foreground="{DynamicResource TextMuted}" />
+                                            </Button>
+                                            <Button Command="{Binding MoveFavoriteDownCommand}"
+                                                    Width="28" Height="28" Padding="0"
+                                                    Background="Transparent" BorderThickness="0"
+                                                    ToolTip.Tip="Move down">
+                                                <material:MaterialIcon Kind="ArrowDown" Width="16" Height="16"
+                                                                      Foreground="{DynamicResource TextMuted}" />
+                                            </Button>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+
+                                <!-- Edit form -->
+                                <Border Grid.Column="2"
+                                        Background="{DynamicResource SidebarBackground}"
+                                        BorderBrush="{DynamicResource CardBorder}"
+                                        BorderThickness="1"
+                                        CornerRadius="4" Padding="14">
+                                    <StackPanel Spacing="8">
+                                        <TextBlock Text="Edit Favorite" FontSize="12" Foreground="{DynamicResource TextMuted}" />
+                                        <TextBox Text="{Binding EditingFavoriteName, Mode=TwoWay}"
+                                                 Watermark="Name (required)" FontSize="12" />
+                                        <TextBox Text="{Binding EditingFavoriteTicket, Mode=TwoWay}"
+                                                 Watermark="Ticket ID" FontSize="12" />
+                                        <TextBox Text="{Binding EditingFavoriteDescription, Mode=TwoWay}"
+                                                 Watermark="Description"
+                                                 FontSize="12" TextWrapping="Wrap"
+                                                 AcceptsReturn="True" MinHeight="50" />
+
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <Button Command="{Binding AddFavoriteCommand}"
+                                                    Background="Transparent" BorderThickness="0" Padding="8,6">
+                                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                                    <material:MaterialIcon Kind="Plus" Width="14" Height="14"
+                                                                          Foreground="{DynamicResource TextMuted}" />
+                                                    <TextBlock Text="Add" FontSize="12" Foreground="{DynamicResource TextSecondary}" />
+                                                </StackPanel>
+                                            </Button>
+                                            <Button Command="{Binding RemoveFavoriteCommand}"
+                                                    Background="Transparent" BorderThickness="0" Padding="8,6">
+                                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                                    <material:MaterialIcon Kind="Delete" Width="14" Height="14"
+                                                                          Foreground="{DynamicResource DangerRed}" />
+                                                    <TextBlock Text="Remove" FontSize="12" Foreground="{DynamicResource DangerRed}" />
+                                                </StackPanel>
+                                            </Button>
+                                            <Button Command="{Binding SaveFavoriteCommand}"
+                                                    Padding="8,6" Classes="accent">
+                                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                                    <material:MaterialIcon Kind="ContentSave" Width="14" Height="14" />
+                                                    <TextBlock Text="Save" FontSize="12" FontWeight="SemiBold" />
+                                                </StackPanel>
+                                            </Button>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+
+                            </Grid>
+
+                        </Grid>
+                    </TabItem>
+
+                </TabControl>
+
+                <!-- Bottom bar -->
+                <StackPanel Grid.Row="1" Orientation="Horizontal"
+                            HorizontalAlignment="Right"
+                            Spacing="8" Margin="20,0,20,14">
+                    <Button Content="Cancel"
+                            Command="{Binding CancelCommand}"
+                            Padding="20,8"
+                            Background="{DynamicResource ButtonSecondaryBg}"
+                            Foreground="{DynamicResource ButtonSecondaryFg}" />
+                    <Button Command="{Binding SaveCommand}"
+                            Padding="20,8"
+                            Classes="accent">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <material:MaterialIcon Kind="ContentSave" Width="16" Height="16" />
+                            <TextBlock Text="Save" FontWeight="SemiBold" />
+                        </StackPanel>
+                    </Button>
                 </StackPanel>
-            </Button>
-        </StackPanel>
 
-    </Grid>
+            </Grid>
+
+        </Grid>
+    </Border>
 </Window>

@@ -1,28 +1,33 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
+    <!-- Kill the reserved space for sort icon in DataGrid column headers -->
+    <Styles.Resources>
+        <x:Double x:Key="DataGridSortIconMinWidth">0</x:Double>
+    </Styles.Resources>
+
     <!-- Window: base background and foreground -->
     <Style Selector="Window">
         <Setter Property="Background" Value="{DynamicResource AppBackground}" />
         <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
     </Style>
 
-    <!-- Card: Fleet-style subtle surface -->
+    <!-- Card: subtle surface -->
     <Style Selector="Border.card">
         <Setter Property="Background" Value="{DynamicResource CardBackground}" />
         <Setter Property="BorderBrush" Value="{DynamicResource CardBorder}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="4" />
-        <Setter Property="Padding" Value="14" />
+        <Setter Property="CornerRadius" Value="{DynamicResource CardCornerRadius}" />
+        <Setter Property="Padding" Value="{DynamicResource CardPadding}" />
     </Style>
 
-    <!-- DataGrid: minimal Fleet style -->
+    <!-- DataGrid: minimal style -->
     <Style Selector="DataGrid">
         <Setter Property="SelectionMode" Value="Single" />
     </Style>
     <Style Selector="DataGridRow">
-        <Setter Property="MinHeight" Value="36" />
-        <Setter Property="FontSize" Value="13" />
+        <Setter Property="MinHeight" Value="32" />
+        <Setter Property="FontSize" Value="10" />
     </Style>
     <Style Selector="DataGridRow:pointerover /template/ Rectangle#BackgroundRectangle">
         <Setter Property="Fill" Value="{DynamicResource ControlFillColorSecondaryBrush}" />
@@ -41,6 +46,14 @@
         <Setter Property="SeparatorBrush" Value="{DynamicResource SeparatorColor}" />
     </Style>
 
+    <!-- Row actions: opacity controlled by theme, always visible on hover -->
+    <Style Selector="StackPanel.rowActions">
+        <Setter Property="Opacity" Value="{DynamicResource RowActionsDefaultOpacity}" />
+    </Style>
+    <Style Selector="DataGridRow:pointerover StackPanel.rowActions">
+        <Setter Property="Opacity" Value="1" />
+    </Style>
+
     <!-- Hide cell focus rectangle -->
     <Style Selector="DataGridCell:focus /template/ Grid#FocusVisual">
         <Setter Property="IsVisible" Value="False" />
@@ -54,6 +67,7 @@
         <Setter Property="Background" Value="{DynamicResource InputBackground}" />
         <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
         <Setter Property="BorderBrush" Value="{DynamicResource InputBorder}" />
+        <Setter Property="Padding" Value="7,5,7,5" />
     </Style>
 
     <!-- Calendar popup: readable text on themed background -->

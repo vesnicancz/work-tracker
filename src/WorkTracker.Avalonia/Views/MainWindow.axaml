@@ -13,7 +13,10 @@
         Height="700"
         MinWidth="750"
         MinHeight="500"
-        WindowStartupLocation="CenterScreen">
+        WindowStartupLocation="CenterScreen"
+        CanResize="False"
+        SystemDecorations="None"
+        Background="Transparent">
 
     <Window.Resources>
         <converters:TimeSpanToStringConverter x:Key="TimeSpanToStringConverter" />
@@ -21,14 +24,75 @@
         <converters:NullToBoolConverter x:Key="NullToBoolConverter" />
     </Window.Resources>
 
-    <Panel>
-        <Grid ColumnDefinitions="280,*">
+    <Panel Margin="8">
+        <Border CornerRadius="{DynamicResource WindowCornerRadius}"
+                Background="{DynamicResource AppBackground}"
+                BorderBrush="{DynamicResource SeparatorColor}"
+                BorderThickness="1"
+                BoxShadow="0 4 24 0 #40000000"
+                ClipToBounds="True">
+        <Grid RowDefinitions="Auto,*">
+
+            <!-- Custom title bar -->
+            <Border Grid.Row="0" x:Name="TitleBar"
+                    Background="{DynamicResource TitleBarBackground}"
+                    BorderBrush="{DynamicResource SeparatorColor}"
+                    BorderThickness="{DynamicResource TitleBarBorderThickness}"
+                    CornerRadius="{DynamicResource WindowTopCornerRadius}"
+                    Height="36">
+                <Panel>
+                    <!-- App icon (left, fixed) -->
+                    <material:MaterialIcon Kind="ClockTimeFourOutline"
+                                          Width="16" Height="16"
+                                          Foreground="{DynamicResource TextMuted}"
+                                          HorizontalAlignment="Left"
+                                          VerticalAlignment="Center"
+                                          Margin="12,0,0,0" />
+
+                    <!-- App title -->
+                    <TextBlock Text="Work Tracker" FontSize="12"
+                               Foreground="{DynamicResource TextMuted}"
+                               VerticalAlignment="Center"
+                               Margin="34,0,12,0"
+                               HorizontalAlignment="{DynamicResource TitleBarAlignment}" />
+
+                    <!-- Window buttons (always right) -->
+                    <StackPanel Orientation="Horizontal" Spacing="0"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Center"
+                                Margin="0,0,6,0">
+                        <Button x:Name="MinimizeButton"
+                                Width="36" Height="28" Padding="0"
+                                Background="Transparent" BorderThickness="0"
+                                ToolTip.Tip="Minimize">
+                            <material:MaterialIcon Kind="Minus"
+                                                  Width="{DynamicResource WindowControlIconSize}"
+                                                  Height="{DynamicResource WindowControlIconSize}"
+                                                  Foreground="{DynamicResource WindowControlForeground}" />
+                        </Button>
+                        <Button x:Name="CloseButton"
+                                Width="36" Height="28" Padding="0"
+                                Background="Transparent" BorderThickness="0"
+                                ToolTip.Tip="Close">
+                            <material:MaterialIcon Kind="Close"
+                                                  Width="{DynamicResource WindowControlIconSize}"
+                                                  Height="{DynamicResource WindowControlIconSize}"
+                                                  Foreground="{DynamicResource WindowControlForeground}" />
+                        </Button>
+                    </StackPanel>
+                </Panel>
+            </Border>
+
+            <!-- Main content -->
+            <Grid Grid.Row="1" ColumnDefinitions="280,*">
 
             <!-- ===== Sidebar ===== -->
             <Border Grid.Column="0"
                     Background="{DynamicResource SidebarBackground}"
-                    BorderBrush="{DynamicResource SidebarBorder}"
-                    BorderThickness="0,0,1,0"
+                    BorderBrush="{DynamicResource CardBorder}"
+                    BorderThickness="{DynamicResource SidebarBorderThickness}"
+                    CornerRadius="{DynamicResource SidebarCornerRadius}"
+                    Margin="{DynamicResource SidebarMargin}"
                     Padding="14,14,14,10">
                 <Grid RowDefinitions="*,Auto">
                 <ScrollViewer Grid.Row="0" HorizontalScrollBarVisibility="Disabled">
@@ -162,13 +226,17 @@
                         <Button Command="{Binding RefreshCommand}"
                                 ToolTip.Tip="Refresh" Padding="7"
                                 Background="Transparent" BorderThickness="0">
-                            <material:MaterialIcon Kind="Refresh" Width="16" Height="16"
+                            <material:MaterialIcon Kind="Refresh"
+                                                  Width="{DynamicResource ToolbarIconSize}"
+                                                  Height="{DynamicResource ToolbarIconSize}"
                                                   Foreground="{DynamicResource TextMuted}" />
                         </Button>
                         <Button Command="{Binding AddWorkEntryCommand}"
                                 ToolTip.Tip="Add entry" Padding="7"
                                 Background="Transparent" BorderThickness="0">
-                            <material:MaterialIcon Kind="Plus" Width="18" Height="18"
+                            <material:MaterialIcon Kind="Plus"
+                                                  Width="{DynamicResource ToolbarIconSize}"
+                                                  Height="{DynamicResource ToolbarIconSize}"
                                                   Foreground="{DynamicResource TextPrimary}" />
                         </Button>
                     </StackPanel>
@@ -203,16 +271,17 @@
                           AutoGenerateColumns="False"
                           CanUserReorderColumns="False"
                           CanUserResizeColumns="True"
-                          CanUserSortColumns="True"
+                          CanUserSortColumns="False"
                           GridLinesVisibility="Horizontal"
                           IsReadOnly="True"
                           SelectionMode="Single"
                           Background="{DynamicResource AppBackground}"
-                          BorderThickness="0">
+                          BorderThickness="0"
+                          DoubleTapped="OnDataGridDoubleTapped">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="Ticket"
                                             Binding="{ReflectionBinding TicketId}"
-                                            Width="110" />
+                                            Width="88" />
                         <DataGridTextColumn Header="Description"
                                             Binding="{ReflectionBinding Description}"
                                             Width="*" MinWidth="200" />
@@ -224,10 +293,10 @@
                                             Width="65" />
                         <DataGridTextColumn Header="Duration"
                                             Binding="{ReflectionBinding Duration, Converter={StaticResource TimeSpanToStringConverter}}"
-                                            Width="75" />
+                                            Width="80" />
 
                         <!-- Status -->
-                        <DataGridTemplateColumn Header="Status" Width="75">
+                        <DataGridTemplateColumn Header="Status" Width="65">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <Panel VerticalAlignment="Center" HorizontalAlignment="Center">
@@ -248,31 +317,38 @@
                                 <DataTemplate>
                                     <StackPanel Orientation="Horizontal"
                                                 HorizontalAlignment="Right" Spacing="0"
-                                                VerticalAlignment="Center">
+                                                VerticalAlignment="Center"
+                                                Classes="rowActions">
                                         <Button IsVisible="{Binding !IsActive}"
                                                 Command="{Binding #WorkEntriesGrid.DataContext.StartWorkFromHistoryCommand}"
                                                 CommandParameter="{Binding}"
                                                 Width="28" Height="28" Padding="0"
                                                 Background="Transparent" BorderThickness="0"
                                                 ToolTip.Tip="Restart">
-                                            <material:MaterialIcon Kind="Play" Width="16" Height="16"
-                                                                  Foreground="{DynamicResource TextSecondary}" />
+                                            <material:MaterialIcon Kind="Play"
+                                                                  Width="{DynamicResource ToolbarIconSize}"
+                                                                  Height="{DynamicResource ToolbarIconSize}"
+                                                                  Foreground="{DynamicResource RowActionPlayColor}" />
                                         </Button>
                                         <Button Command="{Binding #WorkEntriesGrid.DataContext.EditWorkEntryCommand}"
                                                 CommandParameter="{Binding}"
                                                 Width="28" Height="28" Padding="0"
                                                 Background="Transparent" BorderThickness="0"
                                                 ToolTip.Tip="Edit">
-                                            <material:MaterialIcon Kind="Pencil" Width="16" Height="16"
-                                                                  Foreground="{DynamicResource TextSecondary}" />
+                                            <material:MaterialIcon Kind="Pencil"
+                                                                  Width="{DynamicResource ToolbarIconSize}"
+                                                                  Height="{DynamicResource ToolbarIconSize}"
+                                                                  Foreground="{DynamicResource RowActionEditColor}" />
                                         </Button>
                                         <Button Command="{Binding #WorkEntriesGrid.DataContext.DeleteWorkEntryCommand}"
                                                 CommandParameter="{Binding}"
                                                 Width="28" Height="28" Padding="0"
                                                 Background="Transparent" BorderThickness="0"
                                                 ToolTip.Tip="Delete">
-                                            <material:MaterialIcon Kind="Delete" Width="16" Height="16"
-                                                                  Foreground="{DynamicResource TextSecondary}" />
+                                            <material:MaterialIcon Kind="Delete"
+                                                                  Width="{DynamicResource ToolbarIconSize}"
+                                                                  Height="{DynamicResource ToolbarIconSize}"
+                                                                  Foreground="{DynamicResource RowActionDeleteColor}" />
                                         </Button>
                                     </StackPanel>
                                 </DataTemplate>
@@ -282,12 +358,14 @@
                 </DataGrid>
             </Grid>
         </Grid>
+        </Grid>
+        </Border>
 
-        <!-- Notification overlay -->
+        <!-- Notification overlay (above the border, inside Panel margin) -->
         <StackPanel x:Name="NotificationHost"
                     VerticalAlignment="Bottom"
                     HorizontalAlignment="Center"
-                    Margin="0,0,0,16"
+                    Margin="{DynamicResource ToasterMargin}"
                     Spacing="4" />
     </Panel>
 </Window>
