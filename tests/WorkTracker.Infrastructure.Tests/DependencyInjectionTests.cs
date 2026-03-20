@@ -11,7 +11,7 @@ using WorkTracker.Infrastructure.Repositories;
 
 namespace WorkTracker.Infrastructure.Tests;
 
-public class DependencyInjectionTests : IDisposable
+public class DependencyInjectionTests : IAsyncDisposable
 {
 	private readonly ServiceCollection _services;
 	private readonly IConfiguration _configuration;
@@ -41,9 +41,12 @@ public class DependencyInjectionTests : IDisposable
 			.Build();
 	}
 
-	public void Dispose()
+	public async ValueTask DisposeAsync()
 	{
-		_serviceProvider?.Dispose();
+		if (_serviceProvider != null)
+		{
+			await _serviceProvider.DisposeAsync();
+		}
 
 		// Clean up test database
 		if (File.Exists(_testDbPath))

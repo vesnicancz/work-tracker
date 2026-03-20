@@ -1,6 +1,6 @@
 ﻿namespace WorkTracker.Application.Services;
 
-public class DateRangeService : IDateRangeService
+public sealed class DateRangeService : IDateRangeService
 {
 	public (DateTime start, DateTime end) GetWeekRange(DateTime date)
 	{

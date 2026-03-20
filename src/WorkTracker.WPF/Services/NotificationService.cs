@@ -9,7 +9,7 @@ namespace WorkTracker.WPF.Services;
 /// <summary>
 /// Implementation of INotificationService using Material Design Snackbar
 /// </summary>
-public class NotificationService : INotificationService
+public sealed class NotificationService : INotificationService
 {
 	private readonly ISnackbarMessageQueue _messageQueue;
 

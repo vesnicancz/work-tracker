@@ -148,15 +148,18 @@ public class PluginManagerTests : IDisposable
 		await _pluginManager.InitializePluginsAsync();
 
 		// Act
-		_pluginManager.Dispose();
+		await _pluginManager.DisposeAsync();
 
 		// Assert
 		_pluginManager.LoadedPlugins.Should().BeEmpty();
 	}
 
-	public void Dispose()
+	public async void Dispose()
 	{
-		_pluginManager?.Dispose();
+		if (_pluginManager != null)
+		{
+			await _pluginManager.DisposeAsync();
+		}
 	}
 }
 
@@ -175,7 +178,7 @@ public class TestPlugin : IPlugin
 		Description = "A test plugin"
 	};
 
-	public Task<bool> InitializeAsync(IDictionary<string, string>? configuration = null)
+	public Task<bool> InitializeAsync(IDictionary<string, string>? configuration = null, CancellationToken cancellationToken = default)
 	{
 		IsInitialized = true;
 		return Task.FromResult(true);
@@ -187,7 +190,7 @@ public class TestPlugin : IPlugin
 		return Task.CompletedTask;
 	}
 
-	public Task<PluginValidationResult> ValidateConfigurationAsync(IDictionary<string, string> configuration)
+	public Task<PluginValidationResult> ValidateConfigurationAsync(IDictionary<string, string> configuration, CancellationToken cancellationToken)
 	{
 		return Task.FromResult(PluginValidationResult.Success());
 	}
@@ -205,7 +208,7 @@ public class TestWorklogPlugin : IWorklogUploadPlugin
 		Author = "Test Author"
 	};
 
-	public Task<bool> InitializeAsync(IDictionary<string, string>? configuration = null)
+	public Task<bool> InitializeAsync(IDictionary<string, string>? configuration = null, CancellationToken cancellationToken = default)
 	{
 		IsInitialized = true;
 		return Task.FromResult(true);
@@ -213,7 +216,7 @@ public class TestWorklogPlugin : IWorklogUploadPlugin
 
 	public Task ShutdownAsync() => Task.CompletedTask;
 
-	public Task<PluginValidationResult> ValidateConfigurationAsync(IDictionary<string, string> configuration)
+	public Task<PluginValidationResult> ValidateConfigurationAsync(IDictionary<string, string> configuration, CancellationToken cancellationToken)
 	{
 		return Task.FromResult(PluginValidationResult.Success());
 	}
@@ -223,17 +226,17 @@ public class TestWorklogPlugin : IWorklogUploadPlugin
 		return new List<PluginConfigurationField>();
 	}
 
-	public Task<PluginResult<bool>> TestConnectionAsync()
+	public Task<PluginResult<bool>> TestConnectionAsync(CancellationToken cancellationToken)
 	{
 		return Task.FromResult(PluginResult<bool>.Success(true));
 	}
 
-	public Task<PluginResult<bool>> UploadWorklogAsync(PluginWorklogEntry worklog)
+	public Task<PluginResult<bool>> UploadWorklogAsync(PluginWorklogEntry worklog, CancellationToken cancellationToken)
 	{
 		return Task.FromResult(PluginResult<bool>.Success(true));
 	}
 
-	public Task<PluginResult<WorklogSubmissionResult>> UploadWorklogsAsync(IEnumerable<PluginWorklogEntry> worklogs)
+	public Task<PluginResult<WorklogSubmissionResult>> UploadWorklogsAsync(IEnumerable<PluginWorklogEntry> worklogs, CancellationToken cancellationToken)
 	{
 		var result = new WorklogSubmissionResult
 		{
@@ -244,12 +247,12 @@ public class TestWorklogPlugin : IWorklogUploadPlugin
 		return Task.FromResult(PluginResult<WorklogSubmissionResult>.Success(result));
 	}
 
-	public Task<PluginResult<IEnumerable<PluginWorklogEntry>>> GetWorklogsAsync(DateTime startDate, DateTime endDate)
+	public Task<PluginResult<IEnumerable<PluginWorklogEntry>>> GetWorklogsAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken)
 	{
 		return Task.FromResult(PluginResult<IEnumerable<PluginWorklogEntry>>.Success(Enumerable.Empty<PluginWorklogEntry>()));
 	}
 
-	public Task<PluginResult<bool>> WorklogExistsAsync(PluginWorklogEntry worklog)
+	public Task<PluginResult<bool>> WorklogExistsAsync(PluginWorklogEntry worklog, CancellationToken cancellationToken)
 	{
 		return Task.FromResult(PluginResult<bool>.Success(false));
 	}

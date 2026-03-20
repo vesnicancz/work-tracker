@@ -4,7 +4,7 @@ using WorkTracker.Domain.Entities;
 
 namespace WorkTracker.Application.Services;
 
-public class WorklogValidator : IWorklogValidator
+public sealed class WorklogValidator : IWorklogValidator
 {
 	public Result ValidateForSubmission(WorkEntry entry)
 	{

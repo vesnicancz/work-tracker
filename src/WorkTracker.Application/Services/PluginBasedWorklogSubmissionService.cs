@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 using WorkTracker.Application.Common;
 using WorkTracker.Application.DTOs;
 using WorkTracker.Application.Plugins;
@@ -10,7 +10,7 @@ namespace WorkTracker.Application.Services;
 /// <summary>
 /// Service for submitting worklogs using plugin system
 /// </summary>
-public class PluginBasedWorklogSubmissionService : IWorklogSubmissionService
+public sealed class PluginBasedWorklogSubmissionService : IWorklogSubmissionService
 {
 	private readonly IWorkEntryService _workEntryService;
 	private readonly IDateRangeService _dateRangeService;
@@ -32,7 +32,7 @@ public class PluginBasedWorklogSubmissionService : IWorklogSubmissionService
 		_logger = logger;
 	}
 
-	public async Task<Result<SubmissionResult>> SubmitDailyWorklogAsync(DateTime date)
+	public async Task<Result<SubmissionResult>> SubmitDailyWorklogAsync(DateTime date, CancellationToken cancellationToken)
 	{
 		var defaultPlugin = _pluginManager.WorklogUploadPlugins.FirstOrDefault();
 		if (defaultPlugin == null)
@@ -40,10 +40,10 @@ public class PluginBasedWorklogSubmissionService : IWorklogSubmissionService
 			return Result.Failure<SubmissionResult>("No worklog upload plugin available");
 		}
 
-		return await SubmitDailyWorklogAsync(date, defaultPlugin.Metadata.Id);
+		return await SubmitDailyWorklogAsync(date, defaultPlugin.Metadata.Id, cancellationToken);
 	}
 
-	public async Task<Result<SubmissionResult>> SubmitDailyWorklogAsync(DateTime date, string providerId)
+	public async Task<Result<SubmissionResult>> SubmitDailyWorklogAsync(DateTime date, string providerId, CancellationToken cancellationToken)
 	{
 		var plugin = _pluginManager.GetPlugin<IWorklogUploadPlugin>(providerId);
 		if (plugin == null)
@@ -53,10 +53,10 @@ public class PluginBasedWorklogSubmissionService : IWorklogSubmissionService
 
 		_logger.LogInformation("Submitting daily worklog for {Date} using plugin {Plugin}", date.ToShortDateString(), plugin.Metadata.Name);
 
-		var entries = await _workEntryService.GetWorkEntriesByDateAsync(date);
+		var entries = await _workEntryService.GetWorkEntriesByDateAsync(date, cancellationToken);
 		var completedEntries = entries.Where(e => e.EndTime.HasValue).ToList();
 
-		if (!completedEntries.Any())
+		if (completedEntries.Count == 0)
 		{
 			_logger.LogWarning("No completed entries found for {Date}", date);
 			return Result.Success(new SubmissionResult
@@ -91,13 +91,13 @@ public class PluginBasedWorklogSubmissionService : IWorklogSubmissionService
 			}
 		}
 
-		if (!validWorklogs.Any())
+		if (validWorklogs.Count == 0)
 		{
 			return Result.Failure<SubmissionResult>("No valid worklogs to submit");
 		}
 
 		// Submit using plugin (convert to plugin types)
-		var result = await plugin.UploadWorklogsAsync(validWorklogs.ToPluginWorklogs());
+		var result = await plugin.UploadWorklogsAsync(validWorklogs.ToPluginWorklogs(), cancellationToken);
 
 		if (result.IsFailure)
 		{
@@ -117,9 +117,9 @@ public class PluginBasedWorklogSubmissionService : IWorklogSubmissionService
 		return Result.Success(submissionResult);
 	}
 
-	public async Task<WorklogSubmissionDto> PreviewDailyWorklogAsync(DateTime date)
+	public async Task<WorklogSubmissionDto> PreviewDailyWorklogAsync(DateTime date, CancellationToken cancellationToken)
 	{
-		var entries = await _workEntryService.GetWorkEntriesByDateAsync(date);
+		var entries = await _workEntryService.GetWorkEntriesByDateAsync(date, cancellationToken);
 		var completedEntries = entries.Where(e => e.EndTime.HasValue).ToList();
 
 		var dto = new WorklogSubmissionDto
@@ -138,7 +138,7 @@ public class PluginBasedWorklogSubmissionService : IWorklogSubmissionService
 		return dto;
 	}
 
-	public async Task<Result<SubmissionResult>> SubmitWeeklyWorklogAsync(DateTime date)
+	public async Task<Result<SubmissionResult>> SubmitWeeklyWorklogAsync(DateTime date, CancellationToken cancellationToken)
 	{
 		var defaultPlugin = _pluginManager.WorklogUploadPlugins.FirstOrDefault();
 		if (defaultPlugin == null)
@@ -146,10 +146,10 @@ public class PluginBasedWorklogSubmissionService : IWorklogSubmissionService
 			return Result.Failure<SubmissionResult>("No worklog upload plugin available");
 		}
 
-		return await SubmitWeeklyWorklogAsync(date, defaultPlugin.Metadata.Id);
+		return await SubmitWeeklyWorklogAsync(date, defaultPlugin.Metadata.Id, cancellationToken);
 	}
 
-	public async Task<Result<SubmissionResult>> SubmitWeeklyWorklogAsync(DateTime date, string providerId)
+	public async Task<Result<SubmissionResult>> SubmitWeeklyWorklogAsync(DateTime date, string providerId, CancellationToken cancellationToken)
 	{
 		var plugin = _pluginManager.GetPlugin<IWorklogUploadPlugin>(providerId);
 		if (plugin == null)
@@ -164,7 +164,7 @@ public class PluginBasedWorklogSubmissionService : IWorklogSubmissionService
 
 		for (var day = weekStart; day <= weekEnd; day = day.AddDays(1))
 		{
-			var entries = await _workEntryService.GetWorkEntriesByDateAsync(day);
+			var entries = await _workEntryService.GetWorkEntriesByDateAsync(day, cancellationToken);
 			var completedEntries = entries.Where(e => e.EndTime.HasValue);
 
 			foreach (var entry in completedEntries)
@@ -180,7 +180,7 @@ public class PluginBasedWorklogSubmissionService : IWorklogSubmissionService
 			}
 		}
 
-		if (!allWorklogs.Any())
+		if (allWorklogs.Count == 0)
 		{
 			_logger.LogWarning("No completed entries found for week of {Date}", date);
 			return Result.Success(new SubmissionResult
@@ -200,14 +200,18 @@ public class PluginBasedWorklogSubmissionService : IWorklogSubmissionService
 			{
 				validWorklogs.Add(worklog);
 			}
+			else
+			{
+				_logger.LogWarning("Skipping invalid worklog: {Errors}", string.Join(", ", validationResult.Errors));
+			}
 		}
 
-		if (!validWorklogs.Any())
+		if (validWorklogs.Count == 0)
 		{
 			return Result.Failure<SubmissionResult>("No valid worklogs to submit");
 		}
 
-		var result = await plugin.UploadWorklogsAsync(validWorklogs.ToPluginWorklogs());
+		var result = await plugin.UploadWorklogsAsync(validWorklogs.ToPluginWorklogs(), cancellationToken);
 
 		if (result.IsFailure)
 		{
@@ -225,14 +229,14 @@ public class PluginBasedWorklogSubmissionService : IWorklogSubmissionService
 		return Result.Success(submissionResult);
 	}
 
-	public async Task<Dictionary<DateTime, WorklogSubmissionDto>> PreviewWeeklyWorklogAsync(DateTime date)
+	public async Task<Dictionary<DateTime, WorklogSubmissionDto>> PreviewWeeklyWorklogAsync(DateTime date, CancellationToken cancellationToken)
 	{
 		var (weekStart, weekEnd) = _dateRangeService.GetWeekRange(date);
 		var preview = new Dictionary<DateTime, WorklogSubmissionDto>();
 
 		for (var day = weekStart; day <= weekEnd; day = day.AddDays(1))
 		{
-			preview[day] = await PreviewDailyWorklogAsync(day);
+			preview[day] = await PreviewDailyWorklogAsync(day, cancellationToken);
 		}
 
 		return preview;
@@ -249,7 +253,8 @@ public class PluginBasedWorklogSubmissionService : IWorklogSubmissionService
 
 	public async Task<Result<SubmissionResult>> SubmitCustomWorklogsAsync(
 		IEnumerable<WorklogDto> worklogs,
-		string providerId)
+		string providerId,
+		CancellationToken cancellationToken)
 	{
 		var plugin = _pluginManager.GetPlugin<IWorklogUploadPlugin>(providerId);
 		if (plugin == null)
@@ -261,7 +266,7 @@ public class PluginBasedWorklogSubmissionService : IWorklogSubmissionService
 
 		_logger.LogInformation("Submitting {Count} custom worklogs using plugin {Plugin}", worklogList.Count, plugin.Metadata.Name);
 
-		var result = await plugin.UploadWorklogsAsync(worklogList.ToPluginWorklogs());
+		var result = await plugin.UploadWorklogsAsync(worklogList.ToPluginWorklogs(), cancellationToken);
 
 		if (result.IsFailure)
 		{

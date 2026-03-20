@@ -10,7 +10,7 @@ namespace WorkTracker.WPF.Services;
 /// Service that manages the current worklog tracking state of the application.
 /// Provides a single source of truth for active work tracking.
 /// </summary>
-public class WorklogStateService : IWorklogStateService
+public sealed class WorklogStateService : IWorklogStateService
 {
 	private readonly IServiceScopeFactory _scopeFactory;
 	private readonly ILogger<WorklogStateService> _logger;

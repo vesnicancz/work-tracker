@@ -48,7 +48,7 @@ public class WorkEntryRepositoryTests : IDisposable
 		await _testContext.SaveChangesAsync();
 
 		// Act
-		var result = await _repository.GetByIdAsync(entry.Id);
+		var result = await _repository.GetByIdAsync(entry.Id, CancellationToken.None);
 
 		// Assert
 		result.Should().NotBeNull();
@@ -60,7 +60,7 @@ public class WorkEntryRepositoryTests : IDisposable
 	public async Task GetByIdAsync_WithNonExistentId_ShouldReturnNull()
 	{
 		// Act
-		var result = await _repository.GetByIdAsync(999);
+		var result = await _repository.GetByIdAsync(999, CancellationToken.None);
 
 		// Assert
 		result.Should().BeNull();
@@ -84,7 +84,7 @@ public class WorkEntryRepositoryTests : IDisposable
 		await _testContext.SaveChangesAsync();
 
 		// Act
-		var result = await _repository.GetActiveWorkEntryAsync();
+		var result = await _repository.GetActiveWorkEntryAsync(CancellationToken.None);
 
 		// Assert
 		result.Should().NotBeNull();
@@ -112,7 +112,7 @@ public class WorkEntryRepositoryTests : IDisposable
 		await _testContext.SaveChangesAsync();
 
 		// Act
-		var result = await _repository.GetActiveWorkEntryAsync();
+		var result = await _repository.GetActiveWorkEntryAsync(CancellationToken.None);
 
 		// Assert
 		result.Should().NotBeNull();
@@ -135,7 +135,7 @@ public class WorkEntryRepositoryTests : IDisposable
 		await _testContext.SaveChangesAsync();
 
 		// Act
-		var result = await _repository.GetActiveWorkEntryAsync();
+		var result = await _repository.GetActiveWorkEntryAsync(CancellationToken.None);
 
 		// Assert
 		result.Should().BeNull();
@@ -166,7 +166,7 @@ public class WorkEntryRepositoryTests : IDisposable
 		await _testContext.SaveChangesAsync();
 
 		// Act
-		var results = await _repository.GetByDateAsync(targetDate);
+		var results = await _repository.GetByDateAsync(targetDate, CancellationToken.None);
 
 		// Assert
 		results.Should().HaveCount(2);
@@ -193,7 +193,7 @@ public class WorkEntryRepositoryTests : IDisposable
 		await _testContext.SaveChangesAsync();
 
 		// Act
-		var results = (await _repository.GetByDateAsync(targetDate)).ToList();
+		var results = (await _repository.GetByDateAsync(targetDate, CancellationToken.None)).ToList();
 
 		// Assert
 		results.Should().HaveCount(2);
@@ -216,7 +216,7 @@ public class WorkEntryRepositoryTests : IDisposable
 		await _testContext.SaveChangesAsync();
 
 		// Act
-		var results = await _repository.GetByDateAsync(targetDate);
+		var results = await _repository.GetByDateAsync(targetDate, CancellationToken.None);
 
 		// Assert
 		results.Should().BeEmpty();
@@ -241,7 +241,7 @@ public class WorkEntryRepositoryTests : IDisposable
 		await _testContext.SaveChangesAsync();
 
 		// Act
-		var results = await _repository.GetByDateAsync(targetDate);
+		var results = await _repository.GetByDateAsync(targetDate, CancellationToken.None);
 
 		// Assert
 		results.Should().HaveCount(1);
@@ -268,7 +268,7 @@ public class WorkEntryRepositoryTests : IDisposable
 		await _testContext.SaveChangesAsync();
 
 		// Act
-		var results = await _repository.GetByDateRangeAsync(startDate, endDate);
+		var results = await _repository.GetByDateRangeAsync(startDate, endDate, CancellationToken.None);
 
 		// Assert
 		results.Should().HaveCount(3);
@@ -289,7 +289,7 @@ public class WorkEntryRepositoryTests : IDisposable
 		await _testContext.SaveChangesAsync();
 
 		// Act
-		var results = (await _repository.GetByDateRangeAsync(startDate, endDate)).ToList();
+		var results = (await _repository.GetByDateRangeAsync(startDate, endDate, CancellationToken.None)).ToList();
 
 		// Assert
 		results.Should().HaveCount(3);
@@ -313,7 +313,7 @@ public class WorkEntryRepositoryTests : IDisposable
 		await _testContext.SaveChangesAsync();
 
 		// Act
-		var results = await _repository.GetByDateRangeAsync(startDate, endDate);
+		var results = await _repository.GetByDateRangeAsync(startDate, endDate, CancellationToken.None);
 
 		// Assert
 		results.Should().HaveCount(1);
@@ -330,7 +330,7 @@ public class WorkEntryRepositoryTests : IDisposable
 		await _testContext.SaveChangesAsync();
 
 		// Act
-		var results = await _repository.GetByDateRangeAsync(date, date);
+		var results = await _repository.GetByDateRangeAsync(date, date, CancellationToken.None);
 
 		// Assert
 		results.Should().HaveCount(1);
@@ -353,7 +353,7 @@ public class WorkEntryRepositoryTests : IDisposable
 		};
 
 		// Act
-		var result = await _repository.AddAsync(entry);
+		var result = await _repository.AddAsync(entry, CancellationToken.None);
 
 		// Assert
 		result.Should().NotBeNull();
@@ -376,7 +376,7 @@ public class WorkEntryRepositoryTests : IDisposable
 		};
 
 		// Act
-		await _repository.AddAsync(entry);
+		await _repository.AddAsync(entry, CancellationToken.None);
 
 		// Assert
 		var saved = await _testContext.WorkEntries.FindAsync(entry.Id);
@@ -406,7 +406,7 @@ public class WorkEntryRepositoryTests : IDisposable
 		entry.Description = "Updated description";
 
 		// Act
-		await _repository.UpdateAsync(entry);
+		await _repository.UpdateAsync(entry, CancellationToken.None);
 
 		// Assert
 		var updated = await _testContext.WorkEntries.FindAsync(entry.Id);
@@ -434,7 +434,7 @@ public class WorkEntryRepositoryTests : IDisposable
 		entry.TicketId = "PROJ-456";
 
 		// Act
-		await _repository.UpdateAsync(entry);
+		await _repository.UpdateAsync(entry, CancellationToken.None);
 
 		// Assert
 		var updated = await _testContext.WorkEntries.FindAsync(entry.Id);
@@ -461,10 +461,10 @@ public class WorkEntryRepositoryTests : IDisposable
 		var entryId = entry.Id;
 
 		// Act
-		await _repository.DeleteAsync(entryId);
+		await _repository.DeleteAsync(entryId, CancellationToken.None);
 
 		// Assert - Use repository to verify deletion (repository uses factory)
-		var deleted = await _repository.GetByIdAsync(entryId);
+		var deleted = await _repository.GetByIdAsync(entryId, CancellationToken.None);
 		deleted.Should().BeNull();
 	}
 
@@ -472,7 +472,7 @@ public class WorkEntryRepositoryTests : IDisposable
 	public async Task DeleteAsync_WithNonExistentId_ShouldNotThrow()
 	{
 		// Act & Assert
-		var act = async () => await _repository.DeleteAsync(999);
+		var act = async () => await _repository.DeleteAsync(999, CancellationToken.None);
 		await act.Should().NotThrowAsync();
 	}
 
@@ -501,7 +501,7 @@ public class WorkEntryRepositoryTests : IDisposable
 		};
 
 		// Act
-		var hasOverlap = await _repository.HasOverlappingEntriesAsync(newEntry);
+		var hasOverlap = await _repository.HasOverlappingEntriesAsync(newEntry, CancellationToken.None);
 
 		// Assert
 		hasOverlap.Should().BeFalse();
@@ -528,7 +528,7 @@ public class WorkEntryRepositoryTests : IDisposable
 		};
 
 		// Act
-		var hasOverlap = await _repository.HasOverlappingEntriesAsync(newEntry);
+		var hasOverlap = await _repository.HasOverlappingEntriesAsync(newEntry, CancellationToken.None);
 
 		// Assert
 		hasOverlap.Should().BeTrue();
@@ -555,7 +555,7 @@ public class WorkEntryRepositoryTests : IDisposable
 		};
 
 		// Act
-		var hasOverlap = await _repository.HasOverlappingEntriesAsync(newEntry);
+		var hasOverlap = await _repository.HasOverlappingEntriesAsync(newEntry, CancellationToken.None);
 
 		// Assert
 		hasOverlap.Should().BeTrue();
@@ -583,7 +583,7 @@ public class WorkEntryRepositoryTests : IDisposable
 		};
 
 		// Act
-		var hasOverlap = await _repository.HasOverlappingEntriesAsync(newEntry);
+		var hasOverlap = await _repository.HasOverlappingEntriesAsync(newEntry, CancellationToken.None);
 
 		// Assert
 		hasOverlap.Should().BeTrue();
@@ -610,7 +610,7 @@ public class WorkEntryRepositoryTests : IDisposable
 		};
 
 		// Act
-		var hasOverlap = await _repository.HasOverlappingEntriesAsync(newEntry);
+		var hasOverlap = await _repository.HasOverlappingEntriesAsync(newEntry, CancellationToken.None);
 
 		// Assert
 		hasOverlap.Should().BeFalse();
@@ -630,7 +630,7 @@ public class WorkEntryRepositoryTests : IDisposable
 		await _testContext.SaveChangesAsync();
 
 		// Act - Check the same entry against itself
-		var hasOverlap = await _repository.HasOverlappingEntriesAsync(entry);
+		var hasOverlap = await _repository.HasOverlappingEntriesAsync(entry, CancellationToken.None);
 
 		// Assert
 		hasOverlap.Should().BeFalse();
@@ -658,7 +658,7 @@ public class WorkEntryRepositoryTests : IDisposable
 		};
 
 		// Act
-		var hasOverlap = await _repository.HasOverlappingEntriesAsync(newActiveEntry);
+		var hasOverlap = await _repository.HasOverlappingEntriesAsync(newActiveEntry, CancellationToken.None);
 
 		// Assert
 		hasOverlap.Should().BeTrue();

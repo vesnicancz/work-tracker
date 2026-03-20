@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 
 namespace WorkTracker.Plugin.Abstractions;
 
@@ -23,12 +23,12 @@ public abstract class WorklogUploadPluginBase : IWorklogUploadPlugin
 	/// <summary>
 	/// Initializes the plugin with configuration
 	/// </summary>
-	public virtual async Task<bool> InitializeAsync(IDictionary<string, string>? configuration = null)
+	public virtual async Task<bool> InitializeAsync(IDictionary<string, string>? configuration = null, CancellationToken cancellationToken = default)
 	{
 		Configuration = configuration ?? new Dictionary<string, string>();
 
 		// Validate configuration
-		var validationResult = await ValidateConfigurationAsync(Configuration);
+		var validationResult = await ValidateConfigurationAsync(Configuration, cancellationToken);
 		if (!validationResult.IsValid)
 		{
 			Logger?.LogError(
@@ -40,7 +40,7 @@ public abstract class WorklogUploadPluginBase : IWorklogUploadPlugin
 		}
 
 		// Call derived class initialization
-		var result = await OnInitializeAsync(Configuration);
+		var result = await OnInitializeAsync(Configuration, cancellationToken);
 		IsInitialized = result;
 
 		if (result)
@@ -68,7 +68,7 @@ public abstract class WorklogUploadPluginBase : IWorklogUploadPlugin
 	/// <summary>
 	/// Validates the plugin configuration
 	/// </summary>
-	public virtual async Task<PluginValidationResult> ValidateConfigurationAsync(IDictionary<string, string> configuration)
+	public virtual async Task<PluginValidationResult> ValidateConfigurationAsync(IDictionary<string, string> configuration, CancellationToken cancellationToken)
 	{
 		var errors = new List<string>();
 
@@ -89,29 +89,29 @@ public abstract class WorklogUploadPluginBase : IWorklogUploadPlugin
 			}
 		}
 
-		if (errors.Any())
+		if (errors.Count != 0)
 		{
 			return PluginValidationResult.Failure(errors.ToArray());
 		}
 
 		// Call derived class validation
-		return await OnValidateConfigurationAsync(configuration);
+		return await OnValidateConfigurationAsync(configuration, cancellationToken);
 	}
 
 	/// <summary>
 	/// Tests the connection with the current configuration
 	/// </summary>
-	public abstract Task<PluginResult<bool>> TestConnectionAsync();
+	public abstract Task<PluginResult<bool>> TestConnectionAsync(CancellationToken cancellationToken);
 
 	/// <summary>
 	/// Uploads a single worklog entry
 	/// </summary>
-	public abstract Task<PluginResult<bool>> UploadWorklogAsync(PluginWorklogEntry worklog);
+	public abstract Task<PluginResult<bool>> UploadWorklogAsync(PluginWorklogEntry worklog, CancellationToken cancellationToken);
 
 	/// <summary>
 	/// Uploads multiple worklog entries in batch
 	/// </summary>
-	public virtual async Task<PluginResult<WorklogSubmissionResult>> UploadWorklogsAsync(IEnumerable<PluginWorklogEntry> worklogs)
+	public virtual async Task<PluginResult<WorklogSubmissionResult>> UploadWorklogsAsync(IEnumerable<PluginWorklogEntry> worklogs, CancellationToken cancellationToken)
 	{
 		if (!IsInitialized)
 		{
@@ -125,7 +125,9 @@ public abstract class WorklogUploadPluginBase : IWorklogUploadPlugin
 
 		foreach (var worklog in worklogList)
 		{
-			var result = await UploadWorklogAsync(worklog);
+			cancellationToken.ThrowIfCancellationRequested();
+
+			var result = await UploadWorklogAsync(worklog, cancellationToken);
 			if (result.IsSuccess)
 			{
 				successful++;
@@ -155,12 +157,12 @@ public abstract class WorklogUploadPluginBase : IWorklogUploadPlugin
 	/// <summary>
 	/// Gets existing worklogs from the provider for a specific date range
 	/// </summary>
-	public abstract Task<PluginResult<IEnumerable<PluginWorklogEntry>>> GetWorklogsAsync(DateTime startDate, DateTime endDate);
+	public abstract Task<PluginResult<IEnumerable<PluginWorklogEntry>>> GetWorklogsAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken);
 
 	/// <summary>
 	/// Checks if a worklog already exists in the provider
 	/// </summary>
-	public abstract Task<PluginResult<bool>> WorklogExistsAsync(PluginWorklogEntry worklog);
+	public abstract Task<PluginResult<bool>> WorklogExistsAsync(PluginWorklogEntry worklog, CancellationToken cancellationToken);
 
 	/// <summary>
 	/// Sets the logger for this plugin
@@ -206,7 +208,7 @@ public abstract class WorklogUploadPluginBase : IWorklogUploadPlugin
 	/// <summary>
 	/// Called during initialization. Override to perform custom initialization logic.
 	/// </summary>
-	protected virtual Task<bool> OnInitializeAsync(IDictionary<string, string> configuration)
+	protected virtual Task<bool> OnInitializeAsync(IDictionary<string, string> configuration, CancellationToken cancellationToken)
 	{
 		return Task.FromResult(true);
 	}
@@ -222,7 +224,7 @@ public abstract class WorklogUploadPluginBase : IWorklogUploadPlugin
 	/// <summary>
 	/// Called during validation. Override to perform custom validation logic.
 	/// </summary>
-	protected virtual Task<PluginValidationResult> OnValidateConfigurationAsync(IDictionary<string, string> configuration)
+	protected virtual Task<PluginValidationResult> OnValidateConfigurationAsync(IDictionary<string, string> configuration, CancellationToken cancellationToken)
 	{
 		return Task.FromResult(PluginValidationResult.Success());
 	}

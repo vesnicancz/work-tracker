@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+using System.Reflection;
 using System.Runtime.Loader;
 using Microsoft.Extensions.Logging;
 using WorkTracker.Plugin.Abstractions;
@@ -8,7 +8,7 @@ namespace WorkTracker.Application.Plugins;
 /// <summary>
 /// Manages plugin discovery, loading, and lifecycle
 /// </summary>
-public class PluginManager : IDisposable
+public sealed class PluginManager : IAsyncDisposable
 {
 	private readonly ILogger<PluginManager> _logger;
 
@@ -79,7 +79,7 @@ public class PluginManager : IDisposable
 
 		foreach (var directory in _pluginDirectories)
 		{
-			var pluginFiles = Directory.GetFiles(directory, "*.dll", SearchOption.TopDirectoryOnly);
+			var pluginFiles = Directory.GetFiles(directory, "*.dll", SearchOption.AllDirectories);
 			foreach (var pluginFile in pluginFiles)
 			{
 				try
@@ -127,11 +127,13 @@ public class PluginManager : IDisposable
 				.Where(t => typeof(IPlugin).IsAssignableFrom(t) && !t.IsInterface && !t.IsAbstract)
 				.ToList();
 
-			if (!pluginTypes.Any())
+			if (pluginTypes.Count == 0)
 			{
 				_logger.LogWarning("No plugin types found in {Assembly}", assemblyPath);
 				return false;
 			}
+
+			var anyLoaded = false;
 
 			foreach (var pluginType in pluginTypes)
 			{
@@ -154,6 +156,7 @@ public class PluginManager : IDisposable
 
 					_loadedPlugins[pluginId] = plugin;
 					_pluginContexts[pluginId] = context;
+					anyLoaded = true;
 
 					_logger.LogInformation("Loaded plugin: {Name} v{Version} by {Author}", plugin.Metadata.Name, plugin.Metadata.Version, plugin.Metadata.Author);
 				}
@@ -163,7 +166,7 @@ public class PluginManager : IDisposable
 				}
 			}
 
-			return true;
+			return anyLoaded;
 		}
 		catch (Exception ex)
 		{
@@ -211,7 +214,7 @@ public class PluginManager : IDisposable
 	/// <summary>
 	/// Initializes all loaded plugins with their configurations
 	/// </summary>
-	public async Task InitializePluginsAsync(Dictionary<string, Dictionary<string, string>>? configurations = null)
+	public async Task InitializePluginsAsync(Dictionary<string, Dictionary<string, string>>? configurations = null, CancellationToken cancellationToken = default)
 	{
 		foreach (var kvp in _loadedPlugins)
 		{
@@ -221,7 +224,7 @@ public class PluginManager : IDisposable
 			try
 			{
 				var config = configurations?.GetValueOrDefault(pluginId);
-				var success = await plugin.InitializeAsync(config);
+				var success = await plugin.InitializeAsync(config, cancellationToken);
 
 				if (success)
 				{
@@ -298,10 +301,8 @@ public class PluginManager : IDisposable
 		}
 	}
 
-	public void Dispose()
+	public async ValueTask DisposeAsync()
 	{
-		UnloadAllPluginsAsync()
-			.GetAwaiter()
-			.GetResult();
+		await UnloadAllPluginsAsync();
 	}
 }

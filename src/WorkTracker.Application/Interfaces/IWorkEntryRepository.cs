@@ -4,19 +4,19 @@ namespace WorkTracker.Application.Interfaces;
 
 public interface IWorkEntryRepository
 {
-	Task<WorkEntry?> GetByIdAsync(int id);
+	Task<WorkEntry?> GetByIdAsync(int id, CancellationToken cancellationToken = default);
 
-	Task<WorkEntry?> GetActiveWorkEntryAsync();
+	Task<WorkEntry?> GetActiveWorkEntryAsync(CancellationToken cancellationToken = default);
 
-	Task<IEnumerable<WorkEntry>> GetByDateAsync(DateTime date);
+	Task<IEnumerable<WorkEntry>> GetByDateAsync(DateTime date, CancellationToken cancellationToken = default);
 
-	Task<IEnumerable<WorkEntry>> GetByDateRangeAsync(DateTime startDate, DateTime endDate);
+	Task<IEnumerable<WorkEntry>> GetByDateRangeAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default);
 
-	Task<WorkEntry> AddAsync(WorkEntry workEntry);
+	Task<WorkEntry> AddAsync(WorkEntry workEntry, CancellationToken cancellationToken = default);
 
-	Task UpdateAsync(WorkEntry workEntry);
+	Task UpdateAsync(WorkEntry workEntry, CancellationToken cancellationToken = default);
 
-	Task DeleteAsync(int id);
+	Task DeleteAsync(int id, CancellationToken cancellationToken = default);
 
-	Task<bool> HasOverlappingEntriesAsync(WorkEntry workEntry);
+	Task<bool> HasOverlappingEntriesAsync(WorkEntry workEntry, CancellationToken cancellationToken = default);
 }

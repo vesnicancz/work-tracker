@@ -9,7 +9,7 @@ namespace WorkTracker.WPF.Services;
 /// <summary>
 /// Service for managing application settings
 /// </summary>
-public class SettingsService : ISettingsService
+public sealed class SettingsService : ISettingsService
 {
 	private readonly ILogger<SettingsService> _logger;
 	private readonly string _settingsFilePath;

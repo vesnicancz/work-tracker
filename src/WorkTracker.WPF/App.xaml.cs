@@ -206,6 +206,10 @@ public partial class App : System.Windows.Application
 		// Unregister hotkey
 		_hotkeyService?.Unregister();
 
+		// Dispose plugin manager asynchronously to avoid deadlocks
+		var pluginManager = _host.Services.GetRequiredService<PluginManager>();
+		await pluginManager.DisposeAsync();
+
 		using (_host)
 		{
 			await _host.StopAsync();

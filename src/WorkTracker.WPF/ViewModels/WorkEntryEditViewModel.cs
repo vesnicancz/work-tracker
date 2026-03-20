@@ -15,6 +15,7 @@ public class WorkEntryEditViewModel : ViewModelBase
 {
 	private readonly IWorklogStateService _worklogStateService;
 	private readonly INotificationService _notificationService;
+	private readonly TimeProvider _timeProvider;
 	private readonly ILogger<WorkEntryEditViewModel> _logger;
 
 	private WorkEntry? _originalEntry;
@@ -31,10 +32,12 @@ public class WorkEntryEditViewModel : ViewModelBase
 	public WorkEntryEditViewModel(
 		IWorklogStateService worklogStateService,
 		INotificationService notificationService,
+		TimeProvider timeProvider,
 		ILogger<WorkEntryEditViewModel> logger)
 	{
 		_worklogStateService = worklogStateService;
 		_notificationService = notificationService;
+		_timeProvider = timeProvider;
 		_logger = logger;
 
 		SaveCommand = new AsyncRelayCommand(SaveAsync, CanSave);
@@ -140,7 +143,7 @@ public class WorkEntryEditViewModel : ViewModelBase
 				else if (EndDate == null)
 				{
 					// Set to current time when enabling end time
-					var now = DateTimeHelper.RoundToMinute(DateTime.Now);
+					var now = DateTimeHelper.RoundToMinute(_timeProvider.GetLocalNow().DateTime);
 					EndDate = now.Date;
 					EndTime = new TimeSpan(now.Hour, now.Minute, 0);
 				}
@@ -210,7 +213,7 @@ public class WorkEntryEditViewModel : ViewModelBase
 		else
 		{
 			// New entry mode
-			var now = DateTimeHelper.RoundToMinute(DateTime.Now);
+			var now = DateTimeHelper.RoundToMinute(_timeProvider.GetLocalNow().DateTime);
 			StartDate = now.Date;
 			StartTime = new TimeSpan(now.Hour, now.Minute, 0);
 			HasEndTime = false;

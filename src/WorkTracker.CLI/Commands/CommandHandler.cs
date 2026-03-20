@@ -3,17 +3,20 @@ using WorkTracker.Application.Services;
 
 namespace WorkTracker.CLI.Commands;
 
-public class CommandHandler
+public sealed class CommandHandler
 {
 	private readonly IWorkEntryService _workEntryService;
 	private readonly IWorklogSubmissionService _submissionService;
+	private readonly TimeProvider _timeProvider;
 
 	public CommandHandler(
 		IWorkEntryService workEntryService,
-		IWorklogSubmissionService submissionService)
+		IWorklogSubmissionService submissionService,
+		TimeProvider timeProvider)
 	{
 		_workEntryService = workEntryService;
 		_submissionService = submissionService;
+		_timeProvider = timeProvider;
 	}
 
 	public async Task<int> HandleStartCommand(string? ticketId, DateTime? startTime = null, string? description = null)
@@ -106,7 +109,7 @@ public class CommandHandler
 				return 0;
 			}
 
-			var elapsed = DateTime.Now - activeEntry.StartTime;
+			var elapsed = _timeProvider.GetLocalNow().DateTime - activeEntry.StartTime;
 
 			var table = new Table();
 			table.AddColumn("Property");
@@ -139,7 +142,7 @@ public class CommandHandler
 	{
 		try
 		{
-			var targetDate = date ?? DateTime.Today;
+			var targetDate = date ?? _timeProvider.GetLocalNow().Date;
 			var entries = await _workEntryService.GetWorkEntriesByDateAsync(targetDate);
 
 			AnsiConsole.MarkupLine($"[bold]Work entries for {targetDate:yyyy-MM-dd}:[/]\n");
@@ -265,7 +268,7 @@ public class CommandHandler
 				return await HandleSendWeekCommand(date);
 			}
 
-			var targetDate = date ?? DateTime.Today;
+			var targetDate = date ?? _timeProvider.GetLocalNow().Date;
 
 			var preview = await _submissionService.PreviewDailyWorklogAsync(targetDate);
 
@@ -325,7 +328,7 @@ public class CommandHandler
 	{
 		try
 		{
-			var targetDate = date ?? DateTime.Today;
+			var targetDate = date ?? _timeProvider.GetLocalNow().Date;
 
 			var preview = await _submissionService.PreviewWeeklyWorklogAsync(targetDate);
 

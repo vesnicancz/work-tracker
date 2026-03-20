@@ -6,7 +6,7 @@ namespace WorkTracker.WPF.Services;
 /// <summary>
 /// Service for managing global hotkeys using Windows API
 /// </summary>
-public class HotkeyService : IHotkeyService
+public sealed class HotkeyService : IHotkeyService
 {
 	private const int WM_HOTKEY = 0x0312;
 	private const int HOTKEY_ID = 9000;

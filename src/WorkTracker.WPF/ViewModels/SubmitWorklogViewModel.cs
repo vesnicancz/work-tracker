@@ -13,9 +13,10 @@ namespace WorkTracker.WPF.ViewModels;
 public class SubmitWorklogViewModel : ViewModelBase
 {
 	private readonly IWorklogSubmissionService _submissionService;
+	private readonly TimeProvider _timeProvider;
 	private readonly ILogger<SubmitWorklogViewModel> _logger;
 
-	private DateTime _selectedDate = DateTime.Today;
+	private DateTime _selectedDate;
 	private bool _isWeekly;
 	private bool _isLoading;
 	private bool _isSending;
@@ -27,10 +28,13 @@ public class SubmitWorklogViewModel : ViewModelBase
 
 	public SubmitWorklogViewModel(
 		IWorklogSubmissionService submissionService,
+		TimeProvider timeProvider,
 		ILogger<SubmitWorklogViewModel> logger)
 	{
 		_submissionService = submissionService;
+		_timeProvider = timeProvider;
 		_logger = logger;
+		_selectedDate = _timeProvider.GetLocalNow().Date;
 
 		SendCommand = new AsyncRelayCommand(SendAsync, CanSend);
 		CancelCommand = new RelayCommand(Cancel);
@@ -139,7 +143,7 @@ public class SubmitWorklogViewModel : ViewModelBase
 
 	public async Task InitializeAsync(DateTime? date, bool isWeek)
 	{
-		SelectedDate = date ?? DateTime.Today;
+		SelectedDate = date ?? _timeProvider.GetLocalNow().Date;
 		IsWeekly = isWeek;
 		await LoadPreviewAsync();
 	}

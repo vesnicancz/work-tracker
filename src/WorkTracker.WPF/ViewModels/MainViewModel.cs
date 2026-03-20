@@ -1,9 +1,9 @@
 ﻿using System.Collections.ObjectModel;
-using System.Text.RegularExpressions;
 using System.Windows.Input;
 using System.Windows.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using WorkTracker.Application.Common;
 using WorkTracker.Application.Services;
 using WorkTracker.Domain.Entities;
 using WorkTracker.WPF.Commands;
@@ -21,9 +21,9 @@ public class MainViewModel : ViewModelBase
 	private readonly IDialogService _dialogService;
 	private readonly INotificationService _notificationService;
 	private readonly IWorklogStateService _worklogStateService;
+	private readonly TimeProvider _timeProvider;
 	private readonly ILogger<MainViewModel> _logger;
 	private readonly DispatcherTimer _timer;
-	private readonly Regex _jiraPattern = new Regex(@"^([a-zA-Z0-9]+-[0-9]+)", RegexOptions.Compiled);
 
 	private string _elapsedTime = "00:00:00";
 
@@ -36,7 +36,7 @@ public class MainViewModel : ViewModelBase
 	// Work entries list
 	private ObservableCollection<WorkEntry> _workEntries = new();
 
-	private DateTime _selectedDate = DateTime.Today;
+	private DateTime _selectedDate;
 	private WorkEntry? _selectedWorkEntry;
 
 	// Total time for the selected day
@@ -47,13 +47,16 @@ public class MainViewModel : ViewModelBase
 		IDialogService dialogService,
 		INotificationService notificationService,
 		IWorklogStateService worklogStateService,
+		TimeProvider timeProvider,
 		ILogger<MainViewModel> logger)
 	{
 		_scopeFactory = scopeFactory;
 		_dialogService = dialogService;
 		_notificationService = notificationService;
 		_worklogStateService = worklogStateService;
+		_timeProvider = timeProvider;
 		_logger = logger;
+		_selectedDate = _timeProvider.GetLocalNow().Date;
 
 		// Subscribe to state change events
 		_worklogStateService.ActiveWorkChanged += OnActiveWorkChanged;
@@ -211,7 +214,7 @@ public class MainViewModel : ViewModelBase
 			return;
 		}
 
-		var match = _jiraPattern.Match(input);
+		var match = JiraPatterns.TicketId().Match(input);
 		if (match.Success)
 		{
 			DetectedTicketId = match.Groups[1].Value;
@@ -482,7 +485,7 @@ public class MainViewModel : ViewModelBase
 			if (entry.IsActive)
 			{
 				// For active entries, calculate duration from start time to now
-				var elapsed = DateTime.Now - entry.StartTime;
+				var elapsed = _timeProvider.GetLocalNow().DateTime - entry.StartTime;
 				totalSeconds += elapsed.TotalSeconds;
 			}
 			else if (entry.Duration.HasValue)
@@ -514,7 +517,7 @@ public class MainViewModel : ViewModelBase
 	{
 		if (ActiveWork != null)
 		{
-			var elapsed = DateTime.Now - ActiveWork.StartTime;
+			var elapsed = _timeProvider.GetLocalNow().DateTime - ActiveWork.StartTime;
 			ElapsedTime = $"{(int)elapsed.TotalHours:D2}:{elapsed.Minutes:D2}:{elapsed.Seconds:D2}";
 
 			// Update total day duration to include the running time

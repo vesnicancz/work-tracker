@@ -7,7 +7,7 @@ using WorkTracker.WPF.Models;
 
 namespace WorkTracker.WPF.Services;
 
-public class TrayIconService : ITrayIconService, IDisposable
+public sealed class TrayIconService : ITrayIconService, IDisposable
 {
 	private readonly IDialogService _dialogService;
 	private readonly IWorklogStateService _worklogStateService;

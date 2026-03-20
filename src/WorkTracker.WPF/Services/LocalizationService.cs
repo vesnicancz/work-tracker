@@ -8,7 +8,7 @@ namespace WorkTracker.WPF.Services;
 /// <summary>
 /// Service for managing application localization and culture changes
 /// </summary>
-public class LocalizationService : INotifyPropertyChanged
+public sealed class LocalizationService : INotifyPropertyChanged
 {
 	private static readonly Lazy<LocalizationService> _instance = new(() => new LocalizationService());
 	private readonly ResourceManager _resourceManager;

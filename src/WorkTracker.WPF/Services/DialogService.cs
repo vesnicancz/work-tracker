@@ -10,7 +10,7 @@ namespace WorkTracker.WPF.Services;
 /// Implementation of IDialogService using WPF dialogs
 /// Creates a new scope for each dialog to ensure proper service lifetimes
 /// </summary>
-public class DialogService : IDialogService
+public sealed class DialogService : IDialogService
 {
 	private readonly IServiceScopeFactory _scopeFactory;
 

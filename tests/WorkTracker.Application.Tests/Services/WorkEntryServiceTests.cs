@@ -17,7 +17,7 @@ public class WorkEntryServiceTests
 	{
 		_mockRepository = new Mock<IWorkEntryRepository>();
 		_mockLogger = new Mock<ILogger<WorkEntryService>>();
-		_service = new WorkEntryService(_mockRepository.Object, _mockLogger.Object);
+		_service = new WorkEntryService(_mockRepository.Object, TimeProvider.System, _mockLogger.Object);
 	}
 
 	[Fact]
@@ -27,14 +27,14 @@ public class WorkEntryServiceTests
 		var ticketId = "PROJ-123";
 		var description = "Working on feature";
 		_mockRepository
-			.Setup(r => r.GetActiveWorkEntryAsync())
+			.Setup(r => r.GetActiveWorkEntryAsync(It.IsAny<CancellationToken>()))
 			.ReturnsAsync((WorkEntry?)null);
 		_mockRepository
-			.Setup(r => r.HasOverlappingEntriesAsync(It.IsAny<WorkEntry>()))
+			.Setup(r => r.HasOverlappingEntriesAsync(It.IsAny<WorkEntry>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(false);
 		_mockRepository
-			.Setup(r => r.AddAsync(It.IsAny<WorkEntry>()))
-			.ReturnsAsync((WorkEntry entry) => entry);
+			.Setup(r => r.AddAsync(It.IsAny<WorkEntry>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync((WorkEntry entry, CancellationToken _) => entry);
 
 		// Act
 		var result = await _service.StartWorkAsync(ticketId, null, description);
@@ -45,7 +45,7 @@ public class WorkEntryServiceTests
 		result.Value!.TicketId.Should().Be(ticketId);
 		result.Value.Description.Should().Be(description);
 		result.Value.IsActive.Should().BeTrue();
-		_mockRepository.Verify(r => r.AddAsync(It.IsAny<WorkEntry>()), Times.Once);
+		_mockRepository.Verify(r => r.AddAsync(It.IsAny<WorkEntry>(), It.IsAny<CancellationToken>()), Times.Once);
 	}
 
 	[Fact]
@@ -53,7 +53,7 @@ public class WorkEntryServiceTests
 	{
 		// Arrange
 		_mockRepository
-			.Setup(r => r.GetActiveWorkEntryAsync())
+			.Setup(r => r.GetActiveWorkEntryAsync(It.IsAny<CancellationToken>()))
 			.ReturnsAsync((WorkEntry?)null);
 
 		// Act
@@ -62,7 +62,7 @@ public class WorkEntryServiceTests
 		// Assert
 		result.IsFailure.Should().BeTrue();
 		result.Error.Should().Contain("Both ticket ID and description cannot be empty");
-		_mockRepository.Verify(r => r.AddAsync(It.IsAny<WorkEntry>()), Times.Never);
+		_mockRepository.Verify(r => r.AddAsync(It.IsAny<WorkEntry>(), It.IsAny<CancellationToken>()), Times.Never);
 	}
 
 	[Fact]
@@ -77,14 +77,14 @@ public class WorkEntryServiceTests
 			IsActive = true
 		};
 		_mockRepository
-			.Setup(r => r.GetActiveWorkEntryAsync())
+			.Setup(r => r.GetActiveWorkEntryAsync(It.IsAny<CancellationToken>()))
 			.ReturnsAsync(existingEntry);
 		_mockRepository
-			.Setup(r => r.HasOverlappingEntriesAsync(It.IsAny<WorkEntry>()))
+			.Setup(r => r.HasOverlappingEntriesAsync(It.IsAny<WorkEntry>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(false);
 		_mockRepository
-			.Setup(r => r.AddAsync(It.IsAny<WorkEntry>()))
-			.ReturnsAsync((WorkEntry entry) => entry);
+			.Setup(r => r.AddAsync(It.IsAny<WorkEntry>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync((WorkEntry entry, CancellationToken _) => entry);
 
 		// Act
 		var result = await _service.StartWorkAsync("PROJ-123", null, "New work");
@@ -92,8 +92,8 @@ public class WorkEntryServiceTests
 		// Assert
 		result.IsSuccess.Should().BeTrue();
 		_mockRepository.Verify(r => r.UpdateAsync(It.Is<WorkEntry>(e =>
-			e.Id == 1 && e.IsActive == false && e.EndTime.HasValue)), Times.Once);
-		_mockRepository.Verify(r => r.AddAsync(It.IsAny<WorkEntry>()), Times.Once);
+			e.Id == 1 && e.IsActive == false && e.EndTime.HasValue), It.IsAny<CancellationToken>()), Times.Once);
+		_mockRepository.Verify(r => r.AddAsync(It.IsAny<WorkEntry>(), It.IsAny<CancellationToken>()), Times.Once);
 	}
 
 	[Fact]
@@ -101,10 +101,10 @@ public class WorkEntryServiceTests
 	{
 		// Arrange
 		_mockRepository
-			.Setup(r => r.GetActiveWorkEntryAsync())
+			.Setup(r => r.GetActiveWorkEntryAsync(It.IsAny<CancellationToken>()))
 			.ReturnsAsync((WorkEntry?)null);
 		_mockRepository
-			.Setup(r => r.HasOverlappingEntriesAsync(It.IsAny<WorkEntry>()))
+			.Setup(r => r.HasOverlappingEntriesAsync(It.IsAny<WorkEntry>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(true);
 
 		// Act
@@ -113,7 +113,7 @@ public class WorkEntryServiceTests
 		// Assert
 		result.IsFailure.Should().BeTrue();
 		result.Error.Should().Contain("overlaps");
-		_mockRepository.Verify(r => r.AddAsync(It.IsAny<WorkEntry>()), Times.Never);
+		_mockRepository.Verify(r => r.AddAsync(It.IsAny<WorkEntry>(), It.IsAny<CancellationToken>()), Times.Never);
 	}
 
 	[Fact]
@@ -128,10 +128,10 @@ public class WorkEntryServiceTests
 			IsActive = true
 		};
 		_mockRepository
-			.Setup(r => r.GetActiveWorkEntryAsync())
+			.Setup(r => r.GetActiveWorkEntryAsync(It.IsAny<CancellationToken>()))
 			.ReturnsAsync(activeEntry);
 		_mockRepository
-			.Setup(r => r.HasOverlappingEntriesAsync(It.IsAny<WorkEntry>()))
+			.Setup(r => r.HasOverlappingEntriesAsync(It.IsAny<WorkEntry>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(false);
 
 		// Act
@@ -142,7 +142,7 @@ public class WorkEntryServiceTests
 		result.Value.Should().NotBeNull();
 		result.Value!.IsActive.Should().BeFalse();
 		result.Value.EndTime.Should().NotBeNull();
-		_mockRepository.Verify(r => r.UpdateAsync(It.IsAny<WorkEntry>()), Times.Once);
+		_mockRepository.Verify(r => r.UpdateAsync(It.IsAny<WorkEntry>(), It.IsAny<CancellationToken>()), Times.Once);
 	}
 
 	[Fact]
@@ -150,7 +150,7 @@ public class WorkEntryServiceTests
 	{
 		// Arrange
 		_mockRepository
-			.Setup(r => r.GetActiveWorkEntryAsync())
+			.Setup(r => r.GetActiveWorkEntryAsync(It.IsAny<CancellationToken>()))
 			.ReturnsAsync((WorkEntry?)null);
 
 		// Act
@@ -159,7 +159,7 @@ public class WorkEntryServiceTests
 		// Assert
 		result.IsFailure.Should().BeTrue();
 		result.Error.Should().Contain("No active work entry found");
-		_mockRepository.Verify(r => r.UpdateAsync(It.IsAny<WorkEntry>()), Times.Never);
+		_mockRepository.Verify(r => r.UpdateAsync(It.IsAny<WorkEntry>(), It.IsAny<CancellationToken>()), Times.Never);
 	}
 
 	[Fact]
@@ -174,7 +174,7 @@ public class WorkEntryServiceTests
 			IsActive = true
 		};
 		_mockRepository
-			.Setup(r => r.GetActiveWorkEntryAsync())
+			.Setup(r => r.GetActiveWorkEntryAsync(It.IsAny<CancellationToken>()))
 			.ReturnsAsync(activeEntry);
 
 		// Act
@@ -183,7 +183,7 @@ public class WorkEntryServiceTests
 		// Assert
 		result.IsFailure.Should().BeTrue();
 		result.Error.Should().Contain("Invalid end time");
-		_mockRepository.Verify(r => r.UpdateAsync(It.IsAny<WorkEntry>()), Times.Never);
+		_mockRepository.Verify(r => r.UpdateAsync(It.IsAny<WorkEntry>(), It.IsAny<CancellationToken>()), Times.Never);
 	}
 
 	[Fact]
@@ -198,11 +198,11 @@ public class WorkEntryServiceTests
 			IsActive = true
 		};
 		_mockRepository
-			.Setup(r => r.GetActiveWorkEntryAsync())
+			.Setup(r => r.GetActiveWorkEntryAsync(It.IsAny<CancellationToken>()))
 			.ReturnsAsync(activeEntry);
 
 		// Act
-		var result = await _service.GetActiveWorkAsync();
+		var result = await _service.GetActiveWorkAsync(CancellationToken.None);
 
 		// Assert
 		result.Should().NotBeNull();
@@ -223,10 +223,10 @@ public class WorkEntryServiceTests
 			IsActive = false
 		};
 		_mockRepository
-			.Setup(r => r.GetByIdAsync(1))
+			.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
 			.ReturnsAsync(existingEntry);
 		_mockRepository
-			.Setup(r => r.HasOverlappingEntriesAsync(It.IsAny<WorkEntry>()))
+			.Setup(r => r.HasOverlappingEntriesAsync(It.IsAny<WorkEntry>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(false);
 
 		// Act
@@ -237,7 +237,7 @@ public class WorkEntryServiceTests
 		result.Value.Should().NotBeNull();
 		result.Value!.TicketId.Should().Be("PROJ-456");
 		result.Value.Description.Should().Be("Updated");
-		_mockRepository.Verify(r => r.UpdateAsync(It.IsAny<WorkEntry>()), Times.Once);
+		_mockRepository.Verify(r => r.UpdateAsync(It.IsAny<WorkEntry>(), It.IsAny<CancellationToken>()), Times.Once);
 	}
 
 	[Fact]
@@ -245,7 +245,7 @@ public class WorkEntryServiceTests
 	{
 		// Arrange
 		_mockRepository
-			.Setup(r => r.GetByIdAsync(999))
+			.Setup(r => r.GetByIdAsync(999, It.IsAny<CancellationToken>()))
 			.ReturnsAsync((WorkEntry?)null);
 
 		// Act
@@ -254,7 +254,7 @@ public class WorkEntryServiceTests
 		// Assert
 		result.IsFailure.Should().BeTrue();
 		result.Error.Should().Contain("not found");
-		_mockRepository.Verify(r => r.UpdateAsync(It.IsAny<WorkEntry>()), Times.Never);
+		_mockRepository.Verify(r => r.UpdateAsync(It.IsAny<WorkEntry>(), It.IsAny<CancellationToken>()), Times.Never);
 	}
 
 	[Fact]
@@ -268,15 +268,15 @@ public class WorkEntryServiceTests
 			StartTime = DateTime.Now
 		};
 		_mockRepository
-			.Setup(r => r.GetByIdAsync(1))
+			.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
 			.ReturnsAsync(existingEntry);
 
 		// Act
-		var result = await _service.DeleteWorkEntryAsync(1);
+		var result = await _service.DeleteWorkEntryAsync(1, CancellationToken.None);
 
 		// Assert
 		result.IsSuccess.Should().BeTrue();
-		_mockRepository.Verify(r => r.DeleteAsync(1), Times.Once);
+		_mockRepository.Verify(r => r.DeleteAsync(1, It.IsAny<CancellationToken>()), Times.Once);
 	}
 
 	[Fact]
@@ -284,16 +284,16 @@ public class WorkEntryServiceTests
 	{
 		// Arrange
 		_mockRepository
-			.Setup(r => r.GetByIdAsync(999))
+			.Setup(r => r.GetByIdAsync(999, It.IsAny<CancellationToken>()))
 			.ReturnsAsync((WorkEntry?)null);
 
 		// Act
-		var result = await _service.DeleteWorkEntryAsync(999);
+		var result = await _service.DeleteWorkEntryAsync(999, CancellationToken.None);
 
 		// Assert
 		result.IsFailure.Should().BeTrue();
 		result.Error.Should().Contain("not found");
-		_mockRepository.Verify(r => r.DeleteAsync(It.IsAny<int>()), Times.Never);
+		_mockRepository.Verify(r => r.DeleteAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
 	}
 
 	[Fact]
@@ -307,11 +307,11 @@ public class WorkEntryServiceTests
 			new() { Id = 2, TicketId = "PROJ-124", StartTime = date.AddHours(13) }
 		};
 		_mockRepository
-			.Setup(r => r.GetByDateAsync(date))
+			.Setup(r => r.GetByDateAsync(date, It.IsAny<CancellationToken>()))
 			.ReturnsAsync(entries);
 
 		// Act
-		var result = await _service.GetWorkEntriesByDateAsync(date);
+		var result = await _service.GetWorkEntriesByDateAsync(date, CancellationToken.None);
 
 		// Assert
 		result.Should().NotBeNull();
@@ -331,11 +331,11 @@ public class WorkEntryServiceTests
 			new() { Id = 2, TicketId = "PROJ-124", StartTime = startDate.AddDays(3) }
 		};
 		_mockRepository
-			.Setup(r => r.GetByDateRangeAsync(startDate, endDate))
+			.Setup(r => r.GetByDateRangeAsync(startDate, endDate, It.IsAny<CancellationToken>()))
 			.ReturnsAsync(entries);
 
 		// Act
-		var result = await _service.GetWorkEntriesByDateRangeAsync(startDate, endDate);
+		var result = await _service.GetWorkEntriesByDateRangeAsync(startDate, endDate, CancellationToken.None);
 
 		// Assert
 		result.Should().NotBeNull();

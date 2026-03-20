@@ -4,7 +4,6 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
 using WorkTracker.Application.Plugins;
-using WorkTracker.Application.Services;
 using WorkTracker.CLI.Commands;
 using WorkTracker.Infrastructure;
 using WorkTracker.Plugin.Tempo;
@@ -25,8 +24,7 @@ builder.Logging.SetMinimumLevel(LogLevel.Warning);
 
 // Services
 builder.Services.AddInfrastructure(builder.Configuration);
-builder.Services.AddScoped<IWorkEntryService, WorkEntryService>();
-// Note: IWorklogSubmissionService is registered in Infrastructure layer as PluginBasedWorklogSubmissionService
+// Note: IWorkEntryService and IWorklogSubmissionService are registered in Infrastructure layer
 builder.Services.AddTransient<CommandHandler>();
 
 var host = builder.Build();
@@ -117,7 +115,7 @@ static async Task<int> HandleStartCommand(CommandHandler handler, string[] args)
 
 static (string? ticketId, string? description, DateTime? startTime) ParseStartCommandInput(string[] args)
 {
-	var jiraPattern = new System.Text.RegularExpressions.Regex(@"^([a-zA-Z0-9]+-[0-9]+)");
+	var jiraPattern = WorkTracker.Application.Common.JiraPatterns.TicketId();
 	string? ticketId = null;
 	string? description = null;
 	DateTime? startTime = null;

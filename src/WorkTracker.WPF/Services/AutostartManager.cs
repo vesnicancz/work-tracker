@@ -8,7 +8,7 @@ namespace WorkTracker.WPF.Services;
 /// <summary>
 /// Manages application autostart with Windows
 /// </summary>
-public class AutostartManager : IAutostartManager
+public sealed class AutostartManager : IAutostartManager
 {
 	private const string RunKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
 	private const string AppName = "WorkTracker";

@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -58,6 +58,9 @@ public static class DependencyInjection
 			return pluginManager;
 		});
 
+		// Time abstraction - Singleton (allows test substitution)
+		services.AddSingleton(TimeProvider.System);
+
 		// Application Services - Transient (stateless, uses factory)
 		services.AddTransient<IWorkEntryService, WorkEntryService>();
 
@@ -68,11 +71,11 @@ public static class DependencyInjection
 		return services;
 	}
 
-	public static async Task InitializeDatabaseAsync(IServiceProvider serviceProvider)
+	public static async Task InitializeDatabaseAsync(IServiceProvider serviceProvider, CancellationToken cancellationToken = default)
 	{
 		var contextFactory = serviceProvider.GetRequiredService<IDbContextFactory<WorkTrackerDbContext>>();
-		await using var context = await contextFactory.CreateDbContextAsync();
-		await context.Database.MigrateAsync();
+		await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+		await context.Database.MigrateAsync(cancellationToken);
 	}
 
 	/// <summary>
@@ -83,7 +86,8 @@ public static class DependencyInjection
 		IServiceProvider serviceProvider,
 		IConfiguration configuration,
 		Dictionary<string, bool>? enabledPlugins = null,
-		Dictionary<string, Dictionary<string, string>>? userPluginConfigurations = null)
+		Dictionary<string, Dictionary<string, string>>? userPluginConfigurations = null,
+		CancellationToken cancellationToken = default)
 	{
 		var pluginManager = serviceProvider.GetRequiredService<PluginManager>();
 
@@ -121,7 +125,7 @@ public static class DependencyInjection
 				}
 			}
 
-			if (config.Any())
+			if (config.Count != 0)
 			{
 				pluginConfigs[pluginId] = config;
 			}
@@ -137,6 +141,6 @@ public static class DependencyInjection
 		}
 
 		// Initialize plugins with their configurations
-		await pluginManager.InitializePluginsAsync(pluginConfigs);
+		await pluginManager.InitializePluginsAsync(pluginConfigs, cancellationToken);
 	}
 }

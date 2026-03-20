@@ -1,4 +1,5 @@
-﻿using System.Net.Http.Headers;
+using System.Collections.Concurrent;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
@@ -9,7 +10,7 @@ namespace WorkTracker.Plugin.Tempo;
 /// <summary>
 /// Plugin for uploading worklogs to Tempo (Jira time tracking)
 /// </summary>
-public class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
+public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 {
 	private HttpClient? _tempoHttpClient;
 	private HttpClient? _jiraHttpClient;
@@ -20,6 +21,8 @@ public class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 	private string? _jiraApiToken;
 	private string? _jiraAccountId;
 	private bool _disposed;
+
+	private readonly ConcurrentDictionary<string, int> _issueIdCache = new();
 
 	public override PluginMetadata Metadata => new()
 	{
@@ -98,8 +101,11 @@ public class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 		};
 	}
 
-	protected override async Task<bool> OnInitializeAsync(IDictionary<string, string> configuration)
+	protected override async Task<bool> OnInitializeAsync(IDictionary<string, string> configuration, CancellationToken cancellationToken)
 	{
+		// Clear cache on re-initialization
+		_issueIdCache.Clear();
+
 		// Load Tempo configuration
 		_tempoBaseUrl = GetRequiredConfigValue("TempoBaseUrl").TrimEnd('/') + "/"; // Add trailing slash for proper URL resolution
 		_tempoApiToken = GetRequiredConfigValue("TempoApiToken");
@@ -135,7 +141,7 @@ public class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 		// Get account ID if not provided
 		if (string.IsNullOrWhiteSpace(_jiraAccountId))
 		{
-			_jiraAccountId = await GetCurrentUserAccountIdAsync();
+			_jiraAccountId = await GetCurrentUserAccountIdAsync(cancellationToken);
 			if (string.IsNullOrWhiteSpace(_jiraAccountId))
 			{
 				Logger?.LogError("Failed to retrieve Jira account ID");
@@ -149,11 +155,12 @@ public class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 
 	protected override async Task OnShutdownAsync()
 	{
+		_issueIdCache.Clear();
 		Dispose();
 		await Task.CompletedTask;
 	}
 
-	public override async Task<PluginResult<bool>> TestConnectionAsync()
+	public override async Task<PluginResult<bool>> TestConnectionAsync(CancellationToken cancellationToken)
 	{
 		// Check if HTTP clients are initialized (can be called during initialization)
 		if (_jiraHttpClient == null || _tempoHttpClient == null)
@@ -164,10 +171,10 @@ public class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 		try
 		{
 			// Test Jira connection (required for issue key to ID translation)
-			var jiraResponse = await _jiraHttpClient.GetAsync("/rest/api/3/myself");
+			var jiraResponse = await _jiraHttpClient.GetAsync("/rest/api/3/myself", cancellationToken);
 			if (!jiraResponse.IsSuccessStatusCode)
 			{
-				var errorContent = await jiraResponse.Content.ReadAsStringAsync();
+				var errorContent = await jiraResponse.Content.ReadAsStringAsync(cancellationToken);
 				Logger?.LogWarning("Jira connection test failed: {StatusCode} - {Content}",
 					jiraResponse.StatusCode, errorContent);
 				return PluginResult<bool>.Failure($"Jira connection failed: {jiraResponse.StatusCode}");
@@ -188,7 +195,7 @@ public class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 		}
 	}
 
-	public override async Task<PluginResult<bool>> UploadWorklogAsync(PluginWorklogEntry worklog)
+	public override async Task<PluginResult<bool>> UploadWorklogAsync(PluginWorklogEntry worklog, CancellationToken cancellationToken)
 	{
 		EnsureInitialized();
 
@@ -199,8 +206,8 @@ public class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 
 		try
 		{
-			// Convert issue key to issue ID
-			var issueId = await GetIssueIdFromKeyAsync(worklog.TicketId);
+			// Convert issue key to issue ID (uses cache)
+			var issueId = await GetIssueIdFromKeyAsync(worklog.TicketId, cancellationToken);
 			if (!issueId.HasValue)
 			{
 				Logger?.LogError("Could not resolve issue ID for {TicketId}", worklog.TicketId);
@@ -231,7 +238,7 @@ public class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 				worklog.TicketId, issueId.Value, timeSpentSeconds
 			);
 
-			var response = await _tempoHttpClient!.PostAsJsonAsync("worklogs", tempoWorklog);
+			var response = await _tempoHttpClient!.PostAsJsonAsync("worklogs", tempoWorklog, cancellationToken);
 
 			if (response.IsSuccessStatusCode)
 			{
@@ -243,7 +250,7 @@ public class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 				return PluginResult<bool>.Success(true);
 			}
 
-			var errorContent = await response.Content.ReadAsStringAsync();
+			var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
 			Logger?.LogWarning(
 				"Failed to upload worklog: {StatusCode} - {Content}",
 				response.StatusCode,
@@ -259,7 +266,7 @@ public class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 		}
 	}
 
-	public override async Task<PluginResult<IEnumerable<PluginWorklogEntry>>> GetWorklogsAsync(DateTime startDate, DateTime endDate)
+	public override async Task<PluginResult<IEnumerable<PluginWorklogEntry>>> GetWorklogsAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken)
 	{
 		EnsureInitialized();
 
@@ -268,17 +275,17 @@ public class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 			var from = startDate.ToString("yyyy-MM-dd");
 			var to = endDate.ToString("yyyy-MM-dd");
 
-			var response = await _tempoHttpClient!.GetAsync($"worklogs?from={from}&to={to}");
+			var response = await _tempoHttpClient!.GetAsync($"worklogs?from={from}&to={to}", cancellationToken);
 
 			if (!response.IsSuccessStatusCode)
 			{
-				var errorContent = await response.Content.ReadAsStringAsync();
+				var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
 				return PluginResult<IEnumerable<PluginWorklogEntry>>.Failure(
 					$"Failed to get worklogs: {response.StatusCode} - {errorContent}"
 				);
 			}
 
-			var content = await response.Content.ReadAsStringAsync();
+			var content = await response.Content.ReadAsStringAsync(cancellationToken);
 			var jsonDoc = JsonDocument.Parse(content);
 			var results = jsonDoc.RootElement.GetProperty("results");
 
@@ -316,11 +323,12 @@ public class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 		}
 	}
 
-	public override async Task<PluginResult<bool>> WorklogExistsAsync(PluginWorklogEntry worklog)
+	public override async Task<PluginResult<bool>> WorklogExistsAsync(PluginWorklogEntry worklog, CancellationToken cancellationToken)
 	{
 		var result = await GetWorklogsAsync(
 			worklog.StartTime.Date,
-			worklog.StartTime.Date
+			worklog.StartTime.Date,
+			cancellationToken
 		);
 
 		if (result.IsFailure)
@@ -339,26 +347,34 @@ public class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 	}
 
 	/// <summary>
-	/// Converts a Jira issue key (e.g., "PROJ-123") to its numeric issue ID
+	/// Converts a Jira issue key (e.g., "PROJ-123") to its numeric issue ID.
+	/// Results are cached to avoid redundant HTTP requests.
 	/// </summary>
-	private async Task<int?> GetIssueIdFromKeyAsync(string issueKey)
+	private async Task<int?> GetIssueIdFromKeyAsync(string issueKey, CancellationToken cancellationToken)
 	{
+		// Check cache first
+		if (_issueIdCache.TryGetValue(issueKey, out var cachedId))
+		{
+			Logger?.LogDebug("Issue ID for {IssueKey} found in cache: {IssueId}", issueKey, cachedId);
+			return cachedId;
+		}
+
 		try
 		{
 			var url = $"/rest/api/3/issue/{issueKey}?fields=id";
 			Logger?.LogDebug("Fetching issue ID for key: {IssueKey}", issueKey);
 
-			var response = await _jiraHttpClient!.GetAsync(url);
+			var response = await _jiraHttpClient!.GetAsync(url, cancellationToken);
 
 			if (!response.IsSuccessStatusCode)
 			{
-				var errorContent = await response.Content.ReadAsStringAsync();
+				var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
 				Logger?.LogError("Failed to get issue {IssueKey}. Status: {Status}, Error: {Error}",
 					issueKey, response.StatusCode, errorContent);
 				return null;
 			}
 
-			var content = await response.Content.ReadAsStringAsync();
+			var content = await response.Content.ReadAsStringAsync(cancellationToken);
 			using var doc = JsonDocument.Parse(content);
 
 			if (doc.RootElement.TryGetProperty("id", out var idElement))
@@ -366,7 +382,9 @@ public class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 				var idString = idElement.GetString();
 				if (int.TryParse(idString, out var id))
 				{
-					Logger?.LogDebug("Issue {IssueKey} has ID: {IssueId}", issueKey, id);
+					// Cache the result
+					_issueIdCache.TryAdd(issueKey, id);
+					Logger?.LogDebug("Issue {IssueKey} has ID: {IssueId} (cached)", issueKey, id);
 					return id;
 				}
 			}
@@ -384,24 +402,24 @@ public class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 	/// <summary>
 	/// Gets the current user's Jira account ID
 	/// </summary>
-	private async Task<string?> GetCurrentUserAccountIdAsync()
+	private async Task<string?> GetCurrentUserAccountIdAsync(CancellationToken cancellationToken)
 	{
 		try
 		{
 			var url = "/rest/api/3/myself";
 			Logger?.LogDebug("Fetching current user account ID");
 
-			var response = await _jiraHttpClient!.GetAsync(url);
+			var response = await _jiraHttpClient!.GetAsync(url, cancellationToken);
 
 			if (!response.IsSuccessStatusCode)
 			{
-				var errorContent = await response.Content.ReadAsStringAsync();
+				var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
 				Logger?.LogError("Failed to get current user. Status: {Status}, Error: {Error}",
 					response.StatusCode, errorContent);
 				return null;
 			}
 
-			var content = await response.Content.ReadAsStringAsync();
+			var content = await response.Content.ReadAsStringAsync(cancellationToken);
 			using var doc = JsonDocument.Parse(content);
 
 			if (doc.RootElement.TryGetProperty("accountId", out var accountIdElement))
@@ -423,21 +441,13 @@ public class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 
 	public void Dispose()
 	{
-		Dispose(true);
-		GC.SuppressFinalize(this);
-	}
-
-	protected virtual void Dispose(bool disposing)
-	{
 		if (!_disposed)
 		{
-			if (disposing)
-			{
-				_tempoHttpClient?.Dispose();
-				_tempoHttpClient = null;
-				_jiraHttpClient?.Dispose();
-				_jiraHttpClient = null;
-			}
+			_tempoHttpClient?.Dispose();
+			_tempoHttpClient = null;
+			_jiraHttpClient?.Dispose();
+			_jiraHttpClient = null;
+			_issueIdCache.Clear();
 			_disposed = true;
 		}
 	}
