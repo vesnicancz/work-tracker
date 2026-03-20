@@ -1,0 +1,18 @@
+{
+	"profiles": {
+		"WorkTracker.CLI (Development)": {
+			"commandName": "Project",
+			"environmentVariables": {
+				"DOTNET_ENVIRONMENT": "Development"
+			},
+			"commandLineArgs": "status"
+		},
+		"WorkTracker.CLI (Production)": {
+			"commandName": "Project",
+			"environmentVariables": {
+				"DOTNET_ENVIRONMENT": "Production"
+			},
+			"commandLineArgs": "status"
+		}
+	}
+}

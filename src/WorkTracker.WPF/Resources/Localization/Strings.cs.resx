@@ -1,0 +1,462 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" msdata:Ordinal="5" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- Společné -->
+  <data name="AppTitle" xml:space="preserve">
+    <value>WorkTracker - Sledování času pro vývojáře</value>
+  </data>
+  <data name="Close" xml:space="preserve">
+    <value>Zavřít</value>
+  </data>
+  <data name="Settings" xml:space="preserve">
+    <value>Nastavení</value>
+  </data>
+  <data name="Save" xml:space="preserve">
+    <value>ULOŽIT</value>
+  </data>
+  <data name="Cancel" xml:space="preserve">
+    <value>ZRUŠIT</value>
+  </data>
+  <data name="Edit" xml:space="preserve">
+    <value>Upravit</value>
+  </data>
+  <data name="Delete" xml:space="preserve">
+    <value>Smazat</value>
+  </data>
+  <data name="RestartWork" xml:space="preserve">
+    <value>Restartovat práci na tomto ticketu</value>
+  </data>
+  <data name="Refresh" xml:space="preserve">
+    <value>Obnovit</value>
+  </data>
+  <data name="PreviousDay" xml:space="preserve">
+    <value>Předchozí den</value>
+  </data>
+  <data name="NextDay" xml:space="preserve">
+    <value>Následující den</value>
+  </data>
+
+  <!-- Hlavní okno -->
+  <data name="WorkTracker" xml:space="preserve">
+    <value>WorkTracker</value>
+  </data>
+  <data name="ActiveWork" xml:space="preserve">
+    <value>Aktivní práce</value>
+  </data>
+  <data name="Ticket" xml:space="preserve">
+    <value>Ticket</value>
+  </data>
+  <data name="Description" xml:space="preserve">
+    <value>Popis</value>
+  </data>
+  <data name="StopWork" xml:space="preserve">
+    <value>ZASTAVIT PRÁCI</value>
+  </data>
+  <data name="StartWork" xml:space="preserve">
+    <value>Zahájit práci</value>
+  </data>
+  <data name="WorkInputHint" xml:space="preserve">
+    <value>PROJ-123 Práce na funkci</value>
+  </data>
+  <data name="Detected" xml:space="preserve">
+    <value>Detekováno: </value>
+  </data>
+  <data name="StartWorkButton" xml:space="preserve">
+    <value>ZAHÁJIT PRÁCI</value>
+  </data>
+  <data name="QuickActions" xml:space="preserve">
+    <value>Rychlé akce</value>
+  </data>
+  <data name="SubmitWorklogs" xml:space="preserve">
+    <value>Odeslat záznamy práce</value>
+  </data>
+  <data name="WorkEntries" xml:space="preserve">
+    <value>Záznamy práce</value>
+  </data>
+  <data name="AddNewWorkEntry" xml:space="preserve">
+    <value>Přidat nový záznam</value>
+  </data>
+  <data name="SelectDate" xml:space="preserve">
+    <value>Vyberte datum</value>
+  </data>
+  <data name="Start" xml:space="preserve">
+    <value>Začátek</value>
+  </data>
+  <data name="End" xml:space="preserve">
+    <value>Konec</value>
+  </data>
+  <data name="Duration" xml:space="preserve">
+    <value>Trvání</value>
+  </data>
+  <data name="Status" xml:space="preserve">
+    <value>Stav</value>
+  </data>
+  <data name="Actions" xml:space="preserve">
+    <value>Akce</value>
+  </data>
+  <data name="Done" xml:space="preserve">
+    <value>Hotovo</value>
+  </data>
+  <data name="Active" xml:space="preserve">
+    <value>Aktivní</value>
+  </data>
+  <data name="NoTicket" xml:space="preserve">
+    <value>Bez ticketu</value>
+  </data>
+  <data name="NoDescription" xml:space="preserve">
+    <value>Bez popisu</value>
+  </data>
+
+  <!-- Okno nastavení -->
+  <data name="General" xml:space="preserve">
+    <value>Obecné</value>
+  </data>
+  <data name="WindowBehavior" xml:space="preserve">
+    <value>Chování okna</value>
+  </data>
+  <data name="WhenClosingMainWindow" xml:space="preserve">
+    <value>Při zavření hlavního okna:</value>
+  </data>
+  <data name="MinimizeToTray" xml:space="preserve">
+    <value>Minimalizovat do systémové lišty</value>
+  </data>
+  <data name="MinimizeToTrayDesc" xml:space="preserve">
+    <value>Aplikace bude pokračovat v běhu na pozadí</value>
+  </data>
+  <data name="ExitApplication" xml:space="preserve">
+    <value>Ukončit aplikaci</value>
+  </data>
+  <data name="ExitApplicationDesc" xml:space="preserve">
+    <value>Aplikace bude zcela ukončena</value>
+  </data>
+  <data name="Startup" xml:space="preserve">
+    <value>Spouštění</value>
+  </data>
+  <data name="StartWithWindows" xml:space="preserve">
+    <value>Spustit s Windows</value>
+  </data>
+  <data name="StartWithWindowsDesc" xml:space="preserve">
+    <value>Automaticky spustit WorkTracker při startu Windows</value>
+  </data>
+  <data name="StartMinimized" xml:space="preserve">
+    <value>Spustit minimalizovanou</value>
+  </data>
+  <data name="StartMinimizedDesc" xml:space="preserve">
+    <value>Aplikace se spustí minimalizovaná v systémové liště</value>
+  </data>
+
+  <!-- Dialog úpravy záznamu práce -->
+  <data name="NewWorkEntry" xml:space="preserve">
+    <value>Nový záznam práce</value>
+  </data>
+  <data name="EditWorkEntry" xml:space="preserve">
+    <value>Upravit záznam práce</value>
+  </data>
+  <data name="TicketIdOptional" xml:space="preserve">
+    <value>ID ticketu (volitelné)</value>
+  </data>
+  <data name="DescriptionOptional" xml:space="preserve">
+    <value>Popis (volitelné)</value>
+  </data>
+  <data name="StartTime" xml:space="preserve">
+    <value>Čas zahájení</value>
+  </data>
+  <data name="Date" xml:space="preserve">
+    <value>Datum</value>
+  </data>
+  <data name="Time" xml:space="preserve">
+    <value>Čas</value>
+  </data>
+  <data name="SetEndTime" xml:space="preserve">
+    <value>Nastavit čas ukončení</value>
+  </data>
+  <data name="EndTime" xml:space="preserve">
+    <value>Čas ukončení</value>
+  </data>
+
+  <!-- Dialog odeslání záznamů -->
+  <data name="SubmitDailyWorklogs" xml:space="preserve">
+    <value>Odeslat denní záznamy</value>
+  </data>
+  <data name="SubmitWeeklyWorklogs" xml:space="preserve">
+    <value>Odeslat týdenní záznamy</value>
+  </data>
+  <data name="SubmitEntireWeek" xml:space="preserve">
+    <value>Odeslat celý týden</value>
+  </data>
+  <data name="SubmitTo" xml:space="preserve">
+    <value>Odeslat do</value>
+  </data>
+  <data name="LoadingPreview" xml:space="preserve">
+    <value>Načítání náhledu...</value>
+  </data>
+  <data name="TotalTime" xml:space="preserve">
+    <value>Celkový čas:</value>
+  </data>
+  <data name="Reset" xml:space="preserve">
+    <value>OBNOVIT</value>
+  </data>
+  <data name="RestoreOriginalValues" xml:space="preserve">
+    <value>Obnovit původní hodnoty</value>
+  </data>
+  <data name="Submit" xml:space="preserve">
+    <value>ODESLAT</value>
+  </data>
+  <data name="Submitting" xml:space="preserve">
+    <value>Odesílání...</value>
+  </data>
+
+  <!-- Zprávy a validace -->
+  <data name="EitherTicketOrDescriptionRequired" xml:space="preserve">
+    <value>Je vyžadováno ID ticketu nebo popis</value>
+  </data>
+  <data name="EndTimeMustBeAfterStartTime" xml:space="preserve">
+    <value>Čas ukončení musí být po času zahájení</value>
+  </data>
+  <data name="WorkTrackingStarted" xml:space="preserve">
+    <value>Sledování práce zahájeno</value>
+  </data>
+  <data name="WorkTrackingStopped" xml:space="preserve">
+    <value>Sledování práce zastaveno</value>
+  </data>
+  <data name="WorkEntryCreated" xml:space="preserve">
+    <value>Záznam práce vytvořen</value>
+  </data>
+  <data name="WorkEntryUpdated" xml:space="preserve">
+    <value>Záznam práce aktualizován</value>
+  </data>
+  <data name="WorkEntryDeleted" xml:space="preserve">
+    <value>Záznam práce smazán</value>
+  </data>
+  <data name="WorkRestartedSuccessfully" xml:space="preserve">
+    <value>Práce úspěšně restartována</value>
+  </data>
+  <data name="FailedToLoadWorkEntries" xml:space="preserve">
+    <value>Nepodařilo se načíst záznamy práce</value>
+  </data>
+  <data name="FailedToStartWork" xml:space="preserve">
+    <value>Nepodařilo se zahájit sledování práce: {0}</value>
+  </data>
+  <data name="FailedToStopWork" xml:space="preserve">
+    <value>Nepodařilo se zastavit sledování práce: {0}</value>
+  </data>
+  <data name="FailedToCreateWorkEntry" xml:space="preserve">
+    <value>Nepodařilo se vytvořit záznam práce: {0}</value>
+  </data>
+  <data name="FailedToEditWorkEntry" xml:space="preserve">
+    <value>Nepodařilo se upravit záznam práce: {0}</value>
+  </data>
+  <data name="FailedToDeleteWorkEntry" xml:space="preserve">
+    <value>Nepodařilo se smazat záznam práce: {0}</value>
+  </data>
+  <data name="FailedToRestartWork" xml:space="preserve">
+    <value>Nepodařilo se restartovat práci: {0}</value>
+  </data>
+  <data name="FailedToSubmitWorklogs" xml:space="preserve">
+    <value>Nepodařilo se odeslat záznamy práce: {0}</value>
+  </data>
+  <data name="FailedToOpenSettings" xml:space="preserve">
+    <value>Nepodařilo se otevřít nastavení: {0}</value>
+  </data>
+  <data name="WorklogsSubmittedSuccessfully" xml:space="preserve">
+    <value>Záznamy práce úspěšně odeslány</value>
+  </data>
+  <data name="ConfirmDelete" xml:space="preserve">
+    <value>Potvrdit smazání</value>
+  </data>
+  <data name="ConfirmDeleteMessage" xml:space="preserve">
+    <value>Opravdu chcete smazat tento záznam práce?
+
+Ticket: {0}
+Popis: {1}
+Čas: {2}</value>
+  </data>
+  <data name="FailedToSave" xml:space="preserve">
+    <value>Nepodařilo se uložit: {0}</value>
+  </data>
+  <data name="PleaseSelectProvider" xml:space="preserve">
+    <value>Prosím vyberte poskytovatele</value>
+  </data>
+  <data name="SubmittingTo" xml:space="preserve">
+    <value>Odesílání záznamů do {0}...</value>
+  </data>
+  <data name="SubmissionSuccess" xml:space="preserve">
+    <value>Úspěch! Odesláno {0} záznamů do {1}. {2}</value>
+  </data>
+  <data name="SubmissionFailed" xml:space="preserve">
+    <value>{0} selhalo.</value>
+  </data>
+  <data name="ErrorPrefix" xml:space="preserve">
+    <value>Chyba: {0}</value>
+  </data>
+  <data name="WorklogsResetToOriginal" xml:space="preserve">
+    <value>Záznamy obnoveny na původní hodnoty</value>
+  </data>
+  <data name="ReadyToSubmit" xml:space="preserve">
+    <value>Připraveno k odeslání {0} záznamů</value>
+  </data>
+  <data name="ErrorLoadingPreview" xml:space="preserve">
+    <value>Chyba při načítání náhledu: {0}</value>
+  </data>
+  <data name="Plugins" xml:space="preserve">
+    <value>Pluginy</value>
+  </data>
+  <data name="PluginConfiguration" xml:space="preserve">
+    <value>Konfigurace pluginů</value>
+  </data>
+  <data name="SelectPlugin" xml:space="preserve">
+    <value>Vyberte plugin pro nastavení jeho konfigurace</value>
+  </data>
+  <data name="PluginName" xml:space="preserve">
+    <value>Název</value>
+  </data>
+  <data name="PluginVersion" xml:space="preserve">
+    <value>Verze</value>
+  </data>
+  <data name="PluginAuthor" xml:space="preserve">
+    <value>Autor</value>
+  </data>
+  <data name="PluginDescription" xml:space="preserve">
+    <value>Popis</value>
+  </data>
+  <data name="TestConnection" xml:space="preserve">
+    <value>Otestovat připojení</value>
+  </data>
+  <data name="EnablePlugin" xml:space="preserve">
+    <value>Povolit plugin</value>
+  </data>
+  <data name="EnablePluginDesc" xml:space="preserve">
+    <value>Povolí nebo zakáže tento plugin. Zakázané pluginy nebudou načteny ani použity aplikací</value>
+  </data>
+  <data name="NoPluginsAvailable" xml:space="preserve">
+    <value>Nejsou k dispozici žádné pluginy</value>
+  </data>
+  <data name="Configuration" xml:space="preserve">
+    <value>Konfigurace</value>
+  </data>
+
+  <!-- Tray Menu -->
+  <data name="TrayTooltip" xml:space="preserve">
+    <value>WorkTracker</value>
+  </data>
+  <data name="TrayTooltipActive" xml:space="preserve">
+    <value>WorkTracker - Sledování aktivní</value>
+  </data>
+  <data name="TrayShow" xml:space="preserve">
+    <value>Zobrazit</value>
+  </data>
+  <data name="TrayNewWorkEntry" xml:space="preserve">
+    <value>Nový záznam práce</value>
+  </data>
+  <data name="TrayExit" xml:space="preserve">
+    <value>Ukončit</value>
+  </data>
+  <data name="TrayOpenDialogError" xml:space="preserve">
+    <value>Nepodařilo se otevřít dialog záznamu práce: {0}</value>
+  </data>
+  <data name="Error" xml:space="preserve">
+    <value>Chyba</value>
+  </data>
+
+  <!-- Oblíbené -->
+  <data name="Favorites" xml:space="preserve">
+    <value>Oblíbené</value>
+  </data>
+  <data name="FavoriteName" xml:space="preserve">
+    <value>Název</value>
+  </data>
+  <data name="FavoriteTicket" xml:space="preserve">
+    <value>Tiket</value>
+  </data>
+  <data name="FavoriteDescription" xml:space="preserve">
+    <value>Popis</value>
+  </data>
+  <data name="AddFavorite" xml:space="preserve">
+    <value>Přidat oblíbenou položku</value>
+  </data>
+  <data name="EditFavorite" xml:space="preserve">
+    <value>Upravit</value>
+  </data>
+  <data name="RemoveFavorite" xml:space="preserve">
+    <value>Odebrat</value>
+  </data>
+  <data name="TrayFavorites" xml:space="preserve">
+    <value>Oblíbené</value>
+  </data>
+  <data name="NoFavorites" xml:space="preserve">
+    <value>(Žádné oblíbené položky)</value>
+  </data>
+  <data name="FavoriteNameRequired" xml:space="preserve">
+    <value>Název je povinný</value>
+  </data>
+  <data name="MoveUp" xml:space="preserve">
+    <value>Posunout nahoru</value>
+  </data>
+  <data name="MoveDown" xml:space="preserve">
+    <value>Posunout dolů</value>
+  </data>
+  <data name="FavoritesDescription" xml:space="preserve">
+    <value>Definujte oblíbené položky pro rychlý přístup z kontextové nabídky v systémové liště</value>
+  </data>
+  <data name="FavoriteStarted" xml:space="preserve">
+    <value>Zahájeno sledování: {0}</value>
+  </data>
+</root>

@@ -1,0 +1,430 @@
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using WorkTracker.Application.Common;
+using WorkTracker.Application.Services;
+using WorkTracker.Domain.Entities;
+
+namespace WorkTracker.WPF.Services;
+
+/// <summary>
+/// Service that manages the current worklog tracking state of the application.
+/// Provides a single source of truth for active work tracking.
+/// </summary>
+public class WorklogStateService : IWorklogStateService
+{
+	private readonly IServiceScopeFactory _scopeFactory;
+	private readonly ILogger<WorklogStateService> _logger;
+
+	private bool _isInitialized;
+	private WorkEntry? _activeWork;
+	private bool _isTracking;
+
+	public WorklogStateService(
+		IServiceScopeFactory scopeFactory,
+		ILogger<WorklogStateService> logger)
+	{
+		_scopeFactory = scopeFactory;
+		_logger = logger;
+	}
+
+	#region Properties
+
+	public bool IsInitialized => _isInitialized;
+
+	public WorkEntry? ActiveWork
+	{
+		get
+		{
+			ThrowIfNotInitialized();
+			return _activeWork;
+		}
+		private set
+		{
+			if (_activeWork != value)
+			{
+				_activeWork = value;
+				OnActiveWorkChanged(value);
+			}
+		}
+	}
+
+	public bool IsTracking
+	{
+		get
+		{
+			ThrowIfNotInitialized();
+			return _isTracking;
+		}
+		private set
+		{
+			if (_isTracking != value)
+			{
+				_isTracking = value;
+				OnIsTrackingChanged(value);
+			}
+		}
+	}
+
+	#endregion
+
+	#region Events
+
+	public event EventHandler<WorkEntry?>? ActiveWorkChanged;
+	public event EventHandler<bool>? IsTrackingChanged;
+	public event EventHandler? WorkEntriesModified;
+
+	#endregion
+
+	#region Initialization
+
+	public async Task InitializeAsync()
+	{
+		if (_isInitialized)
+		{
+			_logger.LogDebug("WorklogStateService already initialized, skipping");
+			return;
+		}
+
+		_logger.LogInformation("Initializing WorklogStateService");
+
+		try
+		{
+			using var scope = _scopeFactory.CreateScope();
+			var workEntryService = scope.ServiceProvider.GetRequiredService<IWorkEntryService>();
+
+			// Load active work from database
+			_activeWork = await workEntryService.GetActiveWorkAsync();
+			_isTracking = _activeWork != null;
+
+			_isInitialized = true;
+
+			_logger.LogInformation(
+				"WorklogStateService initialized. IsTracking={IsTracking}, ActiveWork={ActiveWorkId}",
+				_isTracking,
+				_activeWork?.Id);
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Failed to initialize WorklogStateService");
+			throw;
+		}
+	}
+
+	#endregion
+
+	#region State Operations
+
+	public async Task<Result<WorkEntry>> StartTrackingAsync(
+		string? ticketId,
+		string? description)
+	{
+		ThrowIfNotInitialized();
+
+		_logger.LogInformation(
+			"Starting work tracking: TicketId={TicketId}, Description={Description}",
+			ticketId,
+			description);
+
+		try
+		{
+			using var scope = _scopeFactory.CreateScope();
+			var workEntryService = scope.ServiceProvider.GetRequiredService<IWorkEntryService>();
+
+			// If there's already active work, stop it first
+			if (IsTracking && ActiveWork != null)
+			{
+				_logger.LogDebug("Stopping current active work before starting new");
+				var stopResult = await workEntryService.StopWorkAsync();
+				if (stopResult.IsFailure)
+				{
+					_logger.LogWarning("Failed to stop current work: {Error}", stopResult.Error);
+					return Result.Failure<WorkEntry>(stopResult.Error);
+				}
+			}
+
+			// Start new work - second parameter is startTime (null = now), third is description
+			var result = await workEntryService.StartWorkAsync(ticketId, null, description);
+
+			if (result.IsSuccess)
+			{
+				ActiveWork = result.Value;
+				IsTracking = true;
+
+				_logger.LogInformation("Work tracking started successfully: WorkEntryId={WorkEntryId}", result.Value.Id);
+
+				// Notify that work entries have been modified so UI can refresh
+				OnWorkEntriesModified();
+			}
+			else
+			{
+				_logger.LogWarning("Failed to start work tracking: {Error}", result.Error);
+			}
+
+			return result;
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Unexpected error starting work tracking");
+			return Result.Failure<WorkEntry>($"Unexpected error: {ex.Message}");
+		}
+	}
+
+	public async Task<Result> StopTrackingAsync()
+	{
+		ThrowIfNotInitialized();
+
+		if (!IsTracking)
+		{
+			_logger.LogDebug("No active work to stop");
+			return Result.Success();
+		}
+
+		_logger.LogInformation("Stopping work tracking: WorkEntryId={WorkEntryId}", ActiveWork?.Id);
+
+		try
+		{
+			using var scope = _scopeFactory.CreateScope();
+			var workEntryService = scope.ServiceProvider.GetRequiredService<IWorkEntryService>();
+
+			var result = await workEntryService.StopWorkAsync();
+
+			if (result.IsSuccess)
+			{
+				ActiveWork = null;
+				IsTracking = false;
+
+				_logger.LogInformation("Work tracking stopped successfully");
+
+				// Notify that work entries have been modified so UI can refresh
+				OnWorkEntriesModified();
+			}
+			else
+			{
+				_logger.LogWarning("Failed to stop work tracking: {Error}", result.Error);
+			}
+
+			return result;
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Unexpected error stopping work tracking");
+			return Result.Failure($"Unexpected error: {ex.Message}");
+		}
+	}
+
+	public async Task RefreshFromDatabaseAsync()
+	{
+		ThrowIfNotInitialized();
+
+		_logger.LogDebug("Refreshing state from database");
+
+		try
+		{
+			using var scope = _scopeFactory.CreateScope();
+			var workEntryService = scope.ServiceProvider.GetRequiredService<IWorkEntryService>();
+
+			var activeWork = await workEntryService.GetActiveWorkAsync();
+
+			// Update state - this will trigger events if values changed
+			ActiveWork = activeWork;
+			IsTracking = activeWork != null;
+
+			_logger.LogDebug("State refreshed: IsTracking={IsTracking}", IsTracking);
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Failed to refresh state from database");
+			throw;
+		}
+	}
+
+	public async Task<Result<WorkEntry>> CreateWorkEntryAsync(
+		string? ticketId,
+		DateTime startTime,
+		string? description,
+		DateTime? endTime)
+	{
+		ThrowIfNotInitialized();
+
+		_logger.LogInformation(
+			"Creating work entry: TicketId={TicketId}, StartTime={StartTime}, EndTime={EndTime}, Description={Description}",
+			ticketId,
+			startTime,
+			endTime,
+			description);
+
+		try
+		{
+			using var scope = _scopeFactory.CreateScope();
+			var workEntryService = scope.ServiceProvider.GetRequiredService<IWorkEntryService>();
+
+			// Create the entry
+			var result = await workEntryService.StartWorkAsync(ticketId, startTime, description, endTime);
+
+			if (result.IsSuccess)
+			{
+				_logger.LogInformation("Work entry created successfully: WorkEntryId={WorkEntryId}", result.Value.Id);
+
+				// Refresh state and notify
+				await RefreshFromDatabaseAsync();
+				OnWorkEntriesModified();
+			}
+			else
+			{
+				_logger.LogWarning("Failed to create work entry: {Error}", result.Error);
+			}
+
+			return result;
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Unexpected error creating work entry");
+			return Result.Failure<WorkEntry>($"Unexpected error: {ex.Message}");
+		}
+	}
+
+	public async Task<Result> UpdateWorkEntryAsync(
+		int id,
+		string? ticketId,
+		DateTime startTime,
+		DateTime? endTime,
+		string? description)
+	{
+		ThrowIfNotInitialized();
+
+		_logger.LogInformation(
+			"Updating work entry: Id={Id}, TicketId={TicketId}, StartTime={StartTime}, EndTime={EndTime}",
+			id,
+			ticketId,
+			startTime,
+			endTime);
+
+		try
+		{
+			using var scope = _scopeFactory.CreateScope();
+			var workEntryService = scope.ServiceProvider.GetRequiredService<IWorkEntryService>();
+
+			// Update the entry
+			var result = await workEntryService.UpdateWorkEntryAsync(id, ticketId, startTime, endTime, description);
+
+			if (result.IsSuccess)
+			{
+				_logger.LogInformation("Work entry updated successfully: WorkEntryId={WorkEntryId}", id);
+
+				// Refresh state and notify
+				await RefreshFromDatabaseAsync();
+				OnWorkEntriesModified();
+			}
+			else
+			{
+				_logger.LogWarning("Failed to update work entry: {Error}", result.Error);
+			}
+
+			return result;
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Unexpected error updating work entry");
+			return Result.Failure($"Unexpected error: {ex.Message}");
+		}
+	}
+
+	public async Task<Result> DeleteWorkEntryAsync(int id)
+	{
+		ThrowIfNotInitialized();
+
+		_logger.LogInformation("Deleting work entry: Id={Id}", id);
+
+		try
+		{
+			using var scope = _scopeFactory.CreateScope();
+			var workEntryService = scope.ServiceProvider.GetRequiredService<IWorkEntryService>();
+
+			// Delete the entry
+			var result = await workEntryService.DeleteWorkEntryAsync(id);
+
+			if (result.IsSuccess)
+			{
+				_logger.LogInformation("Work entry deleted successfully: WorkEntryId={WorkEntryId}", id);
+
+				// Refresh state and notify
+				await RefreshFromDatabaseAsync();
+				OnWorkEntriesModified();
+			}
+			else
+			{
+				_logger.LogWarning("Failed to delete work entry: {Error}", result.Error);
+			}
+
+			return result;
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Unexpected error deleting work entry");
+			return Result.Failure($"Unexpected error: {ex.Message}");
+		}
+	}
+
+	public void NotifyWorkEntriesModified()
+	{
+		ThrowIfNotInitialized();
+
+		_logger.LogInformation("Work entries modified notification received (external)");
+
+		// Trigger the event - listeners should refresh their data
+		OnWorkEntriesModified();
+
+		// Also refresh our own state asynchronously
+		// Note: We fire-and-forget here because this is typically called from UI thread
+		// and we don't want to block. Errors will be logged inside RefreshFromDatabaseAsync.
+		_ = Task.Run(async () =>
+		{
+			try
+			{
+				await RefreshFromDatabaseAsync();
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Failed to refresh state after work entries modification");
+			}
+		});
+	}
+
+	#endregion
+
+	#region Event Raising
+
+	private void OnActiveWorkChanged(WorkEntry? activeWork)
+	{
+		_logger.LogDebug("Raising ActiveWorkChanged event: ActiveWorkId={ActiveWorkId}", activeWork?.Id);
+		ActiveWorkChanged?.Invoke(this, activeWork);
+	}
+
+	private void OnIsTrackingChanged(bool isTracking)
+	{
+		_logger.LogDebug("Raising IsTrackingChanged event: IsTracking={IsTracking}", isTracking);
+		IsTrackingChanged?.Invoke(this, isTracking);
+	}
+
+	private void OnWorkEntriesModified()
+	{
+		_logger.LogDebug("Raising WorkEntriesModified event");
+		WorkEntriesModified?.Invoke(this, EventArgs.Empty);
+	}
+
+	#endregion
+
+	#region Validation
+
+	private void ThrowIfNotInitialized()
+	{
+		if (!_isInitialized)
+		{
+			throw new InvalidOperationException(
+				"WorklogStateService must be initialized before use. " +
+				"Call InitializeAsync() first during application startup.");
+		}
+	}
+
+	#endregion
+}

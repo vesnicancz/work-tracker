@@ -1,0 +1,462 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" msdata:Ordinal="5" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- Common -->
+  <data name="AppTitle" xml:space="preserve">
+    <value>WorkTracker - Time Tracking for Developers</value>
+  </data>
+  <data name="Close" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="Settings" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="Save" xml:space="preserve">
+    <value>SAVE</value>
+  </data>
+  <data name="Cancel" xml:space="preserve">
+    <value>CANCEL</value>
+  </data>
+  <data name="Edit" xml:space="preserve">
+    <value>Edit</value>
+  </data>
+  <data name="Delete" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="RestartWork" xml:space="preserve">
+    <value>Restart work on this issue</value>
+  </data>
+  <data name="Refresh" xml:space="preserve">
+    <value>Refresh</value>
+  </data>
+  <data name="PreviousDay" xml:space="preserve">
+    <value>Previous day</value>
+  </data>
+  <data name="NextDay" xml:space="preserve">
+    <value>Next day</value>
+  </data>
+
+  <!-- Main Window -->
+  <data name="WorkTracker" xml:space="preserve">
+    <value>WorkTracker</value>
+  </data>
+  <data name="ActiveWork" xml:space="preserve">
+    <value>Active Work</value>
+  </data>
+  <data name="Ticket" xml:space="preserve">
+    <value>Ticket</value>
+  </data>
+  <data name="Description" xml:space="preserve">
+    <value>Description</value>
+  </data>
+  <data name="StopWork" xml:space="preserve">
+    <value>STOP WORK</value>
+  </data>
+  <data name="StartWork" xml:space="preserve">
+    <value>Start Work</value>
+  </data>
+  <data name="WorkInputHint" xml:space="preserve">
+    <value>PROJ-123 Working on feature</value>
+  </data>
+  <data name="Detected" xml:space="preserve">
+    <value>Detected: </value>
+  </data>
+  <data name="StartWorkButton" xml:space="preserve">
+    <value>START WORK</value>
+  </data>
+  <data name="QuickActions" xml:space="preserve">
+    <value>Quick Actions</value>
+  </data>
+  <data name="SubmitWorklogs" xml:space="preserve">
+    <value>Submit worklogs</value>
+  </data>
+  <data name="WorkEntries" xml:space="preserve">
+    <value>Work Entries</value>
+  </data>
+  <data name="AddNewWorkEntry" xml:space="preserve">
+    <value>Add new work entry</value>
+  </data>
+  <data name="SelectDate" xml:space="preserve">
+    <value>Select Date</value>
+  </data>
+  <data name="Start" xml:space="preserve">
+    <value>Start</value>
+  </data>
+  <data name="End" xml:space="preserve">
+    <value>End</value>
+  </data>
+  <data name="Duration" xml:space="preserve">
+    <value>Duration</value>
+  </data>
+  <data name="Status" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="Actions" xml:space="preserve">
+    <value>Actions</value>
+  </data>
+  <data name="Done" xml:space="preserve">
+    <value>Done</value>
+  </data>
+  <data name="Active" xml:space="preserve">
+    <value>Active</value>
+  </data>
+  <data name="NoTicket" xml:space="preserve">
+    <value>No ticket</value>
+  </data>
+  <data name="NoDescription" xml:space="preserve">
+    <value>No description</value>
+  </data>
+
+  <!-- Settings Window -->
+  <data name="General" xml:space="preserve">
+    <value>General</value>
+  </data>
+  <data name="WindowBehavior" xml:space="preserve">
+    <value>Window Behavior</value>
+  </data>
+  <data name="WhenClosingMainWindow" xml:space="preserve">
+    <value>When closing the main window:</value>
+  </data>
+  <data name="MinimizeToTray" xml:space="preserve">
+    <value>Minimize to system tray</value>
+  </data>
+  <data name="MinimizeToTrayDesc" xml:space="preserve">
+    <value>The application will continue running in the background</value>
+  </data>
+  <data name="ExitApplication" xml:space="preserve">
+    <value>Exit application</value>
+  </data>
+  <data name="ExitApplicationDesc" xml:space="preserve">
+    <value>The application will close completely</value>
+  </data>
+  <data name="Startup" xml:space="preserve">
+    <value>Startup</value>
+  </data>
+  <data name="StartWithWindows" xml:space="preserve">
+    <value>Start with Windows</value>
+  </data>
+  <data name="StartWithWindowsDesc" xml:space="preserve">
+    <value>Automatically start WorkTracker when Windows starts</value>
+  </data>
+  <data name="StartMinimized" xml:space="preserve">
+    <value>Start minimized</value>
+  </data>
+  <data name="StartMinimizedDesc" xml:space="preserve">
+    <value>Application will start minimized to system tray</value>
+  </data>
+
+  <!-- Work Entry Edit Dialog -->
+  <data name="NewWorkEntry" xml:space="preserve">
+    <value>New Work Entry</value>
+  </data>
+  <data name="EditWorkEntry" xml:space="preserve">
+    <value>Edit Work Entry</value>
+  </data>
+  <data name="TicketIdOptional" xml:space="preserve">
+    <value>Ticket ID (optional)</value>
+  </data>
+  <data name="DescriptionOptional" xml:space="preserve">
+    <value>Description (optional)</value>
+  </data>
+  <data name="StartTime" xml:space="preserve">
+    <value>Start Time</value>
+  </data>
+  <data name="Date" xml:space="preserve">
+    <value>Date</value>
+  </data>
+  <data name="Time" xml:space="preserve">
+    <value>Time</value>
+  </data>
+  <data name="SetEndTime" xml:space="preserve">
+    <value>Set end time</value>
+  </data>
+  <data name="EndTime" xml:space="preserve">
+    <value>End Time</value>
+  </data>
+
+  <!-- Submit Worklog Dialog -->
+  <data name="SubmitDailyWorklogs" xml:space="preserve">
+    <value>Submit Daily Worklogs</value>
+  </data>
+  <data name="SubmitWeeklyWorklogs" xml:space="preserve">
+    <value>Submit Weekly Worklogs</value>
+  </data>
+  <data name="SubmitEntireWeek" xml:space="preserve">
+    <value>Submit entire week</value>
+  </data>
+  <data name="SubmitTo" xml:space="preserve">
+    <value>Submit to</value>
+  </data>
+  <data name="LoadingPreview" xml:space="preserve">
+    <value>Loading preview...</value>
+  </data>
+  <data name="TotalTime" xml:space="preserve">
+    <value>Total Time:</value>
+  </data>
+  <data name="Reset" xml:space="preserve">
+    <value>RESET</value>
+  </data>
+  <data name="RestoreOriginalValues" xml:space="preserve">
+    <value>Restore original values</value>
+  </data>
+  <data name="Submit" xml:space="preserve">
+    <value>SUBMIT</value>
+  </data>
+  <data name="Submitting" xml:space="preserve">
+    <value>Submitting...</value>
+  </data>
+
+  <!-- Messages and Validation -->
+  <data name="EitherTicketOrDescriptionRequired" xml:space="preserve">
+    <value>Either Ticket ID or Description is required</value>
+  </data>
+  <data name="EndTimeMustBeAfterStartTime" xml:space="preserve">
+    <value>End time must be after start time</value>
+  </data>
+  <data name="WorkTrackingStarted" xml:space="preserve">
+    <value>Work tracking started</value>
+  </data>
+  <data name="WorkTrackingStopped" xml:space="preserve">
+    <value>Work tracking stopped</value>
+  </data>
+  <data name="WorkEntryCreated" xml:space="preserve">
+    <value>Work entry created</value>
+  </data>
+  <data name="WorkEntryUpdated" xml:space="preserve">
+    <value>Work entry updated</value>
+  </data>
+  <data name="WorkEntryDeleted" xml:space="preserve">
+    <value>Work entry deleted</value>
+  </data>
+  <data name="WorkRestartedSuccessfully" xml:space="preserve">
+    <value>Work restarted successfully</value>
+  </data>
+  <data name="FailedToLoadWorkEntries" xml:space="preserve">
+    <value>Failed to load work entries</value>
+  </data>
+  <data name="FailedToStartWork" xml:space="preserve">
+    <value>Failed to start work tracking: {0}</value>
+  </data>
+  <data name="FailedToStopWork" xml:space="preserve">
+    <value>Failed to stop work tracking: {0}</value>
+  </data>
+  <data name="FailedToCreateWorkEntry" xml:space="preserve">
+    <value>Failed to create work entry: {0}</value>
+  </data>
+  <data name="FailedToEditWorkEntry" xml:space="preserve">
+    <value>Failed to edit work entry: {0}</value>
+  </data>
+  <data name="FailedToDeleteWorkEntry" xml:space="preserve">
+    <value>Failed to delete work entry: {0}</value>
+  </data>
+  <data name="FailedToRestartWork" xml:space="preserve">
+    <value>Failed to restart work: {0}</value>
+  </data>
+  <data name="FailedToSubmitWorklogs" xml:space="preserve">
+    <value>Failed to submit worklogs: {0}</value>
+  </data>
+  <data name="FailedToOpenSettings" xml:space="preserve">
+    <value>Failed to open settings: {0}</value>
+  </data>
+  <data name="WorklogsSubmittedSuccessfully" xml:space="preserve">
+    <value>Worklogs submitted successfully</value>
+  </data>
+  <data name="ConfirmDelete" xml:space="preserve">
+    <value>Confirm Delete</value>
+  </data>
+  <data name="ConfirmDeleteMessage" xml:space="preserve">
+    <value>Are you sure you want to delete this work entry?
+
+Ticket: {0}
+Description: {1}
+Time: {2}</value>
+  </data>
+  <data name="FailedToSave" xml:space="preserve">
+    <value>Failed to save: {0}</value>
+  </data>
+  <data name="PleaseSelectProvider" xml:space="preserve">
+    <value>Please select a provider</value>
+  </data>
+  <data name="SubmittingTo" xml:space="preserve">
+    <value>Submitting worklogs to {0}...</value>
+  </data>
+  <data name="SubmissionSuccess" xml:space="preserve">
+    <value>Success! Submitted {0} worklogs to {1}. {2}</value>
+  </data>
+  <data name="SubmissionFailed" xml:space="preserve">
+    <value>{0} failed.</value>
+  </data>
+  <data name="ErrorPrefix" xml:space="preserve">
+    <value>Error: {0}</value>
+  </data>
+  <data name="WorklogsResetToOriginal" xml:space="preserve">
+    <value>Worklogs reset to original values</value>
+  </data>
+  <data name="ReadyToSubmit" xml:space="preserve">
+    <value>Ready to submit {0} work entries</value>
+  </data>
+  <data name="ErrorLoadingPreview" xml:space="preserve">
+    <value>Error loading preview: {0}</value>
+  </data>
+  <data name="Plugins" xml:space="preserve">
+    <value>Plugins</value>
+  </data>
+  <data name="PluginConfiguration" xml:space="preserve">
+    <value>Plugin Configuration</value>
+  </data>
+  <data name="SelectPlugin" xml:space="preserve">
+    <value>Select a plugin to configure its settings</value>
+  </data>
+  <data name="PluginName" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="PluginVersion" xml:space="preserve">
+    <value>Version</value>
+  </data>
+  <data name="PluginAuthor" xml:space="preserve">
+    <value>Author</value>
+  </data>
+  <data name="PluginDescription" xml:space="preserve">
+    <value>Description</value>
+  </data>
+  <data name="TestConnection" xml:space="preserve">
+    <value>Test Connection</value>
+  </data>
+  <data name="EnablePlugin" xml:space="preserve">
+    <value>Enable Plugin</value>
+  </data>
+  <data name="EnablePluginDesc" xml:space="preserve">
+    <value>Enable or disable this plugin. Disabled plugins will not be loaded or used by the application</value>
+  </data>
+  <data name="NoPluginsAvailable" xml:space="preserve">
+    <value>No plugins available</value>
+  </data>
+  <data name="Configuration" xml:space="preserve">
+    <value>Configuration</value>
+  </data>
+
+  <!-- Tray Menu -->
+  <data name="TrayTooltip" xml:space="preserve">
+    <value>WorkTracker</value>
+  </data>
+  <data name="TrayTooltipActive" xml:space="preserve">
+    <value>WorkTracker - Tracking active</value>
+  </data>
+  <data name="TrayShow" xml:space="preserve">
+    <value>Show</value>
+  </data>
+  <data name="TrayNewWorkEntry" xml:space="preserve">
+    <value>New Work Entry</value>
+  </data>
+  <data name="TrayExit" xml:space="preserve">
+    <value>Exit</value>
+  </data>
+  <data name="TrayOpenDialogError" xml:space="preserve">
+    <value>Failed to open work entry dialog: {0}</value>
+  </data>
+  <data name="Error" xml:space="preserve">
+    <value>Error</value>
+  </data>
+
+  <!-- Favorites -->
+  <data name="Favorites" xml:space="preserve">
+    <value>Favorites</value>
+  </data>
+  <data name="FavoriteName" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="FavoriteTicket" xml:space="preserve">
+    <value>Ticket</value>
+  </data>
+  <data name="FavoriteDescription" xml:space="preserve">
+    <value>Description</value>
+  </data>
+  <data name="AddFavorite" xml:space="preserve">
+    <value>Add favorite</value>
+  </data>
+  <data name="EditFavorite" xml:space="preserve">
+    <value>Edit</value>
+  </data>
+  <data name="RemoveFavorite" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="TrayFavorites" xml:space="preserve">
+    <value>Favorites</value>
+  </data>
+  <data name="NoFavorites" xml:space="preserve">
+    <value>(No favorites)</value>
+  </data>
+  <data name="FavoriteNameRequired" xml:space="preserve">
+    <value>Name is required</value>
+  </data>
+  <data name="MoveUp" xml:space="preserve">
+    <value>Move up</value>
+  </data>
+  <data name="MoveDown" xml:space="preserve">
+    <value>Move down</value>
+  </data>
+  <data name="FavoritesDescription" xml:space="preserve">
+    <value>Define favorite work items for quick access from the system tray menu</value>
+  </data>
+  <data name="FavoriteStarted" xml:space="preserve">
+    <value>Started tracking: {0}</value>
+  </data>
+</root>
