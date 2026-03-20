@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
 using MaterialDesignThemes.Wpf;
+using WorkTracker.UI.Shared.Services;
 
 namespace WorkTracker.WPF.Services;
 

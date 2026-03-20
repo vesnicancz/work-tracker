@@ -3,7 +3,8 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using FontAwesome6.Svg;
 using Hardcodet.Wpf.TaskbarNotification;
-using WorkTracker.WPF.Models;
+using WorkTracker.UI.Shared.Models;
+using WorkTracker.UI.Shared.Services;
 
 namespace WorkTracker.WPF.Services;
 

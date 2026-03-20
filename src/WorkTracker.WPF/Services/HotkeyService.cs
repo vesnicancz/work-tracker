@@ -1,5 +1,6 @@
 ﻿using System.Runtime.InteropServices;
 using System.Windows.Interop;
+using WorkTracker.UI.Shared.Services;
 
 namespace WorkTracker.WPF.Services;
 

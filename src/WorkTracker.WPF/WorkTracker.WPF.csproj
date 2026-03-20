@@ -13,6 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\WorkTracker.UI.Shared\WorkTracker.UI.Shared.csproj" />
     <ProjectReference Include="..\WorkTracker.Application\WorkTracker.Application.csproj" />
     <ProjectReference Include="..\WorkTracker.Infrastructure\WorkTracker.Infrastructure.csproj" />
     <ProjectReference Include="..\..\plugins\WorkTracker.Plugin.Tempo\WorkTracker.Plugin.Tempo.csproj" />
@@ -43,23 +44,5 @@
     </None>
   </ItemGroup>
 
-  <ItemGroup>
-    <EmbeddedResource Update="Resources\Localization\Strings.resx">
-      <Generator>PublicResXFileCodeGenerator</Generator>
-      <LastGenOutput>Strings.Designer.cs</LastGenOutput>
-    </EmbeddedResource>
-    <EmbeddedResource Update="Resources\Localization\Strings.cs.resx">
-      <Generator>PublicResXFileCodeGenerator</Generator>
-      <LastGenOutput>Strings.cs.Designer.cs</LastGenOutput>
-    </EmbeddedResource>
-  </ItemGroup>
-
-  <ItemGroup>
-    <Compile Update="Resources\Localization\Strings.Designer.cs">
-      <DesignTime>True</DesignTime>
-      <AutoGen>True</AutoGen>
-      <DependentUpon>Strings.resx</DependentUpon>
-    </Compile>
-  </ItemGroup>
 
 </Project>

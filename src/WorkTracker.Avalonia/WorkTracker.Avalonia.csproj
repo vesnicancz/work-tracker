@@ -1,0 +1,50 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.3.12" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.3.12" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.12" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.12" />
+    <PackageReference Include="Avalonia.Controls.DataGrid" Version="11.3.12" />
+    <PackageReference Include="Avalonia.Diagnostics" Version="11.3.12" Condition="'$(Configuration)' == 'Debug'" />
+    <PackageReference Include="Material.Icons.Avalonia" Version="3.0.0" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.1" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.5" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.5" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.5" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.5">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WorkTracker.UI.Shared\WorkTracker.UI.Shared.csproj" />
+    <ProjectReference Include="..\WorkTracker.Infrastructure\WorkTracker.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\plugins\WorkTracker.Plugin.Tempo\WorkTracker.Plugin.Tempo.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Resources\Icons\**">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="appsettings.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="appsettings.Development.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <DependentUpon>appsettings.json</DependentUpon>
+    </None>
+  </ItemGroup>
+
+</Project>

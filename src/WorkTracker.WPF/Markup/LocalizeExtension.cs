@@ -2,7 +2,7 @@
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Markup;
-using WorkTracker.WPF.Services;
+using WorkTracker.UI.Shared.Services;
 
 namespace WorkTracker.WPF.Markup;
 

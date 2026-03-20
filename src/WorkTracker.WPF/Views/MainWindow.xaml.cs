@@ -1,8 +1,8 @@
 ﻿using System.ComponentModel;
 using System.Windows;
 using MaterialDesignThemes.Wpf;
-using WorkTracker.WPF.Models;
-using WorkTracker.WPF.Services;
+using WorkTracker.UI.Shared.Models;
+using WorkTracker.UI.Shared.Services;
 using WorkTracker.WPF.ViewModels;
 
 namespace WorkTracker.WPF.Views;

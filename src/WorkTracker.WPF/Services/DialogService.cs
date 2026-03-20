@@ -1,6 +1,7 @@
 ﻿using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using WorkTracker.Domain.Entities;
+using WorkTracker.UI.Shared.Services;
 using WorkTracker.WPF.ViewModels;
 using WorkTracker.WPF.Views;
 

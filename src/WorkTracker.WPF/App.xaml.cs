@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using WorkTracker.Application.Plugins;
 using WorkTracker.Infrastructure;
 using WorkTracker.Plugin.Tempo;
+using WorkTracker.UI.Shared.Services;
 using WorkTracker.WPF.Services;
 using WorkTracker.WPF.ViewModels;
 using WorkTracker.WPF.Views;

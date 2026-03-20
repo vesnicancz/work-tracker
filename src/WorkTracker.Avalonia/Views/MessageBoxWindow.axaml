@@ -1,0 +1,59 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        x:Class="WorkTracker.Avalonia.Views.MessageBoxWindow"
+        mc:Ignorable="d"
+        Width="400"
+        MinHeight="180"
+        SizeToContent="Height"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False"
+        ShowInTaskbar="False">
+
+    <StackPanel Margin="24" Spacing="20">
+
+        <!-- Title as header inside content -->
+        <TextBlock x:Name="TitleText"
+                   FontSize="15"
+                   FontWeight="SemiBold" />
+
+        <TextBlock x:Name="MessageText"
+                   TextWrapping="Wrap"
+                   FontSize="13"
+                   LineHeight="20" />
+
+        <!-- Buttons - OK or Yes/No depending on mode -->
+        <StackPanel x:Name="OkPanel"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right">
+            <Button x:Name="OkButton"
+                    Content="OK"
+                    Width="90"
+                    HorizontalContentAlignment="Center"
+                    Classes="accent"
+                    CornerRadius="4" />
+        </StackPanel>
+
+        <StackPanel x:Name="YesNoPanel"
+                    IsVisible="False"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Spacing="8">
+            <Button x:Name="NoButton"
+                    Content="No"
+                    Width="90"
+                    HorizontalContentAlignment="Center"
+                    Background="{DynamicResource ButtonSecondaryBg}"
+                    Foreground="{DynamicResource ButtonSecondaryFg}"
+                    CornerRadius="4" />
+            <Button x:Name="YesButton"
+                    Content="Yes"
+                    Width="90"
+                    HorizontalContentAlignment="Center"
+                    Classes="accent"
+                    CornerRadius="4" />
+        </StackPanel>
+
+    </StackPanel>
+</Window>

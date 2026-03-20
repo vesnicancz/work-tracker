@@ -2,6 +2,7 @@
 using System.Reflection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
+using WorkTracker.UI.Shared.Services;
 
 namespace WorkTracker.WPF.Services;
 

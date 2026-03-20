@@ -1,0 +1,293 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:material="using:Material.Icons.Avalonia"
+        xmlns:converters="using:WorkTracker.Avalonia.Converters"
+        xmlns:vm="using:WorkTracker.Avalonia.ViewModels"
+        x:Class="WorkTracker.Avalonia.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        mc:Ignorable="d"
+        Title="Work Tracker"
+        Width="1100"
+        Height="700"
+        MinWidth="750"
+        MinHeight="500"
+        WindowStartupLocation="CenterScreen">
+
+    <Window.Resources>
+        <converters:TimeSpanToStringConverter x:Key="TimeSpanToStringConverter" />
+        <converters:DateTimeToStringConverter x:Key="DateTimeToStringConverter" />
+        <converters:NullToBoolConverter x:Key="NullToBoolConverter" />
+    </Window.Resources>
+
+    <Panel>
+        <Grid ColumnDefinitions="280,*">
+
+            <!-- ===== Sidebar ===== -->
+            <Border Grid.Column="0"
+                    Background="{DynamicResource SidebarBackground}"
+                    BorderBrush="{DynamicResource SidebarBorder}"
+                    BorderThickness="0,0,1,0"
+                    Padding="14,14,14,10">
+                <Grid RowDefinitions="*,Auto">
+                <ScrollViewer Grid.Row="0" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Spacing="10">
+
+                    <!-- Active Work -->
+                    <Border Classes="card" IsVisible="{Binding IsTracking}"
+                            Background="{DynamicResource ActiveCardBackground}"
+                            BorderBrush="{DynamicResource ActiveCardBorder}">
+                        <StackPanel Spacing="6">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <material:MaterialIcon Kind="CircleMedium" Width="14" Height="14"
+                                                      Foreground="{DynamicResource SuccessGreen}" VerticalAlignment="Center" />
+                                <TextBlock Text="Active Work" FontSize="12" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource SuccessGreen}" VerticalAlignment="Center" />
+                            </StackPanel>
+
+                            <TextBlock Text="{Binding ElapsedTime}"
+                                       FontSize="32" FontWeight="Bold"
+                                       FontFamily="JetBrains Mono,Consolas,monospace"
+                                       Foreground="{DynamicResource TextBright}"
+                                       HorizontalAlignment="Center" Margin="0,6" />
+
+                            <StackPanel Spacing="3">
+                                <TextBlock Text="{Binding ActiveTicketDisplay}"
+                                           FontWeight="Medium" Foreground="{DynamicResource TextBright}" FontSize="13" />
+                                <TextBlock Text="{Binding ActiveDescriptionDisplay}"
+                                           FontSize="12" TextWrapping="Wrap"
+                                           Foreground="{DynamicResource TextMuted}" />
+                            </StackPanel>
+
+                            <Button Command="{Binding StopWorkCommand}"
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Center"
+                                    Margin="0,4,0,0"
+                                    Classes="danger">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <material:MaterialIcon Kind="Stop" Width="16" Height="16" />
+                                    <TextBlock Text="Stop" FontWeight="SemiBold" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Start Work -->
+                    <Border Classes="card">
+                        <StackPanel Spacing="8">
+                            <TextBox Text="{Binding WorkInput, Mode=TwoWay}"
+                                     Watermark="PROJ-123 description..."
+                                     MaxLength="200">
+                                <TextBox.KeyBindings>
+                                    <KeyBinding Gesture="Enter" Command="{Binding StartWorkCommand}" />
+                                </TextBox.KeyBindings>
+                            </TextBox>
+
+                            <TextBlock IsVisible="{Binding DetectedTicketId, Converter={StaticResource NullToBoolConverter}}"
+                                       FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource TextMuted}">
+                                <Run Text="{Binding DetectedTicketId, Mode=OneWay}" Foreground="{DynamicResource AccentBlue}" FontWeight="SemiBold" />
+                                <Run Text=" " />
+                                <Run Text="{Binding DetectedDescription, Mode=OneWay}" />
+                            </TextBlock>
+
+                            <Button Command="{Binding StartWorkCommand}"
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Center"
+                                    Classes="success">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <material:MaterialIcon Kind="Play" Width="16" Height="16" />
+                                    <TextBlock Text="Start Work" FontWeight="SemiBold" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Today total -->
+                    <Border Classes="card" Padding="12,10">
+                        <Grid ColumnDefinitions="Auto,*,Auto">
+                            <material:MaterialIcon Grid.Column="0"
+                                                  Kind="TimerOutline" Width="16" Height="16"
+                                                  Foreground="{DynamicResource TextMuted}"
+                                                  VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <TextBlock Grid.Column="1" Text="Today"
+                                       FontSize="13" VerticalAlignment="Center"
+                                       Foreground="{DynamicResource TextSecondary}" />
+                            <TextBlock Grid.Column="2"
+                                       Text="{Binding TotalDayDuration}"
+                                       FontSize="16" FontWeight="Bold"
+                                       FontFamily="JetBrains Mono,Consolas,monospace"
+                                       Foreground="{DynamicResource TextBright}"
+                                       VerticalAlignment="Center" />
+                        </Grid>
+                    </Border>
+
+                </StackPanel>
+                </ScrollViewer>
+
+                <!-- Bottom actions (always visible) -->
+                <StackPanel Grid.Row="1" Spacing="2" Margin="0,8,0,0">
+                    <Separator Margin="0,0,0,6" />
+                    <Button Command="{Binding SubmitWorklogCommand}"
+                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                            Background="Transparent" Padding="10,8">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <material:MaterialIcon Kind="CloudUploadOutline" Width="16" Height="16"
+                                                  Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" />
+                            <TextBlock Text="Submit Worklogs" Foreground="{DynamicResource TextSecondary}"
+                                       FontSize="13" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button Command="{Binding OpenSettingsCommand}"
+                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                            Background="Transparent" Padding="10,8">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <material:MaterialIcon Kind="CogOutline" Width="16" Height="16"
+                                                  Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" />
+                            <TextBlock Text="Settings" Foreground="{DynamicResource TextSecondary}"
+                                       FontSize="13" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- ===== Right: Work Entries ===== -->
+            <Grid Grid.Column="1" RowDefinitions="Auto,*" Margin="16,14,16,14">
+
+                <!-- Toolbar -->
+                <DockPanel Grid.Row="0" Margin="0,0,0,10">
+                    <!-- Right actions -->
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4">
+                        <Button Command="{Binding RefreshCommand}"
+                                ToolTip.Tip="Refresh" Padding="7"
+                                Background="Transparent" BorderThickness="0">
+                            <material:MaterialIcon Kind="Refresh" Width="16" Height="16"
+                                                  Foreground="{DynamicResource TextMuted}" />
+                        </Button>
+                        <Button Command="{Binding AddWorkEntryCommand}"
+                                ToolTip.Tip="Add entry" Padding="7"
+                                Background="Transparent" BorderThickness="0">
+                            <material:MaterialIcon Kind="Plus" Width="18" Height="18"
+                                                  Foreground="{DynamicResource TextPrimary}" />
+                        </Button>
+                    </StackPanel>
+
+                    <!-- Date nav -->
+                    <StackPanel Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+                        <Button Command="{Binding PreviousDayCommand}" Padding="5"
+                                Background="Transparent" BorderThickness="0"
+                                ToolTip.Tip="Previous day">
+                            <material:MaterialIcon Kind="ChevronLeft" Width="18" Height="18"
+                                                  Foreground="{DynamicResource TextMuted}" />
+                        </Button>
+                        <CalendarDatePicker SelectedDate="{Binding SelectedDate}"
+                                            Width="180" VerticalAlignment="Center" />
+                        <Button Command="{Binding NextDayCommand}" Padding="5"
+                                Background="Transparent" BorderThickness="0"
+                                ToolTip.Tip="Next day">
+                            <material:MaterialIcon Kind="ChevronRight" Width="18" Height="18"
+                                                  Foreground="{DynamicResource TextMuted}" />
+                        </Button>
+                        <TextBlock Text="Work Entries" FontSize="14" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextSecondary}"
+                                   VerticalAlignment="Center" Margin="10,0,0,0" />
+                    </StackPanel>
+                </DockPanel>
+
+                <!-- DataGrid -->
+                <DataGrid x:Name="WorkEntriesGrid"
+                          Grid.Row="1"
+                          ItemsSource="{Binding WorkEntries}"
+                          SelectedItem="{Binding SelectedWorkEntry}"
+                          AutoGenerateColumns="False"
+                          CanUserReorderColumns="False"
+                          CanUserResizeColumns="True"
+                          CanUserSortColumns="True"
+                          GridLinesVisibility="Horizontal"
+                          IsReadOnly="True"
+                          SelectionMode="Single"
+                          Background="{DynamicResource AppBackground}"
+                          BorderThickness="0">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Ticket"
+                                            Binding="{ReflectionBinding TicketId}"
+                                            Width="110" />
+                        <DataGridTextColumn Header="Description"
+                                            Binding="{ReflectionBinding Description}"
+                                            Width="*" MinWidth="200" />
+                        <DataGridTextColumn Header="Start"
+                                            Binding="{ReflectionBinding StartTime, Converter={StaticResource DateTimeToStringConverter}, ConverterParameter='HH:mm'}"
+                                            Width="65" />
+                        <DataGridTextColumn Header="End"
+                                            Binding="{ReflectionBinding EndTime, Converter={StaticResource DateTimeToStringConverter}, ConverterParameter='HH:mm'}"
+                                            Width="65" />
+                        <DataGridTextColumn Header="Duration"
+                                            Binding="{ReflectionBinding Duration, Converter={StaticResource TimeSpanToStringConverter}}"
+                                            Width="75" />
+
+                        <!-- Status -->
+                        <DataGridTemplateColumn Header="Status" Width="75">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Panel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                        <TextBlock Text="Active" FontSize="12" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource SuccessGreen}"
+                                                   IsVisible="{Binding IsActive}" />
+                                        <TextBlock Text="Done" FontSize="12"
+                                                   Foreground="{DynamicResource TextMuted}"
+                                                   IsVisible="{Binding !IsActive}" />
+                                    </Panel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <!-- Actions -->
+                        <DataGridTemplateColumn Header="" Width="90">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal"
+                                                HorizontalAlignment="Right" Spacing="0"
+                                                VerticalAlignment="Center">
+                                        <Button IsVisible="{Binding !IsActive}"
+                                                Command="{Binding #WorkEntriesGrid.DataContext.StartWorkFromHistoryCommand}"
+                                                CommandParameter="{Binding}"
+                                                Width="28" Height="28" Padding="0"
+                                                Background="Transparent" BorderThickness="0"
+                                                ToolTip.Tip="Restart">
+                                            <material:MaterialIcon Kind="Play" Width="16" Height="16"
+                                                                  Foreground="{DynamicResource TextSecondary}" />
+                                        </Button>
+                                        <Button Command="{Binding #WorkEntriesGrid.DataContext.EditWorkEntryCommand}"
+                                                CommandParameter="{Binding}"
+                                                Width="28" Height="28" Padding="0"
+                                                Background="Transparent" BorderThickness="0"
+                                                ToolTip.Tip="Edit">
+                                            <material:MaterialIcon Kind="Pencil" Width="16" Height="16"
+                                                                  Foreground="{DynamicResource TextSecondary}" />
+                                        </Button>
+                                        <Button Command="{Binding #WorkEntriesGrid.DataContext.DeleteWorkEntryCommand}"
+                                                CommandParameter="{Binding}"
+                                                Width="28" Height="28" Padding="0"
+                                                Background="Transparent" BorderThickness="0"
+                                                ToolTip.Tip="Delete">
+                                            <material:MaterialIcon Kind="Delete" Width="16" Height="16"
+                                                                  Foreground="{DynamicResource TextSecondary}" />
+                                        </Button>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Grid>
+        </Grid>
+
+        <!-- Notification overlay -->
+        <StackPanel x:Name="NotificationHost"
+                    VerticalAlignment="Bottom"
+                    HorizontalAlignment="Center"
+                    Margin="0,0,0,16"
+                    Spacing="4" />
+    </Panel>
+</Window>

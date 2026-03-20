@@ -1,0 +1,99 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:material="using:Material.Icons.Avalonia"
+        xmlns:converters="using:WorkTracker.Avalonia.Converters"
+        xmlns:vm="using:WorkTracker.Avalonia.ViewModels"
+        x:Class="WorkTracker.Avalonia.Views.WorkEntryEditDialog"
+        x:DataType="vm:WorkEntryEditViewModel"
+        mc:Ignorable="d"
+        Title="{Binding DialogTitle}"
+        Width="460"
+        SizeToContent="Height"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False"
+        ShowInTaskbar="False"
+        Background="{DynamicResource AppBackground}">
+
+    <Window.Resources>
+        <converters:NullToBoolConverter x:Key="NullToBoolConverter" />
+        <converters:TimeSpanToStringConverter x:Key="TimeSpanToStringConverter" />
+    </Window.Resources>
+
+    <StackPanel Margin="20" Spacing="12">
+
+        <!-- Ticket ID -->
+        <TextBox Text="{Binding TicketId, Mode=TwoWay}"
+                 Watermark="Ticket ID (e.g. PROJ-123)"
+                 MaxLength="50" />
+
+        <!-- Description -->
+        <TextBox Text="{Binding Description, Mode=TwoWay}"
+                 Watermark="Description"
+                 MaxLength="500"
+                 AcceptsReturn="True"
+                 TextWrapping="Wrap"
+                 MinHeight="50"
+                 MaxHeight="90" />
+
+        <!-- Start Time -->
+        <TextBlock Text="Start Time" FontSize="12" Foreground="{DynamicResource TextMuted}" />
+        <Grid ColumnDefinitions="*,10,Auto">
+            <CalendarDatePicker Grid.Column="0"
+                                SelectedDate="{Binding StartDate}"
+                                HorizontalAlignment="Stretch" />
+            <TextBox Grid.Column="2"
+                     Text="{Binding StartTime, Mode=TwoWay, Converter={StaticResource TimeSpanToStringConverter}, ConverterParameter='HH:mm'}"
+                     Watermark="HH:mm"
+                     FontFamily="JetBrains Mono,Consolas,monospace"
+                     Width="80" />
+        </Grid>
+
+        <!-- Has End Time -->
+        <CheckBox IsChecked="{Binding HasEndTime}"
+                  Content="Set end time" />
+
+        <!-- End Time -->
+        <StackPanel IsVisible="{Binding HasEndTime}" Spacing="8">
+            <TextBlock Text="End Time" FontSize="12" Foreground="{DynamicResource TextMuted}" />
+            <Grid ColumnDefinitions="*,10,Auto">
+                <CalendarDatePicker Grid.Column="0"
+                                    SelectedDate="{Binding EndDate}"
+                                    HorizontalAlignment="Stretch" />
+                <TextBox Grid.Column="2"
+                         Text="{Binding EndTime, Mode=TwoWay, Converter={StaticResource TimeSpanToStringConverter}, ConverterParameter='HH:mm'}"
+                         Watermark="HH:mm"
+                         FontFamily="JetBrains Mono,Consolas,monospace"
+                         Width="80" />
+            </Grid>
+        </StackPanel>
+
+        <!-- Validation error -->
+        <TextBlock Text="{Binding ValidationError}"
+                   IsVisible="{Binding ValidationError, Converter={StaticResource NullToBoolConverter}}"
+                   Foreground="{DynamicResource DangerRed}"
+                   FontSize="12"
+                   TextWrapping="Wrap" />
+
+        <!-- Buttons -->
+        <Grid ColumnDefinitions="*,Auto,8,Auto" Margin="0,4,0,0">
+            <Button Grid.Column="1"
+                    Content="Cancel"
+                    Command="{Binding CancelCommand}"
+                    Padding="20,8"
+                    Background="{DynamicResource ButtonSecondaryBg}"
+                    Foreground="{DynamicResource ButtonSecondaryFg}" />
+            <Button Grid.Column="3"
+                    Command="{Binding SaveCommand}"
+                    Padding="20,8"
+                    Classes="accent">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <material:MaterialIcon Kind="ContentSave" Width="16" Height="16" />
+                    <TextBlock Text="Save" FontWeight="SemiBold" />
+                </StackPanel>
+            </Button>
+        </Grid>
+
+    </StackPanel>
+</Window>

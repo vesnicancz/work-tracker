@@ -3,7 +3,7 @@ using System.Windows.Input;
 using Microsoft.Extensions.Logging;
 using WorkTracker.Application.Services;
 using WorkTracker.WPF.Commands;
-using WorkTracker.WPF.Services;
+using WorkTracker.UI.Shared.Services;
 
 namespace WorkTracker.WPF.ViewModels;
 

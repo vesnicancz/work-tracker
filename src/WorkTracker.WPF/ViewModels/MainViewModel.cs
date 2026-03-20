@@ -7,7 +7,7 @@ using WorkTracker.Application.Common;
 using WorkTracker.Application.Services;
 using WorkTracker.Domain.Entities;
 using WorkTracker.WPF.Commands;
-using WorkTracker.WPF.Services;
+using WorkTracker.UI.Shared.Services;
 
 namespace WorkTracker.WPF.ViewModels;
 

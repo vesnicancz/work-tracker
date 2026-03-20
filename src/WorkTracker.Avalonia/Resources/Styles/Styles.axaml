@@ -1,0 +1,123 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Window: base background and foreground -->
+    <Style Selector="Window">
+        <Setter Property="Background" Value="{DynamicResource AppBackground}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+    </Style>
+
+    <!-- Card: Fleet-style subtle surface -->
+    <Style Selector="Border.card">
+        <Setter Property="Background" Value="{DynamicResource CardBackground}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource CardBorder}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="4" />
+        <Setter Property="Padding" Value="14" />
+    </Style>
+
+    <!-- DataGrid: minimal Fleet style -->
+    <Style Selector="DataGrid">
+        <Setter Property="SelectionMode" Value="Single" />
+    </Style>
+    <Style Selector="DataGridRow">
+        <Setter Property="MinHeight" Value="36" />
+        <Setter Property="FontSize" Value="13" />
+    </Style>
+    <Style Selector="DataGridRow:pointerover /template/ Rectangle#BackgroundRectangle">
+        <Setter Property="Fill" Value="{DynamicResource ControlFillColorSecondaryBrush}" />
+    </Style>
+    <Style Selector="DataGridRow:selected /template/ Rectangle#BackgroundRectangle">
+        <Setter Property="Fill" Value="{DynamicResource ControlFillColorTertiaryBrush}" />
+    </Style>
+
+    <!-- Column headers: blend with background -->
+    <Style Selector="DataGridColumnHeader">
+        <Setter Property="Background" Value="{DynamicResource AppBackground}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextMuted}" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="MinHeight" Value="30" />
+        <Setter Property="SeparatorBrush" Value="{DynamicResource SeparatorColor}" />
+    </Style>
+
+    <!-- Hide cell focus rectangle -->
+    <Style Selector="DataGridCell:focus /template/ Grid#FocusVisual">
+        <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="DataGridCell:current /template/ Grid#FocusVisual">
+        <Setter Property="IsVisible" Value="False" />
+    </Style>
+
+    <!-- CalendarDatePicker: theme-aware styling -->
+    <Style Selector="CalendarDatePicker">
+        <Setter Property="Background" Value="{DynamicResource InputBackground}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource InputBorder}" />
+    </Style>
+
+    <!-- Calendar popup: readable text on themed background -->
+    <Style Selector="Calendar">
+        <Setter Property="Background" Value="{DynamicResource SidebarBackground}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource CardBorder}" />
+    </Style>
+    <Style Selector="CalendarDayButton">
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+    </Style>
+    <Style Selector="CalendarDayButton:pointerover /template/ ContentControl#Content">
+        <Setter Property="Foreground" Value="{DynamicResource TextBright}" />
+    </Style>
+    <Style Selector="CalendarButton">
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+    </Style>
+
+    <!-- Success button: green -->
+    <Style Selector="Button.success">
+        <Setter Property="Background" Value="{DynamicResource SuccessGreen}" />
+        <Setter Property="Foreground" Value="White" />
+    </Style>
+    <Style Selector="Button.success:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource SuccessGreenDark}" />
+        <Setter Property="Foreground" Value="White" />
+    </Style>
+    <Style Selector="Button.success:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource SuccessGreenPressed}" />
+        <Setter Property="Foreground" Value="White" />
+    </Style>
+
+    <!-- Danger button: red -->
+    <Style Selector="Button.danger">
+        <Setter Property="Background" Value="{DynamicResource DangerRed}" />
+        <Setter Property="Foreground" Value="White" />
+    </Style>
+    <Style Selector="Button.danger:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource DangerRedDark}" />
+        <Setter Property="Foreground" Value="White" />
+    </Style>
+    <Style Selector="Button.danger:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource DangerRedPressed}" />
+        <Setter Property="Foreground" Value="White" />
+    </Style>
+
+    <!-- Accent button: blue with proper hover/pressed -->
+    <Style Selector="Button.accent">
+        <Setter Property="Background" Value="{DynamicResource AccentBlue}" />
+        <Setter Property="Foreground" Value="{DynamicResource AccentButtonFg}" />
+    </Style>
+    <Style Selector="Button.accent:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AccentBlueDark}" />
+        <Setter Property="Foreground" Value="{DynamicResource AccentButtonFg}" />
+    </Style>
+    <Style Selector="Button.accent:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AccentBluePressed}" />
+        <Setter Property="Foreground" Value="{DynamicResource AccentButtonFg}" />
+    </Style>
+
+    <!-- Separator: theme border color -->
+    <Style Selector="Separator">
+        <Setter Property="Background" Value="{DynamicResource SeparatorColor}" />
+        <Setter Property="Height" Value="1" />
+    </Style>
+
+</Styles>

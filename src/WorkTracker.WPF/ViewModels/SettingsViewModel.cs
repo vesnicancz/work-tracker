@@ -5,8 +5,8 @@ using Microsoft.Extensions.Logging;
 using WorkTracker.Application.Plugins;
 using WorkTracker.Plugin.Abstractions;
 using WorkTracker.WPF.Commands;
-using WorkTracker.WPF.Models;
-using WorkTracker.WPF.Services;
+using WorkTracker.UI.Shared.Models;
+using WorkTracker.UI.Shared.Services;
 
 namespace WorkTracker.WPF.ViewModels;
 
