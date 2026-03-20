@@ -2,8 +2,8 @@
 
 **Comprehensive guide for contributors and developers**
 
-Version: 1.0
-Last Updated: November 2025
+Version: 1.1
+Last Updated: March 2026
 
 ---
 
@@ -27,7 +27,7 @@ Last Updated: November 2025
 ### 1.1 Prerequisites
 
 **Required:**
-- [.NET 9.0 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
+- [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
 - [Git](https://git-scm.com/)
 - IDE: [Visual Studio 2022](https://visualstudio.microsoft.com/) or [Rider](https://www.jetbrains.com/rider/)
 
@@ -55,8 +55,11 @@ dotnet test
 # Run CLI application
 dotnet run --project src/WorkTracker.CLI
 
-# Run WPF application
+# Run WPF application (Windows only)
 dotnet run --project src/WorkTracker.WPF
+
+# Run Avalonia application (cross-platform)
+dotnet run --project src/WorkTracker.Avalonia
 ```
 
 ### 1.3 Solution Structure
@@ -67,8 +70,10 @@ WorkTracker.sln
 │   ├── WorkTracker.Domain/              # Core business logic
 │   ├── WorkTracker.Application/         # Use cases & orchestration
 │   ├── WorkTracker.Infrastructure/      # Data access & external services
+│   ├── WorkTracker.UI.Shared/           # Shared UI library (models, service interfaces)
 │   ├── WorkTracker.CLI/                # Console application
-│   ├── WorkTracker.WPF/                # WPF desktop application
+│   ├── WorkTracker.WPF/                # WPF desktop application (Windows)
+│   ├── WorkTracker.Avalonia/           # Avalonia desktop application (cross-platform)
 │   ├── WorkTracker.Plugin.Abstractions/ # Plugin API
 │   └── WorkTracker.Plugin.*/           # Plugin implementations
 ├── plugins/
@@ -90,10 +95,15 @@ WorkTracker follows **Clean Architecture** (Onion Architecture) principles:
 
 ```
 ┌─────────────────────────────────────────────────┐
-│   Presentation Layer (CLI, WPF)                 │
+│   Presentation Layer (CLI, WPF, Avalonia)        │
 │   - User Interface                              │
 │   - ViewModels                                  │
 │   - Commands                                    │
+├─────────────────────────────────────────────────┤
+│   UI.Shared Layer                               │
+│   - Shared Models & Service Interfaces          │
+│   - SettingsService, WorklogStateService        │
+│   - LocalizationService                         │
 ├─────────────────────────────────────────────────┤
 │   Infrastructure Layer                          │
 │   - Data Access (EF Core)                       │
@@ -130,17 +140,18 @@ WorkTracker follows **Clean Architecture** (Onion Architecture) principles:
 | **Dependency Injection** | Loose coupling | Throughout |
 | **Result Pattern** | Functional error handling | `Result<T>` |
 | **Strategy** | Plugin system | `IWorklogUploadPlugin` |
-| **MVVM** | WPF presentation | ViewModels |
+| **MVVM** | WPF & Avalonia presentation | ViewModels |
 | **Template Method** | Plugin base classes | `WorklogUploadPluginBase` |
 | **Factory** | DbContext creation | `WorkTrackerDbContextFactory` |
 
 ### 2.3 Technology Stack
 
-- **Framework**: .NET 9.0
-- **Language**: C# 12 with nullable reference types
-- **Database**: SQLite with Entity Framework Core 9.0
+- **Framework**: .NET 10.0
+- **Language**: C# 13 with nullable reference types
+- **Database**: SQLite with Entity Framework Core 10.0
 - **CLI**: Spectre.Console
-- **WPF**: Material Design Themes, CommunityToolkit.Mvvm
+- **WPF**: Material Design Themes, CommunityToolkit.Mvvm (Windows only)
+- **Avalonia**: Avalonia 11.3, Fluent theme, Material.Icons.Avalonia 3.0, CommunityToolkit.Mvvm (cross-platform)
 - **Testing**: xUnit, Moq, FluentAssertions
 - **Logging**: Microsoft.Extensions.Logging
 
@@ -591,9 +602,44 @@ WorkTracker.CLI/
 └── WorkTracker.CLI.csproj
 ```
 
+#### UI.Shared Library
+
+**Location:** `src/WorkTracker.UI.Shared/`
+
+**Purpose:** Shared UI models, service interfaces, and framework-agnostic service implementations used by both WPF and Avalonia projects.
+
+```
+WorkTracker.UI.Shared/
+├── Models/                               # Shared UI models
+├── Interfaces/                           # Service interfaces
+├── Services/
+│   ├── SettingsService.cs               # Application settings management
+│   ├── WorklogStateService.cs           # Worklog state tracking
+│   └── LocalizationService.cs           # Localization support
+└── WorkTracker.UI.Shared.csproj
+```
+
+**Dependency graph:**
+```
+WorkTracker.UI.Shared (net10.0)
+  └── WorkTracker.Application → Domain, Plugin.Abstractions
+
+WorkTracker.WPF (net10.0-windows)
+  ├── WorkTracker.UI.Shared
+  ├── WorkTracker.Infrastructure
+  └── WorkTracker.Plugin.Tempo
+
+WorkTracker.Avalonia (net10.0)
+  ├── WorkTracker.UI.Shared
+  ├── WorkTracker.Infrastructure
+  └── WorkTracker.Plugin.Tempo
+```
+
 #### WPF Application
 
 **Location:** `src/WorkTracker.WPF/`
+
+**Note:** WPF references UI.Shared for models and service interfaces instead of defining its own.
 
 ```
 WorkTracker.WPF/
@@ -615,6 +661,40 @@ WorkTracker.WPF/
 ├── App.xaml
 └── WorkTracker.WPF.csproj
 ```
+
+#### Avalonia Application
+
+**Location:** `src/WorkTracker.Avalonia/`
+
+**Purpose:** Cross-platform desktop GUI (Windows, Linux, macOS) with Avalonia 11.3 and Fluent theme.
+
+```
+WorkTracker.Avalonia/
+├── ViewModels/
+│   ├── MainViewModel.cs
+│   ├── WorkEntryEditViewModel.cs
+│   └── SettingsViewModel.cs
+├── Views/
+│   ├── MainWindow.axaml
+│   ├── WorkEntryEditDialog.axaml
+│   └── SettingsWindow.axaml
+├── Services/
+│   ├── IDialogService.cs
+│   ├── INotificationService.cs
+│   └── ITrayIconService.cs
+├── Themes/
+│   ├── OneDarkPro.axaml                 # Dark theme palette
+│   └── OneLight.axaml                   # Light theme palette
+├── App.axaml
+└── WorkTracker.Avalonia.csproj
+```
+
+**Key technologies:**
+- Avalonia 11.3 + Fluent theme
+- Material.Icons.Avalonia 3.0 for icons
+- CommunityToolkit.Mvvm for MVVM
+- Switchable Dark/Light themes (One Dark Pro / One Light palettes)
+- System tray icon support
 
 ---
 
@@ -1356,7 +1436,7 @@ dotnet build
 # Repair SDK
 dotnet --list-sdks
 dotnet --info
-# Reinstall .NET 9.0 SDK if needed
+# Reinstall .NET 10.0 SDK if needed
 ```
 
 ### 10.2 Database Issues
@@ -1399,5 +1479,5 @@ dotnet ef database update --project src/WorkTracker.Infrastructure
 
 ---
 
-**Last Updated:** November 2025
-**Version:** 1.0
+**Last Updated:** March 2026
+**Version:** 1.1

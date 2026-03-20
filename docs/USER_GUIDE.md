@@ -2,8 +2,8 @@
 
 **Kompletní průvodce používáním WorkTracker aplikace**
 
-Verze: 1.0
-Datum: Listopad 2025
+Verze: 1.1
+Datum: Březen 2026
 
 ---
 
@@ -38,14 +38,14 @@ WorkTracker je aplikace pro **sledování pracovní doby** určená pro vývojá
 | **Time Tracking** | Start/stop sledování s automatickým ukončením předchozí práce |
 | **Jira Integration** | Automatická detekce Jira ticket ID (např. PROJ-123) |
 | **Tempo Export** | Jedním příkazem odeslat worklogs do Tempo |
-| **Dual Interface** | CLI pro rychlé operace, WPF pro přehledné GUI |
+| **Triple Interface** | CLI pro rychlé operace, WPF pro Windows GUI, Avalonia pro cross-platform GUI |
 | **Validation** | Detekce překrývajících se časů, kontrola validních dat |
 | **Offline First** | Práce bez připojení, sync když je potřeba |
 
 ### 1.3 Požadavky
 
-- **Operační systém**: Windows 10/11 (pro WPF), Linux/macOS (pouze CLI)
-- **.NET Runtime**: 9.0 nebo vyšší
+- **Operační systém**: Windows 10/11 (pro WPF), Windows/Linux/macOS (pro Avalonia), Linux/macOS (pouze CLI)
+- **.NET Runtime**: 10.0 nebo vyšší
 - **Disk**: ~50 MB pro aplikaci + databázi
 - **RAM**: Minimum 512 MB
 - **Jira/Tempo účet**: Pro export funkcionalitu (volitelné)
@@ -62,7 +62,8 @@ WorkTracker je aplikace pro **sledování pracovní doby** určená pro vývojá
 2. Rozbalte ZIP soubor
 3. Spusťte:
    - **CLI**: `WorkTracker.CLI.exe`
-   - **WPF**: `WorkTracker.WPF.exe`
+   - **WPF**: `WorkTracker.WPF.exe` (Windows only)
+   - **Avalonia**: `WorkTracker.Avalonia.exe` (cross-platform)
 
 #### Varianta B: Build ze Zdrojového Kódu
 
@@ -77,8 +78,11 @@ dotnet build -c Release
 # Spuštění CLI
 dotnet run --project src/WorkTracker.CLI
 
-# Spuštění WPF
+# Spuštění WPF (Windows only)
 dotnet run --project src/WorkTracker.WPF
+
+# Spuštění Avalonia (cross-platform)
+dotnet run --project src/WorkTracker.Avalonia
 ```
 
 ### 2.2 První Spuštění
@@ -616,6 +620,35 @@ Po spuštění WPF aplikace uvidíte:
 
 ---
 
+## 4b. Avalonia Aplikace
+
+Avalonia aplikace nabízí stejnou funkcionalitu jako WPF, ale je dostupná na všech platformách (Windows, Linux, macOS).
+
+### Spuštění
+
+```bash
+dotnet run --project src/WorkTracker.Avalonia
+```
+
+### Hlavní Rozdíly oproti WPF
+
+- **Cross-platform** - funguje na Windows, Linux i macOS
+- **Fluent theme** - moderní vzhled s Avalonia Fluent motivem
+- **Přepínání motivů** - Dark/Light mód (One Dark Pro / One Light palety)
+  - Settings → General → Appearance → Theme dropdown: Dark / Light
+- **Material.Icons.Avalonia** - konzistentní ikony napříč platformami
+- **System tray** - podpora system tray ikony na všech platformách
+
+### Přepínání Motivů
+
+V nastavení (Settings → General → Appearance) můžete přepínat mezi:
+- **Dark** - One Dark Pro paleta (tmavé téma)
+- **Light** - One Light paleta (světlé téma)
+
+Změna se projeví okamžitě bez nutnosti restartovat aplikaci.
+
+---
+
 ## 5. Workflow a Best Practices
 
 ### 5.1 Denní Workflow
@@ -1022,13 +1055,13 @@ A: Doporučujeme používat User Secrets nebo Environment Variables.
 
 **Q: Jaká .NET verze je potřeba?**
 ```
-A: .NET 9.0 runtime
+A: .NET 10.0 runtime
 ```
 
 **Q: Funguje WorkTracker na Linux/macOS?**
 ```
-A: CLI ano (dotnet run), WPF ne (pouze Windows).
-   MAUI verze je plánována pro budoucnost.
+A: CLI ano (dotnet run), Avalonia aplikace ano (plná cross-platform podpora),
+   WPF ne (pouze Windows).
 ```
 
 **Q: Jak mohu backupovat data?**
@@ -1050,7 +1083,7 @@ A: Zkopírujte databázový soubor:
 dotnet run --project src/WorkTracker.CLI -- [command]
 
 # Nebo přidejte do PATH:
-# Windows: Přidejte WorkTracker/bin/Release/net9.0 do PATH
+# Windows: Přidejte WorkTracker/bin/Release/net10.0 do PATH
 # Linux: sudo ln -s /path/to/worktracker /usr/local/bin/
 ```
 
@@ -1061,7 +1094,7 @@ Error: SQLite Error 5: 'database is locked'
 ```
 
 **Řešení:**
-- Zavřete všechny instance WorkTracker (CLI i WPF)
+- Zavřete všechny instance WorkTracker (CLI, WPF i Avalonia)
 - Zkontrolujte Task Manager pro visící procesy
 - Smažte `worktracker.db-wal` a `worktracker.db-shm` soubory
 
@@ -1070,7 +1103,7 @@ Error: SQLite Error 5: 'database is locked'
 #### "Application won't start"
 
 **Řešení:**
-1. Zkontrolujte .NET 9.0 runtime
+1. Zkontrolujte .NET 10.0 runtime
 2. Podívejte se do Event Viewer (Windows Logs → Application)
 3. Smažte %LocalAppData%\WorkTracker\logs
 
@@ -1120,5 +1153,5 @@ Viz sekce [6.5 Troubleshooting Tempo/Jira](#65-troubleshooting-tempojira)
 
 ---
 
-**Poslední aktualizace**: Listopad 2025
-**Verze dokumentu**: 1.0
+**Poslední aktualizace**: Březen 2026
+**Verze dokumentu**: 1.1

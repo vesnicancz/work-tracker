@@ -9,7 +9,7 @@
 
 ## O projektu
 
-WorkTracker je desktopová aplikace pro sledování pracovní doby postavená na .NET 10 s Clean Architecture. Nabízí CLI i WPF rozhraní a plugin systém pro integraci s externími systémy (Jira Tempo aj.).
+WorkTracker je desktopová aplikace pro sledování pracovní doby postavená na .NET 10 s Clean Architecture. Nabízí CLI, WPF i Avalonia rozhraní a plugin systém pro integraci s externími systémy (Jira Tempo aj.). Díky Avalonia UI je aplikace dostupná napříč platformami (Windows, Linux, macOS).
 
 **Hlavní funkce:**
 - Sledování času na projektech a úkolech (start/stop/edit/delete)
@@ -17,7 +17,7 @@ WorkTracker je desktopová aplikace pro sledování pracovní doby postavená na
 - Export worklogs do Jira Tempo
 - Detekce překrývajících se časových intervalů
 - Denní a týdenní přehledy
-- System tray notifikace (WPF)
+- System tray notifikace (WPF, Avalonia)
 
 ---
 
@@ -26,7 +26,7 @@ WorkTracker je desktopová aplikace pro sledování pracovní doby postavená na
 ### Prerekvizity
 
 - [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
-- Windows 10/11 (pro WPF aplikaci)
+- Windows 10/11 (pro WPF aplikaci), Linux/macOS (pro Avalonia aplikaci)
 - Git
 
 ### Instalace
@@ -46,8 +46,11 @@ dotnet test
 # CLI
 dotnet run --project src/WorkTracker.CLI
 
-# WPF
+# WPF (Windows only)
 dotnet run --project src/WorkTracker.WPF
+
+# Avalonia (cross-platform)
+dotnet run --project src/WorkTracker.Avalonia
 ```
 
 ### První použití
@@ -107,7 +110,7 @@ worktracker send week
 
 ## WPF aplikace
 
-Moderní desktopová aplikace s Material Design:
+Moderní desktopová aplikace s Material Design (Windows only):
 
 - Dashboard s přehledem práce a real-time timer
 - Start/Stop tracking s automatickou detekcí Jira kódu
@@ -118,6 +121,23 @@ Moderní desktopová aplikace s Material Design:
 
 ```bash
 dotnet run --project src/WorkTracker.WPF
+```
+
+---
+
+## Avalonia aplikace
+
+Cross-platform desktopová aplikace (Windows, Linux, macOS) s Fluent theme:
+
+- Stejná funkcionalita jako WPF aplikace
+- Přepínatelné Dark/Light motivy (One Dark Pro / One Light palety)
+- Material.Icons.Avalonia pro ikony
+- CommunityToolkit.Mvvm pro MVVM
+- System tray ikona s notifikacemi
+- Lokalizace (CZ/EN)
+
+```bash
+dotnet run --project src/WorkTracker.Avalonia
 ```
 
 ---
@@ -213,7 +233,9 @@ Kompletní návod viz [Plugin Development Guide](docs/PLUGIN_DEVELOPMENT.md).
 Clean Architecture s těmito vrstvami:
 
 ```
-Presentation (CLI, WPF)
+Presentation (CLI, WPF, Avalonia)
+    |
+UI.Shared (Models, Service Interfaces, Framework-agnostic Services)
     |
 Infrastructure (EF Core, SQLite, Plugins)
     |
@@ -229,8 +251,10 @@ Domain (WorkEntry, Business Rules)
 | `WorkTracker.Domain` | Business entity a validace | net10.0 |
 | `WorkTracker.Application` | Use cases, services, Result pattern | net10.0 |
 | `WorkTracker.Infrastructure` | EF Core, SQLite, DI konfigurace | net10.0 |
+| `WorkTracker.UI.Shared` | Sdílená UI knihovna (modely, service interfaces, SettingsService, WorklogStateService, LocalizationService) | net10.0 |
 | `WorkTracker.CLI` | Konzolové rozhraní (Spectre.Console) | net10.0 |
-| `WorkTracker.WPF` | Desktop GUI (Material Design, MVVM) | net10.0-windows |
+| `WorkTracker.WPF` | Desktop GUI - Windows (Material Design, MVVM) | net10.0-windows |
+| `WorkTracker.Avalonia` | Desktop GUI - cross-platform (Avalonia 11.3, Fluent theme, MVVM) | net10.0 |
 | `WorkTracker.Plugin.Abstractions` | Plugin API | net9.0 |
 | `WorkTracker.Plugin.Tempo` | Tempo/Jira integrace | net10.0 |
 
@@ -242,8 +266,10 @@ work-tracker/
 │   ├── WorkTracker.Domain/              # Business entities
 │   ├── WorkTracker.Application/         # Use cases, interfaces
 │   ├── WorkTracker.Infrastructure/      # Data access, DI
+│   ├── WorkTracker.UI.Shared/            # Shared UI library
 │   ├── WorkTracker.CLI/                 # Console app
-│   ├── WorkTracker.WPF/                 # Desktop GUI
+│   ├── WorkTracker.WPF/                 # Desktop GUI (Windows)
+│   ├── WorkTracker.Avalonia/            # Desktop GUI (cross-platform)
 │   └── WorkTracker.Plugin.Abstractions/ # Plugin API
 ├── plugins/
 │   └── WorkTracker.Plugin.Tempo/        # Tempo plugin
@@ -259,12 +285,13 @@ work-tracker/
 - **.NET 10.0**, C# 13, nullable reference types
 - **Entity Framework Core 10** + SQLite
 - **Spectre.Console** (CLI)
-- **WPF** + MaterialDesignThemes 5.3 + CommunityToolkit.Mvvm (GUI)
+- **WPF** + MaterialDesignThemes 5.3 + CommunityToolkit.Mvvm (GUI, Windows)
+- **Avalonia 11.3** + Fluent theme + Material.Icons.Avalonia 3.0 + CommunityToolkit.Mvvm (GUI, cross-platform)
 - **xUnit** + Moq + FluentAssertions (testy)
 
 ### Design Patterns
 
-Repository, Dependency Injection, Result Pattern, Strategy (plugins), MVVM (WPF), Template Method (plugin base), Factory
+Repository, Dependency Injection, Result Pattern, Strategy (plugins), MVVM (WPF, Avalonia), Template Method (plugin base), Factory
 
 ---
 

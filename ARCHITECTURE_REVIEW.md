@@ -1,7 +1,7 @@
 # Architektonické Review - WorkTracker
 
 **Datum:** 3. listopad 2025
-**Verze:** .NET 9.0
+**Verze:** .NET 10.0
 **Architektura:** Clean Architecture (Onion Architecture)
 
 ---
@@ -15,7 +15,7 @@ WorkTracker je profesionálně navržená aplikace pro sledování pracovní dob
 **Hlavní přednosti:**
 - Čistá architektura s jasnou separací vrstev
 - Extensibilní plugin systém
-- Dual UI (CLI + WPF) sdílející business logiku
+- Triple UI (CLI + WPF + Avalonia) sdílející business logiku přes UI.Shared vrstvu
 - Result pattern pro funkční error handling
 - Komprehenzivní DI implementace
 
@@ -36,7 +36,9 @@ Aplikace implementuje **Clean Architecture** s jasnou separací zodpovědností:
 
 ```
 ┌──────────────────────────────────────────┐
-│ Presentation Layer (CLI, WPF)           │  ← UI a uživatelská interakce
+│ Presentation Layer (CLI, WPF, Avalonia)  │  ← UI a uživatelská interakce
+├──────────────────────────────────────────┤
+│ UI.Shared Layer                          │  ← Sdílené modely, service interfaces
 ├──────────────────────────────────────────┤
 │ Infrastructure Layer                     │  ← Data access, EF Core, DI
 ├──────────────────────────────────────────┤
@@ -69,8 +71,10 @@ Aplikace implementuje **Clean Architecture** s jasnou separací zodpovědností:
 - `WorkTracker.Domain` - čistý C#, žádné závislosti
 - `WorkTracker.Application` - orchestrace, use cases
 - `WorkTracker.Infrastructure` - EF Core, SQLite
+- `WorkTracker.UI.Shared` - sdílená UI knihovna (modely, service interfaces, framework-agnostic services)
 - `WorkTracker.CLI` - konzolové rozhraní
-- `WorkTracker.WPF` - desktop GUI (Material Design)
+- `WorkTracker.WPF` - desktop GUI, Windows (Material Design)
+- `WorkTracker.Avalonia` - desktop GUI, cross-platform (Avalonia 11.3, Fluent theme, přepínatelné Dark/Light motivy)
 - `WorkTracker.Plugin.Abstractions` - plugin API
 - `WorkTracker.Plugin.Tempo` - Jira Tempo integrace
 
@@ -416,7 +420,7 @@ private bool IsPluginCompatible(IPlugin plugin)
 ### 4.1 Data Access
 
 **Technologie:**
-- Entity Framework Core 9.0
+- Entity Framework Core 10.0
 - SQLite
 - Repository pattern
 
@@ -1306,8 +1310,10 @@ WorkTracker demonstruje **profesionální přístup k architektuře**:
 ✅ **Clean Architecture** - správná separace vrstev
 ✅ **Extensibility** - plugin systém umožňuje integraci s různými systémy
 ✅ **Testability** - DI a interfaces umožňují snadné testování
-✅ **Modern Stack** - .NET 9.0, async/await, nullable reference types
-✅ **Dual UI** - CLI i WPF sdílí stejnou business logiku
+✅ **Modern Stack** - .NET 10.0, C# 13, async/await, nullable reference types
+✅ **Triple UI** - CLI, WPF i Avalonia sdílí stejnou business logiku přes UI.Shared vrstvu
+✅ **Cross-platform** - Avalonia umožňuje běh na Windows, Linux i macOS
+✅ **Theme System** - přepínatelné Dark/Light motivy v Avalonia aplikaci
 ✅ **Error Handling** - Result pattern místo exceptions pro flow control
 
 ### 12.2 Hlavní Výzvy
