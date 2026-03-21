@@ -17,8 +17,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="appsettings.Development.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    <None Update="appsettings.Development.json" Condition="'$(Configuration)' == 'Debug'">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <DependentUpon>appsettings.json</DependentUpon>
     </None>
     <None Update="appsettings.json">

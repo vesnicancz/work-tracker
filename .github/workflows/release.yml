@@ -133,6 +133,9 @@ jobs:
           - rid: osx-arm64
             os: macos-latest
             artifact: WorkTracker-Avalonia-osx-arm64
+          - rid: win-arm64
+            os: windows-latest
+            artifact: WorkTracker-Avalonia-win-arm64
     steps:
       - uses: actions/checkout@v4
         with:
