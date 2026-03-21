@@ -50,7 +50,7 @@ public partial class App : global::Avalonia.Application
 				services.AddSingleton<IAutostartManager, AutostartManager>();
 				services.AddSingleton<IHotkeyService, HotkeyService>();
 
-				services.AddTransient<MainViewModel>();
+				services.AddSingleton<MainViewModel>();
 				services.AddTransient<WorkEntryEditViewModel>();
 				services.AddTransient<SubmitWorklogViewModel>();
 				services.AddTransient<SettingsViewModel>();
@@ -156,6 +156,8 @@ public partial class App : global::Avalonia.Application
 		if (_host != null)
 		{
 			_hotkeyService?.Unregister();
+			var mainViewModel = _host.Services.GetRequiredService<MainViewModel>();
+			mainViewModel.Dispose();
 			var pluginManager = _host.Services.GetRequiredService<IPluginManager>();
 			await pluginManager.DisposeAsync();
 			await _host.StopAsync();
