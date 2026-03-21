@@ -19,7 +19,9 @@ public partial class WorkEntryEditDialog : Window
 		{
 			// Only drag from border if titlebar is hidden (Purple theme)
 			if (!DialogTitleBar.IsVisible)
+			{
 				OnDragPointerPressed(null, e);
+			}
 		};
 
 		DataContextChanged += (_, _) =>
@@ -34,6 +36,8 @@ public partial class WorkEntryEditDialog : Window
 	private void OnDragPointerPressed(object? sender, PointerPressedEventArgs e)
 	{
 		if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+		{
 			BeginMoveDrag(e);
+		}
 	}
 }

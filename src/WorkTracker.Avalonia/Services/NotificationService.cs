@@ -40,7 +40,10 @@ public sealed class NotificationService : INotificationService
 		Dispatcher.UIThread.Post(() =>
 		{
 			var host = FindNotificationHost();
-			if (host == null) return;
+			if (host == null)
+			{
+				return;
+			}
 
 			var border = new Border
 			{

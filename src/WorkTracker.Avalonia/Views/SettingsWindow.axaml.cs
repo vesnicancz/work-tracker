@@ -18,7 +18,9 @@ public partial class SettingsWindow : Window
 		DialogBorder.PointerPressed += (_, e) =>
 		{
 			if (!DialogTitleBar.IsVisible && !IsInteractiveElement(e))
+			{
 				OnDragPointerPressed(null, e);
+			}
 		};
 
 		DataContextChanged += (_, _) =>
@@ -33,7 +35,9 @@ public partial class SettingsWindow : Window
 	private void OnDragPointerPressed(object? sender, PointerPressedEventArgs e)
 	{
 		if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+		{
 			BeginMoveDrag(e);
+		}
 	}
 
 	private static bool IsInteractiveElement(PointerPressedEventArgs e)
@@ -43,7 +47,10 @@ public partial class SettingsWindow : Window
 		{
 			if (source is Button or TextBox or ComboBox or CheckBox or RadioButton
 				or ListBox or TabItem or ToggleButton or ScrollBar)
+			{
 				return true;
+			}
+
 			source = source.GetVisualParent() as Visual;
 		}
 		return false;

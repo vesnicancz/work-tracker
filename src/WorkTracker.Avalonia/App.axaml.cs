@@ -131,7 +131,9 @@ public partial class App : global::Avalonia.Application
 			var dialog = new MessageBoxWindow("Initialization Error",
 				$"Application failed to initialize:\n{ex.Message}", false);
 			if (mainWindow.IsVisible)
+			{
 				await dialog.ShowDialog(mainWindow);
+			}
 		}
 	}
 

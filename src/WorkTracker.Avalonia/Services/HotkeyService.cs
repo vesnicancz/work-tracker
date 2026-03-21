@@ -1,4 +1,4 @@
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -26,7 +26,10 @@ public sealed class HotkeyService : IHotkeyService
 
 	public void Register()
 	{
-		if (_isRegistered) return;
+		if (_isRegistered)
+		{
+			return;
+		}
 
 		if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
 		{
@@ -46,7 +49,10 @@ public sealed class HotkeyService : IHotkeyService
 
 	public void Unregister()
 	{
-		if (!_isRegistered) return;
+		if (!_isRegistered)
+		{
+			return;
+		}
 
 		if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
 		{

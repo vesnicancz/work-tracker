@@ -324,7 +324,10 @@ public class MainViewModel : ViewModelBase, IDisposable
 
 	private async Task EditWorkEntryAsync(WorkEntry? workEntry)
 	{
-		if (workEntry == null) return;
+		if (workEntry == null)
+		{
+			return;
+		}
 
 		try
 		{
@@ -357,7 +360,10 @@ public class MainViewModel : ViewModelBase, IDisposable
 
 	private async Task DeleteWorkEntryAsync(WorkEntry? workEntry)
 	{
-		if (workEntry == null) return;
+		if (workEntry == null)
+		{
+			return;
+		}
 
 		try
 		{
@@ -401,7 +407,10 @@ public class MainViewModel : ViewModelBase, IDisposable
 
 	private async Task StartWorkFromHistoryAsync(WorkEntry? workEntry)
 	{
-		if (workEntry == null) return;
+		if (workEntry == null)
+		{
+			return;
+		}
 
 		try
 		{
@@ -582,7 +591,11 @@ public class MainViewModel : ViewModelBase, IDisposable
 
 	public void Dispose()
 	{
-		if (_disposed) return;
+		if (_disposed)
+		{
+			return;
+		}
+
 		_disposed = true;
 		_timer.Stop();
 		_worklogStateService.ActiveWorkChanged -= OnActiveWorkChanged;

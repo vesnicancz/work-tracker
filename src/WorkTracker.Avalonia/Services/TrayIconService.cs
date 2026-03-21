@@ -39,7 +39,10 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 
 	public void Initialize()
 	{
-		if (_isInitialized) return;
+		if (_isInitialized)
+		{
+			return;
+		}
 
 		_menu = new NativeMenu();
 
@@ -104,17 +107,26 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 
 	public void Show()
 	{
-		if (_trayIcon != null) _trayIcon.IsVisible = true;
+		if (_trayIcon != null)
+		{
+			_trayIcon.IsVisible = true;
+		}
 	}
 
 	public void Hide()
 	{
-		if (_trayIcon != null) _trayIcon.IsVisible = false;
+		if (_trayIcon != null)
+		{
+			_trayIcon.IsVisible = false;
+		}
 	}
 
 	public void RefreshFavoritesMenu()
 	{
-		if (_menu == null) return;
+		if (_menu == null)
+		{
+			return;
+		}
 
 		// Remove existing favorites
 		if (_favoritesSeparator != null)
@@ -186,7 +198,10 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 
 	private void SetActiveState(bool isActive)
 	{
-		if (_trayIcon == null) return;
+		if (_trayIcon == null)
+		{
+			return;
+		}
 
 		_trayIcon.ToolTipText = isActive
 			? _localizationService["TrayTooltipActive"]

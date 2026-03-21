@@ -39,7 +39,11 @@ public sealed class AutostartManager : IAutostartManager
 	{
 		try
 		{
-			if (!OperatingSystem.IsWindows()) return false;
+			if (!OperatingSystem.IsWindows())
+			{
+				return false;
+			}
+
 			using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run", false);
 			var value = key?.GetValue("WorkTracker") as string;
 			return !string.IsNullOrEmpty(value);
@@ -55,9 +59,16 @@ public sealed class AutostartManager : IAutostartManager
 	{
 		try
 		{
-			if (!OperatingSystem.IsWindows()) return;
+			if (!OperatingSystem.IsWindows())
+			{
+				return;
+			}
+
 			using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run", true);
-			if (key == null) return;
+			if (key == null)
+			{
+				return;
+			}
 
 			if (enable)
 			{

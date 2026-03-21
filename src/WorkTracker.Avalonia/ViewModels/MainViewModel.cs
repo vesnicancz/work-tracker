@@ -22,6 +22,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 	private readonly DispatcherTimer _timer;
 	private readonly CancellationTokenSource _cts = new();
 	private bool _disposed;
+	private bool _timerPaused;
 
 	private string _elapsedTime = "00:00:00";
 	private string _workInput = string.Empty;
@@ -70,7 +71,9 @@ public class MainViewModel : ViewModelBase, IDisposable
 		_ = InitializeAsync().ContinueWith(t =>
 		{
 			if (t.IsFaulted)
+			{
 				_logger.LogError(t.Exception, "MainViewModel initialization failed");
+			}
 		}, TaskScheduler.Default);
 	}
 
@@ -123,7 +126,9 @@ public class MainViewModel : ViewModelBase, IDisposable
 		set
 		{
 			if (SetProperty(ref _selectedDate, value))
+			{
 				_ = RefreshWorkEntriesAsync();
+			}
 		}
 	}
 
@@ -142,7 +147,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 		set => SetProperty(ref _totalDayDuration, value);
 	}
 
-	#endregion
+	#endregion Properties
 
 	#region Commands
 
@@ -158,13 +163,17 @@ public class MainViewModel : ViewModelBase, IDisposable
 	public ICommand PreviousDayCommand { get; }
 	public ICommand NextDayCommand { get; }
 
-	#endregion
+	#endregion Commands
 
 	private async Task InitializeAsync()
 	{
 		try
 		{
-			if (IsTracking) _timer.Start();
+			if (IsTracking)
+			{
+				_timer.Start();
+			}
+
 			await RefreshWorkEntriesAsync();
 		}
 		catch (Exception ex)
@@ -264,7 +273,11 @@ public class MainViewModel : ViewModelBase, IDisposable
 
 	private async Task EditWorkEntryAsync(WorkEntry? workEntry)
 	{
-		if (workEntry == null) return;
+		if (workEntry == null)
+		{
+			return;
+		}
+
 		try
 		{
 			var result = await _dialogService.ShowEditWorkEntryDialogAsync(workEntry);
@@ -273,7 +286,11 @@ public class MainViewModel : ViewModelBase, IDisposable
 				var wasActive = workEntry.Id == ActiveWork?.Id;
 				await RefreshWorkEntriesAsync();
 				await _worklogStateService.RefreshFromDatabaseAsync();
-				if (wasActive && !IsTracking) ElapsedTime = "00:00:00";
+				if (wasActive && !IsTracking)
+				{
+					ElapsedTime = "00:00:00";
+				}
+
 				_notificationService.ShowSuccess(LocalizationService.Instance["WorkEntryUpdated"]);
 			}
 		}
@@ -286,7 +303,11 @@ public class MainViewModel : ViewModelBase, IDisposable
 
 	private async Task DeleteWorkEntryAsync(WorkEntry? workEntry)
 	{
-		if (workEntry == null) return;
+		if (workEntry == null)
+		{
+			return;
+		}
+
 		try
 		{
 			var confirmed = await _dialogService.ShowConfirmationAsync(
@@ -305,7 +326,11 @@ public class MainViewModel : ViewModelBase, IDisposable
 					await _dialogService.ShowErrorAsync(result.Error);
 					return;
 				}
-				if (wasActive) ElapsedTime = "00:00:00";
+				if (wasActive)
+				{
+					ElapsedTime = "00:00:00";
+				}
+
 				_notificationService.ShowSuccess(LocalizationService.Instance["WorkEntryDeleted"]);
 			}
 		}
@@ -318,7 +343,11 @@ public class MainViewModel : ViewModelBase, IDisposable
 
 	private async Task StartWorkFromHistoryAsync(WorkEntry? workEntry)
 	{
-		if (workEntry == null) return;
+		if (workEntry == null)
+		{
+			return;
+		}
+
 		try
 		{
 			var result = await _worklogStateService.StartTrackingAsync(workEntry.TicketId, workEntry.Description);
@@ -343,7 +372,9 @@ public class MainViewModel : ViewModelBase, IDisposable
 		{
 			var result = await _dialogService.ShowSubmitWorklogDialogAsync(SelectedDate, false);
 			if (result)
+			{
 				_notificationService.ShowSuccess(LocalizationService.Instance["WorklogsSubmittedSuccessfully"]);
+			}
 		}
 		catch (Exception ex)
 		{
@@ -387,15 +418,20 @@ public class MainViewModel : ViewModelBase, IDisposable
 		foreach (var entry in WorkEntries)
 		{
 			if (entry.IsActive)
+			{
 				totalSeconds += (_timeProvider.GetLocalNow().DateTime - entry.StartTime).TotalSeconds;
+			}
 			else if (entry.Duration.HasValue)
+			{
 				totalSeconds += entry.Duration.Value.TotalSeconds;
+			}
 		}
 		var total = TimeSpan.FromSeconds(totalSeconds);
 		TotalDayDuration = $"{(int)total.TotalHours:D2}:{total.Minutes:D2}:{total.Seconds:D2}";
 	}
 
 	private void PreviousDay() => SelectedDate = SelectedDate.AddDays(-1);
+
 	private void NextDay() => SelectedDate = SelectedDate.AddDays(1);
 
 	private void OnTimerTick(object? sender, EventArgs e)
@@ -424,7 +460,15 @@ public class MainViewModel : ViewModelBase, IDisposable
 
 	private void OnIsTrackingChanged(object? sender, bool isTracking)
 	{
-		if (isTracking) _timer.Start(); else _timer.Stop();
+		if (isTracking && !_timerPaused)
+		{
+			_timer.Start();
+		}
+		else
+		{
+			_timer.Stop();
+		}
+
 		OnPropertyChanged(nameof(IsTracking));
 		StartWorkCommand.NotifyCanExecuteChanged();
 		StopWorkCommand.NotifyCanExecuteChanged();
@@ -432,11 +476,13 @@ public class MainViewModel : ViewModelBase, IDisposable
 
 	public void PauseTimer()
 	{
+		_timerPaused = true;
 		_timer.Stop();
 	}
 
 	public void ResumeTimer()
 	{
+		_timerPaused = false;
 		if (IsTracking)
 		{
 			_timer.Start();
@@ -446,7 +492,11 @@ public class MainViewModel : ViewModelBase, IDisposable
 
 	public void Dispose()
 	{
-		if (_disposed) return;
+		if (_disposed)
+		{
+			return;
+		}
+
 		_disposed = true;
 		_cts.Cancel();
 		_cts.Dispose();

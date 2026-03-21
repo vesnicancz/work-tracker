@@ -616,7 +616,9 @@ public class ConfigurationFieldViewModel : ViewModelBase
 		set
 		{
 			if (_pluginViewModel.Configuration.TryGetValue(Key, out var current) && current == value)
+			{
 				return;
+			}
 
 			_pluginViewModel.Configuration[Key] = value;
 			OnPropertyChanged();

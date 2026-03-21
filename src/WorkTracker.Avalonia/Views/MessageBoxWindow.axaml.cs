@@ -27,7 +27,9 @@ public partial class MessageBoxWindow : Window
 		DialogBorder.PointerPressed += (_, e) =>
 		{
 			if (!DialogTitleBar.IsVisible)
+			{
 				OnDragPointerPressed(null, e);
+			}
 		};
 
 		if (isConfirmation)
@@ -48,6 +50,8 @@ public partial class MessageBoxWindow : Window
 	private void OnDragPointerPressed(object? sender, PointerPressedEventArgs e)
 	{
 		if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+		{
 			BeginMoveDrag(e);
+		}
 	}
 }

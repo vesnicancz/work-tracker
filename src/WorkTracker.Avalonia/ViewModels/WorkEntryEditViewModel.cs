@@ -48,37 +48,61 @@ public class WorkEntryEditViewModel : ViewModelBase
 	public string? TicketId
 	{
 		get => _ticketId;
-		set { if (SetProperty(ref _ticketId, value)) ValidateInput(); }
+		set { if (SetProperty(ref _ticketId, value))
+			{
+				ValidateInput();
+			}
+		}
 	}
 
 	public string? Description
 	{
 		get => _description;
-		set { if (SetProperty(ref _description, value)) ValidateInput(); }
+		set { if (SetProperty(ref _description, value))
+			{
+				ValidateInput();
+			}
+		}
 	}
 
 	public DateTime StartDate
 	{
 		get => _startDate;
-		set { if (SetProperty(ref _startDate, value)) ValidateInput(); }
+		set { if (SetProperty(ref _startDate, value))
+			{
+				ValidateInput();
+			}
+		}
 	}
 
 	public TimeSpan StartTime
 	{
 		get => _startTime;
-		set { if (SetProperty(ref _startTime, value)) ValidateInput(); }
+		set { if (SetProperty(ref _startTime, value))
+			{
+				ValidateInput();
+			}
+		}
 	}
 
 	public DateTime? EndDate
 	{
 		get => _endDate;
-		set { if (SetProperty(ref _endDate, value)) ValidateInput(); }
+		set { if (SetProperty(ref _endDate, value))
+			{
+				ValidateInput();
+			}
+		}
 	}
 
 	public TimeSpan? EndTime
 	{
 		get => _endTime;
-		set { if (SetProperty(ref _endTime, value)) ValidateInput(); }
+		set { if (SetProperty(ref _endTime, value))
+			{
+				ValidateInput();
+			}
+		}
 	}
 
 	public bool HasEndTime
@@ -125,7 +149,10 @@ public class WorkEntryEditViewModel : ViewModelBase
 				EndDate = workEntry.EndTime.Value.Date;
 				EndTime = workEntry.EndTime.Value.TimeOfDay;
 			}
-			else HasEndTime = false;
+			else
+			{
+				HasEndTime = false;
+			}
 		}
 		else
 		{

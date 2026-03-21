@@ -318,11 +318,15 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 				{
 					if (!item.TryGetProperty("issue", out var issueProp) ||
 						!issueProp.TryGetProperty("key", out var keyProp))
+					{
 						continue;
+					}
 
 					var ticketId = keyProp.GetString();
 					if (string.IsNullOrEmpty(ticketId))
+					{
 						continue;
+					}
 
 					var startDateStr = item.TryGetProperty("startDate", out var sdProp) ? sdProp.GetString() : null;
 					var startTimeStr = item.TryGetProperty("startTime", out var stProp) ? stProp.GetString() : null;
