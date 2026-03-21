@@ -97,7 +97,7 @@ public class PluginManagerTests : IDisposable
 		};
 
 		// Act
-		await _pluginManager.InitializePluginsAsync(config);
+		await _pluginManager.InitializePluginsAsync(config, TestContext.Current.CancellationToken);
 
 		// Assert
 		var plugin = _pluginManager.GetPlugin("test.plugin") as TestPlugin;
@@ -110,7 +110,7 @@ public class PluginManagerTests : IDisposable
 	{
 		// Arrange
 		_pluginManager.LoadEmbeddedPlugin<TestPlugin>();
-		await _pluginManager.InitializePluginsAsync();
+		await _pluginManager.InitializePluginsAsync(cancellationToken: TestContext.Current.CancellationToken);
 
 		// Act
 		var result = await _pluginManager.UnloadPluginAsync("test.plugin");
@@ -145,7 +145,7 @@ public class PluginManagerTests : IDisposable
 	{
 		// Arrange
 		_pluginManager.LoadEmbeddedPlugin<TestPlugin>();
-		await _pluginManager.InitializePluginsAsync();
+		await _pluginManager.InitializePluginsAsync(cancellationToken: TestContext.Current.CancellationToken);
 
 		// Act
 		await _pluginManager.DisposeAsync();

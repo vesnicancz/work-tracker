@@ -37,7 +37,7 @@ public class WorkEntryServiceTests
 			.ReturnsAsync((WorkEntry entry, CancellationToken _) => entry);
 
 		// Act
-		var result = await _service.StartWorkAsync(ticketId, null, description);
+		var result = await _service.StartWorkAsync(ticketId, null, description, cancellationToken: TestContext.Current.CancellationToken);
 
 		// Assert
 		result.IsSuccess.Should().BeTrue();
@@ -57,7 +57,7 @@ public class WorkEntryServiceTests
 			.ReturnsAsync((WorkEntry?)null);
 
 		// Act
-		var result = await _service.StartWorkAsync(null, null, null);
+		var result = await _service.StartWorkAsync(null, null, null, cancellationToken: TestContext.Current.CancellationToken);
 
 		// Assert
 		result.IsFailure.Should().BeTrue();
@@ -87,7 +87,7 @@ public class WorkEntryServiceTests
 			.ReturnsAsync((WorkEntry entry, CancellationToken _) => entry);
 
 		// Act
-		var result = await _service.StartWorkAsync("PROJ-123", null, "New work");
+		var result = await _service.StartWorkAsync("PROJ-123", null, "New work", cancellationToken: TestContext.Current.CancellationToken);
 
 		// Assert
 		result.IsSuccess.Should().BeTrue();
@@ -108,7 +108,7 @@ public class WorkEntryServiceTests
 			.ReturnsAsync(true);
 
 		// Act
-		var result = await _service.StartWorkAsync("PROJ-123", null, "Test");
+		var result = await _service.StartWorkAsync("PROJ-123", null, "Test", cancellationToken: TestContext.Current.CancellationToken);
 
 		// Assert
 		result.IsFailure.Should().BeTrue();
@@ -135,7 +135,7 @@ public class WorkEntryServiceTests
 			.ReturnsAsync(false);
 
 		// Act
-		var result = await _service.StopWorkAsync();
+		var result = await _service.StopWorkAsync(cancellationToken: TestContext.Current.CancellationToken);
 
 		// Assert
 		result.IsSuccess.Should().BeTrue();
@@ -154,7 +154,7 @@ public class WorkEntryServiceTests
 			.ReturnsAsync((WorkEntry?)null);
 
 		// Act
-		var result = await _service.StopWorkAsync();
+		var result = await _service.StopWorkAsync(cancellationToken: TestContext.Current.CancellationToken);
 
 		// Assert
 		result.IsFailure.Should().BeTrue();
@@ -178,7 +178,7 @@ public class WorkEntryServiceTests
 			.ReturnsAsync(activeEntry);
 
 		// Act
-		var result = await _service.StopWorkAsync(DateTime.Now.AddHours(-1));
+		var result = await _service.StopWorkAsync(DateTime.Now.AddHours(-1), TestContext.Current.CancellationToken);
 
 		// Assert
 		result.IsFailure.Should().BeTrue();
@@ -202,7 +202,7 @@ public class WorkEntryServiceTests
 			.ReturnsAsync(activeEntry);
 
 		// Act
-		var result = await _service.GetActiveWorkAsync(CancellationToken.None);
+		var result = await _service.GetActiveWorkAsync(TestContext.Current.CancellationToken);
 
 		// Assert
 		result.Should().NotBeNull();
@@ -230,7 +230,7 @@ public class WorkEntryServiceTests
 			.ReturnsAsync(false);
 
 		// Act
-		var result = await _service.UpdateWorkEntryAsync(1, "PROJ-456", DateTime.Now.AddHours(-3), DateTime.Now.AddHours(-1), "Updated");
+		var result = await _service.UpdateWorkEntryAsync(1, "PROJ-456", DateTime.Now.AddHours(-3), DateTime.Now.AddHours(-1), "Updated", cancellationToken: TestContext.Current.CancellationToken);
 
 		// Assert
 		result.IsSuccess.Should().BeTrue();
@@ -249,7 +249,7 @@ public class WorkEntryServiceTests
 			.ReturnsAsync((WorkEntry?)null);
 
 		// Act
-		var result = await _service.UpdateWorkEntryAsync(999, "PROJ-123");
+		var result = await _service.UpdateWorkEntryAsync(999, "PROJ-123", cancellationToken: TestContext.Current.CancellationToken);
 
 		// Assert
 		result.IsFailure.Should().BeTrue();
@@ -272,7 +272,7 @@ public class WorkEntryServiceTests
 			.ReturnsAsync(existingEntry);
 
 		// Act
-		var result = await _service.DeleteWorkEntryAsync(1, CancellationToken.None);
+		var result = await _service.DeleteWorkEntryAsync(1, TestContext.Current.CancellationToken);
 
 		// Assert
 		result.IsSuccess.Should().BeTrue();
@@ -288,7 +288,7 @@ public class WorkEntryServiceTests
 			.ReturnsAsync((WorkEntry?)null);
 
 		// Act
-		var result = await _service.DeleteWorkEntryAsync(999, CancellationToken.None);
+		var result = await _service.DeleteWorkEntryAsync(999, TestContext.Current.CancellationToken);
 
 		// Assert
 		result.IsFailure.Should().BeTrue();
@@ -311,7 +311,7 @@ public class WorkEntryServiceTests
 			.ReturnsAsync(entries);
 
 		// Act
-		var result = await _service.GetWorkEntriesByDateAsync(date, CancellationToken.None);
+		var result = await _service.GetWorkEntriesByDateAsync(date, TestContext.Current.CancellationToken);
 
 		// Assert
 		result.Should().NotBeNull();
@@ -335,7 +335,7 @@ public class WorkEntryServiceTests
 			.ReturnsAsync(entries);
 
 		// Act
-		var result = await _service.GetWorkEntriesByDateRangeAsync(startDate, endDate, CancellationToken.None);
+		var result = await _service.GetWorkEntriesByDateRangeAsync(startDate, endDate, TestContext.Current.CancellationToken);
 
 		// Assert
 		result.Should().NotBeNull();

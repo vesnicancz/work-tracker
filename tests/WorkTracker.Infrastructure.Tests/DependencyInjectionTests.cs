@@ -85,7 +85,7 @@ public class DependencyInjectionTests : IAsyncDisposable
 
 		// Act
 		var dbContextFactory = _serviceProvider.GetRequiredService<IDbContextFactory<WorkTrackerDbContext>>();
-		await using var dbContext = await dbContextFactory.CreateDbContextAsync();
+		await using var dbContext = await dbContextFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
 
 		// Assert
 		dbContext.Should().NotBeNull();
@@ -169,8 +169,8 @@ public class DependencyInjectionTests : IAsyncDisposable
 
 		// Act
 		var dbContextFactory = _serviceProvider.GetRequiredService<IDbContextFactory<WorkTrackerDbContext>>();
-		await using var dbContext1 = await dbContextFactory.CreateDbContextAsync();
-		await using var dbContext2 = await dbContextFactory.CreateDbContextAsync();
+		await using var dbContext1 = await dbContextFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+		await using var dbContext2 = await dbContextFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
 
 		// Assert - Each call should create a new instance
 		dbContext1.Should().NotBeSameAs(dbContext2);
@@ -274,7 +274,7 @@ public class DependencyInjectionTests : IAsyncDisposable
 
 		// Act
 		var dbContextFactory = _serviceProvider.GetRequiredService<IDbContextFactory<WorkTrackerDbContext>>();
-		await using var dbContext = await dbContextFactory.CreateDbContextAsync();
+		await using var dbContext = await dbContextFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
 
 		// Assert
 		dbContext.Should().NotBeNull();
@@ -297,7 +297,7 @@ public class DependencyInjectionTests : IAsyncDisposable
 
 		// Act
 		var dbContextFactory = _serviceProvider.GetRequiredService<IDbContextFactory<WorkTrackerDbContext>>();
-		await using var dbContext = await dbContextFactory.CreateDbContextAsync();
+		await using var dbContext = await dbContextFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
 
 		// Assert
 		dbContext.Should().NotBeNull();
@@ -367,7 +367,7 @@ public class DependencyInjectionTests : IAsyncDisposable
 		_serviceProvider = _services.BuildServiceProvider();
 
 		// Act
-		var act = async () => await DependencyInjection.InitializeDatabaseAsync(_serviceProvider);
+		var act = async () => await DependencyInjection.InitializeDatabaseAsync(_serviceProvider, TestContext.Current.CancellationToken);
 
 		// Assert
 		await act.Should().NotThrowAsync();
@@ -381,12 +381,12 @@ public class DependencyInjectionTests : IAsyncDisposable
 		_serviceProvider = _services.BuildServiceProvider();
 
 		// Act
-		await DependencyInjection.InitializeDatabaseAsync(_serviceProvider);
+		await DependencyInjection.InitializeDatabaseAsync(_serviceProvider, TestContext.Current.CancellationToken);
 
 		// Assert
 		var dbContextFactory = _serviceProvider.GetRequiredService<IDbContextFactory<WorkTrackerDbContext>>();
-		await using var dbContext = await dbContextFactory.CreateDbContextAsync();
-		var canConnect = await dbContext.Database.CanConnectAsync();
+		await using var dbContext = await dbContextFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+		var canConnect = await dbContext.Database.CanConnectAsync(TestContext.Current.CancellationToken);
 		canConnect.Should().BeTrue();
 	}
 
@@ -410,7 +410,7 @@ public class DependencyInjectionTests : IAsyncDisposable
 		_serviceProvider = _services.BuildServiceProvider();
 
 		// Act
-		var act = async () => await DependencyInjection.InitializePluginsAsync(_serviceProvider, config);
+		var act = async () => await DependencyInjection.InitializePluginsAsync(_serviceProvider, config, cancellationToken: TestContext.Current.CancellationToken);
 
 		// Assert
 		await act.Should().NotThrowAsync();
@@ -434,7 +434,7 @@ public class DependencyInjectionTests : IAsyncDisposable
 		_serviceProvider = _services.BuildServiceProvider();
 
 		// Act
-		var act = async () => await DependencyInjection.InitializePluginsAsync(_serviceProvider, config);
+		var act = async () => await DependencyInjection.InitializePluginsAsync(_serviceProvider, config, cancellationToken: TestContext.Current.CancellationToken);
 
 		// Assert
 		await act.Should().NotThrowAsync();
@@ -450,13 +450,13 @@ public class DependencyInjectionTests : IAsyncDisposable
 		// Arrange
 		_services.AddInfrastructure(_configuration);
 		_serviceProvider = _services.BuildServiceProvider();
-		await DependencyInjection.InitializeDatabaseAsync(_serviceProvider);
+		await DependencyInjection.InitializeDatabaseAsync(_serviceProvider, TestContext.Current.CancellationToken);
 
 		var repository = _serviceProvider.GetRequiredService<IWorkEntryRepository>();
 
 		// Act - Multiple operations should each use a new DbContext
-		var entry1 = await repository.GetActiveWorkEntryAsync();
-		var entry2 = await repository.GetActiveWorkEntryAsync();
+		var entry1 = await repository.GetActiveWorkEntryAsync(TestContext.Current.CancellationToken);
+		var entry2 = await repository.GetActiveWorkEntryAsync(TestContext.Current.CancellationToken);
 
 		// Assert - Should not throw (would throw if DbContext was disposed and reused)
 		entry1.Should().BeNull(); // No active entry in empty database
@@ -469,17 +469,17 @@ public class DependencyInjectionTests : IAsyncDisposable
 		// Arrange
 		_services.AddInfrastructure(_configuration);
 		_serviceProvider = _services.BuildServiceProvider();
-		await DependencyInjection.InitializeDatabaseAsync(_serviceProvider);
+		await DependencyInjection.InitializeDatabaseAsync(_serviceProvider, TestContext.Current.CancellationToken);
 
 		// Act - Each service instance is transient
 		var service1 = _serviceProvider.GetRequiredService<IWorkEntryService>();
-		var result1 = await service1.StartWorkAsync("TEST-1", description: "Test work");
+		var result1 = await service1.StartWorkAsync("TEST-1", description: "Test work", cancellationToken: TestContext.Current.CancellationToken);
 
 		var service2 = _serviceProvider.GetRequiredService<IWorkEntryService>();
-		var result2 = await service2.StopWorkAsync();
+		var result2 = await service2.StopWorkAsync(cancellationToken: TestContext.Current.CancellationToken);
 
 		var service3 = _serviceProvider.GetRequiredService<IWorkEntryService>();
-		var result3 = await service3.GetWorkEntriesByDateAsync(DateTime.Today);
+		var result3 = await service3.GetWorkEntriesByDateAsync(DateTime.Today, TestContext.Current.CancellationToken);
 
 		// Assert - All operations should succeed despite using different service instances
 		result1.IsSuccess.Should().BeTrue();
