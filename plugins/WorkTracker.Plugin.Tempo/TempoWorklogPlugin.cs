@@ -247,7 +247,7 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 			// Retry on transient failures
 			for (var attempt = 0; attempt <= MaxRetries; attempt++)
 			{
-				var response = await _tempoHttpClient!.PostAsJsonAsync("worklogs", tempoWorklog, cancellationToken);
+				using var response = await _tempoHttpClient!.PostAsJsonAsync("worklogs", tempoWorklog, cancellationToken);
 
 				if (response.IsSuccessStatusCode)
 				{

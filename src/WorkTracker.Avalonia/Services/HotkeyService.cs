@@ -78,8 +78,9 @@ public sealed class HotkeyService : IHotkeyService
 
 	private void RegisterWindows()
 	{
-		var handle = GetMainWindowHandle();
-		if (handle == IntPtr.Zero)
+		var mainWindow = GetMainWindow();
+		var handle = mainWindow?.TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
+		if (mainWindow == null || handle == IntPtr.Zero)
 		{
 			_logger.LogWarning("Cannot register hotkey: main window handle not available");
 			return;
@@ -95,7 +96,7 @@ public sealed class HotkeyService : IHotkeyService
 		}
 
 		// Hook into Avalonia's Win32 message loop
-		Win32Properties.AddWndProcHookCallback(GetMainWindow()!, WndProcHook);
+		Win32Properties.AddWndProcHookCallback(mainWindow, WndProcHook);
 
 		_isRegistered = true;
 		_logger.LogInformation("Registered global hotkey Ctrl+Shift+W");

@@ -70,8 +70,7 @@ public static class DependencyInjection
 	}
 
 	/// <summary>
-	/// Initializes all loaded plugins with their configurations from user settings or appsettings.json.
-	/// Note: Plugins must be loaded first by the application layer before calling this method.
+	/// Loads embedded and external plugins, then initializes them with configurations from user settings or appsettings.json.
 	/// </summary>
 	public static async Task InitializePluginsAsync(
 		IServiceProvider serviceProvider,

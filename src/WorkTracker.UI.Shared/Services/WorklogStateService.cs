@@ -374,14 +374,14 @@ public sealed class WorklogStateService : IWorklogStateService
 		try
 		{
 			await RefreshFromDatabaseAsync();
+
+			// Raise event only after successful refresh so listeners see consistent data
+			OnWorkEntriesModified();
 		}
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Failed to refresh state after work entries modification");
 		}
-
-		// Raise event after state is refreshed so listeners see consistent data
-		OnWorkEntriesModified();
 	}
 
 	#endregion

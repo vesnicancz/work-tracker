@@ -43,7 +43,12 @@ public partial class MainWindow : Window
 	{
 		base.OnOpened(e);
 		PropertyChanged += OnWindowPropertyChanged;
-		(DataContext as MainViewModel)?.ResumeTimer();
+
+		// Only resume timer if window is actually visible (skip when starting minimized)
+		if (IsVisible)
+		{
+			(DataContext as MainViewModel)?.ResumeTimer();
+		}
 	}
 
 	private void OnWindowPropertyChanged(object? sender, global::Avalonia.AvaloniaPropertyChangedEventArgs e)

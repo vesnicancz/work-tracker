@@ -24,7 +24,8 @@
       "Bash(if exist README.md move README.md readme.md)",
       "Bash(if [ -f \"E:\\Claude-shared\\WorkTracker\\src\\WorkTracker.MAUI\\Resources\\Images\\README.md\" ])",
       "Bash(then mv \"E:\\Claude-shared\\WorkTracker\\src\\WorkTracker.MAUI\\Resources\\Images\\README.md\" \"E:\\Claude-shared\\WorkTracker\\src\\WorkTracker.MAUI\\Resources\\Images\\readme.md\")",
-      "Bash(fi)"
+      "Bash(fi)",
+      "Bash(gh api:*)"
     ],
     "deny": [],
     "ask": []
