@@ -41,13 +41,13 @@ public partial class App : global::Avalonia.Application
 			{
 				services.AddInfrastructure(context.Configuration);
 
-				services.AddSingleton<LocalizationService>();
-				services.AddSingleton<ILocalizationService>(sp =>
-				{
-					var instance = sp.GetRequiredService<LocalizationService>();
-					LocalizationService.SetInstance(instance);
-					return instance;
-				});
+				// Localization — single instance shared by DI and XAML markup extensions.
+				// Must be created before any XAML is loaded.
+				var localization = new LocalizationService();
+				LocalizationService.SetInstance(localization);
+				services.AddSingleton(localization);
+				services.AddSingleton<ILocalizationService>(localization);
+
 				services.AddSingleton<ISettingsService, SettingsService>();
 				services.AddSingleton<IWorklogStateService, WorklogStateService>();
 

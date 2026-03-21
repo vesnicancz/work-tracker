@@ -56,14 +56,14 @@ public partial class App : System.Windows.Application
 				services.AddInfrastructure(context.Configuration);
 				// Note: IWorkEntryService and IWorklogSubmissionService are registered in Infrastructure layer
 
+				// Localization — single instance shared by DI and XAML markup extensions.
+				// Must be created before any XAML is loaded.
+				var localization = new LocalizationService();
+				LocalizationService.SetInstance(localization);
+				services.AddSingleton(localization);
+				services.AddSingleton<ILocalizationService>(localization);
+
 				// WPF-specific services
-				services.AddSingleton<LocalizationService>();
-				services.AddSingleton<ILocalizationService>(sp =>
-				{
-					var instance = sp.GetRequiredService<LocalizationService>();
-					LocalizationService.SetInstance(instance);
-					return instance;
-				});
 				services.AddSingleton<IDialogService, DialogService>(); // Stateless dialog service (factory for ViewModels)
 
 				// Shared MessageQueue for notifications

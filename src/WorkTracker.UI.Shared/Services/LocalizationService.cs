@@ -6,37 +6,6 @@ using WorkTracker.UI.Shared.Resources.Localization;
 namespace WorkTracker.UI.Shared.Services;
 
 /// <summary>
-/// Interface for localization service
-/// </summary>
-public interface ILocalizationService : INotifyPropertyChanged
-{
-	/// <summary>
-	/// Gets or sets the current culture
-	/// </summary>
-	CultureInfo CurrentCulture { get; set; }
-
-	/// <summary>
-	/// Gets the list of available cultures
-	/// </summary>
-	IEnumerable<CultureInfo> AvailableCultures { get; }
-
-	/// <summary>
-	/// Gets a localized string by key
-	/// </summary>
-	string GetString(string key);
-
-	/// <summary>
-	/// Gets a localized formatted string
-	/// </summary>
-	string GetFormattedString(string key, params object[] args);
-
-	/// <summary>
-	/// Indexer for convenient access to localized strings
-	/// </summary>
-	string this[string key] { get; }
-}
-
-/// <summary>
 /// Service for managing application localization and culture changes
 /// </summary>
 public sealed class LocalizationService : ILocalizationService
@@ -46,9 +15,9 @@ public sealed class LocalizationService : ILocalizationService
 
 	/// <summary>
 	/// Static instance for use in XAML markup extensions (which cannot use DI).
-	/// Set automatically during DI registration.
+	/// Must be set via <see cref="SetInstance"/> before any XAML is loaded.
 	/// </summary>
-	public static LocalizationService Instance { get; private set; } = new();
+	public static LocalizationService Instance { get; private set; } = null!;
 
 	public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -59,7 +28,8 @@ public sealed class LocalizationService : ILocalizationService
 	}
 
 	/// <summary>
-	/// Registers this instance as the static Instance (called from DI setup).
+	/// Sets the singleton instance used by XAML markup extensions.
+	/// Must be called before any window/XAML is created.
 	/// </summary>
 	public static void SetInstance(LocalizationService instance) => Instance = instance;
 
