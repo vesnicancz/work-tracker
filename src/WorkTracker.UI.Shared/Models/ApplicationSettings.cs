@@ -38,5 +38,5 @@ public class ApplicationSettings
 	/// <summary>
 	/// Application theme ("Dark" or "Light")
 	/// </summary>
-	public string Theme { get; set; } = "Dark";
+	public string Theme { get; set; } = "Modern Blue";
 }
