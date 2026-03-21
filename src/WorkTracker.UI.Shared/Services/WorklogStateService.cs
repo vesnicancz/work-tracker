@@ -1,4 +1,4 @@
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using WorkTracker.Application.Common;
 using WorkTracker.Application.Services;
@@ -365,27 +365,23 @@ public sealed class WorklogStateService : IWorklogStateService
 		}
 	}
 
-	public void NotifyWorkEntriesModified()
+	public async Task NotifyWorkEntriesModifiedAsync()
 	{
 		ThrowIfNotInitialized();
 
 		_logger.LogInformation("Work entries modified notification received (external)");
 
-		// Trigger the event - listeners should refresh their data
-		OnWorkEntriesModified();
-
-		// Also refresh our own state asynchronously
-		_ = Task.Run(async () =>
+		try
 		{
-			try
-			{
-				await RefreshFromDatabaseAsync();
-			}
-			catch (Exception ex)
-			{
-				_logger.LogError(ex, "Failed to refresh state after work entries modification");
-			}
-		});
+			await RefreshFromDatabaseAsync();
+
+			// Raise event only after successful refresh so listeners see consistent data
+			OnWorkEntriesModified();
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Failed to refresh state after work entries modification");
+		}
 	}
 
 	#endregion

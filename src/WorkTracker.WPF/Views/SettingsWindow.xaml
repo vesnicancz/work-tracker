@@ -488,7 +488,7 @@
 									<RowDefinition Height="Auto" />
 								</Grid.RowDefinitions>
 
-								<TextBlock Grid.Row="0" Grid.Column="0" Text="Ctrl + Alt + W"
+								<TextBlock Grid.Row="0" Grid.Column="0" Text="Ctrl + Shift + W"
 										  FontSize="12" FontFamily="Consolas"
 										  Foreground="{DynamicResource MaterialDesign.Brush.Foreground.Light}"
 										  Margin="0,0,0,6" />

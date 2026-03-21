@@ -1,4 +1,4 @@
-namespace WorkTracker.UI.Shared.Models;
+﻿namespace WorkTracker.UI.Shared.Models;
 
 /// <summary>
 /// Application settings model

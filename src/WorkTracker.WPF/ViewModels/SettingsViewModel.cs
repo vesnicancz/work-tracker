@@ -4,7 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using WorkTracker.Application.Plugins;
 using WorkTracker.Plugin.Abstractions;
-using WorkTracker.WPF.Commands;
+using CommunityToolkit.Mvvm.Input;
 using WorkTracker.UI.Shared.Models;
 using WorkTracker.UI.Shared.Services;
 
@@ -16,7 +16,7 @@ namespace WorkTracker.WPF.ViewModels;
 public class SettingsViewModel : ViewModelBase
 {
 	private readonly ISettingsService _settingsService;
-	private readonly PluginManager _pluginManager;
+	private readonly IPluginManager _pluginManager;
 	private readonly IConfiguration _configuration;
 	private readonly ILogger<SettingsViewModel> _logger;
 	private readonly IAutostartManager _autostartManager;
@@ -37,7 +37,7 @@ public class SettingsViewModel : ViewModelBase
 
 	public SettingsViewModel(
 		ISettingsService settingsService,
-		PluginManager pluginManager,
+		IPluginManager pluginManager,
 		IConfiguration configuration,
 		ILogger<SettingsViewModel> logger,
 		IAutostartManager autostartManager,
@@ -144,7 +144,7 @@ public class SettingsViewModel : ViewModelBase
 			if (SetProperty(ref _selectedPlugin, value))
 			{
 				TestConnectionResult = null;
-				((AsyncRelayCommand)TestConnectionCommand).RaiseCanExecuteChanged();
+				((IAsyncRelayCommand)TestConnectionCommand).NotifyCanExecuteChanged();
 			}
 		}
 	}
@@ -162,7 +162,7 @@ public class SettingsViewModel : ViewModelBase
 		{
 			if (SetProperty(ref _isTestingConnection, value))
 			{
-				((AsyncRelayCommand)TestConnectionCommand).RaiseCanExecuteChanged();
+				((IAsyncRelayCommand)TestConnectionCommand).NotifyCanExecuteChanged();
 			}
 		}
 	}
@@ -177,9 +177,9 @@ public class SettingsViewModel : ViewModelBase
 		{
 			if (SetProperty(ref _selectedFavorite, value))
 			{
-				((RelayCommand)RemoveFavoriteCommand).RaiseCanExecuteChanged();
-				((RelayCommand)MoveFavoriteUpCommand).RaiseCanExecuteChanged();
-				((RelayCommand)MoveFavoriteDownCommand).RaiseCanExecuteChanged();
+				((IRelayCommand)RemoveFavoriteCommand).NotifyCanExecuteChanged();
+				((IRelayCommand)MoveFavoriteUpCommand).NotifyCanExecuteChanged();
+				((IRelayCommand)MoveFavoriteDownCommand).NotifyCanExecuteChanged();
 
 				// Load selected favorite into editing fields
 				if (value != null && !IsEditingFavorite)
@@ -199,7 +199,7 @@ public class SettingsViewModel : ViewModelBase
 		{
 			if (SetProperty(ref _editingFavoriteName, value))
 			{
-				((RelayCommand)SaveFavoriteCommand).RaiseCanExecuteChanged();
+				((IRelayCommand)SaveFavoriteCommand).NotifyCanExecuteChanged();
 			}
 		}
 	}
@@ -264,7 +264,7 @@ public class SettingsViewModel : ViewModelBase
 				settings.EnabledPlugins[pluginVm.Plugin.Metadata.Id] = pluginVm.IsEnabled;
 			}
 
-			_settingsService.SaveSettings(settings);
+			await _settingsService.SaveSettingsAsync(settings);
 
 			// Update enabled plugins in PluginManager
 			var enabledPluginIds = Plugins.Where(p => p.IsEnabled).Select(p => p.Plugin.Metadata.Id);
@@ -514,8 +514,8 @@ public class SettingsViewModel : ViewModelBase
 		if (index > 0)
 		{
 			FavoriteWorkItems.Move(index, index - 1);
-			((RelayCommand)MoveFavoriteUpCommand).RaiseCanExecuteChanged();
-			((RelayCommand)MoveFavoriteDownCommand).RaiseCanExecuteChanged();
+			((IRelayCommand)MoveFavoriteUpCommand).NotifyCanExecuteChanged();
+			((IRelayCommand)MoveFavoriteDownCommand).NotifyCanExecuteChanged();
 		}
 	}
 
@@ -535,8 +535,8 @@ public class SettingsViewModel : ViewModelBase
 		if (index < FavoriteWorkItems.Count - 1)
 		{
 			FavoriteWorkItems.Move(index, index + 1);
-			((RelayCommand)MoveFavoriteUpCommand).RaiseCanExecuteChanged();
-			((RelayCommand)MoveFavoriteDownCommand).RaiseCanExecuteChanged();
+			((IRelayCommand)MoveFavoriteUpCommand).NotifyCanExecuteChanged();
+			((IRelayCommand)MoveFavoriteDownCommand).NotifyCanExecuteChanged();
 		}
 	}
 
@@ -616,7 +616,9 @@ public class ConfigurationFieldViewModel : ViewModelBase
 		set
 		{
 			if (_pluginViewModel.Configuration.TryGetValue(Key, out var current) && current == value)
+			{
 				return;
+			}
 
 			_pluginViewModel.Configuration[Key] = value;
 			OnPropertyChanged();

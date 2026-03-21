@@ -1,5 +1,3 @@
-using WorkTracker.Domain.DTOs;
-
 namespace WorkTracker.Application.DTOs;
 
 public class WorklogSubmissionDto

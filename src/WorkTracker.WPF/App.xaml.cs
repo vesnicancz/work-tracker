@@ -9,7 +9,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using WorkTracker.Application.Plugins;
 using WorkTracker.Infrastructure;
-using WorkTracker.Plugin.Tempo;
+
 using WorkTracker.UI.Shared.Services;
 using WorkTracker.WPF.Services;
 using WorkTracker.WPF.ViewModels;
@@ -123,31 +123,16 @@ public partial class App : System.Windows.Application
 
 			await _host.StartAsync();
 
-			// Initialize database
-			await DependencyInjection.InitializeDatabaseAsync(_host.Services);
-
-			// Load embedded plugins (presentation layer responsibility)
-			var pluginManager = _host.Services.GetRequiredService<PluginManager>();
-			pluginManager.LoadEmbeddedPlugin<TempoWorklogPlugin>();
-
-			// Load settings to get enabled plugins and configurations
-			var settingsService = _host.Services.GetRequiredService<ISettingsService>();
-			var enabledPlugins = settingsService.Settings.EnabledPlugins;
-			var pluginConfigurations = settingsService.Settings.PluginConfigurations;
-
-			// Initialize plugins (loads external plugins + initializes all with configuration)
-			var configuration = _host.Services.GetRequiredService<IConfiguration>();
-			await DependencyInjection.InitializePluginsAsync(_host.Services, configuration, enabledPlugins, pluginConfigurations);
-
-			// Initialize application state service
-			var worklogStateService = _host.Services.GetRequiredService<IWorklogStateService>();
-			await worklogStateService.InitializeAsync();
+			await AppBootstrapper.InitializeAsync(
+				_host.Services,
+				DependencyInjection.InitializeDatabaseAsync,
+				DependencyInjection.InitializePluginsAsync);
 
 			// Get singleton MainWindow (no scope needed with Factory pattern)
 			_mainWindow = _host.Services.GetRequiredService<MainWindow>();
 			_mainWindow.Show();
 
-			// Initialize global hotkey (Ctrl+Alt+W) for new work entry dialog
+			// Initialize global hotkey (Ctrl+Shift+W) for new work entry dialog
 			_hotkeyService = _host.Services.GetRequiredService<IHotkeyService>();
 			_hotkeyService.HotkeyPressed += OnHotkeyPressed;
 			_hotkeyService.Register();
@@ -167,7 +152,7 @@ public partial class App : System.Windows.Application
 	}
 
 	/// <summary>
-	/// Handle global hotkey press (Ctrl+Alt+W) to open new work entry dialog
+	/// Handle global hotkey press (Ctrl+Shift+W) to open new work entry dialog
 	/// </summary>
 	private async void OnHotkeyPressed(object? sender, EventArgs e)
 	{
@@ -207,8 +192,12 @@ public partial class App : System.Windows.Application
 		// Unregister hotkey
 		_hotkeyService?.Unregister();
 
+		// Dispose MainViewModel (stops timer, unsubscribes events)
+		var mainViewModel = _host.Services.GetRequiredService<MainViewModel>();
+		mainViewModel.Dispose();
+
 		// Dispose plugin manager asynchronously to avoid deadlocks
-		var pluginManager = _host.Services.GetRequiredService<PluginManager>();
+		var pluginManager = _host.Services.GetRequiredService<IPluginManager>();
 		await pluginManager.DisposeAsync();
 
 		using (_host)

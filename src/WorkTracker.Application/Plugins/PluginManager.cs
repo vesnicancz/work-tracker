@@ -1,4 +1,4 @@
-using System.Reflection;
+﻿using System.Reflection;
 using System.Runtime.Loader;
 using Microsoft.Extensions.Logging;
 using WorkTracker.Plugin.Abstractions;
@@ -8,7 +8,7 @@ namespace WorkTracker.Application.Plugins;
 /// <summary>
 /// Manages plugin discovery, loading, and lifecycle
 /// </summary>
-public sealed class PluginManager : IAsyncDisposable
+public sealed class PluginManager : IPluginManager
 {
 	private readonly ILogger<PluginManager> _logger;
 

@@ -1,4 +1,4 @@
-namespace WorkTracker.UI.Shared.Models;
+﻿namespace WorkTracker.UI.Shared.Models;
 
 /// <summary>
 /// Represents a favorite work item that can be quickly started from the tray menu

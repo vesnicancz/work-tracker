@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using WorkTracker.Application.Interfaces;
+using WorkTracker.Domain.Interfaces;
 using WorkTracker.Application.Plugins;
 using WorkTracker.Application.Services;
 using WorkTracker.Infrastructure.Data;
@@ -321,6 +321,7 @@ public class DependencyInjectionTests : IAsyncDisposable
 		_serviceProvider.GetRequiredService<IDateRangeService>().Should().NotBeNull();
 		_serviceProvider.GetRequiredService<IWorklogValidator>().Should().NotBeNull();
 		_serviceProvider.GetRequiredService<PluginManager>().Should().NotBeNull();
+		_serviceProvider.GetRequiredService<IPluginManager>().Should().NotBeNull();
 		_serviceProvider.GetRequiredService<IWorklogSubmissionService>().Should().NotBeNull();
 		_serviceProvider.GetRequiredService<IWorkEntryService>().Should().NotBeNull();
 	}

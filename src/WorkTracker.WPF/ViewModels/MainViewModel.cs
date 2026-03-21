@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 using WorkTracker.Application.Common;
 using WorkTracker.Application.Services;
 using WorkTracker.Domain.Entities;
-using WorkTracker.WPF.Commands;
+using CommunityToolkit.Mvvm.Input;
 using WorkTracker.UI.Shared.Services;
 
 namespace WorkTracker.WPF.ViewModels;
@@ -15,7 +15,7 @@ namespace WorkTracker.WPF.ViewModels;
 /// Main ViewModel for the WorkTracker application
 /// Handles work tracking, timer updates, and work entry management
 /// </summary>
-public class MainViewModel : ViewModelBase
+public class MainViewModel : ViewModelBase, IDisposable
 {
 	private readonly IServiceScopeFactory _scopeFactory;
 	private readonly IDialogService _dialogService;
@@ -24,6 +24,7 @@ public class MainViewModel : ViewModelBase
 	private readonly TimeProvider _timeProvider;
 	private readonly ILogger<MainViewModel> _logger;
 	private readonly DispatcherTimer _timer;
+	private bool _disposed;
 
 	private string _elapsedTime = "00:00:00";
 
@@ -323,7 +324,10 @@ public class MainViewModel : ViewModelBase
 
 	private async Task EditWorkEntryAsync(WorkEntry? workEntry)
 	{
-		if (workEntry == null) return;
+		if (workEntry == null)
+		{
+			return;
+		}
 
 		try
 		{
@@ -356,7 +360,10 @@ public class MainViewModel : ViewModelBase
 
 	private async Task DeleteWorkEntryAsync(WorkEntry? workEntry)
 	{
-		if (workEntry == null) return;
+		if (workEntry == null)
+		{
+			return;
+		}
 
 		try
 		{
@@ -400,7 +407,10 @@ public class MainViewModel : ViewModelBase
 
 	private async Task StartWorkFromHistoryAsync(WorkEntry? workEntry)
 	{
-		if (workEntry == null) return;
+		if (workEntry == null)
+		{
+			return;
+		}
 
 		try
 		{
@@ -569,11 +579,29 @@ public class MainViewModel : ViewModelBase
 		OnPropertyChanged(nameof(IsTracking));
 
 		// Update commands
-		((AsyncRelayCommand)StartWorkCommand).RaiseCanExecuteChanged();
-		((AsyncRelayCommand)StopWorkCommand).RaiseCanExecuteChanged();
+		((IAsyncRelayCommand)StartWorkCommand).NotifyCanExecuteChanged();
+		((IAsyncRelayCommand)StopWorkCommand).NotifyCanExecuteChanged();
 
 		_logger.LogDebug("IsTracking changed in ViewModel: {IsTracking}", isTracking);
 	}
 
 	#endregion Event Handlers
+
+	#region IDisposable
+
+	public void Dispose()
+	{
+		if (_disposed)
+		{
+			return;
+		}
+
+		_disposed = true;
+		_timer.Stop();
+		_worklogStateService.ActiveWorkChanged -= OnActiveWorkChanged;
+		_worklogStateService.IsTrackingChanged -= OnIsTrackingChanged;
+		_worklogStateService.WorkEntriesModified -= OnWorkEntriesModified;
+	}
+
+	#endregion
 }

@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -12,6 +12,10 @@ namespace WorkTracker.Plugin.Tempo;
 /// </summary>
 public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 {
+	private static readonly TimeSpan HttpTimeout = TimeSpan.FromSeconds(30);
+	private static readonly TimeSpan CacheTtl = TimeSpan.FromHours(1);
+	private const int MaxRetries = 2;
+
 	private HttpClient? _tempoHttpClient;
 	private HttpClient? _jiraHttpClient;
 	private string? _tempoBaseUrl;
@@ -22,7 +26,7 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 	private string? _jiraAccountId;
 	private bool _disposed;
 
-	private readonly ConcurrentDictionary<string, int> _issueIdCache = new();
+	private readonly ConcurrentDictionary<string, (int Id, DateTime CachedAt)> _issueIdCache = new();
 
 	public override PluginMetadata Metadata => new()
 	{
@@ -119,7 +123,8 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 		// Initialize Tempo HTTP client
 		_tempoHttpClient = new HttpClient
 		{
-			BaseAddress = new Uri(_tempoBaseUrl)
+			BaseAddress = new Uri(_tempoBaseUrl),
+			Timeout = HttpTimeout
 		};
 		_tempoHttpClient.DefaultRequestHeaders.Authorization =
 			new AuthenticationHeaderValue("Bearer", _tempoApiToken);
@@ -129,7 +134,8 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 		// Initialize Jira HTTP client with Basic authentication
 		_jiraHttpClient = new HttpClient
 		{
-			BaseAddress = new Uri(_jiraBaseUrl)
+			BaseAddress = new Uri(_jiraBaseUrl),
+			Timeout = HttpTimeout
 		};
 		var authString = $"{_jiraEmail}:{_jiraApiToken}";
 		var base64Auth = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(authString));
@@ -238,26 +244,41 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 				worklog.TicketId, issueId.Value, timeSpentSeconds
 			);
 
-			var response = await _tempoHttpClient!.PostAsJsonAsync("worklogs", tempoWorklog, cancellationToken);
-
-			if (response.IsSuccessStatusCode)
+			// Retry on transient failures
+			string? lastError = null;
+			for (var attempt = 0; attempt <= MaxRetries; attempt++)
 			{
-				Logger?.LogInformation(
-					"Successfully uploaded worklog for {Ticket} ({Duration} minutes)",
-					worklog.TicketId,
-					worklog.DurationMinutes
-				);
-				return PluginResult<bool>.Success(true);
+				using var response = await _tempoHttpClient!.PostAsJsonAsync("worklogs", tempoWorklog, cancellationToken);
+
+				if (response.IsSuccessStatusCode)
+				{
+					Logger?.LogInformation(
+						"Successfully uploaded worklog for {Ticket} ({Duration} minutes)",
+						worklog.TicketId,
+						worklog.DurationMinutes
+					);
+					return PluginResult<bool>.Success(true);
+				}
+
+				var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+				var statusCode = (int)response.StatusCode;
+				lastError = $"Upload failed: {response.StatusCode} - {errorContent}";
+
+				// Only retry on server errors (5xx) or rate limiting (429)
+				if (attempt < MaxRetries && (statusCode >= 500 || statusCode == 429))
+				{
+					var delay = TimeSpan.FromSeconds(Math.Pow(2, attempt + 1));
+					Logger?.LogWarning("Tempo API returned {StatusCode}, retrying in {Delay}s (attempt {Attempt}/{MaxRetries})",
+						response.StatusCode, delay.TotalSeconds, attempt + 1, MaxRetries);
+					await Task.Delay(delay, cancellationToken);
+					continue;
+				}
+
+				break;
 			}
 
-			var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
-			Logger?.LogWarning(
-				"Failed to upload worklog: {StatusCode} - {Content}",
-				response.StatusCode,
-				errorContent
-			);
-
-			return PluginResult<bool>.Failure($"Upload failed: {response.StatusCode} - {errorContent}");
+			Logger?.LogWarning("Failed to upload worklog: {Error}", lastError);
+			return PluginResult<bool>.Failure(lastError ?? "Upload failed");
 		}
 		catch (Exception ex)
 		{
@@ -293,24 +314,42 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 
 			foreach (var item in results.EnumerateArray())
 			{
-				var ticketId = item.GetProperty("issue").GetProperty("key").GetString();
-				var startDateStr = item.GetProperty("startDate").GetString();
-				var startTimeStr = item.GetProperty("startTime").GetString();
-				var timeSpentSeconds = item.GetProperty("timeSpentSeconds").GetInt32();
-				var description = item.TryGetProperty("description", out var descProp)
-					? descProp.GetString()
-					: null;
-
-				if (DateTime.TryParse($"{startDateStr} {startTimeStr}", out var startTime))
+				try
 				{
-					worklogs.Add(new PluginWorklogEntry
+					if (!item.TryGetProperty("issue", out var issueProp) ||
+						!issueProp.TryGetProperty("key", out var keyProp))
 					{
-						TicketId = ticketId,
-						Description = description,
-						StartTime = startTime,
-						EndTime = startTime.AddSeconds(timeSpentSeconds),
-						DurationMinutes = timeSpentSeconds / 60
-					});
+						continue;
+					}
+
+					var ticketId = keyProp.GetString();
+					if (string.IsNullOrEmpty(ticketId))
+					{
+						continue;
+					}
+
+					var startDateStr = item.TryGetProperty("startDate", out var sdProp) ? sdProp.GetString() : null;
+					var startTimeStr = item.TryGetProperty("startTime", out var stProp) ? stProp.GetString() : null;
+					var timeSpentSeconds = item.TryGetProperty("timeSpentSeconds", out var tsProp) ? tsProp.GetInt32() : 0;
+					var description = item.TryGetProperty("description", out var descProp)
+						? descProp.GetString()
+						: null;
+
+					if (DateTime.TryParse($"{startDateStr} {startTimeStr}", out var startTime))
+					{
+						worklogs.Add(new PluginWorklogEntry
+						{
+							TicketId = ticketId,
+							Description = description,
+							StartTime = startTime,
+							EndTime = startTime.AddSeconds(timeSpentSeconds),
+							DurationMinutes = timeSpentSeconds / 60
+						});
+					}
+				}
+				catch (Exception ex)
+				{
+					Logger?.LogWarning(ex, "Failed to parse worklog entry from Tempo API response");
 				}
 			}
 
@@ -352,11 +391,12 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 	/// </summary>
 	private async Task<int?> GetIssueIdFromKeyAsync(string issueKey, CancellationToken cancellationToken)
 	{
-		// Check cache first
-		if (_issueIdCache.TryGetValue(issueKey, out var cachedId))
+		// Check cache first (with TTL)
+		if (_issueIdCache.TryGetValue(issueKey, out var cached) &&
+			DateTime.UtcNow - cached.CachedAt < CacheTtl)
 		{
-			Logger?.LogDebug("Issue ID for {IssueKey} found in cache: {IssueId}", issueKey, cachedId);
-			return cachedId;
+			Logger?.LogDebug("Issue ID for {IssueKey} found in cache: {IssueId}", issueKey, cached.Id);
+			return cached.Id;
 		}
 
 		try
@@ -382,8 +422,8 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 				var idString = idElement.GetString();
 				if (int.TryParse(idString, out var id))
 				{
-					// Cache the result
-					_issueIdCache.TryAdd(issueKey, id);
+					// Cache the result with timestamp
+					_issueIdCache[issueKey] = (id, DateTime.UtcNow);
 					Logger?.LogDebug("Issue {IssueKey} has ID: {IssueId} (cached)", issueKey, id);
 					return id;
 				}

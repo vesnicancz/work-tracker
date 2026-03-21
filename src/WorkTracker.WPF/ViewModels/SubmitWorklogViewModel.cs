@@ -2,7 +2,7 @@
 using System.Windows.Input;
 using Microsoft.Extensions.Logging;
 using WorkTracker.Application.Services;
-using WorkTracker.WPF.Commands;
+using CommunityToolkit.Mvvm.Input;
 using WorkTracker.UI.Shared.Services;
 
 namespace WorkTracker.WPF.ViewModels;
@@ -83,7 +83,7 @@ public class SubmitWorklogViewModel : ViewModelBase
 		{
 			if (SetProperty(ref _isSending, value))
 			{
-				((AsyncRelayCommand)SendCommand).RaiseCanExecuteChanged();
+				((IAsyncRelayCommand)SendCommand).NotifyCanExecuteChanged();
 			}
 		}
 	}
@@ -119,7 +119,7 @@ public class SubmitWorklogViewModel : ViewModelBase
 		{
 			if (SetProperty(ref _selectedProvider, value))
 			{
-				((AsyncRelayCommand)SendCommand).RaiseCanExecuteChanged();
+				((IAsyncRelayCommand)SendCommand).NotifyCanExecuteChanged();
 			}
 		}
 	}
@@ -269,7 +269,7 @@ public class SubmitWorklogViewModel : ViewModelBase
 			// Convert edited preview items to DTOs
 			var worklogs = PreviewItems
 				.Where(i => !i.IsDateHeader)
-				.Select(i => new Domain.DTOs.WorklogDto
+				.Select(i => new Application.DTOs.WorklogDto
 				{
 					TicketId = i.TicketId,
 					Description = i.Description,

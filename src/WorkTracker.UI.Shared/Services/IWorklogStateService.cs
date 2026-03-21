@@ -1,4 +1,4 @@
-using WorkTracker.Application.Common;
+﻿using WorkTracker.Application.Common;
 using WorkTracker.Domain.Entities;
 
 namespace WorkTracker.UI.Shared.Services;
@@ -91,6 +91,7 @@ public interface IWorklogStateService
 
 	/// <summary>
 	/// Notifies that work entries have been modified by external operations.
+	/// Refreshes internal state from the database before raising the event.
 	/// </summary>
-	void NotifyWorkEntriesModified();
+	Task NotifyWorkEntriesModifiedAsync();
 }

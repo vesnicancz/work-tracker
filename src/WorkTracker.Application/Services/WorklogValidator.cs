@@ -1,61 +1,57 @@
-﻿using WorkTracker.Application.Common;
-using WorkTracker.Domain.DTOs;
+﻿using WorkTracker.Application.DTOs;
 using WorkTracker.Domain.Entities;
 
 namespace WorkTracker.Application.Services;
 
 public sealed class WorklogValidator : IWorklogValidator
 {
-	public Result ValidateForSubmission(WorkEntry entry)
-	{
-		if (entry == null)
-		{
-			return Result.Failure("Work entry cannot be null");
-		}
+	public const double MinDurationSeconds = 1;
+	public const double MaxDurationHours = 24;
+	public const int MaxDurationMinutes = (int)(MaxDurationHours * 60);
 
+	public ValidationResult ValidateForSubmission(WorkEntry entry)
+	{
 		if (string.IsNullOrWhiteSpace(entry.TicketId))
 		{
-			return Result.Failure("Ticket ID is required");
+			return ValidationResult.Failure("Ticket ID is required");
 		}
 
 		if (!entry.EndTime.HasValue)
 		{
-			return Result.Failure($"Work entry for {entry.TicketId} is still active and cannot be submitted");
+			return ValidationResult.Failure($"Work entry for {entry.TicketId} is still active and cannot be submitted");
 		}
 
 		if (entry.StartTime >= entry.EndTime.Value)
 		{
-			return Result.Failure($"Start time must be before end time for {entry.TicketId}");
+			return ValidationResult.Failure($"Start time must be before end time for {entry.TicketId}");
 		}
 
 		var duration = entry.Duration;
 		if (!duration.HasValue || duration.Value.TotalSeconds <= 0)
 		{
-			return Result.Failure($"Invalid duration for {entry.TicketId}");
+			return ValidationResult.Failure($"Invalid duration for {entry.TicketId}");
 		}
 
-		// Tempo has a minimum worklog duration (typically 1 second)
-		if (duration.Value.TotalSeconds < 1)
+		if (duration.Value.TotalSeconds < MinDurationSeconds)
 		{
-			return Result.Failure($"Duration must be at least 1 second for {entry.TicketId}");
+			return ValidationResult.Failure($"Duration must be at least {MinDurationSeconds} seconds for {entry.TicketId}");
 		}
 
-		// Check for reasonable maximum duration (e.g., 24 hours)
-		if (duration.Value.TotalHours > 24)
+		if (duration.Value.TotalHours > MaxDurationHours)
 		{
-			return Result.Failure($"Duration cannot exceed 24 hours for {entry.TicketId}");
+			return ValidationResult.Failure($"Duration cannot exceed {MaxDurationHours} hours for {entry.TicketId}");
 		}
 
-		return Result.Success();
+		return ValidationResult.Success();
 	}
 
-	public Result ValidateMultiple(IEnumerable<WorkEntry> entries)
+	public ValidationResult ValidateMultiple(IEnumerable<WorkEntry> entries)
 	{
 		var entriesList = entries.ToList();
 
 		if (!entriesList.Any())
 		{
-			return Result.Failure("No work entries provided");
+			return ValidationResult.Failure("No work entries provided");
 		}
 
 		var errors = new List<string>();
@@ -63,18 +59,18 @@ public sealed class WorklogValidator : IWorklogValidator
 		foreach (var entry in entriesList)
 		{
 			var validationResult = ValidateForSubmission(entry);
-			if (validationResult.IsFailure)
+			if (!validationResult.IsValid)
 			{
-				errors.Add(validationResult.Error);
+				errors.AddRange(validationResult.Errors);
 			}
 		}
 
 		if (errors.Any())
 		{
-			return Result.Failure(string.Join("; ", errors));
+			return ValidationResult.Failure(errors.ToArray());
 		}
 
-		return Result.Success();
+		return ValidationResult.Success();
 	}
 
 	public ValidationResult Validate(WorklogDto worklog)
@@ -86,12 +82,6 @@ public sealed class WorklogValidator : IWorklogValidator
 			return ValidationResult.Failure("Worklog cannot be null");
 		}
 
-		// Ticket ID is optional for some providers
-		// if (string.IsNullOrWhiteSpace(worklog.TicketId))
-		// {
-		//     errors.Add("Ticket ID is required");
-		// }
-
 		if (worklog.StartTime >= worklog.EndTime)
 		{
 			errors.Add($"Start time must be before end time");
@@ -102,8 +92,7 @@ public sealed class WorklogValidator : IWorklogValidator
 			errors.Add($"Duration must be greater than 0");
 		}
 
-		// Check for reasonable maximum duration (e.g., 24 hours = 1440 minutes)
-		if (worklog.DurationMinutes > 1440)
+		if (worklog.DurationMinutes > MaxDurationMinutes)
 		{
 			errors.Add($"Duration cannot exceed 24 hours");
 		}

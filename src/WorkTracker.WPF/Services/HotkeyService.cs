@@ -45,8 +45,8 @@ public sealed class HotkeyService : IHotkeyService
 			return;
 		}
 
-		// Register Ctrl+Alt+W hotkey
-		bool success = RegisterHotKey(windowHandle, HOTKEY_ID, MOD_CONTROL | MOD_ALT, VK_W);
+		// Register Ctrl+Shift+W hotkey
+		bool success = RegisterHotKey(windowHandle, HOTKEY_ID, MOD_CONTROL | MOD_SHIFT, VK_W);
 
 		if (success)
 		{

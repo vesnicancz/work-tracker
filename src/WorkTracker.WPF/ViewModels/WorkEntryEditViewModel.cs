@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging;
 using WorkTracker.Application.Common;
 using WorkTracker.Application.Services;
 using WorkTracker.Domain.Entities;
-using WorkTracker.WPF.Commands;
+using CommunityToolkit.Mvvm.Input;
 using WorkTracker.UI.Shared.Services;
 
 namespace WorkTracker.WPF.ViewModels;
@@ -235,7 +235,7 @@ public class WorkEntryEditViewModel : ViewModelBase
 		if (string.IsNullOrWhiteSpace(TicketId) && string.IsNullOrWhiteSpace(Description))
 		{
 			ValidationError = LocalizationService.Instance["EitherTicketOrDescriptionRequired"];
-			((AsyncRelayCommand)SaveCommand).RaiseCanExecuteChanged();
+			((IAsyncRelayCommand)SaveCommand).NotifyCanExecuteChanged();
 			return;
 		}
 
@@ -245,12 +245,12 @@ public class WorkEntryEditViewModel : ViewModelBase
 			if (EndDateTime.Value <= StartDateTime)
 			{
 				ValidationError = LocalizationService.Instance["EndTimeMustBeAfterStartTime"];
-				((AsyncRelayCommand)SaveCommand).RaiseCanExecuteChanged();
+				((IAsyncRelayCommand)SaveCommand).NotifyCanExecuteChanged();
 				return;
 			}
 		}
 
-		((AsyncRelayCommand)SaveCommand).RaiseCanExecuteChanged();
+		((IAsyncRelayCommand)SaveCommand).NotifyCanExecuteChanged();
 	}
 
 	#endregion Validation

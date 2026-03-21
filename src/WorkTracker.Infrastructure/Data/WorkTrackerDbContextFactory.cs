@@ -8,15 +8,7 @@ public class WorkTrackerDbContextFactory : IDesignTimeDbContextFactory<WorkTrack
 	public WorkTrackerDbContext CreateDbContext(string[] args)
 	{
 		var optionsBuilder = new DbContextOptionsBuilder<WorkTrackerDbContext>();
-
-		// Use a default database path for migrations
-		var dbPath = Path.Combine(
-			Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-			"WorkTracker",
-			"worktracker.db"
-		);
-
-		optionsBuilder.UseSqlite($"Data Source={dbPath}");
+		optionsBuilder.UseSqlite($"Data Source={WorkTrackerPaths.DefaultDatabasePath}");
 
 		return new WorkTrackerDbContext(optionsBuilder.Options);
 	}

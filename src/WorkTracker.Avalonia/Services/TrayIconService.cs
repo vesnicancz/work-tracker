@@ -1,7 +1,8 @@
-using Avalonia;
+﻿using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Platform.Storage;
+using Microsoft.Extensions.Logging;
 using WorkTracker.UI.Shared.Models;
 using WorkTracker.UI.Shared.Services;
 
@@ -15,6 +16,7 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 	private readonly IDialogService _dialogService;
 	private readonly IWorklogStateService _worklogStateService;
 	private readonly ISettingsService _settingsService;
+	private readonly ILogger<TrayIconService> _logger;
 	private readonly LocalizationService _localizationService;
 	private TrayIcon? _trayIcon;
 	private NativeMenu? _menu;
@@ -25,17 +27,22 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 	public TrayIconService(
 		IDialogService dialogService,
 		IWorklogStateService worklogStateService,
-		ISettingsService settingsService)
+		ISettingsService settingsService,
+		ILogger<TrayIconService> logger)
 	{
 		_dialogService = dialogService;
 		_worklogStateService = worklogStateService;
 		_settingsService = settingsService;
+		_logger = logger;
 		_localizationService = LocalizationService.Instance;
 	}
 
 	public void Initialize()
 	{
-		if (_isInitialized) return;
+		if (_isInitialized)
+		{
+			return;
+		}
 
 		_menu = new NativeMenu();
 
@@ -100,17 +107,26 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 
 	public void Show()
 	{
-		if (_trayIcon != null) _trayIcon.IsVisible = true;
+		if (_trayIcon != null)
+		{
+			_trayIcon.IsVisible = true;
+		}
 	}
 
 	public void Hide()
 	{
-		if (_trayIcon != null) _trayIcon.IsVisible = false;
+		if (_trayIcon != null)
+		{
+			_trayIcon.IsVisible = false;
+		}
 	}
 
 	public void RefreshFavoritesMenu()
 	{
-		if (_menu == null) return;
+		if (_menu == null)
+		{
+			return;
+		}
 
 		// Remove existing favorites
 		if (_favoritesSeparator != null)
@@ -174,15 +190,18 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 		{
 			await _dialogService.ShowEditWorkEntryDialogAsync(null);
 		}
-		catch
+		catch (Exception ex)
 		{
-			// Swallow - tray context errors are non-critical
+			_logger.LogWarning(ex, "Failed to open new work entry dialog from tray");
 		}
 	}
 
 	private void SetActiveState(bool isActive)
 	{
-		if (_trayIcon == null) return;
+		if (_trayIcon == null)
+		{
+			return;
+		}
 
 		_trayIcon.ToolTipText = isActive
 			? _localizationService["TrayTooltipActive"]
@@ -219,9 +238,9 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 			}
 			await _worklogStateService.StartTrackingAsync(favorite.TicketId, favorite.Description);
 		}
-		catch
+		catch (Exception ex)
 		{
-			// Swallow - tray context errors are non-critical
+			_logger.LogWarning(ex, "Failed to start favorite work '{FavoriteName}' from tray", favorite.Name);
 		}
 	}
 }

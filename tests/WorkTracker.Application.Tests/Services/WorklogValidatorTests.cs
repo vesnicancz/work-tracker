@@ -1,6 +1,6 @@
 ﻿using FluentAssertions;
 using WorkTracker.Application.Services;
-using WorkTracker.Domain.DTOs;
+using WorkTracker.Application.DTOs;
 using WorkTracker.Domain.Entities;
 
 namespace WorkTracker.Application.Tests.Services;
@@ -32,18 +32,7 @@ public class WorklogValidatorTests
 		var result = _validator.ValidateForSubmission(entry);
 
 		// Assert
-		result.IsSuccess.Should().BeTrue();
-	}
-
-	[Fact]
-	public void ValidateForSubmission_WithNullEntry_ShouldReturnFailure()
-	{
-		// Act
-		var result = _validator.ValidateForSubmission(null!);
-
-		// Assert
-		result.IsFailure.Should().BeTrue();
-		result.Error.Should().Contain("cannot be null");
+		result.IsValid.Should().BeTrue();
 	}
 
 	[Fact]
@@ -61,8 +50,8 @@ public class WorklogValidatorTests
 		var result = _validator.ValidateForSubmission(entry);
 
 		// Assert
-		result.IsFailure.Should().BeTrue();
-		result.Error.Should().Contain("Ticket ID is required");
+		result.IsValid.Should().BeFalse();
+		result.Errors.Should().Contain(e => e.Contains("Ticket ID is required"));
 	}
 
 	[Fact]
@@ -80,8 +69,8 @@ public class WorklogValidatorTests
 		var result = _validator.ValidateForSubmission(entry);
 
 		// Assert
-		result.IsFailure.Should().BeTrue();
-		result.Error.Should().Contain("Ticket ID is required");
+		result.IsValid.Should().BeFalse();
+		result.Errors.Should().Contain(e => e.Contains("Ticket ID is required"));
 	}
 
 	[Fact]
@@ -100,8 +89,8 @@ public class WorklogValidatorTests
 		var result = _validator.ValidateForSubmission(entry);
 
 		// Assert
-		result.IsFailure.Should().BeTrue();
-		result.Error.Should().Contain("still active");
+		result.IsValid.Should().BeFalse();
+		result.Errors.Should().Contain(e => e.Contains("still active"));
 	}
 
 	[Fact]
@@ -119,8 +108,8 @@ public class WorklogValidatorTests
 		var result = _validator.ValidateForSubmission(entry);
 
 		// Assert
-		result.IsFailure.Should().BeTrue();
-		result.Error.Should().Contain("Start time must be before end time");
+		result.IsValid.Should().BeFalse();
+		result.Errors.Should().Contain(e => e.Contains("Start time must be before end time"));
 	}
 
 	[Fact]
@@ -139,8 +128,8 @@ public class WorklogValidatorTests
 		var result = _validator.ValidateForSubmission(entry);
 
 		// Assert
-		result.IsFailure.Should().BeTrue();
-		result.Error.Should().Contain("Start time must be before end time");
+		result.IsValid.Should().BeFalse();
+		result.Errors.Should().Contain(e => e.Contains("Start time must be before end time"));
 	}
 
 	[Fact]
@@ -159,8 +148,8 @@ public class WorklogValidatorTests
 		var result = _validator.ValidateForSubmission(entry);
 
 		// Assert
-		result.IsFailure.Should().BeTrue();
-		result.Error.Should().Contain("at least 1 second");
+		result.IsValid.Should().BeFalse();
+		result.Errors.Should().Contain(e => e.Contains("at least 1 second"));
 	}
 
 	[Fact]
@@ -178,8 +167,8 @@ public class WorklogValidatorTests
 		var result = _validator.ValidateForSubmission(entry);
 
 		// Assert
-		result.IsFailure.Should().BeTrue();
-		result.Error.Should().Contain("cannot exceed 24 hours");
+		result.IsValid.Should().BeFalse();
+		result.Errors.Should().Contain(e => e.Contains("cannot exceed 24 hours"));
 	}
 
 	[Fact]
@@ -198,7 +187,7 @@ public class WorklogValidatorTests
 		var result = _validator.ValidateForSubmission(entry);
 
 		// Assert
-		result.IsSuccess.Should().BeTrue();
+		result.IsValid.Should().BeTrue();
 	}
 
 	#endregion ValidateForSubmission Tests
@@ -229,7 +218,7 @@ public class WorklogValidatorTests
 		var result = _validator.ValidateMultiple(entries);
 
 		// Assert
-		result.IsSuccess.Should().BeTrue();
+		result.IsValid.Should().BeTrue();
 	}
 
 	[Fact]
@@ -242,8 +231,8 @@ public class WorklogValidatorTests
 		var result = _validator.ValidateMultiple(entries);
 
 		// Assert
-		result.IsFailure.Should().BeTrue();
-		result.Error.Should().Contain("No work entries provided");
+		result.IsValid.Should().BeFalse();
+		result.Errors.Should().Contain(e => e.Contains("No work entries provided"));
 	}
 
 	[Fact]
@@ -270,12 +259,12 @@ public class WorklogValidatorTests
 		var result = _validator.ValidateMultiple(entries);
 
 		// Assert
-		result.IsFailure.Should().BeTrue();
-		result.Error.Should().Contain("still active");
+		result.IsValid.Should().BeFalse();
+		result.Errors.Should().Contain(e => e.Contains("still active"));
 	}
 
 	[Fact]
-	public void ValidateMultiple_WithAllInvalidEntries_ShouldReturnCombinedErrors()
+	public void ValidateMultiple_WithAllInvalidEntries_ShouldReturnMultipleErrors()
 	{
 		// Arrange
 		var entries = new List<WorkEntry>
@@ -297,8 +286,8 @@ public class WorklogValidatorTests
 		var result = _validator.ValidateMultiple(entries);
 
 		// Assert
-		result.IsFailure.Should().BeTrue();
-		result.Error.Should().Contain(";"); // Multiple errors separated by semicolon
+		result.IsValid.Should().BeFalse();
+		result.Errors.Should().HaveCountGreaterThan(1);
 	}
 
 	#endregion ValidateMultiple Tests

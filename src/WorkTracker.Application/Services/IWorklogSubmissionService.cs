@@ -1,4 +1,4 @@
-using WorkTracker.Application.Common;
+﻿using WorkTracker.Application.Common;
 using WorkTracker.Application.DTOs;
 
 namespace WorkTracker.Application.Services;
@@ -38,10 +38,10 @@ public interface IWorklogSubmissionService
 	/// <summary>
 	/// Gets all available worklog upload providers
 	/// </summary>
-	IEnumerable<DTOs.ProviderInfo> GetAvailableProviders();
+	IEnumerable<ProviderInfo> GetAvailableProviders();
 
 	/// <summary>
 	/// Submits custom worklogs using specified provider (for edited worklogs)
 	/// </summary>
-	Task<Result<SubmissionResult>> SubmitCustomWorklogsAsync(IEnumerable<Domain.DTOs.WorklogDto> worklogs, string providerId, CancellationToken cancellationToken = default);
+	Task<Result<SubmissionResult>> SubmitCustomWorklogsAsync(IEnumerable<WorklogDto> worklogs, string providerId, CancellationToken cancellationToken = default);
 }

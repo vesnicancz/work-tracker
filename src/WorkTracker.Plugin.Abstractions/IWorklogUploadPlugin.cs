@@ -1,4 +1,4 @@
-namespace WorkTracker.Plugin.Abstractions;
+﻿namespace WorkTracker.Plugin.Abstractions;
 
 /// <summary>
 /// Interface for worklog upload provider plugins

@@ -1,5 +1,5 @@
-using Microsoft.EntityFrameworkCore;
-using WorkTracker.Application.Interfaces;
+﻿using Microsoft.EntityFrameworkCore;
+using WorkTracker.Domain.Interfaces;
 using WorkTracker.Domain.Entities;
 using WorkTracker.Infrastructure.Data;
 

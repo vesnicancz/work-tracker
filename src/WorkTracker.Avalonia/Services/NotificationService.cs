@@ -1,4 +1,4 @@
-using Avalonia;
+﻿using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Layout;
@@ -14,38 +14,50 @@ namespace WorkTracker.Avalonia.Services;
 /// Implementation of INotificationService using a custom overlay panel.
 /// The overlay must be a Panel named "NotificationHost" in MainWindow.
 /// Notifications auto-dismiss after 3 seconds.
+/// Uses theme-aware brushes from the current resource dictionary.
 /// </summary>
 public sealed class NotificationService : INotificationService
 {
 	public void ShowSuccess(string message) =>
-		ShowNotification(message, MaterialIconKind.CheckCircle, Color.Parse("#4CAF50"));
+		ShowNotification(message, MaterialIconKind.CheckCircle, GetThemeBrush("SuccessBrush"));
 
 	public void ShowInformation(string message) =>
-		ShowNotification(message, MaterialIconKind.Information, Color.Parse("#2196F3"));
+		ShowNotification(message, MaterialIconKind.Information, GetThemeBrush("InfoBrush"));
 
 	public void ShowWarning(string message) =>
-		ShowNotification(message, MaterialIconKind.AlertCircle, Color.Parse("#FF9800"));
+		ShowNotification(message, MaterialIconKind.AlertCircle, GetThemeBrush("WarningBrush"));
 
 	public void ShowError(string message) =>
-		ShowNotification(message, MaterialIconKind.CloseCircle, Color.Parse("#F44336"));
+		ShowNotification(message, MaterialIconKind.CloseCircle, GetThemeBrush("ErrorBrush"));
 
-	private void ShowNotification(string message, MaterialIconKind icon, Color backgroundColor)
+	private static IBrush GetThemeBrush(string key) =>
+		global::Avalonia.Application.Current?.FindResource(key) is IBrush brush
+			? brush
+			: new SolidColorBrush(Colors.Gray);
+
+	private void ShowNotification(string message, MaterialIconKind icon, IBrush backgroundBrush)
 	{
 		Dispatcher.UIThread.Post(() =>
 		{
 			var host = FindNotificationHost();
-			if (host == null) return;
+			if (host == null)
+			{
+				return;
+			}
 
 			var border = new Border
 			{
-				Background = new SolidColorBrush(backgroundColor),
+				Background = backgroundBrush,
 				CornerRadius = new CornerRadius(4),
 				Padding = new Thickness(16, 12),
 				Margin = new Thickness(0, 4),
 				HorizontalAlignment = HorizontalAlignment.Center,
 				BoxShadow = new BoxShadows(new BoxShadow
 				{
-					OffsetX = 0, OffsetY = 2, Blur = 10, Color = Color.Parse("#40000000")
+					OffsetX = 0,
+					OffsetY = 2,
+					Blur = 10,
+					Color = Color.Parse("#40000000")
 				}),
 				Child = new StackPanel
 				{

@@ -3,10 +3,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
-using WorkTracker.Application.Plugins;
 using WorkTracker.CLI.Commands;
 using WorkTracker.Infrastructure;
-using WorkTracker.Plugin.Tempo;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -32,11 +30,7 @@ var host = builder.Build();
 // Initialize database
 await DependencyInjection.InitializeDatabaseAsync(host.Services);
 
-// Load embedded plugins (presentation layer responsibility)
-var pluginManager = host.Services.GetRequiredService<PluginManager>();
-pluginManager.LoadEmbeddedPlugin<TempoWorklogPlugin>();
-
-// Initialize plugins (loads external plugins + initializes all with configuration)
+// Initialize plugins (loads embedded + external plugins, initializes all with configuration)
 await DependencyInjection.InitializePluginsAsync(host.Services, builder.Configuration);
 
 // Parse command line arguments

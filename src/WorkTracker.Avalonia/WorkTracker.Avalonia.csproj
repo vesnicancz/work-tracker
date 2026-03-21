@@ -28,7 +28,6 @@
   <ItemGroup>
     <ProjectReference Include="..\WorkTracker.UI.Shared\WorkTracker.UI.Shared.csproj" />
     <ProjectReference Include="..\WorkTracker.Infrastructure\WorkTracker.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\plugins\WorkTracker.Plugin.Tempo\WorkTracker.Plugin.Tempo.csproj" />
   </ItemGroup>
 
   <ItemGroup>

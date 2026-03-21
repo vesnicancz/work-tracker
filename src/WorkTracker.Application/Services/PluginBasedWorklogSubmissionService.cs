@@ -1,8 +1,8 @@
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using WorkTracker.Application.Common;
 using WorkTracker.Application.DTOs;
 using WorkTracker.Application.Plugins;
-using WorkTracker.Domain.DTOs;
+using WorkTracker.Domain.Entities;
 using WorkTracker.Plugin.Abstractions;
 
 namespace WorkTracker.Application.Services;
@@ -12,17 +12,26 @@ namespace WorkTracker.Application.Services;
 /// </summary>
 public sealed class PluginBasedWorklogSubmissionService : IWorklogSubmissionService
 {
+	private static WorklogDto ToWorklogDto(WorkEntry e) => new()
+	{
+		TicketId = e.TicketId,
+		StartTime = e.StartTime,
+		EndTime = e.EndTime!.Value,
+		Description = e.Description,
+		DurationMinutes = Math.Max(1, (int)Math.Ceiling((e.EndTime!.Value - e.StartTime).TotalMinutes))
+	};
+
 	private readonly IWorkEntryService _workEntryService;
 	private readonly IDateRangeService _dateRangeService;
 	private readonly IWorklogValidator _validator;
-	private readonly PluginManager _pluginManager;
+	private readonly IPluginManager _pluginManager;
 	private readonly ILogger<PluginBasedWorklogSubmissionService> _logger;
 
 	public PluginBasedWorklogSubmissionService(
 		IWorkEntryService workEntryService,
 		IDateRangeService dateRangeService,
 		IWorklogValidator validator,
-		PluginManager pluginManager,
+		IPluginManager pluginManager,
 		ILogger<PluginBasedWorklogSubmissionService> logger)
 	{
 		_workEntryService = workEntryService;
@@ -67,14 +76,7 @@ public sealed class PluginBasedWorklogSubmissionService : IWorklogSubmissionServ
 			});
 		}
 
-		var worklogs = completedEntries.Select(e => new WorklogDto
-		{
-			TicketId = e.TicketId,
-			StartTime = e.StartTime,
-			EndTime = e.EndTime!.Value,
-			Description = e.Description,
-			DurationMinutes = (int)(e.EndTime!.Value - e.StartTime).TotalMinutes
-		}).ToList();
+		var worklogs = completedEntries.Select(ToWorklogDto).ToList();
 
 		// Validate worklogs
 		var validWorklogs = new List<WorklogDto>();
@@ -125,14 +127,7 @@ public sealed class PluginBasedWorklogSubmissionService : IWorklogSubmissionServ
 		var dto = new WorklogSubmissionDto
 		{
 			SubmissionDate = date,
-			Worklogs = completedEntries.Select(e => new WorklogDto
-			{
-				TicketId = e.TicketId,
-				StartTime = e.StartTime,
-				EndTime = e.EndTime!.Value,
-				Description = e.Description,
-				DurationMinutes = (int)(e.EndTime!.Value - e.StartTime).TotalMinutes
-			}).ToList()
+			Worklogs = completedEntries.Select(ToWorklogDto).ToList()
 		};
 
 		return dto;
@@ -160,25 +155,11 @@ public sealed class PluginBasedWorklogSubmissionService : IWorklogSubmissionServ
 		_logger.LogInformation("Submitting weekly worklog for week of {Date} using plugin {Plugin}", date.ToShortDateString(), plugin.Metadata.Name);
 
 		var (weekStart, weekEnd) = _dateRangeService.GetWeekRange(date);
-		var allWorklogs = new List<WorklogDto>();
-
-		for (var day = weekStart; day <= weekEnd; day = day.AddDays(1))
-		{
-			var entries = await _workEntryService.GetWorkEntriesByDateAsync(day, cancellationToken);
-			var completedEntries = entries.Where(e => e.EndTime.HasValue);
-
-			foreach (var entry in completedEntries)
-			{
-				allWorklogs.Add(new WorklogDto
-				{
-					TicketId = entry.TicketId,
-					StartTime = entry.StartTime,
-					EndTime = entry.EndTime!.Value,
-					Description = entry.Description,
-					DurationMinutes = (int)(entry.EndTime!.Value - entry.StartTime).TotalMinutes
-				});
-			}
-		}
+		var entries = await _workEntryService.GetWorkEntriesByDateRangeAsync(weekStart, weekEnd, cancellationToken);
+		var allWorklogs = entries
+			.Where(e => e.EndTime.HasValue)
+			.Select(ToWorklogDto)
+			.ToList();
 
 		if (allWorklogs.Count == 0)
 		{
@@ -232,11 +213,22 @@ public sealed class PluginBasedWorklogSubmissionService : IWorklogSubmissionServ
 	public async Task<Dictionary<DateTime, WorklogSubmissionDto>> PreviewWeeklyWorklogAsync(DateTime date, CancellationToken cancellationToken)
 	{
 		var (weekStart, weekEnd) = _dateRangeService.GetWeekRange(date);
+		var entries = await _workEntryService.GetWorkEntriesByDateRangeAsync(weekStart, weekEnd, cancellationToken);
+		var completedByDate = entries
+			.Where(e => e.EndTime.HasValue)
+			.GroupBy(e => e.StartTime.Date)
+			.ToDictionary(g => g.Key, g => g.ToList());
+
 		var preview = new Dictionary<DateTime, WorklogSubmissionDto>();
 
 		for (var day = weekStart; day <= weekEnd; day = day.AddDays(1))
 		{
-			preview[day] = await PreviewDailyWorklogAsync(day, cancellationToken);
+			completedByDate.TryGetValue(day, out var dayEntries);
+			preview[day] = new WorklogSubmissionDto
+			{
+				SubmissionDate = day,
+				Worklogs = (dayEntries?.Select(ToWorklogDto) ?? []).ToList()
+			};
 		}
 
 		return preview;
