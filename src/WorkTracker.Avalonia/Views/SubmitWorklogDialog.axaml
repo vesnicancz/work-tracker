@@ -3,6 +3,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:material="using:Material.Icons.Avalonia"
+        xmlns:markup="using:WorkTracker.Avalonia.Markup"
         xmlns:vm="using:WorkTracker.Avalonia.ViewModels"
         x:Class="WorkTracker.Avalonia.Views.SubmitWorklogDialog"
         x:DataType="vm:SubmitWorklogViewModel"
@@ -39,7 +40,7 @@
                     IsVisible="{DynamicResource ShowDialogTitleBar}">
                 <Panel>
                     <TextBlock Text="{Binding DialogTitle}" FontSize="12"
-                               Foreground="{DynamicResource TextMuted}"
+                               Foreground="{DynamicResource AppTitleForeground}"
                                HorizontalAlignment="{DynamicResource TitleBarAlignment}"
                                VerticalAlignment="Center"
                                Margin="12,0,12,0" />
@@ -48,7 +49,7 @@
                             Background="Transparent" BorderThickness="0"
                             HorizontalAlignment="Right"
                             VerticalAlignment="Center" Margin="0,0,6,0"
-                            ToolTip.Tip="Close">
+                            ToolTip.Tip="{markup:Localize Close}">
                         <material:MaterialIcon Kind="Close"
                                               Width="{DynamicResource WindowControlIconSize}"
                                               Height="{DynamicResource WindowControlIconSize}"
@@ -68,7 +69,7 @@
                                         VerticalAlignment="Center" />
                     <CheckBox Grid.Column="2"
                               IsChecked="{Binding IsWeekly}"
-                              Content="Submit entire week"
+                              Content="{markup:Localize SubmitEntireWeek}"
                               VerticalAlignment="Center" />
                     <ComboBox Grid.Column="4"
                               ItemsSource="{Binding AvailableProviders}"
@@ -76,7 +77,7 @@
                               DisplayMemberBinding="{ReflectionBinding Name}"
                               MinWidth="200"
                               VerticalAlignment="Center"
-                              PlaceholderText="Select provider" />
+                              PlaceholderText="{markup:Localize SubmitTo}" />
                 </Grid>
 
                 <!-- Preview list -->
@@ -92,7 +93,7 @@
                                     HorizontalAlignment="Center"
                                     VerticalAlignment="Center" Spacing="10">
                             <ProgressBar IsIndeterminate="True" Width="180" Height="3" />
-                            <TextBlock Text="Loading..." HorizontalAlignment="Center"
+                            <TextBlock Text="{markup:Localize LoadingPreview}" HorizontalAlignment="Center"
                                        Foreground="{DynamicResource TextMuted}" FontSize="12" />
                         </StackPanel>
 
@@ -171,7 +172,7 @@
                                TextWrapping="Wrap" VerticalAlignment="Center" />
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8"
                                 VerticalAlignment="Center">
-                        <TextBlock Text="Total:" FontSize="12" Foreground="{DynamicResource TextMuted}"
+                        <TextBlock Text="{markup:Localize TotalTime}" FontSize="12" Foreground="{DynamicResource TextMuted}"
                                    VerticalAlignment="Center" />
                         <TextBlock Text="{Binding TotalTimeDisplay}"
                                    FontSize="16" FontWeight="Bold"
@@ -186,17 +187,17 @@
                             Command="{Binding ResetCommand}"
                             Padding="14,8"
                             Background="Transparent" BorderThickness="0"
-                            ToolTip.Tip="Restore original values">
+                            ToolTip.Tip="{markup:Localize RestoreOriginalValues}">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <material:MaterialIcon Kind="Undo" Width="16" Height="16" Foreground="{DynamicResource TextMuted}" />
-                            <TextBlock Text="Reset" Foreground="{DynamicResource TextSecondary}" />
+                            <TextBlock Text="{markup:Localize Reset}" Foreground="{DynamicResource TextSecondary}" />
                         </StackPanel>
                     </Button>
 
                     <StackPanel Orientation="Horizontal"
                                 HorizontalAlignment="Right" Spacing="8">
                         <Button Command="{Binding CancelCommand}"
-                                Content="Close" Padding="20,8"
+                                Content="{markup:Localize Close}" Padding="20,8"
                                 Background="{DynamicResource ButtonSecondaryBg}"
                                 Foreground="{DynamicResource ButtonSecondaryFg}" />
 
@@ -209,9 +210,9 @@
                                 <ProgressBar IsVisible="{Binding IsSending}"
                                              IsIndeterminate="True"
                                              Width="16" Height="16" />
-                                <TextBlock Text="Submit" IsVisible="{Binding !IsSending}"
+                                <TextBlock Text="{markup:Localize Submit}" IsVisible="{Binding !IsSending}"
                                            FontWeight="SemiBold" />
-                                <TextBlock Text="Submitting..." IsVisible="{Binding IsSending}" />
+                                <TextBlock Text="{markup:Localize Submitting}" IsVisible="{Binding IsSending}" />
                             </StackPanel>
                         </Button>
                     </StackPanel>

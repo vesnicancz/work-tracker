@@ -129,11 +129,11 @@ public class SettingsViewModel : ViewModelBase
 		set => SetProperty(ref _startMinimized, value);
 	}
 
-	public string AppVersion => Application.AppInfo.Version;
+	public string AppVersionDisplay => LocalizationService.Instance.GetFormattedString("VersionFormat", Application.AppInfo.Version);
 	public string RuntimeVersion => $".NET {Environment.Version}";
 	public string PlatformInfo => System.Runtime.InteropServices.RuntimeInformation.OSDescription;
 
-	public string[] AvailableThemes { get; } = ["Dark", "Light", "Purple"];
+	public string[] AvailableThemes { get; } = [.. new[] { "Dark", "Light", "Midnight", "Modern Blue", "Purple" }.OrderBy(t => t)];
 
 	public string SelectedTheme
 	{

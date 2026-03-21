@@ -430,7 +430,7 @@ Popis: {1}
     <value>Popis</value>
   </data>
   <data name="AddFavorite" xml:space="preserve">
-    <value>Přidat oblíbenou položku</value>
+    <value>Přidat</value>
   </data>
   <data name="EditFavorite" xml:space="preserve">
     <value>Upravit</value>
@@ -458,5 +458,84 @@ Popis: {1}
   </data>
   <data name="FavoriteStarted" xml:space="preserve">
     <value>Zahájeno sledování: {0}</value>
+  </data>
+  <data name="ButtonYes" xml:space="preserve">
+    <value>Ano</value>
+  </data>
+  <data name="ButtonNo" xml:space="preserve">
+    <value>Ne</value>
+  </data>
+  <data name="ButtonOK" xml:space="preserve">
+    <value>OK</value>
+  </data>
+
+  <!-- Ovládací prvky oken -->
+  <data name="Minimize" xml:space="preserve">
+    <value>Minimalizovat</value>
+  </data>
+  <data name="Today" xml:space="preserve">
+    <value>Dnes</value>
+  </data>
+
+  <!-- Nastavení: Vzhled -->
+  <data name="Appearance" xml:space="preserve">
+    <value>Vzhled</value>
+  </data>
+  <data name="Theme" xml:space="preserve">
+    <value>Motiv</value>
+  </data>
+
+  <!-- Nastavení: O aplikaci -->
+  <data name="About" xml:space="preserve">
+    <value>O aplikaci</value>
+  </data>
+  <data name="QuickReference" xml:space="preserve">
+    <value>Stručný přehled</value>
+  </data>
+  <data name="AboutStartTracking" xml:space="preserve">
+    <value>Zahájit sledování</value>
+  </data>
+  <data name="AboutStartTrackingDesc" xml:space="preserve">
+    <value>Zadejte ID ticketu + popis, stiskněte Enter</value>
+  </data>
+  <data name="AboutJiraFormat" xml:space="preserve">
+    <value>Formát Jira ticketu</value>
+  </data>
+  <data name="AboutJiraFormatDesc" xml:space="preserve">
+    <value>PROJ-123 je automaticky rozpoznáno ze vstupu</value>
+  </data>
+  <data name="AboutFavoritesDesc" xml:space="preserve">
+    <value>Rychlé spuštění častých úkolů z postranního panelu nebo nabídky v liště</value>
+  </data>
+  <data name="AboutSubmitWorklogs" xml:space="preserve">
+    <value>Odeslání záznamů</value>
+  </data>
+  <data name="AboutSubmitWorklogsDesc" xml:space="preserve">
+    <value>Odešlete jeden den nebo celý týden do Jira Tempo</value>
+  </data>
+  <data name="AboutSystemTray" xml:space="preserve">
+    <value>Systémová lišta</value>
+  </data>
+  <data name="AboutSystemTrayDesc" xml:space="preserve">
+    <value>Běží na pozadí, spuštění/zastavení z ikony v liště</value>
+  </data>
+  <data name="SystemInfo" xml:space="preserve">
+    <value>Systém</value>
+  </data>
+  <data name="Runtime" xml:space="preserve">
+    <value>Běhové prostředí</value>
+  </data>
+  <data name="PlatformLabel" xml:space="preserve">
+    <value>Platforma</value>
+  </data>
+  <data name="UIFramework" xml:space="preserve">
+    <value>UI Framework</value>
+  </data>
+  <data name="VersionFormat" xml:space="preserve">
+    <value>Verze {0}</value>
+  </data>
+  <data name="AboutQuote" xml:space="preserve">
+    <value>„Vesmír nemá žádnou povinnost dávat vám smysl." — Neil deGrasse Tyson
+Váš výkaz práce také ne.</value>
   </data>
 </root>

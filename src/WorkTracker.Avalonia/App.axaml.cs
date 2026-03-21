@@ -194,12 +194,14 @@ public partial class App : global::Avalonia.Application
 		{
 			"Light" => new Uri("avares://WorkTracker.Avalonia/Resources/Themes/OneLightTheme.axaml"),
 			"Purple" => new Uri("avares://WorkTracker.Avalonia/Resources/Themes/PurpleTheme.axaml"),
+			"Midnight" => new Uri("avares://WorkTracker.Avalonia/Resources/Themes/MidnightTheme.axaml"),
+			"Modern Blue" => new Uri("avares://WorkTracker.Avalonia/Resources/Themes/ModernBlueTheme.axaml"),
 			_ => new Uri("avares://WorkTracker.Avalonia/Resources/Themes/OneDarkTheme.axaml")
 		};
 		resources.MergedDictionaries.Add(new ResourceInclude(uri) { Source = uri });
 
 		// Keep Avalonia's built-in FluentTheme variant in sync for native controls
-		app.RequestedThemeVariant = themeName == "Light"
+		app.RequestedThemeVariant = (themeName is "Light" or "Modern Blue")
 			? global::Avalonia.Styling.ThemeVariant.Light
 			: global::Avalonia.Styling.ThemeVariant.Dark;
 	}

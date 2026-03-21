@@ -3,6 +3,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:material="using:Material.Icons.Avalonia"
+        xmlns:markup="using:WorkTracker.Avalonia.Markup"
         xmlns:converters="using:WorkTracker.Avalonia.Converters"
         xmlns:vm="using:WorkTracker.Avalonia.ViewModels"
         x:Class="WorkTracker.Avalonia.Views.WorkEntryEditDialog"
@@ -43,7 +44,7 @@
                     IsVisible="{DynamicResource ShowDialogTitleBar}">
                 <Panel>
                     <TextBlock Text="{Binding DialogTitle}" FontSize="12"
-                               Foreground="{DynamicResource TextMuted}"
+                               Foreground="{DynamicResource AppTitleForeground}"
                                HorizontalAlignment="{DynamicResource TitleBarAlignment}"
                                VerticalAlignment="Center"
                                Margin="12,0,12,0" />
@@ -52,7 +53,7 @@
                             Background="Transparent" BorderThickness="0"
                             HorizontalAlignment="Right"
                             VerticalAlignment="Center" Margin="0,0,6,0"
-                            ToolTip.Tip="Close">
+                            ToolTip.Tip="{markup:Localize Close}">
                         <material:MaterialIcon Kind="Close"
                                               Width="{DynamicResource WindowControlIconSize}"
                                               Height="{DynamicResource WindowControlIconSize}"
@@ -66,12 +67,12 @@
 
                 <!-- Ticket ID -->
                 <TextBox Text="{Binding TicketId, Mode=TwoWay}"
-                         Watermark="Ticket ID (e.g. PROJ-123)"
+                         Watermark="{markup:Localize TicketIdOptional}"
                          MaxLength="50" />
 
                 <!-- Description -->
                 <TextBox Text="{Binding Description, Mode=TwoWay}"
-                         Watermark="Description"
+                         Watermark="{markup:Localize DescriptionOptional}"
                          MaxLength="500"
                          AcceptsReturn="True"
                          TextWrapping="Wrap"
@@ -79,7 +80,7 @@
                          MaxHeight="90" />
 
                 <!-- Start Time -->
-                <TextBlock Text="Start Time" FontSize="12" Foreground="{DynamicResource TextMuted}" />
+                <TextBlock Text="{markup:Localize StartTime}" FontSize="12" Foreground="{DynamicResource TextMuted}" />
                 <Grid ColumnDefinitions="*,10,Auto">
                     <CalendarDatePicker Grid.Column="0"
                                         SelectedDate="{Binding StartDate}"
@@ -93,11 +94,11 @@
 
                 <!-- Has End Time -->
                 <CheckBox IsChecked="{Binding HasEndTime}"
-                          Content="Set end time" />
+                          Content="{markup:Localize SetEndTime}" />
 
                 <!-- End Time -->
                 <StackPanel IsVisible="{Binding HasEndTime}" Spacing="8">
-                    <TextBlock Text="End Time" FontSize="12" Foreground="{DynamicResource TextMuted}" />
+                    <TextBlock Text="{markup:Localize EndTime}" FontSize="12" Foreground="{DynamicResource TextMuted}" />
                     <Grid ColumnDefinitions="*,10,Auto">
                         <CalendarDatePicker Grid.Column="0"
                                             SelectedDate="{Binding EndDate}"
@@ -120,7 +121,7 @@
                 <!-- Buttons -->
                 <Grid ColumnDefinitions="*,Auto,8,Auto" Margin="0,4,0,0">
                     <Button Grid.Column="1"
-                            Content="Cancel"
+                            Content="{markup:Localize Cancel}"
                             Command="{Binding CancelCommand}"
                             Padding="20,8"
                             Background="{DynamicResource ButtonSecondaryBg}"
@@ -131,7 +132,7 @@
                             Classes="accent">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <material:MaterialIcon Kind="ContentSave" Width="16" Height="16" />
-                            <TextBlock Text="Save" FontWeight="SemiBold" />
+                            <TextBlock Text="{markup:Localize Save}" FontWeight="SemiBold" />
                         </StackPanel>
                     </Button>
                 </Grid>

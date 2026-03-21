@@ -1,0 +1,100 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        Palette: Modern Blue
+        Modern theme with saturated blue header and light background.
+        Backgrounds have a subtle blue tint.
+    -->
+
+    <!-- Background / Surface -->
+    <SolidColorBrush x:Key="AppBackground"       Color="#ffffff" /> <!-- White Background -->
+    <SolidColorBrush x:Key="SidebarBackground"   Color="#f0f4f8" /> <!-- Light Blue-Gray Sidebar -->
+    <SolidColorBrush x:Key="SidebarBorder"       Color="#cbd5e1" />
+    <SolidColorBrush x:Key="CardBackground"      Color="#ffffff" /> <!-- White Cards -->
+    <SolidColorBrush x:Key="CardBorder"          Color="#cbd5e1" />
+    <SolidColorBrush x:Key="InputBackground"     Color="#ffffff" />
+    <SolidColorBrush x:Key="InputBorder"         Color="#94a3b8" />
+
+    <!-- Text -->
+    <SolidColorBrush x:Key="TextPrimary"         Color="#102a43" /> <!-- Very Dark Blue -->
+    <SolidColorBrush x:Key="TextSecondary"       Color="#334e68" /> <!-- Darker Blue-Gray -->
+    <SolidColorBrush x:Key="TextMuted"           Color="#627d98" /> <!-- Darker Muted Blue-Gray -->
+    <SolidColorBrush x:Key="TextBright"          Color="#0d2137" /> <!-- Almost Black Blue -->
+
+    <!-- Accent / Status -->
+    <SolidColorBrush x:Key="AccentBlue"          Color="#0056b3" /> <!-- Deep Saturated Blue -->
+    <SolidColorBrush x:Key="AccentBlueDark"      Color="#004494" />
+    <SolidColorBrush x:Key="AccentBluePressed"   Color="#00337a" />
+    <SolidColorBrush x:Key="SuccessGreen"        Color="#218838" /> <!-- Darker Green -->
+    <SolidColorBrush x:Key="SuccessGreenDark"    Color="#1e7e34" />
+    <SolidColorBrush x:Key="SuccessGreenPressed" Color="#1c7430" />
+    <SolidColorBrush x:Key="DangerRed"           Color="#dc3545" />
+    <SolidColorBrush x:Key="DangerRedDark"       Color="#c82333" />
+    <SolidColorBrush x:Key="DangerRedPressed"    Color="#bd2130" />
+    <SolidColorBrush x:Key="WarningYellow"       Color="#ffc107" />
+    <SolidColorBrush x:Key="InfoBlue"            Color="#17a2b8" />
+    <SolidColorBrush x:Key="SeparatorColor"      Color="#d9e2ec" />
+
+    <!-- Active tracking card (light blue tint) -->
+    <SolidColorBrush x:Key="ActiveCardBackground" Color="#e6f2ff" />
+    <SolidColorBrush x:Key="ActiveCardBorder"     Color="#0056b3" />
+
+    <!-- Button -->
+    <SolidColorBrush x:Key="ButtonSecondaryBg"   Color="#f0f4f8" />
+    <SolidColorBrush x:Key="ButtonSecondaryFg"   Color="#102a43" />
+    <SolidColorBrush x:Key="AccentButtonFg"      Color="#ffffff" />
+
+    <!-- Avalonia system overrides -->
+    <SolidColorBrush x:Key="SolidBackgroundFillColorBaseBrush"           Color="#ffffff" />
+    <SolidColorBrush x:Key="ApplicationPageBackgroundThemeBrush"          Color="#ffffff" />
+    <SolidColorBrush x:Key="LayerFillColorDefaultBrush"                   Color="#ffffff" />
+    <SolidColorBrush x:Key="LayerOnMicaBaseAltFillColorDefaultBrush"      Color="#ffffff" />
+    <SolidColorBrush x:Key="CardBackgroundFillColorDefaultBrush"          Color="#ffffff" />
+    <SolidColorBrush x:Key="CardStrokeColorDefaultBrush"                  Color="#d9e2ec" />
+    <SolidColorBrush x:Key="ControlFillColorDefaultBrush"                 Color="#ffffff" />
+    <SolidColorBrush x:Key="ControlFillColorSecondaryBrush"               Color="#f0f4f8" />
+    <SolidColorBrush x:Key="ControlFillColorTertiaryBrush"                Color="#bcccdc" />
+    <SolidColorBrush x:Key="ControlStrokeColorDefaultBrush"               Color="#bcccdc" />
+    <SolidColorBrush x:Key="ControlStrokeColorSecondaryBrush"             Color="#9fb3c8" />
+    <SolidColorBrush x:Key="TextFillColorPrimaryBrush"                    Color="#102a43" />
+    <SolidColorBrush x:Key="TextFillColorSecondaryBrush"                  Color="#486581" />
+    <SolidColorBrush x:Key="TextFillColorTertiaryBrush"                   Color="#829ab1" />
+    <SolidColorBrush x:Key="TextFillColorDisabledBrush"                   Color="#9fb3c8" />
+    <SolidColorBrush x:Key="DividerStrokeColorDefaultBrush"               Color="#d9e2ec" />
+    <Color x:Key="SystemAccentColor">#0056b3</Color>
+    <Color x:Key="SystemAccentColorLight1">#3378c2</Color>
+    <Color x:Key="SystemAccentColorLight2">#669ad1</Color>
+    <Color x:Key="SystemAccentColorDark1">#004494</Color>
+    <Color x:Key="SystemAccentColorDark2">#00337a</Color>
+    <SolidColorBrush x:Key="SuccessBrush"    Color="#28a745" />
+    <SolidColorBrush x:Key="WarningBrush"    Color="#ffc107" />
+    <SolidColorBrush x:Key="ErrorBrush"      Color="#dc3545" />
+    <SolidColorBrush x:Key="InfoBrush"       Color="#17a2b8" />
+
+    <!-- Extended layout parameters -->
+    <CornerRadius x:Key="CardCornerRadius">8</CornerRadius>
+    <Thickness x:Key="CardPadding">16</Thickness>
+
+    <!-- Window chrome -->
+    <SolidColorBrush x:Key="TitleBarBackground" Color="#0056b3" />
+    <Thickness x:Key="TitleBarBorderThickness">0</Thickness>
+    <CornerRadius x:Key="WindowCornerRadius">0</CornerRadius>
+    <CornerRadius x:Key="WindowTopCornerRadius">0</CornerRadius>
+    <CornerRadius x:Key="SidebarCornerRadius">0</CornerRadius>
+    <Thickness x:Key="SidebarMargin">0</Thickness>
+    <Thickness x:Key="SidebarBorderThickness">0,0,1,0</Thickness>
+    <SolidColorBrush x:Key="DialogBackground" Color="#ffffff" />
+    <SolidColorBrush x:Key="WindowControlForeground" Color="#ffffff" />
+    <SolidColorBrush x:Key="AppTitleForeground"      Color="#ffffff" />
+    <x:Double x:Key="WindowControlIconSize">12</x:Double>
+    <x:Double x:Key="ToolbarIconSize">16</x:Double>
+    <HorizontalAlignment x:Key="TitleBarAlignment">Left</HorizontalAlignment>
+    <x:Boolean x:Key="ShowDialogTitleBar">True</x:Boolean>
+    <Thickness x:Key="ToasterMargin">0,0,0,12</Thickness>
+    <x:Double x:Key="RowActionsDefaultOpacity">1</x:Double>
+    <SolidColorBrush x:Key="RowActionPlayColor" Color="#28a745" />
+    <SolidColorBrush x:Key="RowActionEditColor" Color="#0056b3" />
+    <SolidColorBrush x:Key="RowActionDeleteColor" Color="#dc3545" />
+
+</ResourceDictionary>

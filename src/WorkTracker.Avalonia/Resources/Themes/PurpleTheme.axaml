@@ -87,6 +87,7 @@
     <Thickness x:Key="SidebarBorderThickness">0</Thickness>
     <SolidColorBrush x:Key="DialogBackground" Color="#262136" />
     <SolidColorBrush x:Key="WindowControlForeground" Color="#EEEFF0" />
+    <SolidColorBrush x:Key="AppTitleForeground"      Color="#5D5775" />
     <x:Double x:Key="WindowControlIconSize">10</x:Double>
     <x:Double x:Key="ToolbarIconSize">12</x:Double>
     <HorizontalAlignment x:Key="TitleBarAlignment">Center</HorizontalAlignment>
