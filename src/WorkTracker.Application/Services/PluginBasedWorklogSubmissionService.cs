@@ -216,13 +216,14 @@ public sealed class PluginBasedWorklogSubmissionService : IWorklogSubmissionServ
 		var entries = await _workEntryService.GetWorkEntriesByDateRangeAsync(weekStart, weekEnd, cancellationToken);
 		var completedByDate = entries
 			.Where(e => e.EndTime.HasValue)
-			.GroupBy(e => e.StartTime.Date);
+			.GroupBy(e => e.StartTime.Date)
+			.ToDictionary(g => g.Key, g => g.ToList());
 
 		var preview = new Dictionary<DateTime, WorklogSubmissionDto>();
 
 		for (var day = weekStart; day <= weekEnd; day = day.AddDays(1))
 		{
-			var dayEntries = completedByDate.FirstOrDefault(g => g.Key == day);
+			completedByDate.TryGetValue(day, out var dayEntries);
 			preview[day] = new WorklogSubmissionDto
 			{
 				SubmissionDate = day,
