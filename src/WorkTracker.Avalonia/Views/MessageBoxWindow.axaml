@@ -3,6 +3,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:material="using:Material.Icons.Avalonia"
+        xmlns:markup="using:WorkTracker.Avalonia.Markup"
         x:Class="WorkTracker.Avalonia.Views.MessageBoxWindow"
         mc:Ignorable="d"
         Width="400"
@@ -35,7 +36,7 @@
                     IsVisible="{DynamicResource ShowDialogTitleBar}">
                 <Panel>
                     <TextBlock x:Name="DialogTitleText" FontSize="12"
-                               Foreground="{DynamicResource TextMuted}"
+                               Foreground="{DynamicResource AppTitleForeground}"
                                HorizontalAlignment="{DynamicResource TitleBarAlignment}"
                                VerticalAlignment="Center"
                                Margin="12,0,12,0" />
@@ -66,7 +67,7 @@
                             Orientation="Horizontal"
                             HorizontalAlignment="Right">
                     <Button x:Name="OkButton"
-                            Content="OK"
+                            Content="{markup:Localize ButtonOK}"
                             Width="90"
                             HorizontalContentAlignment="Center"
                             Classes="accent"
@@ -79,14 +80,14 @@
                             HorizontalAlignment="Right"
                             Spacing="8">
                     <Button x:Name="NoButton"
-                            Content="No"
+                            Content="{markup:Localize ButtonNo}"
                             Width="90"
                             HorizontalContentAlignment="Center"
                             Background="{DynamicResource ButtonSecondaryBg}"
                             Foreground="{DynamicResource ButtonSecondaryFg}"
                             CornerRadius="4" />
                     <Button x:Name="YesButton"
-                            Content="Yes"
+                            Content="{markup:Localize ButtonYes}"
                             Width="90"
                             HorizontalContentAlignment="Center"
                             Classes="accent"

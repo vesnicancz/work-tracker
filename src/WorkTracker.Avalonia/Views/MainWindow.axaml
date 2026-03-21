@@ -3,12 +3,13 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:material="using:Material.Icons.Avalonia"
+        xmlns:markup="using:WorkTracker.Avalonia.Markup"
         xmlns:converters="using:WorkTracker.Avalonia.Converters"
         xmlns:vm="using:WorkTracker.Avalonia.ViewModels"
         x:Class="WorkTracker.Avalonia.Views.MainWindow"
         x:DataType="vm:MainViewModel"
         mc:Ignorable="d"
-        Title="Work Tracker"
+        Title="{markup:Localize AppTitle}"
         Width="1100"
         Height="700"
         MinWidth="750"
@@ -44,14 +45,14 @@
                     <!-- App icon (left, fixed) -->
                     <material:MaterialIcon Kind="ClockTimeFourOutline"
                                           Width="16" Height="16"
-                                          Foreground="{DynamicResource TextMuted}"
+                                          Foreground="{DynamicResource AppTitleForeground}"
                                           HorizontalAlignment="Left"
                                           VerticalAlignment="Center"
                                           Margin="12,0,0,0" />
 
                     <!-- App title -->
-                    <TextBlock Text="Work Tracker" FontSize="12"
-                               Foreground="{DynamicResource TextMuted}"
+                    <TextBlock Text="{markup:Localize WorkTracker}" FontSize="12"
+                               Foreground="{DynamicResource AppTitleForeground}"
                                VerticalAlignment="Center"
                                Margin="34,0,12,0"
                                HorizontalAlignment="{DynamicResource TitleBarAlignment}" />
@@ -64,7 +65,7 @@
                         <Button x:Name="MinimizeButton"
                                 Width="36" Height="28" Padding="0"
                                 Background="Transparent" BorderThickness="0"
-                                ToolTip.Tip="Minimize">
+                                ToolTip.Tip="{markup:Localize Minimize}">
                             <material:MaterialIcon Kind="Minus"
                                                   Width="{DynamicResource WindowControlIconSize}"
                                                   Height="{DynamicResource WindowControlIconSize}"
@@ -73,7 +74,7 @@
                         <Button x:Name="CloseButton"
                                 Width="36" Height="28" Padding="0"
                                 Background="Transparent" BorderThickness="0"
-                                ToolTip.Tip="Close">
+                                ToolTip.Tip="{markup:Localize Close}">
                             <material:MaterialIcon Kind="Close"
                                                   Width="{DynamicResource WindowControlIconSize}"
                                                   Height="{DynamicResource WindowControlIconSize}"
@@ -106,7 +107,7 @@
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <material:MaterialIcon Kind="CircleMedium" Width="14" Height="14"
                                                       Foreground="{DynamicResource SuccessGreen}" VerticalAlignment="Center" />
-                                <TextBlock Text="Active Work" FontSize="12" FontWeight="SemiBold"
+                                <TextBlock Text="{markup:Localize ActiveWork}" FontSize="12" FontWeight="SemiBold"
                                            Foreground="{DynamicResource SuccessGreen}" VerticalAlignment="Center" />
                             </StackPanel>
 
@@ -131,7 +132,7 @@
                                     Classes="danger">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                     <material:MaterialIcon Kind="Stop" Width="16" Height="16" />
-                                    <TextBlock Text="Stop" FontWeight="SemiBold" />
+                                    <TextBlock Text="{markup:Localize StopWork}" FontWeight="SemiBold" />
                                 </StackPanel>
                             </Button>
                         </StackPanel>
@@ -141,7 +142,7 @@
                     <Border Classes="card">
                         <StackPanel Spacing="8">
                             <TextBox Text="{Binding WorkInput, Mode=TwoWay}"
-                                     Watermark="PROJ-123 description..."
+                                     Watermark="{markup:Localize WorkInputHint}"
                                      MaxLength="200">
                                 <TextBox.KeyBindings>
                                     <KeyBinding Gesture="Enter" Command="{Binding StartWorkCommand}" />
@@ -161,7 +162,7 @@
                                     Classes="success">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                     <material:MaterialIcon Kind="Play" Width="16" Height="16" />
-                                    <TextBlock Text="Start Work" FontWeight="SemiBold" />
+                                    <TextBlock Text="{markup:Localize StartWork}" FontWeight="SemiBold" />
                                 </StackPanel>
                             </Button>
                         </StackPanel>
@@ -174,7 +175,7 @@
                                                   Kind="TimerOutline" Width="16" Height="16"
                                                   Foreground="{DynamicResource TextMuted}"
                                                   VerticalAlignment="Center" Margin="0,0,8,0" />
-                            <TextBlock Grid.Column="1" Text="Today"
+                            <TextBlock Grid.Column="1" Text="{markup:Localize Today}"
                                        FontSize="13" VerticalAlignment="Center"
                                        Foreground="{DynamicResource TextSecondary}" />
                             <TextBlock Grid.Column="2"
@@ -198,7 +199,7 @@
                         <StackPanel Orientation="Horizontal" Spacing="10">
                             <material:MaterialIcon Kind="CloudUploadOutline" Width="16" Height="16"
                                                   Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" />
-                            <TextBlock Text="Submit Worklogs" Foreground="{DynamicResource TextSecondary}"
+                            <TextBlock Text="{markup:Localize SubmitWorklogs}" Foreground="{DynamicResource TextSecondary}"
                                        FontSize="13" VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
@@ -208,7 +209,7 @@
                         <StackPanel Orientation="Horizontal" Spacing="10">
                             <material:MaterialIcon Kind="CogOutline" Width="16" Height="16"
                                                   Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" />
-                            <TextBlock Text="Settings" Foreground="{DynamicResource TextSecondary}"
+                            <TextBlock Text="{markup:Localize Settings}" Foreground="{DynamicResource TextSecondary}"
                                        FontSize="13" VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
@@ -224,7 +225,7 @@
                     <!-- Right actions -->
                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4">
                         <Button Command="{Binding RefreshCommand}"
-                                ToolTip.Tip="Refresh" Padding="7"
+                                ToolTip.Tip="{markup:Localize Refresh}" Padding="7"
                                 Background="Transparent" BorderThickness="0">
                             <material:MaterialIcon Kind="Refresh"
                                                   Width="{DynamicResource ToolbarIconSize}"
@@ -232,7 +233,7 @@
                                                   Foreground="{DynamicResource TextMuted}" />
                         </Button>
                         <Button Command="{Binding AddWorkEntryCommand}"
-                                ToolTip.Tip="Add entry" Padding="7"
+                                ToolTip.Tip="{markup:Localize AddNewWorkEntry}" Padding="7"
                                 Background="Transparent" BorderThickness="0">
                             <material:MaterialIcon Kind="Plus"
                                                   Width="{DynamicResource ToolbarIconSize}"
@@ -245,7 +246,7 @@
                     <StackPanel Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
                         <Button Command="{Binding PreviousDayCommand}" Padding="5"
                                 Background="Transparent" BorderThickness="0"
-                                ToolTip.Tip="Previous day">
+                                ToolTip.Tip="{markup:Localize PreviousDay}">
                             <material:MaterialIcon Kind="ChevronLeft" Width="18" Height="18"
                                                   Foreground="{DynamicResource TextMuted}" />
                         </Button>
@@ -253,11 +254,11 @@
                                             Width="180" VerticalAlignment="Center" />
                         <Button Command="{Binding NextDayCommand}" Padding="5"
                                 Background="Transparent" BorderThickness="0"
-                                ToolTip.Tip="Next day">
+                                ToolTip.Tip="{markup:Localize NextDay}">
                             <material:MaterialIcon Kind="ChevronRight" Width="18" Height="18"
                                                   Foreground="{DynamicResource TextMuted}" />
                         </Button>
-                        <TextBlock Text="Work Entries" FontSize="14" FontWeight="SemiBold"
+                        <TextBlock Text="{markup:Localize WorkEntries}" FontSize="14" FontWeight="SemiBold"
                                    Foreground="{DynamicResource TextSecondary}"
                                    VerticalAlignment="Center" Margin="10,0,0,0" />
                     </StackPanel>
@@ -279,31 +280,31 @@
                           BorderThickness="0"
                           DoubleTapped="OnDataGridDoubleTapped">
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="Ticket"
+                        <DataGridTextColumn Header="{markup:Localize Ticket}"
                                             Binding="{ReflectionBinding TicketId}"
                                             Width="88" />
-                        <DataGridTextColumn Header="Description"
+                        <DataGridTextColumn Header="{markup:Localize Description}"
                                             Binding="{ReflectionBinding Description}"
                                             Width="*" MinWidth="200" />
-                        <DataGridTextColumn Header="Start"
+                        <DataGridTextColumn Header="{markup:Localize Start}"
                                             Binding="{ReflectionBinding StartTime, Converter={StaticResource DateTimeToStringConverter}, ConverterParameter='HH:mm'}"
                                             Width="65" />
-                        <DataGridTextColumn Header="End"
+                        <DataGridTextColumn Header="{markup:Localize End}"
                                             Binding="{ReflectionBinding EndTime, Converter={StaticResource DateTimeToStringConverter}, ConverterParameter='HH:mm'}"
                                             Width="65" />
-                        <DataGridTextColumn Header="Duration"
+                        <DataGridTextColumn Header="{markup:Localize Duration}"
                                             Binding="{ReflectionBinding Duration, Converter={StaticResource TimeSpanToStringConverter}}"
                                             Width="80" />
 
                         <!-- Status -->
-                        <DataGridTemplateColumn Header="Status" Width="65">
+                        <DataGridTemplateColumn Header="{markup:Localize Status}" Width="65">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <Panel VerticalAlignment="Center" HorizontalAlignment="Center">
-                                        <TextBlock Text="Active" FontSize="12" FontWeight="SemiBold"
+                                        <TextBlock Text="{markup:Localize Active}" FontSize="12" FontWeight="SemiBold"
                                                    Foreground="{DynamicResource SuccessGreen}"
                                                    IsVisible="{Binding IsActive}" />
-                                        <TextBlock Text="Done" FontSize="12"
+                                        <TextBlock Text="{markup:Localize Done}" FontSize="12"
                                                    Foreground="{DynamicResource TextMuted}"
                                                    IsVisible="{Binding !IsActive}" />
                                     </Panel>
@@ -324,7 +325,7 @@
                                                 CommandParameter="{Binding}"
                                                 Width="28" Height="28" Padding="0"
                                                 Background="Transparent" BorderThickness="0"
-                                                ToolTip.Tip="Restart">
+                                                ToolTip.Tip="{markup:Localize RestartWork}">
                                             <material:MaterialIcon Kind="Play"
                                                                   Width="{DynamicResource ToolbarIconSize}"
                                                                   Height="{DynamicResource ToolbarIconSize}"
@@ -334,7 +335,7 @@
                                                 CommandParameter="{Binding}"
                                                 Width="28" Height="28" Padding="0"
                                                 Background="Transparent" BorderThickness="0"
-                                                ToolTip.Tip="Edit">
+                                                ToolTip.Tip="{markup:Localize Edit}">
                                             <material:MaterialIcon Kind="Pencil"
                                                                   Width="{DynamicResource ToolbarIconSize}"
                                                                   Height="{DynamicResource ToolbarIconSize}"
@@ -344,7 +345,7 @@
                                                 CommandParameter="{Binding}"
                                                 Width="28" Height="28" Padding="0"
                                                 Background="Transparent" BorderThickness="0"
-                                                ToolTip.Tip="Delete">
+                                                ToolTip.Tip="{markup:Localize Delete}">
                                             <material:MaterialIcon Kind="Delete"
                                                                   Width="{DynamicResource ToolbarIconSize}"
                                                                   Height="{DynamicResource ToolbarIconSize}"

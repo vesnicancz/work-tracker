@@ -3,11 +3,12 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:material="using:Material.Icons.Avalonia"
+        xmlns:markup="using:WorkTracker.Avalonia.Markup"
         xmlns:vm="using:WorkTracker.Avalonia.ViewModels"
         x:Class="WorkTracker.Avalonia.Views.SettingsWindow"
         x:DataType="vm:SettingsViewModel"
         mc:Ignorable="d"
-        Title="Settings"
+        Title="{markup:Localize Settings}"
         Width="640"
         Height="680"
         WindowStartupLocation="CenterOwner"
@@ -36,8 +37,8 @@
                     Height="36"
                     IsVisible="{DynamicResource ShowDialogTitleBar}">
                 <Panel>
-                    <TextBlock Text="Settings" FontSize="12"
-                               Foreground="{DynamicResource TextMuted}"
+                    <TextBlock Text="{markup:Localize Settings}" FontSize="12"
+                               Foreground="{DynamicResource AppTitleForeground}"
                                HorizontalAlignment="{DynamicResource TitleBarAlignment}"
                                VerticalAlignment="Center"
                                Margin="12,0,12,0" />
@@ -46,7 +47,7 @@
                             Background="Transparent" BorderThickness="0"
                             HorizontalAlignment="Right"
                             VerticalAlignment="Center" Margin="0,0,6,0"
-                            ToolTip.Tip="Close">
+                            ToolTip.Tip="{markup:Localize Close}">
                         <material:MaterialIcon Kind="Close"
                                               Width="{DynamicResource WindowControlIconSize}"
                                               Height="{DynamicResource WindowControlIconSize}"
@@ -61,58 +62,58 @@
                 <TabControl Grid.Row="0" Margin="0,4,0,0">
 
                     <!-- ===== General ===== -->
-                    <TabItem Header="General">
+                    <TabItem Header="{markup:Localize General}">
                         <ScrollViewer VerticalScrollBarVisibility="Auto"
                                       HorizontalScrollBarVisibility="Disabled">
                             <StackPanel Margin="20,12" Spacing="0">
 
-                                <TextBlock Text="Window Behavior" FontSize="13" Foreground="{DynamicResource TextMuted}"
+                                <TextBlock Text="{markup:Localize WindowBehavior}" FontSize="13" Foreground="{DynamicResource TextMuted}"
                                            Margin="0,0,0,8" />
 
                                 <RadioButton IsChecked="{Binding IsMinimizeToTray}" Margin="0,0,0,6">
                                     <StackPanel>
-                                        <TextBlock Text="Minimize to tray" FontWeight="Medium" />
-                                        <TextBlock Text="The application continues running in the system tray."
+                                        <TextBlock Text="{markup:Localize MinimizeToTray}" FontWeight="Medium" />
+                                        <TextBlock Text="{markup:Localize MinimizeToTrayDesc}"
                                                    Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,2,0,0" />
                                     </StackPanel>
                                 </RadioButton>
 
                                 <RadioButton IsChecked="{Binding IsExitApplication}">
                                     <StackPanel>
-                                        <TextBlock Text="Exit application" FontWeight="Medium" />
-                                        <TextBlock Text="The application exits completely."
+                                        <TextBlock Text="{markup:Localize ExitApplication}" FontWeight="Medium" />
+                                        <TextBlock Text="{markup:Localize ExitApplicationDesc}"
                                                    Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,2,0,0" />
                                     </StackPanel>
                                 </RadioButton>
 
                                 <Separator Margin="0,16" />
 
-                                <TextBlock Text="Startup" FontSize="13" Foreground="{DynamicResource TextMuted}"
+                                <TextBlock Text="{markup:Localize Startup}" FontSize="13" Foreground="{DynamicResource TextMuted}"
                                            Margin="0,0,0,8" />
 
                                 <CheckBox IsChecked="{Binding StartWithWindows}" Margin="0,0,0,6">
                                     <StackPanel>
-                                        <TextBlock Text="Start with Windows" FontWeight="Medium" />
-                                        <TextBlock Text="Launch automatically when you log in."
+                                        <TextBlock Text="{markup:Localize StartWithWindows}" FontWeight="Medium" />
+                                        <TextBlock Text="{markup:Localize StartWithWindowsDesc}"
                                                    Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,2,0,0" />
                                     </StackPanel>
                                 </CheckBox>
 
                                 <CheckBox IsChecked="{Binding StartMinimized}">
                                     <StackPanel>
-                                        <TextBlock Text="Start minimized" FontWeight="Medium" />
-                                        <TextBlock Text="Start in the system tray without showing the main window."
+                                        <TextBlock Text="{markup:Localize StartMinimized}" FontWeight="Medium" />
+                                        <TextBlock Text="{markup:Localize StartMinimizedDesc}"
                                                    Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,2,0,0" />
                                     </StackPanel>
                                 </CheckBox>
 
                                 <Separator Margin="0,16" />
 
-                                <TextBlock Text="Appearance" FontSize="13" Foreground="{DynamicResource TextMuted}"
+                                <TextBlock Text="{markup:Localize Appearance}" FontSize="13" Foreground="{DynamicResource TextMuted}"
                                            Margin="0,0,0,8" />
 
                                 <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                                    <TextBlock Text="Theme" FontWeight="Medium" VerticalAlignment="Center" />
+                                    <TextBlock Text="{markup:Localize Theme}" FontWeight="Medium" VerticalAlignment="Center" />
                                     <ComboBox SelectedItem="{Binding SelectedTheme}"
                                               ItemsSource="{Binding AvailableThemes}"
                                               MinWidth="150" />
@@ -123,7 +124,7 @@
                     </TabItem>
 
                     <!-- ===== Plugins ===== -->
-                    <TabItem Header="Plugins">
+                    <TabItem Header="{markup:Localize Plugins}">
                         <ScrollViewer VerticalScrollBarVisibility="Auto"
                                       HorizontalScrollBarVisibility="Disabled">
                             <StackPanel Margin="20,12" Spacing="10">
@@ -132,7 +133,7 @@
                                           SelectedItem="{Binding SelectedPlugin}"
                                           DisplayMemberBinding="{ReflectionBinding Name}"
                                           HorizontalAlignment="Stretch"
-                                          PlaceholderText="Select plugin" />
+                                          PlaceholderText="{markup:Localize SelectPlugin}" />
 
                                 <Border Background="{DynamicResource SidebarBackground}"
                                         BorderBrush="{DynamicResource CardBorder}"
@@ -140,24 +141,24 @@
                                     <StackPanel Spacing="10">
 
                                         <CheckBox IsChecked="{Binding SelectedPlugin.IsEnabled}"
-                                                  Content="Enable plugin" />
+                                                  Content="{markup:Localize EnablePlugin}" />
 
                                         <Separator />
 
                                         <!-- Metadata -->
                                         <Grid ColumnDefinitions="80,*" RowDefinitions="Auto,Auto,Auto"
                                               Margin="0,0,0,4">
-                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Version" Foreground="{DynamicResource TextMuted}" FontSize="12" Margin="0,0,0,4" />
+                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="{markup:Localize PluginVersion}" Foreground="{DynamicResource TextMuted}" FontSize="12" Margin="0,0,0,4" />
                                             <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding SelectedPlugin.Version}" FontSize="12" Margin="0,0,0,4" />
-                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Author" Foreground="{DynamicResource TextMuted}" FontSize="12" Margin="0,0,0,4" />
+                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="{markup:Localize PluginAuthor}" Foreground="{DynamicResource TextMuted}" FontSize="12" Margin="0,0,0,4" />
                                             <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SelectedPlugin.Author}" FontSize="12" Margin="0,0,0,4" />
-                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Info" Foreground="{DynamicResource TextMuted}" FontSize="12" VerticalAlignment="Top" />
+                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="{markup:Localize PluginDescription}" Foreground="{DynamicResource TextMuted}" FontSize="12" VerticalAlignment="Top" />
                                             <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SelectedPlugin.Description}" FontSize="12" TextWrapping="Wrap" />
                                         </Grid>
 
                                         <Separator />
 
-                                        <TextBlock Text="Configuration" FontSize="12" Foreground="{DynamicResource TextMuted}" />
+                                        <TextBlock Text="{markup:Localize Configuration}" FontSize="12" Foreground="{DynamicResource TextMuted}" />
 
                                         <!-- Config fields -->
                                         <ItemsControl ItemsSource="{Binding SelectedPlugin.ConfigurationFields}">
@@ -181,7 +182,7 @@
                                             <StackPanel Orientation="Horizontal" Spacing="6">
                                                 <material:MaterialIcon Kind="LanConnect" Width="16" Height="16"
                                                                       Foreground="{DynamicResource TextMuted}" />
-                                                <TextBlock Text="Test Connection" FontSize="12"
+                                                <TextBlock Text="{markup:Localize TestConnection}" FontSize="12"
                                                            Foreground="{DynamicResource TextSecondary}" />
                                             </StackPanel>
                                         </Button>
@@ -197,7 +198,7 @@
                     </TabItem>
 
                     <!-- ===== Favorites ===== -->
-                    <TabItem Header="Favorites">
+                    <TabItem Header="{markup:Localize Favorites}">
                         <Grid Margin="20,12" RowDefinitions="*,Auto">
 
                             <!-- Two-column: list | edit -->
@@ -230,14 +231,14 @@
                                             <Button Command="{Binding MoveFavoriteUpCommand}"
                                                     Width="28" Height="28" Padding="0"
                                                     Background="Transparent" BorderThickness="0"
-                                                    ToolTip.Tip="Move up">
+                                                    ToolTip.Tip="{markup:Localize MoveUp}">
                                                 <material:MaterialIcon Kind="ArrowUp" Width="16" Height="16"
                                                                       Foreground="{DynamicResource TextMuted}" />
                                             </Button>
                                             <Button Command="{Binding MoveFavoriteDownCommand}"
                                                     Width="28" Height="28" Padding="0"
                                                     Background="Transparent" BorderThickness="0"
-                                                    ToolTip.Tip="Move down">
+                                                    ToolTip.Tip="{markup:Localize MoveDown}">
                                                 <material:MaterialIcon Kind="ArrowDown" Width="16" Height="16"
                                                                       Foreground="{DynamicResource TextMuted}" />
                                             </Button>
@@ -252,13 +253,13 @@
                                         BorderThickness="1"
                                         CornerRadius="4" Padding="14">
                                     <StackPanel Spacing="8">
-                                        <TextBlock Text="Edit Favorite" FontSize="12" Foreground="{DynamicResource TextMuted}" />
+                                        <TextBlock Text="{markup:Localize EditFavorite}" FontSize="12" Foreground="{DynamicResource TextMuted}" />
                                         <TextBox Text="{Binding EditingFavoriteName, Mode=TwoWay}"
-                                                 Watermark="Name (required)" FontSize="12" />
+                                                 Watermark="{markup:Localize FavoriteName}" FontSize="12" />
                                         <TextBox Text="{Binding EditingFavoriteTicket, Mode=TwoWay}"
-                                                 Watermark="Ticket ID" FontSize="12" />
+                                                 Watermark="{markup:Localize FavoriteTicket}" FontSize="12" />
                                         <TextBox Text="{Binding EditingFavoriteDescription, Mode=TwoWay}"
-                                                 Watermark="Description"
+                                                 Watermark="{markup:Localize FavoriteDescription}"
                                                  FontSize="12" TextWrapping="Wrap"
                                                  AcceptsReturn="True" MinHeight="50" />
 
@@ -268,7 +269,7 @@
                                                 <StackPanel Orientation="Horizontal" Spacing="4">
                                                     <material:MaterialIcon Kind="Plus" Width="14" Height="14"
                                                                           Foreground="{DynamicResource TextMuted}" />
-                                                    <TextBlock Text="Add" FontSize="12" Foreground="{DynamicResource TextSecondary}" />
+                                                    <TextBlock Text="{markup:Localize AddFavorite}" FontSize="12" Foreground="{DynamicResource TextSecondary}" />
                                                 </StackPanel>
                                             </Button>
                                             <Button Command="{Binding RemoveFavoriteCommand}"
@@ -276,14 +277,14 @@
                                                 <StackPanel Orientation="Horizontal" Spacing="4">
                                                     <material:MaterialIcon Kind="Delete" Width="14" Height="14"
                                                                           Foreground="{DynamicResource DangerRed}" />
-                                                    <TextBlock Text="Remove" FontSize="12" Foreground="{DynamicResource DangerRed}" />
+                                                    <TextBlock Text="{markup:Localize RemoveFavorite}" FontSize="12" Foreground="{DynamicResource DangerRed}" />
                                                 </StackPanel>
                                             </Button>
                                             <Button Command="{Binding SaveFavoriteCommand}"
                                                     Padding="8,6" Classes="accent">
                                                 <StackPanel Orientation="Horizontal" Spacing="4">
                                                     <material:MaterialIcon Kind="ContentSave" Width="14" Height="14" />
-                                                    <TextBlock Text="Save" FontSize="12" FontWeight="SemiBold" />
+                                                    <TextBlock Text="{markup:Localize Save}" FontSize="12" FontWeight="SemiBold" />
                                                 </StackPanel>
                                             </Button>
                                         </StackPanel>
@@ -296,13 +297,13 @@
                     </TabItem>
 
                     <!-- ===== About ===== -->
-                    <TabItem Header="About">
+                    <TabItem Header="{markup:Localize About}">
                         <ScrollViewer VerticalScrollBarVisibility="Auto"
                                       HorizontalScrollBarVisibility="Disabled">
                             <StackPanel Margin="20,12" Spacing="14">
 
                                 <StackPanel Spacing="4">
-                                    <TextBlock Text="Work Tracker" FontSize="18" FontWeight="SemiBold" />
+                                    <TextBlock Text="{markup:Localize WorkTracker}" FontSize="18" FontWeight="SemiBold" />
                                     <TextBlock Text="{Binding AppVersion, StringFormat='Version {0}'}"
                                                FontSize="13" Foreground="{DynamicResource TextMuted}" />
                                 </StackPanel>
@@ -310,69 +311,63 @@
                                 <Separator />
 
                                 <!-- Quick Reference -->
-                                <TextBlock Text="Quick Reference" FontSize="13" FontWeight="SemiBold" />
+                                <TextBlock Text="{markup:Localize QuickReference}" FontSize="13" FontWeight="SemiBold" />
 
                                 <Grid ColumnDefinitions="130,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" Margin="0,0,0,4">
-                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Start tracking"
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{markup:Localize AboutStartTracking}"
                                                FontSize="12" Foreground="{DynamicResource TextMuted}" Margin="0,0,0,4" />
                                     <TextBlock Grid.Row="0" Grid.Column="1" FontSize="12" Margin="0,0,0,4"
-                                               Text="Type ticket ID + description, press Enter" />
+                                               Text="{markup:Localize AboutStartTrackingDesc}" />
 
-                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Jira ticket format"
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="{markup:Localize AboutJiraFormat}"
                                                FontSize="12" Foreground="{DynamicResource TextMuted}" Margin="0,0,0,4" />
                                     <TextBlock Grid.Row="1" Grid.Column="1" FontSize="12" Margin="0,0,0,4"
-                                               Text="PROJ-123 is detected automatically from input" />
+                                               Text="{markup:Localize AboutJiraFormatDesc}" />
 
-                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Favorites"
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="{markup:Localize Favorites}"
                                                FontSize="12" Foreground="{DynamicResource TextMuted}" Margin="0,0,0,4" />
                                     <TextBlock Grid.Row="2" Grid.Column="1" FontSize="12" Margin="0,0,0,4"
-                                               Text="Quick-start frequent tasks from the sidebar or tray menu" />
+                                               Text="{markup:Localize AboutFavoritesDesc}" />
 
-                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Submit worklogs"
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="{markup:Localize AboutSubmitWorklogs}"
                                                FontSize="12" Foreground="{DynamicResource TextMuted}" Margin="0,0,0,4" />
                                     <TextBlock Grid.Row="3" Grid.Column="1" FontSize="12" Margin="0,0,0,4"
-                                               Text="Send a single day or entire week to Jira Tempo" />
+                                               Text="{markup:Localize AboutSubmitWorklogsDesc}" />
 
-                                    <TextBlock Grid.Row="4" Grid.Column="0" Text="System tray"
+                                    <TextBlock Grid.Row="4" Grid.Column="0" Text="{markup:Localize AboutSystemTray}"
                                                FontSize="12" Foreground="{DynamicResource TextMuted}" Margin="0,0,0,4" />
                                     <TextBlock Grid.Row="4" Grid.Column="1" FontSize="12" Margin="0,0,0,4"
-                                               Text="Runs in background, start/stop from tray icon" />
+                                               Text="{markup:Localize AboutSystemTrayDesc}" />
                                 </Grid>
 
                                 <Separator />
 
                                 <!-- System Info -->
-                                <TextBlock Text="System" FontSize="13" FontWeight="SemiBold" />
+                                <TextBlock Text="{markup:Localize SystemInfo}" FontSize="13" FontWeight="SemiBold" />
 
                                 <Grid ColumnDefinitions="100,*" RowDefinitions="Auto,Auto,Auto" Margin="0,0,0,4">
-                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Runtime"
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{markup:Localize Runtime}"
                                                Foreground="{DynamicResource TextMuted}" FontSize="12" Margin="0,0,0,6" />
                                     <TextBlock Grid.Row="0" Grid.Column="1"
                                                Text="{Binding RuntimeVersion}"
                                                FontSize="12" Margin="0,0,0,6" />
-                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Platform"
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="{markup:Localize PlatformLabel}"
                                                Foreground="{DynamicResource TextMuted}" FontSize="12" Margin="0,0,0,6" />
                                     <TextBlock Grid.Row="1" Grid.Column="1"
                                                Text="{Binding PlatformInfo}"
                                                FontSize="12" Margin="0,0,0,6" />
-                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="UI Framework"
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="{markup:Localize UIFramework}"
                                                Foreground="{DynamicResource TextMuted}" FontSize="12" />
                                     <TextBlock Grid.Row="2" Grid.Column="1" Text="Avalonia"
                                                FontSize="12" />
                                 </Grid>
 
-                                <Separator />
-
-                                <!-- Data -->
-                                <TextBlock Text="Data Storage" FontSize="13" FontWeight="SemiBold" />
-                                <TextBlock FontSize="12" Foreground="{DynamicResource TextMuted}" TextWrapping="Wrap" LineHeight="18"
-                                           Text="All work entries are stored locally in a SQLite database. Settings and plugin configurations are saved to a JSON file. Data location: %LocalAppData%/WorkTracker/" />
 
                                 <Separator />
 
                                 <TextBlock FontSize="11" Foreground="{DynamicResource TextMuted}" TextWrapping="Wrap"
                                            FontStyle="Italic" HorizontalAlignment="Center" Opacity="0.7"
-                                           Text="&quot;The universe is under no obligation to make sense to you.&quot; — Neil deGrasse Tyson&#x0a;Neither is your timesheet." />
+                                           Text="{markup:Localize AboutQuote}" />
 
                             </StackPanel>
                         </ScrollViewer>
@@ -384,7 +379,7 @@
                 <StackPanel Grid.Row="1" Orientation="Horizontal"
                             HorizontalAlignment="Right"
                             Spacing="8" Margin="20,0,20,14">
-                    <Button Content="Cancel"
+                    <Button Content="{markup:Localize Cancel}"
                             Command="{Binding CancelCommand}"
                             Padding="20,8"
                             Background="{DynamicResource ButtonSecondaryBg}"
@@ -394,7 +389,7 @@
                             Classes="accent">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <material:MaterialIcon Kind="ContentSave" Width="16" Height="16" />
-                            <TextBlock Text="Save" FontWeight="SemiBold" />
+                            <TextBlock Text="{markup:Localize Save}" FontWeight="SemiBold" />
                         </StackPanel>
                     </Button>
                 </StackPanel>

@@ -430,7 +430,7 @@ Time: {2}</value>
     <value>Description</value>
   </data>
   <data name="AddFavorite" xml:space="preserve">
-    <value>Add favorite</value>
+    <value>Add</value>
   </data>
   <data name="EditFavorite" xml:space="preserve">
     <value>Edit</value>
@@ -458,5 +458,87 @@ Time: {2}</value>
   </data>
   <data name="FavoriteStarted" xml:space="preserve">
     <value>Started tracking: {0}</value>
+  </data>
+  <data name="ButtonYes" xml:space="preserve">
+    <value>Yes</value>
+  </data>
+  <data name="ButtonNo" xml:space="preserve">
+    <value>No</value>
+  </data>
+  <data name="ButtonOK" xml:space="preserve">
+    <value>OK</value>
+  </data>
+
+  <!-- Window Controls -->
+  <data name="Minimize" xml:space="preserve">
+    <value>Minimize</value>
+  </data>
+  <data name="Today" xml:space="preserve">
+    <value>Today</value>
+  </data>
+
+  <!-- Settings: Appearance -->
+  <data name="Appearance" xml:space="preserve">
+    <value>Appearance</value>
+  </data>
+  <data name="Theme" xml:space="preserve">
+    <value>Theme</value>
+  </data>
+
+  <!-- Settings: About -->
+  <data name="About" xml:space="preserve">
+    <value>About</value>
+  </data>
+  <data name="QuickReference" xml:space="preserve">
+    <value>Quick Reference</value>
+  </data>
+  <data name="AboutStartTracking" xml:space="preserve">
+    <value>Start tracking</value>
+  </data>
+  <data name="AboutStartTrackingDesc" xml:space="preserve">
+    <value>Type ticket ID + description, press Enter</value>
+  </data>
+  <data name="AboutJiraFormat" xml:space="preserve">
+    <value>Jira ticket format</value>
+  </data>
+  <data name="AboutJiraFormatDesc" xml:space="preserve">
+    <value>PROJ-123 is detected automatically from input</value>
+  </data>
+  <data name="AboutFavoritesDesc" xml:space="preserve">
+    <value>Quick-start frequent tasks from the sidebar or tray menu</value>
+  </data>
+  <data name="AboutSubmitWorklogs" xml:space="preserve">
+    <value>Submit worklogs</value>
+  </data>
+  <data name="AboutSubmitWorklogsDesc" xml:space="preserve">
+    <value>Send a single day or entire week to Jira Tempo</value>
+  </data>
+  <data name="AboutSystemTray" xml:space="preserve">
+    <value>System tray</value>
+  </data>
+  <data name="AboutSystemTrayDesc" xml:space="preserve">
+    <value>Runs in background, start/stop from tray icon</value>
+  </data>
+  <data name="SystemInfo" xml:space="preserve">
+    <value>System</value>
+  </data>
+  <data name="Runtime" xml:space="preserve">
+    <value>Runtime</value>
+  </data>
+  <data name="PlatformLabel" xml:space="preserve">
+    <value>Platform</value>
+  </data>
+  <data name="UIFramework" xml:space="preserve">
+    <value>UI Framework</value>
+  </data>
+  <data name="DataStorage" xml:space="preserve">
+    <value>Data Storage</value>
+  </data>
+  <data name="DataStorageDesc" xml:space="preserve">
+    <value>All work entries are stored locally in a SQLite database. Settings and plugin configurations are saved to a JSON file. Data location: %LocalAppData%/WorkTracker/</value>
+  </data>
+  <data name="AboutQuote" xml:space="preserve">
+    <value>"The universe is under no obligation to make sense to you." — Neil deGrasse Tyson
+Neither is your timesheet.</value>
   </data>
 </root>
