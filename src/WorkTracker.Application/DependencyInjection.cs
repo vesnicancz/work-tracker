@@ -1,5 +1,4 @@
 using Microsoft.Extensions.DependencyInjection;
-using WorkTracker.Application.Plugins;
 using WorkTracker.Application.Services;
 
 namespace WorkTracker.Application;
