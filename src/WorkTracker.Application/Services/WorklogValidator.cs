@@ -34,7 +34,7 @@ public sealed class WorklogValidator : IWorklogValidator
 
 		if (duration.Value.TotalSeconds < MinDurationSeconds)
 		{
-			return ValidationResult.Failure($"Duration must be at least {MinDurationSeconds} second(s) for {entry.TicketId}");
+			return ValidationResult.Failure($"Duration must be at least {MinDurationSeconds} seconds for {entry.TicketId}");
 		}
 
 		if (duration.Value.TotalHours > MaxDurationHours)
