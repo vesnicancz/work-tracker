@@ -531,11 +531,8 @@ Time: {2}</value>
   <data name="UIFramework" xml:space="preserve">
     <value>UI Framework</value>
   </data>
-  <data name="DataStorage" xml:space="preserve">
-    <value>Data Storage</value>
-  </data>
-  <data name="DataStorageDesc" xml:space="preserve">
-    <value>All work entries are stored locally in a SQLite database. Settings and plugin configurations are saved to a JSON file. Data location: %LocalAppData%/WorkTracker/</value>
+  <data name="VersionFormat" xml:space="preserve">
+    <value>Version {0}</value>
   </data>
   <data name="AboutQuote" xml:space="preserve">
     <value>"The universe is under no obligation to make sense to you." — Neil deGrasse Tyson

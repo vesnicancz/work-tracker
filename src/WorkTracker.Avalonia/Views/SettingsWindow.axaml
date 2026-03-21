@@ -304,7 +304,7 @@
 
                                 <StackPanel Spacing="4">
                                     <TextBlock Text="{markup:Localize WorkTracker}" FontSize="18" FontWeight="SemiBold" />
-                                    <TextBlock Text="{Binding AppVersion, StringFormat='Version {0}'}"
+                                    <TextBlock Text="{Binding AppVersionDisplay}"
                                                FontSize="13" Foreground="{DynamicResource TextMuted}" />
                                 </StackPanel>
 
