@@ -141,10 +141,10 @@ public partial class App : global::Avalonia.Application
 	{
 		try
 		{
-			await Dispatcher.UIThread.InvokeAsync(() =>
+			await Dispatcher.UIThread.InvokeAsync(async () =>
 			{
 				var dialogService = _host!.Services.GetRequiredService<IDialogService>();
-				return dialogService.ShowEditWorkEntryDialogAsync();
+				await dialogService.ShowEditWorkEntryDialogAsync();
 			});
 		}
 		catch (Exception ex)
