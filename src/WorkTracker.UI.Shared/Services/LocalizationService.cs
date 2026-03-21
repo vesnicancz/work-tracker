@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using System.Globalization;
 using System.Resources;
 using WorkTracker.UI.Shared.Resources.Localization;
@@ -8,25 +8,32 @@ namespace WorkTracker.UI.Shared.Services;
 /// <summary>
 /// Service for managing application localization and culture changes
 /// </summary>
-public sealed class LocalizationService : INotifyPropertyChanged
+public sealed class LocalizationService : ILocalizationService
 {
-	private static readonly Lazy<LocalizationService> _instance = new(() => new LocalizationService());
 	private readonly ResourceManager _resourceManager;
 	private CultureInfo _currentCulture;
 
+	/// <summary>
+	/// Static instance for use in XAML markup extensions (which cannot use DI).
+	/// Must be set via <see cref="SetInstance"/> before any XAML is loaded.
+	/// </summary>
+	public static LocalizationService Instance { get; private set; } = null!;
+
 	public event PropertyChangedEventHandler? PropertyChanged;
 
-	private LocalizationService()
+	public LocalizationService()
 	{
 		_resourceManager = new ResourceManager(typeof(Strings));
 		_currentCulture = CultureInfo.CurrentUICulture;
 	}
 
-	public static LocalizationService Instance => _instance.Value;
-
 	/// <summary>
-	/// Gets or sets the current culture
+	/// Sets the singleton instance used by XAML markup extensions.
+	/// Must be called before any window/XAML is created.
 	/// </summary>
+	public static void SetInstance(LocalizationService instance) => Instance = instance;
+
+	/// <inheritdoc />
 	public CultureInfo CurrentCulture
 	{
 		get => _currentCulture;
@@ -43,20 +50,14 @@ public sealed class LocalizationService : INotifyPropertyChanged
 		}
 	}
 
-	/// <summary>
-	/// Gets the list of available cultures
-	/// </summary>
+	/// <inheritdoc />
 	public IEnumerable<CultureInfo> AvailableCultures => new[]
 	{
 		new CultureInfo("en"),
 		new CultureInfo("cs")
 	};
 
-	/// <summary>
-	/// Gets a localized string by key
-	/// </summary>
-	/// <param name="key">The resource key</param>
-	/// <returns>The localized string</returns>
+	/// <inheritdoc />
 	public string GetString(string key)
 	{
 		try
@@ -70,12 +71,7 @@ public sealed class LocalizationService : INotifyPropertyChanged
 		}
 	}
 
-	/// <summary>
-	/// Gets a localized formatted string
-	/// </summary>
-	/// <param name="key">The resource key</param>
-	/// <param name="args">Format arguments</param>
-	/// <returns>The formatted localized string</returns>
+	/// <inheritdoc />
 	public string GetFormattedString(string key, params object[] args)
 	{
 		try
@@ -89,9 +85,7 @@ public sealed class LocalizationService : INotifyPropertyChanged
 		}
 	}
 
-	/// <summary>
-	/// Indexer for convenient access to localized strings
-	/// </summary>
+	/// <inheritdoc />
 	public string this[string key] => GetString(key);
 
 	private void OnPropertyChanged(string propertyName)

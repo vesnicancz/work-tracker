@@ -17,7 +17,7 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 	private readonly IWorklogStateService _worklogStateService;
 	private readonly ISettingsService _settingsService;
 	private readonly ILogger<TrayIconService> _logger;
-	private readonly LocalizationService _localizationService;
+	private readonly ILocalizationService _localizationService;
 	private TrayIcon? _trayIcon;
 	private NativeMenu? _menu;
 	private bool _isInitialized;
@@ -28,13 +28,14 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 		IDialogService dialogService,
 		IWorklogStateService worklogStateService,
 		ISettingsService settingsService,
+		ILocalizationService localizationService,
 		ILogger<TrayIconService> logger)
 	{
 		_dialogService = dialogService;
 		_worklogStateService = worklogStateService;
 		_settingsService = settingsService;
+		_localizationService = localizationService;
 		_logger = logger;
-		_localizationService = LocalizationService.Instance;
 	}
 
 	public void Initialize()

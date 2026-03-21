@@ -21,6 +21,7 @@ public class SettingsViewModel : ViewModelBase
 	private readonly ILogger<SettingsViewModel> _logger;
 	private readonly IAutostartManager _autostartManager;
 	private readonly ITrayIconService _trayIconService;
+	private readonly ILocalizationService _localization;
 	private CloseWindowBehavior _closeWindowBehavior;
 	private bool _startWithWindows;
 	private bool _startMinimized;
@@ -42,7 +43,8 @@ public class SettingsViewModel : ViewModelBase
 		IConfiguration configuration,
 		ILogger<SettingsViewModel> logger,
 		IAutostartManager autostartManager,
-		ITrayIconService trayIconService)
+		ITrayIconService trayIconService,
+		ILocalizationService localization)
 	{
 		_settingsService = settingsService;
 		_pluginManager = pluginManager;
@@ -50,6 +52,7 @@ public class SettingsViewModel : ViewModelBase
 		_logger = logger;
 		_autostartManager = autostartManager;
 		_trayIconService = trayIconService;
+		_localization = localization;
 
 		// Load current settings
 		_closeWindowBehavior = _settingsService.Settings.CloseWindowBehavior;
@@ -129,7 +132,7 @@ public class SettingsViewModel : ViewModelBase
 		set => SetProperty(ref _startMinimized, value);
 	}
 
-	public string AppVersionDisplay => LocalizationService.Instance.GetFormattedString("VersionFormat", Application.AppInfo.Version);
+	public string AppVersionDisplay => _localization.GetFormattedString("VersionFormat", Application.AppInfo.Version);
 	public string RuntimeVersion => $".NET {Environment.Version}";
 	public string PlatformInfo => System.Runtime.InteropServices.RuntimeInformation.OSDescription;
 

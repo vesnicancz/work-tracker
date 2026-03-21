@@ -56,6 +56,13 @@ public partial class App : System.Windows.Application
 				services.AddInfrastructure(context.Configuration);
 				// Note: IWorkEntryService and IWorklogSubmissionService are registered in Infrastructure layer
 
+				// Localization — single instance shared by DI and XAML markup extensions.
+				// Must be created before any XAML is loaded.
+				var localization = new LocalizationService();
+				LocalizationService.SetInstance(localization);
+				services.AddSingleton(localization);
+				services.AddSingleton<ILocalizationService>(localization);
+
 				// WPF-specific services
 				services.AddSingleton<IDialogService, DialogService>(); // Stateless dialog service (factory for ViewModels)
 
@@ -91,7 +98,7 @@ public partial class App : System.Windows.Application
 	private void OnDispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
 	{
 		MessageBox.Show(
-			$"An unhandled exception occurred:\n\n{e.Exception.Message}\n\nStack trace:\n{e.Exception.StackTrace}",
+			$"An unhandled exception occurred:\n\n{e.Exception.Message}\n\nStack trace:\n{e.Exception.StackTrace ?? "(not available)"}",
 			"Error",
 			MessageBoxButton.OK,
 			MessageBoxImage.Error);
@@ -142,7 +149,7 @@ public partial class App : System.Windows.Application
 		catch (Exception ex)
 		{
 			MessageBox.Show(
-				$"Failed to start application:\n\n{ex.Message}\n\nStack trace:\n{ex.StackTrace}",
+				$"Failed to start application:\n\n{ex.Message}\n\nStack trace:\n{ex.StackTrace ?? "(not available)"}",
 				"Startup Error",
 				MessageBoxButton.OK,
 				MessageBoxImage.Error);

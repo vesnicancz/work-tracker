@@ -13,7 +13,7 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 	private readonly IDialogService _dialogService;
 	private readonly IWorklogStateService _worklogStateService;
 	private readonly ISettingsService _settingsService;
-	private readonly LocalizationService _localizationService;
+	private readonly ILocalizationService _localizationService;
 	private TaskbarIcon? _taskbarIcon;
 	private bool _isInitialized;
 	private System.Windows.Media.ImageSource? _inactiveIcon;
@@ -26,12 +26,13 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 	public TrayIconService(
 		IDialogService dialogService,
 		IWorklogStateService worklogStateService,
-		ISettingsService settingsService)
+		ISettingsService settingsService,
+		ILocalizationService localizationService)
 	{
 		_dialogService = dialogService;
 		_worklogStateService = worklogStateService;
 		_settingsService = settingsService;
-		_localizationService = LocalizationService.Instance;
+		_localizationService = localizationService;
 	}
 
 	public void Initialize()

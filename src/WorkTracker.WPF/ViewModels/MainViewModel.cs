@@ -22,6 +22,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 	private readonly INotificationService _notificationService;
 	private readonly IWorklogStateService _worklogStateService;
 	private readonly TimeProvider _timeProvider;
+	private readonly ILocalizationService _localization;
 	private readonly ILogger<MainViewModel> _logger;
 	private readonly DispatcherTimer _timer;
 	private bool _disposed;
@@ -48,6 +49,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 		IDialogService dialogService,
 		INotificationService notificationService,
 		IWorklogStateService worklogStateService,
+		ILocalizationService localization,
 		TimeProvider timeProvider,
 		ILogger<MainViewModel> logger)
 	{
@@ -55,6 +57,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 		_dialogService = dialogService;
 		_notificationService = notificationService;
 		_worklogStateService = worklogStateService;
+		_localization = localization;
 		_timeProvider = timeProvider;
 		_logger = logger;
 		_selectedDate = _timeProvider.GetLocalNow().Date;
@@ -148,8 +151,8 @@ public class MainViewModel : ViewModelBase, IDisposable
 		set => SetProperty(ref _selectedWorkEntry, value);
 	}
 
-	public string ActiveTicketDisplay => ActiveWork?.TicketId ?? LocalizationService.Instance["NoTicket"];
-	public string ActiveDescriptionDisplay => ActiveWork?.Description ?? LocalizationService.Instance["NoDescription"];
+	public string ActiveTicketDisplay => ActiveWork?.TicketId ?? _localization["NoTicket"];
+	public string ActiveDescriptionDisplay => ActiveWork?.Description ?? _localization["NoDescription"];
 
 	public string TotalDayDuration
 	{
@@ -194,7 +197,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Failed to initialize MainViewModel");
-			_notificationService.ShowError(LocalizationService.Instance["FailedToLoadWorkEntries"]);
+			_notificationService.ShowError(_localization["FailedToLoadWorkEntries"]);
 		}
 	}
 
@@ -259,12 +262,12 @@ public class MainViewModel : ViewModelBase, IDisposable
 			// Refresh list
 			await RefreshWorkEntriesAsync();
 
-			_notificationService.ShowSuccess(LocalizationService.Instance["WorkTrackingStarted"]);
+			_notificationService.ShowSuccess(_localization["WorkTrackingStarted"]);
 		}
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Unexpected error starting work");
-			await _dialogService.ShowErrorAsync(LocalizationService.Instance.GetFormattedString("FailedToStartWork", ex.Message));
+			await _dialogService.ShowErrorAsync(_localization.GetFormattedString("FailedToStartWork", ex.Message));
 		}
 	}
 
@@ -291,12 +294,12 @@ public class MainViewModel : ViewModelBase, IDisposable
 			// Refresh list
 			await RefreshWorkEntriesAsync();
 
-			_notificationService.ShowSuccess(LocalizationService.Instance["WorkTrackingStopped"]);
+			_notificationService.ShowSuccess(_localization["WorkTrackingStopped"]);
 		}
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Unexpected error stopping work");
-			await _dialogService.ShowErrorAsync(LocalizationService.Instance.GetFormattedString("FailedToStopWork", ex.Message));
+			await _dialogService.ShowErrorAsync(_localization.GetFormattedString("FailedToStopWork", ex.Message));
 		}
 	}
 
@@ -312,13 +315,13 @@ public class MainViewModel : ViewModelBase, IDisposable
 				// Refresh state in case a new active work was created
 				await _worklogStateService.RefreshFromDatabaseAsync();
 
-				_notificationService.ShowSuccess(LocalizationService.Instance["WorkEntryCreated"]);
+				_notificationService.ShowSuccess(_localization["WorkEntryCreated"]);
 			}
 		}
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Failed to create work entry");
-			await _dialogService.ShowErrorAsync(LocalizationService.Instance.GetFormattedString("FailedToCreateWorkEntry", ex.Message));
+			await _dialogService.ShowErrorAsync(_localization.GetFormattedString("FailedToCreateWorkEntry", ex.Message));
 		}
 	}
 
@@ -348,13 +351,13 @@ public class MainViewModel : ViewModelBase, IDisposable
 					ElapsedTime = "00:00:00";
 				}
 
-				_notificationService.ShowSuccess(LocalizationService.Instance["WorkEntryUpdated"]);
+				_notificationService.ShowSuccess(_localization["WorkEntryUpdated"]);
 			}
 		}
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Failed to edit work entry");
-			await _dialogService.ShowErrorAsync(LocalizationService.Instance.GetFormattedString("FailedToEditWorkEntry", ex.Message));
+			await _dialogService.ShowErrorAsync(_localization.GetFormattedString("FailedToEditWorkEntry", ex.Message));
 		}
 	}
 
@@ -368,11 +371,11 @@ public class MainViewModel : ViewModelBase, IDisposable
 		try
 		{
 			var confirmed = await _dialogService.ShowConfirmationAsync(
-				LocalizationService.Instance.GetFormattedString("ConfirmDeleteMessage",
+				_localization.GetFormattedString("ConfirmDeleteMessage",
 					workEntry.TicketId ?? "N/A",
 					workEntry.Description ?? "N/A",
 					$"{workEntry.StartTime:HH:mm} - {workEntry.EndTime?.ToString("HH:mm") ?? "Active"}"),
-				LocalizationService.Instance["ConfirmDelete"]);
+				_localization["ConfirmDelete"]);
 
 			if (confirmed)
 			{
@@ -395,13 +398,13 @@ public class MainViewModel : ViewModelBase, IDisposable
 					ElapsedTime = "00:00:00";
 				}
 
-				_notificationService.ShowSuccess(LocalizationService.Instance["WorkEntryDeleted"]);
+				_notificationService.ShowSuccess(_localization["WorkEntryDeleted"]);
 			}
 		}
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Failed to delete work entry");
-			await _dialogService.ShowErrorAsync(LocalizationService.Instance.GetFormattedString("FailedToDeleteWorkEntry", ex.Message));
+			await _dialogService.ShowErrorAsync(_localization.GetFormattedString("FailedToDeleteWorkEntry", ex.Message));
 		}
 	}
 
@@ -429,12 +432,12 @@ public class MainViewModel : ViewModelBase, IDisposable
 			// Refresh list to show the new entry
 			await RefreshWorkEntriesAsync();
 
-			_notificationService.ShowSuccess(LocalizationService.Instance["WorkRestartedSuccessfully"]);
+			_notificationService.ShowSuccess(_localization["WorkRestartedSuccessfully"]);
 		}
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Unexpected error restarting work from history");
-			await _dialogService.ShowErrorAsync(LocalizationService.Instance.GetFormattedString("FailedToRestartWork", ex.Message));
+			await _dialogService.ShowErrorAsync(_localization.GetFormattedString("FailedToRestartWork", ex.Message));
 		}
 	}
 
@@ -445,13 +448,13 @@ public class MainViewModel : ViewModelBase, IDisposable
 			var result = await _dialogService.ShowSubmitWorklogDialogAsync(SelectedDate, false);
 			if (result)
 			{
-				_notificationService.ShowSuccess(LocalizationService.Instance["WorklogsSubmittedSuccessfully"]);
+				_notificationService.ShowSuccess(_localization["WorklogsSubmittedSuccessfully"]);
 			}
 		}
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Failed to submit worklogs");
-			await _dialogService.ShowErrorAsync(LocalizationService.Instance.GetFormattedString("FailedToSubmitWorklogs", ex.Message));
+			await _dialogService.ShowErrorAsync(_localization.GetFormattedString("FailedToSubmitWorklogs", ex.Message));
 		}
 	}
 
@@ -464,7 +467,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Failed to open settings");
-			await _dialogService.ShowErrorAsync(LocalizationService.Instance.GetFormattedString("FailedToOpenSettings", ex.Message));
+			await _dialogService.ShowErrorAsync(_localization.GetFormattedString("FailedToOpenSettings", ex.Message));
 		}
 	}
 
@@ -482,7 +485,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Failed to refresh work entries");
-			_notificationService.ShowError(LocalizationService.Instance["FailedToLoadWorkEntries"]);
+			_notificationService.ShowError(_localization["FailedToLoadWorkEntries"]);
 		}
 	}
 
