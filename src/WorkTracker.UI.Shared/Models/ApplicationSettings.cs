@@ -36,7 +36,7 @@ public class ApplicationSettings
 	public List<FavoriteWorkItem> FavoriteWorkItems { get; set; } = new();
 
 	/// <summary>
-	/// Application theme ("Dark" or "Light")
+	/// Application theme (e.g. "Dark", "Light", "Midnight", "Purple", "Modern Blue"). Default is "Modern Blue".
 	/// </summary>
 	public string Theme { get; set; } = "Modern Blue";
 }
