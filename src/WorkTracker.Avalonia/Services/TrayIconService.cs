@@ -1,7 +1,8 @@
-using Avalonia;
+﻿using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Platform.Storage;
+using Microsoft.Extensions.Logging;
 using WorkTracker.UI.Shared.Models;
 using WorkTracker.UI.Shared.Services;
 
@@ -15,6 +16,7 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 	private readonly IDialogService _dialogService;
 	private readonly IWorklogStateService _worklogStateService;
 	private readonly ISettingsService _settingsService;
+	private readonly ILogger<TrayIconService> _logger;
 	private readonly LocalizationService _localizationService;
 	private TrayIcon? _trayIcon;
 	private NativeMenu? _menu;
@@ -25,11 +27,13 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 	public TrayIconService(
 		IDialogService dialogService,
 		IWorklogStateService worklogStateService,
-		ISettingsService settingsService)
+		ISettingsService settingsService,
+		ILogger<TrayIconService> logger)
 	{
 		_dialogService = dialogService;
 		_worklogStateService = worklogStateService;
 		_settingsService = settingsService;
+		_logger = logger;
 		_localizationService = LocalizationService.Instance;
 	}
 
@@ -174,9 +178,9 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 		{
 			await _dialogService.ShowEditWorkEntryDialogAsync(null);
 		}
-		catch
+		catch (Exception ex)
 		{
-			// Swallow - tray context errors are non-critical
+			_logger.LogWarning(ex, "Failed to open new work entry dialog from tray");
 		}
 	}
 
@@ -219,9 +223,9 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 			}
 			await _worklogStateService.StartTrackingAsync(favorite.TicketId, favorite.Description);
 		}
-		catch
+		catch (Exception ex)
 		{
-			// Swallow - tray context errors are non-critical
+			_logger.LogWarning(ex, "Failed to start favorite work '{FavoriteName}' from tray", favorite.Name);
 		}
 	}
 }

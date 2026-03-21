@@ -1,6 +1,6 @@
 using WorkTracker.Domain.Entities;
 
-namespace WorkTracker.Application.Interfaces;
+namespace WorkTracker.Domain.Interfaces;
 
 public interface IWorkEntryRepository
 {

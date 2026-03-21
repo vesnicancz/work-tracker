@@ -1,6 +1,6 @@
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using WorkTracker.Application.Common;
-using WorkTracker.Application.Interfaces;
+using WorkTracker.Domain.Interfaces;
 using WorkTracker.Domain.Entities;
 
 namespace WorkTracker.Application.Services;

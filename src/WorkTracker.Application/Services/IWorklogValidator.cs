@@ -1,5 +1,4 @@
-﻿using WorkTracker.Application.Common;
-using WorkTracker.Domain.DTOs;
+﻿using WorkTracker.Application.DTOs;
 using WorkTracker.Domain.Entities;
 
 namespace WorkTracker.Application.Services;
@@ -12,12 +11,12 @@ public interface IWorklogValidator
 	/// <summary>
 	/// Validates a work entry for submission
 	/// </summary>
-	Result ValidateForSubmission(WorkEntry entry);
+	ValidationResult ValidateForSubmission(WorkEntry entry);
 
 	/// <summary>
 	/// Validates multiple work entries
 	/// </summary>
-	Result ValidateMultiple(IEnumerable<WorkEntry> entries);
+	ValidationResult ValidateMultiple(IEnumerable<WorkEntry> entries);
 
 	/// <summary>
 	/// Validates a worklog DTO

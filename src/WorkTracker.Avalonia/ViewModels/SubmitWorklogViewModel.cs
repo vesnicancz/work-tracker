@@ -1,8 +1,8 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.Windows.Input;
+using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using WorkTracker.Application.Services;
-using WorkTracker.Avalonia.Commands;
 using WorkTracker.UI.Shared.Services;
 
 namespace WorkTracker.Avalonia.ViewModels;
@@ -12,378 +12,378 @@ namespace WorkTracker.Avalonia.ViewModels;
 /// </summary>
 public class SubmitWorklogViewModel : ViewModelBase
 {
-    private readonly IWorklogSubmissionService _submissionService;
-    private readonly TimeProvider _timeProvider;
-    private readonly ILogger<SubmitWorklogViewModel> _logger;
+	private readonly IWorklogSubmissionService _submissionService;
+	private readonly TimeProvider _timeProvider;
+	private readonly ILogger<SubmitWorklogViewModel> _logger;
 
-    private DateTime _selectedDate;
-    private bool _isWeekly;
-    private bool _isLoading;
-    private bool _isSending;
-    private string _statusMessage = string.Empty;
-    private ObservableCollection<WorklogPreviewItem> _previewItems = new();
-    private string _totalTimeDisplay = string.Empty;
-    private ObservableCollection<Application.DTOs.ProviderInfo> _availableProviders = new();
-    private Application.DTOs.ProviderInfo? _selectedProvider;
+	private DateTime _selectedDate;
+	private bool _isWeekly;
+	private bool _isLoading;
+	private bool _isSending;
+	private string _statusMessage = string.Empty;
+	private ObservableCollection<WorklogPreviewItem> _previewItems = new();
+	private string _totalTimeDisplay = string.Empty;
+	private ObservableCollection<Application.DTOs.ProviderInfo> _availableProviders = new();
+	private Application.DTOs.ProviderInfo? _selectedProvider;
 
-    public SubmitWorklogViewModel(
-        IWorklogSubmissionService submissionService,
-        TimeProvider timeProvider,
-        ILogger<SubmitWorklogViewModel> logger)
-    {
-        _submissionService = submissionService;
-        _timeProvider = timeProvider;
-        _logger = logger;
-        _selectedDate = _timeProvider.GetLocalNow().Date;
+	public SubmitWorklogViewModel(
+		IWorklogSubmissionService submissionService,
+		TimeProvider timeProvider,
+		ILogger<SubmitWorklogViewModel> logger)
+	{
+		_submissionService = submissionService;
+		_timeProvider = timeProvider;
+		_logger = logger;
+		_selectedDate = _timeProvider.GetLocalNow().Date;
 
-        SendCommand = new AsyncRelayCommand(SendAsync, CanSend);
-        CancelCommand = new RelayCommand(Cancel);
-        ResetCommand = new RelayCommand(ResetToOriginal);
+		SendCommand = new AsyncRelayCommand(SendAsync, CanSend);
+		CancelCommand = new RelayCommand(Cancel);
+		ResetCommand = new RelayCommand(ResetToOriginal);
 
-        // Load available providers
-        LoadAvailableProviders();
-    }
+		// Load available providers
+		LoadAvailableProviders();
+	}
 
-    #region Properties
+	#region Properties
 
-    public DateTime SelectedDate
-    {
-        get => _selectedDate;
-        set
-        {
-            if (SetProperty(ref _selectedDate, value))
-            {
-                _ = LoadPreviewAsync();
-            }
-        }
-    }
+	public DateTime SelectedDate
+	{
+		get => _selectedDate;
+		set
+		{
+			if (SetProperty(ref _selectedDate, value))
+			{
+				_ = LoadPreviewAsync();
+			}
+		}
+	}
 
-    public bool IsWeekly
-    {
-        get => _isWeekly;
-        set
-        {
-            if (SetProperty(ref _isWeekly, value))
-            {
-                _ = LoadPreviewAsync();
-            }
-        }
-    }
+	public bool IsWeekly
+	{
+		get => _isWeekly;
+		set
+		{
+			if (SetProperty(ref _isWeekly, value))
+			{
+				_ = LoadPreviewAsync();
+			}
+		}
+	}
 
-    public bool IsLoading
-    {
-        get => _isLoading;
-        set => SetProperty(ref _isLoading, value);
-    }
+	public bool IsLoading
+	{
+		get => _isLoading;
+		set => SetProperty(ref _isLoading, value);
+	}
 
-    public bool IsSending
-    {
-        get => _isSending;
-        set
-        {
-            if (SetProperty(ref _isSending, value))
-            {
-                ((AsyncRelayCommand)SendCommand).RaiseCanExecuteChanged();
-            }
-        }
-    }
+	public bool IsSending
+	{
+		get => _isSending;
+		set
+		{
+			if (SetProperty(ref _isSending, value))
+			{
+				SendCommand.NotifyCanExecuteChanged();
+			}
+		}
+	}
 
-    public string StatusMessage
-    {
-        get => _statusMessage;
-        set => SetProperty(ref _statusMessage, value);
-    }
+	public string StatusMessage
+	{
+		get => _statusMessage;
+		set => SetProperty(ref _statusMessage, value);
+	}
 
-    public ObservableCollection<WorklogPreviewItem> PreviewItems
-    {
-        get => _previewItems;
-        set => SetProperty(ref _previewItems, value);
-    }
+	public ObservableCollection<WorklogPreviewItem> PreviewItems
+	{
+		get => _previewItems;
+		set => SetProperty(ref _previewItems, value);
+	}
 
-    public string TotalTimeDisplay
-    {
-        get => _totalTimeDisplay;
-        set => SetProperty(ref _totalTimeDisplay, value);
-    }
+	public string TotalTimeDisplay
+	{
+		get => _totalTimeDisplay;
+		set => SetProperty(ref _totalTimeDisplay, value);
+	}
 
-    public ObservableCollection<Application.DTOs.ProviderInfo> AvailableProviders
-    {
-        get => _availableProviders;
-        set => SetProperty(ref _availableProviders, value);
-    }
+	public ObservableCollection<Application.DTOs.ProviderInfo> AvailableProviders
+	{
+		get => _availableProviders;
+		set => SetProperty(ref _availableProviders, value);
+	}
 
-    public Application.DTOs.ProviderInfo? SelectedProvider
-    {
-        get => _selectedProvider;
-        set
-        {
-            if (SetProperty(ref _selectedProvider, value))
-            {
-                ((AsyncRelayCommand)SendCommand).RaiseCanExecuteChanged();
-            }
-        }
-    }
+	public Application.DTOs.ProviderInfo? SelectedProvider
+	{
+		get => _selectedProvider;
+		set
+		{
+			if (SetProperty(ref _selectedProvider, value))
+			{
+				SendCommand.NotifyCanExecuteChanged();
+			}
+		}
+	}
 
-    public string DialogTitle => IsWeekly ? LocalizationService.Instance["SubmitWeeklyWorklogs"] : LocalizationService.Instance["SubmitDailyWorklogs"];
+	public string DialogTitle => IsWeekly ? LocalizationService.Instance["SubmitWeeklyWorklogs"] : LocalizationService.Instance["SubmitDailyWorklogs"];
 
-    public Action? CloseAction { get; set; }
-    public bool DialogResult { get; set; }
+	public Action? CloseAction { get; set; }
+	public bool DialogResult { get; set; }
 
-    #endregion Properties
+	#endregion Properties
 
-    #region Commands
+	#region Commands
 
-    public ICommand SendCommand { get; }
-    public ICommand CancelCommand { get; }
-    public ICommand ResetCommand { get; }
+	public IAsyncRelayCommand SendCommand { get; }
+	public ICommand CancelCommand { get; }
+	public ICommand ResetCommand { get; }
 
-    #endregion Commands
+	#endregion Commands
 
-    #region Initialization
+	#region Initialization
 
-    public async Task InitializeAsync(DateTime? date, bool isWeek)
-    {
-        SelectedDate = date ?? _timeProvider.GetLocalNow().Date;
-        IsWeekly = isWeek;
-        await LoadPreviewAsync();
-    }
+	public async Task InitializeAsync(DateTime? date, bool isWeek)
+	{
+		SelectedDate = date ?? _timeProvider.GetLocalNow().Date;
+		IsWeekly = isWeek;
+		await LoadPreviewAsync();
+	}
 
-    #endregion Initialization
+	#endregion Initialization
 
-    #region Preview Loading
+	#region Preview Loading
 
-    private async Task LoadPreviewAsync()
-    {
-        try
-        {
-            IsLoading = true;
-            StatusMessage = LocalizationService.Instance["LoadingPreview"];
+	private async Task LoadPreviewAsync()
+	{
+		try
+		{
+			IsLoading = true;
+			StatusMessage = LocalizationService.Instance["LoadingPreview"];
 
-            if (IsWeekly)
-            {
-                var weeklyPreview = await _submissionService.PreviewWeeklyWorklogAsync(SelectedDate);
-                var items = new List<WorklogPreviewItem>();
+			if (IsWeekly)
+			{
+				var weeklyPreview = await _submissionService.PreviewWeeklyWorklogAsync(SelectedDate);
+				var items = new List<WorklogPreviewItem>();
 
-                foreach (var dayPreview in weeklyPreview.OrderBy(kvp => kvp.Key))
-                {
-                    items.Add(new WorklogPreviewItem
-                    {
-                        Date = dayPreview.Key,
-                        IsDateHeader = true,
-                        DateDisplay = dayPreview.Key.ToString("dddd, MMMM dd, yyyy")
-                    });
+				foreach (var dayPreview in weeklyPreview.OrderBy(kvp => kvp.Key))
+				{
+					items.Add(new WorklogPreviewItem
+					{
+						Date = dayPreview.Key,
+						IsDateHeader = true,
+						DateDisplay = dayPreview.Key.ToString("dddd, MMMM dd, yyyy")
+					});
 
-                    foreach (var entry in dayPreview.Value.Worklogs)
-                    {
-                        var item = new WorklogPreviewItem
-                        {
-                            Date = dayPreview.Key,
-                            TicketId = entry.TicketId ?? LocalizationService.Instance["NoTicket"],
-                            Description = entry.Description ?? string.Empty,
-                            Duration = entry.DurationMinutes * 60,
-                            StartTime = entry.StartTime,
-                            EndTime = entry.EndTime
-                        };
-                        item.SaveOriginalValues();
-                        items.Add(item);
-                    }
-                }
+					foreach (var entry in dayPreview.Value.Worklogs)
+					{
+						var item = new WorklogPreviewItem
+						{
+							Date = dayPreview.Key,
+							TicketId = entry.TicketId ?? LocalizationService.Instance["NoTicket"],
+							Description = entry.Description ?? string.Empty,
+							Duration = entry.DurationMinutes * 60,
+							StartTime = entry.StartTime,
+							EndTime = entry.EndTime
+						};
+						item.SaveOriginalValues();
+						items.Add(item);
+					}
+				}
 
-                PreviewItems = new ObservableCollection<WorklogPreviewItem>(items);
+				PreviewItems = new ObservableCollection<WorklogPreviewItem>(items);
 
-                // Subscribe to property changes to update total time
-                foreach (var item in PreviewItems.Where(i => !i.IsDateHeader))
-                {
-                    item.PropertyChanged += OnWorklogItemPropertyChanged;
-                }
+				// Subscribe to property changes to update total time
+				foreach (var item in PreviewItems.Where(i => !i.IsDateHeader))
+				{
+					item.PropertyChanged += OnWorklogItemPropertyChanged;
+				}
 
-                var totalSeconds = weeklyPreview.Sum(kvp => kvp.Value.Worklogs.Sum(w => w.DurationMinutes * 60));
-                TotalTimeDisplay = FormatDuration(totalSeconds);
-            }
-            else
-            {
-                var dailyPreview = await _submissionService.PreviewDailyWorklogAsync(SelectedDate);
-                var items = dailyPreview.Worklogs.Select(entry =>
-                {
-                    var item = new WorklogPreviewItem
-                    {
-                        Date = SelectedDate,
-                        TicketId = entry.TicketId ?? LocalizationService.Instance["NoTicket"],
-                        Description = entry.Description ?? string.Empty,
-                        Duration = entry.DurationMinutes * 60,
-                        StartTime = entry.StartTime,
-                        EndTime = entry.EndTime
-                    };
-                    item.SaveOriginalValues();
-                    return item;
-                }).ToList();
+				var totalSeconds = weeklyPreview.Sum(kvp => kvp.Value.Worklogs.Sum(w => w.DurationMinutes * 60));
+				TotalTimeDisplay = FormatDuration(totalSeconds);
+			}
+			else
+			{
+				var dailyPreview = await _submissionService.PreviewDailyWorklogAsync(SelectedDate);
+				var items = dailyPreview.Worklogs.Select(entry =>
+				{
+					var item = new WorklogPreviewItem
+					{
+						Date = SelectedDate,
+						TicketId = entry.TicketId ?? LocalizationService.Instance["NoTicket"],
+						Description = entry.Description ?? string.Empty,
+						Duration = entry.DurationMinutes * 60,
+						StartTime = entry.StartTime,
+						EndTime = entry.EndTime
+					};
+					item.SaveOriginalValues();
+					return item;
+				}).ToList();
 
-                PreviewItems = new ObservableCollection<WorklogPreviewItem>(items);
+				PreviewItems = new ObservableCollection<WorklogPreviewItem>(items);
 
-                // Subscribe to property changes to update total time
-                foreach (var item in PreviewItems.Where(i => !i.IsDateHeader))
-                {
-                    item.PropertyChanged += OnWorklogItemPropertyChanged;
-                }
+				// Subscribe to property changes to update total time
+				foreach (var item in PreviewItems.Where(i => !i.IsDateHeader))
+				{
+					item.PropertyChanged += OnWorklogItemPropertyChanged;
+				}
 
-                var totalSeconds = dailyPreview.Worklogs.Sum(w => w.DurationMinutes * 60);
-                TotalTimeDisplay = FormatDuration(totalSeconds);
-            }
+				var totalSeconds = dailyPreview.Worklogs.Sum(w => w.DurationMinutes * 60);
+				TotalTimeDisplay = FormatDuration(totalSeconds);
+			}
 
-            StatusMessage = LocalizationService.Instance.GetFormattedString("ReadyToSubmit", PreviewItems.Count(i => !i.IsDateHeader));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to load worklog preview");
-            StatusMessage = LocalizationService.Instance.GetFormattedString("ErrorLoadingPreview", ex.Message);
-            PreviewItems.Clear();
-        }
-        finally
-        {
-            IsLoading = false;
-        }
-    }
+			StatusMessage = LocalizationService.Instance.GetFormattedString("ReadyToSubmit", PreviewItems.Count(i => !i.IsDateHeader));
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Failed to load worklog preview");
+			StatusMessage = LocalizationService.Instance.GetFormattedString("ErrorLoadingPreview", ex.Message);
+			PreviewItems.Clear();
+		}
+		finally
+		{
+			IsLoading = false;
+		}
+	}
 
-    #endregion Preview Loading
+	#endregion Preview Loading
 
-    #region Command Implementations
+	#region Command Implementations
 
-    private bool CanSend()
-    {
-        return !IsSending && !IsLoading && PreviewItems.Any(i => !i.IsDateHeader) && SelectedProvider != null;
-    }
+	private bool CanSend()
+	{
+		return !IsSending && !IsLoading && PreviewItems.Any(i => !i.IsDateHeader) && SelectedProvider != null;
+	}
 
-    private async Task SendAsync()
-    {
-        if (SelectedProvider == null)
-        {
-            StatusMessage = LocalizationService.Instance["PleaseSelectProvider"];
-            return;
-        }
+	private async Task SendAsync()
+	{
+		if (SelectedProvider == null)
+		{
+			StatusMessage = LocalizationService.Instance["PleaseSelectProvider"];
+			return;
+		}
 
-        try
-        {
-            IsSending = true;
-            StatusMessage = LocalizationService.Instance.GetFormattedString("SubmittingTo", SelectedProvider.Name);
+		try
+		{
+			IsSending = true;
+			StatusMessage = LocalizationService.Instance.GetFormattedString("SubmittingTo", SelectedProvider.Name);
 
-            // Convert edited preview items to DTOs
-            var worklogs = PreviewItems
-                .Where(i => !i.IsDateHeader)
-                .Select(i => new Domain.DTOs.WorklogDto
-                {
-                    TicketId = i.TicketId,
-                    Description = i.Description,
-                    StartTime = i.StartTime,
-                    EndTime = i.EndTime,
-                    DurationMinutes = i.Duration / 60
-                })
-                .ToList();
+			// Convert edited preview items to DTOs
+			var worklogs = PreviewItems
+				.Where(i => !i.IsDateHeader)
+				.Select(i => new Application.DTOs.WorklogDto
+				{
+					TicketId = i.TicketId,
+					Description = i.Description,
+					StartTime = i.StartTime,
+					EndTime = i.EndTime,
+					DurationMinutes = i.Duration / 60
+				})
+				.ToList();
 
-            // Submit custom worklogs with edited values using plugin ID
-            var result = await _submissionService.SubmitCustomWorklogsAsync(worklogs, SelectedProvider.Id);
+			// Submit custom worklogs with edited values using plugin ID
+			var result = await _submissionService.SubmitCustomWorklogsAsync(worklogs, SelectedProvider.Id);
 
-            if (result.IsSuccess && result.Value != null)
-            {
-                var submission = result.Value;
-                var failedMessage = submission.FailedEntries > 0
-                    ? LocalizationService.Instance.GetFormattedString("SubmissionFailed", submission.FailedEntries)
-                    : "";
-                StatusMessage = LocalizationService.Instance.GetFormattedString("SubmissionSuccess",
-                    submission.SuccessfulEntries, SelectedProvider.Name, failedMessage);
+			if (result.IsSuccess && result.Value != null)
+			{
+				var submission = result.Value;
+				var failedMessage = submission.FailedEntries > 0
+					? LocalizationService.Instance.GetFormattedString("SubmissionFailed", submission.FailedEntries)
+					: "";
+				StatusMessage = LocalizationService.Instance.GetFormattedString("SubmissionSuccess",
+					submission.SuccessfulEntries, SelectedProvider.Name, failedMessage);
 
-                // Set dialog result but don't close automatically - let user close manually
-                if (submission.FailedEntries == 0)
-                {
-                    DialogResult = true;
-                }
-            }
-            else
-            {
-                StatusMessage = LocalizationService.Instance.GetFormattedString("ErrorPrefix", result.Error);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to submit worklogs");
-            StatusMessage = LocalizationService.Instance.GetFormattedString("ErrorPrefix", ex.Message);
-        }
-        finally
-        {
-            IsSending = false;
-        }
-    }
+				// Set dialog result but don't close automatically - let user close manually
+				if (submission.FailedEntries == 0)
+				{
+					DialogResult = true;
+				}
+			}
+			else
+			{
+				StatusMessage = LocalizationService.Instance.GetFormattedString("ErrorPrefix", result.Error);
+			}
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Failed to submit worklogs");
+			StatusMessage = LocalizationService.Instance.GetFormattedString("ErrorPrefix", ex.Message);
+		}
+		finally
+		{
+			IsSending = false;
+		}
+	}
 
-    private void Cancel()
-    {
-        DialogResult = false;
-        CloseAction?.Invoke();
-    }
+	private void Cancel()
+	{
+		DialogResult = false;
+		CloseAction?.Invoke();
+	}
 
-    private void ResetToOriginal()
-    {
-        foreach (var item in PreviewItems.Where(i => !i.IsDateHeader))
-        {
-            item.RestoreOriginalValues();
-        }
+	private void ResetToOriginal()
+	{
+		foreach (var item in PreviewItems.Where(i => !i.IsDateHeader))
+		{
+			item.RestoreOriginalValues();
+		}
 
-        // Recalculate total time
-        var totalSeconds = PreviewItems.Where(i => !i.IsDateHeader).Sum(i => i.Duration);
-        TotalTimeDisplay = FormatDuration(totalSeconds);
-        StatusMessage = LocalizationService.Instance["WorklogsResetToOriginal"];
-    }
+		// Recalculate total time
+		var totalSeconds = PreviewItems.Where(i => !i.IsDateHeader).Sum(i => i.Duration);
+		TotalTimeDisplay = FormatDuration(totalSeconds);
+		StatusMessage = LocalizationService.Instance["WorklogsResetToOriginal"];
+	}
 
-    #endregion Command Implementations
+	#endregion Command Implementations
 
-    #region Provider Management
+	#region Provider Management
 
-    private void LoadAvailableProviders()
-    {
-        try
-        {
-            var providers = _submissionService.GetAvailableProviders().ToList();
-            AvailableProviders = new ObservableCollection<Application.DTOs.ProviderInfo>(providers);
+	private void LoadAvailableProviders()
+	{
+		try
+		{
+			var providers = _submissionService.GetAvailableProviders().ToList();
+			AvailableProviders = new ObservableCollection<Application.DTOs.ProviderInfo>(providers);
 
-            // Select first provider by default
-            if (AvailableProviders.Any())
-            {
-                SelectedProvider = AvailableProviders.First();
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to load available providers");
-        }
-    }
+			// Select first provider by default
+			if (AvailableProviders.Any())
+			{
+				SelectedProvider = AvailableProviders.First();
+			}
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Failed to load available providers");
+		}
+	}
 
-    #endregion Provider Management
+	#endregion Provider Management
 
-    #region Helpers
+	#region Helpers
 
-    private string FormatDuration(int seconds)
-    {
-        var timeSpan = TimeSpan.FromSeconds(seconds);
-        var hours = (int)timeSpan.TotalHours;
-        var minutes = timeSpan.Minutes;
+	private string FormatDuration(int seconds)
+	{
+		var timeSpan = TimeSpan.FromSeconds(seconds);
+		var hours = (int)timeSpan.TotalHours;
+		var minutes = timeSpan.Minutes;
 
-        if (hours > 0)
-        {
-            return minutes > 0 ? $"{hours}h {minutes}m" : $"{hours}h";
-        }
+		if (hours > 0)
+		{
+			return minutes > 0 ? $"{hours}h {minutes}m" : $"{hours}h";
+		}
 
-        return $"{minutes}m";
-    }
+		return $"{minutes}m";
+	}
 
-    private void OnWorklogItemPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName == nameof(WorklogPreviewItem.Duration))
-        {
-            // Recalculate total time
-            var totalSeconds = PreviewItems.Where(i => !i.IsDateHeader).Sum(i => i.Duration);
-            TotalTimeDisplay = FormatDuration(totalSeconds);
-        }
-    }
+	private void OnWorklogItemPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+	{
+		if (e.PropertyName == nameof(WorklogPreviewItem.Duration))
+		{
+			// Recalculate total time
+			var totalSeconds = PreviewItems.Where(i => !i.IsDateHeader).Sum(i => i.Duration);
+			TotalTimeDisplay = FormatDuration(totalSeconds);
+		}
+	}
 
-    #endregion Helpers
+	#endregion Helpers
 }
 
 /// <summary>
@@ -391,159 +391,159 @@ public class SubmitWorklogViewModel : ViewModelBase
 /// </summary>
 public class WorklogPreviewItem : ViewModelBase
 {
-    private string? _ticketId;
-    private string? _description;
-    private int _duration;
-    private DateTime _startTime;
-    private DateTime _endTime;
+	private string? _ticketId;
+	private string? _description;
+	private int _duration;
+	private DateTime _startTime;
+	private DateTime _endTime;
 
-    // Cached display strings for performance
-    private string _startTimeDisplay = string.Empty;
-    private string _endTimeDisplay = string.Empty;
-    private string _durationDisplay = string.Empty;
+	// Cached display strings for performance
+	private string _startTimeDisplay = string.Empty;
+	private string _endTimeDisplay = string.Empty;
+	private string _durationDisplay = string.Empty;
 
-    // Original values for reset
-    private string? _originalTicketId;
-    private string? _originalDescription;
-    private int _originalDuration;
-    private DateTime _originalStartTime;
-    private DateTime _originalEndTime;
+	// Original values for reset
+	private string? _originalTicketId;
+	private string? _originalDescription;
+	private int _originalDuration;
+	private DateTime _originalStartTime;
+	private DateTime _originalEndTime;
 
-    public DateTime Date { get; set; }
+	public DateTime Date { get; set; }
 
-    public bool IsDateHeader { get; set; }
+	public bool IsDateHeader { get; set; }
 
-    public string? DateDisplay { get; set; }
+	public string? DateDisplay { get; set; }
 
-    public string? TicketId
-    {
-        get => _ticketId;
-        set => SetProperty(ref _ticketId, value);
-    }
+	public string? TicketId
+	{
+		get => _ticketId;
+		set => SetProperty(ref _ticketId, value);
+	}
 
-    public string? Description
-    {
-        get => _description;
-        set => SetProperty(ref _description, value);
-    }
+	public string? Description
+	{
+		get => _description;
+		set => SetProperty(ref _description, value);
+	}
 
-    public int Duration
-    {
-        get => _duration;
-        set
-        {
-            if (SetProperty(ref _duration, value))
-            {
-                UpdateDurationDisplayCache();
-            }
-        }
-    }
+	public int Duration
+	{
+		get => _duration;
+		set
+		{
+			if (SetProperty(ref _duration, value))
+			{
+				UpdateDurationDisplayCache();
+			}
+		}
+	}
 
-    public DateTime StartTime
-    {
-        get => _startTime;
-        set
-        {
-            if (SetProperty(ref _startTime, value))
-            {
-                UpdateStartTimeDisplayCache();
-                UpdateDurationFromTimes();
-            }
-        }
-    }
+	public DateTime StartTime
+	{
+		get => _startTime;
+		set
+		{
+			if (SetProperty(ref _startTime, value))
+			{
+				UpdateStartTimeDisplayCache();
+				UpdateDurationFromTimes();
+			}
+		}
+	}
 
-    public DateTime EndTime
-    {
-        get => _endTime;
-        set
-        {
-            if (SetProperty(ref _endTime, value))
-            {
-                UpdateEndTimeDisplayCache();
-                UpdateDurationFromTimes();
-            }
-        }
-    }
+	public DateTime EndTime
+	{
+		get => _endTime;
+		set
+		{
+			if (SetProperty(ref _endTime, value))
+			{
+				UpdateEndTimeDisplayCache();
+				UpdateDurationFromTimes();
+			}
+		}
+	}
 
-    public string StartTimeDisplay
-    {
-        get => _startTimeDisplay;
-        set
-        {
-            if (TimeSpan.TryParse(value, out var time))
-            {
-                StartTime = Date.Date.Add(time);
-            }
-        }
-    }
+	public string StartTimeDisplay
+	{
+		get => _startTimeDisplay;
+		set
+		{
+			if (TimeSpan.TryParse(value, out var time))
+			{
+				StartTime = Date.Date.Add(time);
+			}
+		}
+	}
 
-    public string EndTimeDisplay
-    {
-        get => _endTimeDisplay;
-        set
-        {
-            if (TimeSpan.TryParse(value, out var time))
-            {
-                EndTime = Date.Date.Add(time);
-            }
-        }
-    }
+	public string EndTimeDisplay
+	{
+		get => _endTimeDisplay;
+		set
+		{
+			if (TimeSpan.TryParse(value, out var time))
+			{
+				EndTime = Date.Date.Add(time);
+			}
+		}
+	}
 
-    public string DurationDisplay => _durationDisplay;
+	public string DurationDisplay => _durationDisplay;
 
-    private void UpdateStartTimeDisplayCache()
-    {
-        _startTimeDisplay = StartTime.ToString("HH:mm");
-        OnPropertyChanged(nameof(StartTimeDisplay));
-    }
+	private void UpdateStartTimeDisplayCache()
+	{
+		_startTimeDisplay = StartTime.ToString("HH:mm");
+		OnPropertyChanged(nameof(StartTimeDisplay));
+	}
 
-    private void UpdateEndTimeDisplayCache()
-    {
-        _endTimeDisplay = EndTime.ToString("HH:mm");
-        OnPropertyChanged(nameof(EndTimeDisplay));
-    }
+	private void UpdateEndTimeDisplayCache()
+	{
+		_endTimeDisplay = EndTime.ToString("HH:mm");
+		OnPropertyChanged(nameof(EndTimeDisplay));
+	}
 
-    private void UpdateDurationDisplayCache()
-    {
-        var timeSpan = TimeSpan.FromSeconds(Duration);
-        var hours = (int)timeSpan.TotalHours;
-        var minutes = timeSpan.Minutes;
+	private void UpdateDurationDisplayCache()
+	{
+		var timeSpan = TimeSpan.FromSeconds(Duration);
+		var hours = (int)timeSpan.TotalHours;
+		var minutes = timeSpan.Minutes;
 
-        if (hours > 0)
-        {
-            _durationDisplay = minutes > 0 ? $"{hours}h {minutes}m" : $"{hours}h";
-        }
-        else
-        {
-            _durationDisplay = $"{minutes}m";
-        }
+		if (hours > 0)
+		{
+			_durationDisplay = minutes > 0 ? $"{hours}h {minutes}m" : $"{hours}h";
+		}
+		else
+		{
+			_durationDisplay = $"{minutes}m";
+		}
 
-        OnPropertyChanged(nameof(DurationDisplay));
-    }
+		OnPropertyChanged(nameof(DurationDisplay));
+	}
 
-    public void SaveOriginalValues()
-    {
-        _originalTicketId = TicketId;
-        _originalDescription = Description;
-        _originalDuration = Duration;
-        _originalStartTime = StartTime;
-        _originalEndTime = EndTime;
-    }
+	public void SaveOriginalValues()
+	{
+		_originalTicketId = TicketId;
+		_originalDescription = Description;
+		_originalDuration = Duration;
+		_originalStartTime = StartTime;
+		_originalEndTime = EndTime;
+	}
 
-    public void RestoreOriginalValues()
-    {
-        TicketId = _originalTicketId;
-        Description = _originalDescription;
-        Duration = _originalDuration;
-        StartTime = _originalStartTime;
-        EndTime = _originalEndTime;
-    }
+	public void RestoreOriginalValues()
+	{
+		TicketId = _originalTicketId;
+		Description = _originalDescription;
+		Duration = _originalDuration;
+		StartTime = _originalStartTime;
+		EndTime = _originalEndTime;
+	}
 
-    private void UpdateDurationFromTimes()
-    {
-        if (EndTime > StartTime)
-        {
-            Duration = (int)(EndTime - StartTime).TotalSeconds;
-        }
-    }
+	private void UpdateDurationFromTimes()
+	{
+		if (EndTime > StartTime)
+		{
+			Duration = (int)(EndTime - StartTime).TotalSeconds;
+		}
+	}
 }

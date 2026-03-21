@@ -1,5 +1,5 @@
 ﻿using WorkTracker.Application.Common;
-using WorkTracker.Domain.DTOs;
+using WorkTracker.Application.DTOs;
 using WorkTracker.Plugin.Abstractions;
 
 namespace WorkTracker.Application.Plugins;

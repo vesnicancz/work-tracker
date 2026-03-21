@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Text.Json;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -14,6 +14,8 @@ public sealed class SettingsService : ISettingsService
 	private readonly ILogger<SettingsService> _logger;
 	private readonly string _settingsFilePath;
 	private ApplicationSettings _settings;
+
+	private static readonly JsonSerializerOptions WriteOptions = new() { WriteIndented = true };
 
 	public SettingsService(ILogger<SettingsService> logger, IHostEnvironment hostEnvironment)
 	{
@@ -64,21 +66,64 @@ public sealed class SettingsService : ISettingsService
 		}
 	}
 
+	public async Task<ApplicationSettings> LoadSettingsAsync(CancellationToken cancellationToken = default)
+	{
+		try
+		{
+			if (!File.Exists(_settingsFilePath))
+			{
+				_logger.LogInformation("Settings file not found, using defaults");
+				return new ApplicationSettings();
+			}
+
+			var json = await File.ReadAllTextAsync(_settingsFilePath, cancellationToken);
+			var settings = JsonSerializer.Deserialize<ApplicationSettings>(json);
+
+			if (settings == null)
+			{
+				_logger.LogWarning("Failed to deserialize settings, using defaults");
+				return new ApplicationSettings();
+			}
+
+			_logger.LogInformation("Settings loaded successfully");
+			return settings;
+		}
+		catch (OperationCanceledException) { throw; }
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Error loading settings, using defaults");
+			return new ApplicationSettings();
+		}
+	}
+
 	public void SaveSettings(ApplicationSettings settings)
 	{
 		try
 		{
-			var options = new JsonSerializerOptions
-			{
-				WriteIndented = true
-			};
-
-			var json = JsonSerializer.Serialize(settings, options);
+			var json = JsonSerializer.Serialize(settings, WriteOptions);
 			File.WriteAllText(_settingsFilePath, json);
 
 			_settings = settings;
 			_logger.LogInformation("Settings saved successfully");
 		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Error saving settings");
+			throw;
+		}
+	}
+
+	public async Task SaveSettingsAsync(ApplicationSettings settings, CancellationToken cancellationToken = default)
+	{
+		try
+		{
+			var json = JsonSerializer.Serialize(settings, WriteOptions);
+			await File.WriteAllTextAsync(_settingsFilePath, json, cancellationToken);
+
+			_settings = settings;
+			_logger.LogInformation("Settings saved successfully");
+		}
+		catch (OperationCanceledException) { throw; }
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Error saving settings");

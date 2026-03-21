@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Globalization;
 using Avalonia.Data.Converters;
 
@@ -11,15 +11,15 @@ namespace WorkTracker.Avalonia.Converters;
 /// </summary>
 public class NullToBoolConverter : IValueConverter
 {
-    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
-    {
-        var isNotNull = value is not null;
-        var isInverse = parameter as string == "Inverse";
-        return isInverse ? !isNotNull : isNotNull;
-    }
+	public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+	{
+		var isNotNull = value is not null;
+		var isInverse = parameter as string == "Inverse";
+		return isInverse ? !isNotNull : isNotNull;
+	}
 
-    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
-    {
-        throw new NotImplementedException();
-    }
+	public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+	{
+		throw new NotImplementedException();
+	}
 }
