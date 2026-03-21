@@ -14,6 +14,7 @@ public class SubmitWorklogViewModel : ViewModelBase
 {
 	private readonly IWorklogSubmissionService _submissionService;
 	private readonly TimeProvider _timeProvider;
+	private readonly ILocalizationService _localization;
 	private readonly ILogger<SubmitWorklogViewModel> _logger;
 
 	private DateTime _selectedDate;
@@ -28,10 +29,12 @@ public class SubmitWorklogViewModel : ViewModelBase
 
 	public SubmitWorklogViewModel(
 		IWorklogSubmissionService submissionService,
+		ILocalizationService localization,
 		TimeProvider timeProvider,
 		ILogger<SubmitWorklogViewModel> logger)
 	{
 		_submissionService = submissionService;
+		_localization = localization;
 		_timeProvider = timeProvider;
 		_logger = logger;
 		_selectedDate = _timeProvider.GetLocalNow().Date;
@@ -124,7 +127,7 @@ public class SubmitWorklogViewModel : ViewModelBase
 		}
 	}
 
-	public string DialogTitle => IsWeekly ? LocalizationService.Instance["SubmitWeeklyWorklogs"] : LocalizationService.Instance["SubmitDailyWorklogs"];
+	public string DialogTitle => IsWeekly ? _localization["SubmitWeeklyWorklogs"] : _localization["SubmitDailyWorklogs"];
 
 	public Action? CloseAction { get; set; }
 	public bool DialogResult { get; set; }
@@ -157,7 +160,7 @@ public class SubmitWorklogViewModel : ViewModelBase
 		try
 		{
 			IsLoading = true;
-			StatusMessage = LocalizationService.Instance["LoadingPreview"];
+			StatusMessage = _localization["LoadingPreview"];
 
 			if (IsWeekly)
 			{
@@ -178,7 +181,7 @@ public class SubmitWorklogViewModel : ViewModelBase
 						var item = new WorklogPreviewItem
 						{
 							Date = dayPreview.Key,
-							TicketId = entry.TicketId ?? LocalizationService.Instance["NoTicket"],
+							TicketId = entry.TicketId ?? _localization["NoTicket"],
 							Description = entry.Description ?? string.Empty,
 							Duration = entry.DurationMinutes * 60,
 							StartTime = entry.StartTime,
@@ -208,7 +211,7 @@ public class SubmitWorklogViewModel : ViewModelBase
 					var item = new WorklogPreviewItem
 					{
 						Date = SelectedDate,
-						TicketId = entry.TicketId ?? LocalizationService.Instance["NoTicket"],
+						TicketId = entry.TicketId ?? _localization["NoTicket"],
 						Description = entry.Description ?? string.Empty,
 						Duration = entry.DurationMinutes * 60,
 						StartTime = entry.StartTime,
@@ -230,12 +233,12 @@ public class SubmitWorklogViewModel : ViewModelBase
 				TotalTimeDisplay = FormatDuration(totalSeconds);
 			}
 
-			StatusMessage = LocalizationService.Instance.GetFormattedString("ReadyToSubmit", PreviewItems.Count(i => !i.IsDateHeader));
+			StatusMessage = _localization.GetFormattedString("ReadyToSubmit", PreviewItems.Count(i => !i.IsDateHeader));
 		}
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Failed to load worklog preview");
-			StatusMessage = LocalizationService.Instance.GetFormattedString("ErrorLoadingPreview", ex.Message);
+			StatusMessage = _localization.GetFormattedString("ErrorLoadingPreview", ex.Message);
 			PreviewItems.Clear();
 		}
 		finally
@@ -257,14 +260,14 @@ public class SubmitWorklogViewModel : ViewModelBase
 	{
 		if (SelectedProvider == null)
 		{
-			StatusMessage = LocalizationService.Instance["PleaseSelectProvider"];
+			StatusMessage = _localization["PleaseSelectProvider"];
 			return;
 		}
 
 		try
 		{
 			IsSending = true;
-			StatusMessage = LocalizationService.Instance.GetFormattedString("SubmittingTo", SelectedProvider.Name);
+			StatusMessage = _localization.GetFormattedString("SubmittingTo", SelectedProvider.Name);
 
 			// Convert edited preview items to DTOs
 			var worklogs = PreviewItems
@@ -286,9 +289,9 @@ public class SubmitWorklogViewModel : ViewModelBase
 			{
 				var submission = result.Value;
 				var failedMessage = submission.FailedEntries > 0
-					? LocalizationService.Instance.GetFormattedString("SubmissionFailed", submission.FailedEntries)
+					? _localization.GetFormattedString("SubmissionFailed", submission.FailedEntries)
 					: "";
-				StatusMessage = LocalizationService.Instance.GetFormattedString("SubmissionSuccess",
+				StatusMessage = _localization.GetFormattedString("SubmissionSuccess",
 					submission.SuccessfulEntries, SelectedProvider.Name, failedMessage);
 
 				// Set dialog result but don't close automatically - let user close manually
@@ -299,13 +302,13 @@ public class SubmitWorklogViewModel : ViewModelBase
 			}
 			else
 			{
-				StatusMessage = LocalizationService.Instance.GetFormattedString("ErrorPrefix", result.Error);
+				StatusMessage = _localization.GetFormattedString("ErrorPrefix", result.Error);
 			}
 		}
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Failed to submit worklogs");
-			StatusMessage = LocalizationService.Instance.GetFormattedString("ErrorPrefix", ex.Message);
+			StatusMessage = _localization.GetFormattedString("ErrorPrefix", ex.Message);
 		}
 		finally
 		{
@@ -329,7 +332,7 @@ public class SubmitWorklogViewModel : ViewModelBase
 		// Recalculate total time
 		var totalSeconds = PreviewItems.Where(i => !i.IsDateHeader).Sum(i => i.Duration);
 		TotalTimeDisplay = FormatDuration(totalSeconds);
-		StatusMessage = LocalizationService.Instance["WorklogsResetToOriginal"];
+		StatusMessage = _localization["WorklogsResetToOriginal"];
 	}
 
 	#endregion Command Implementations

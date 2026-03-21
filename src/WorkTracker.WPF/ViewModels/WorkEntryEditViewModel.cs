@@ -16,6 +16,7 @@ public class WorkEntryEditViewModel : ViewModelBase
 	private readonly IWorklogStateService _worklogStateService;
 	private readonly INotificationService _notificationService;
 	private readonly TimeProvider _timeProvider;
+	private readonly ILocalizationService _localization;
 	private readonly ILogger<WorkEntryEditViewModel> _logger;
 
 	private WorkEntry? _originalEntry;
@@ -32,11 +33,13 @@ public class WorkEntryEditViewModel : ViewModelBase
 	public WorkEntryEditViewModel(
 		IWorklogStateService worklogStateService,
 		INotificationService notificationService,
+		ILocalizationService localization,
 		TimeProvider timeProvider,
 		ILogger<WorkEntryEditViewModel> logger)
 	{
 		_worklogStateService = worklogStateService;
 		_notificationService = notificationService;
+		_localization = localization;
 		_timeProvider = timeProvider;
 		_logger = logger;
 
@@ -48,7 +51,7 @@ public class WorkEntryEditViewModel : ViewModelBase
 
 	public bool IsNewEntry => _originalEntry == null;
 
-	public string DialogTitle => IsNewEntry ? LocalizationService.Instance["NewWorkEntry"] : LocalizationService.Instance["EditWorkEntry"];
+	public string DialogTitle => IsNewEntry ? _localization["NewWorkEntry"] : _localization["EditWorkEntry"];
 
 	public int EntryId
 	{
@@ -234,7 +237,7 @@ public class WorkEntryEditViewModel : ViewModelBase
 		// At least ticket or description required
 		if (string.IsNullOrWhiteSpace(TicketId) && string.IsNullOrWhiteSpace(Description))
 		{
-			ValidationError = LocalizationService.Instance["EitherTicketOrDescriptionRequired"];
+			ValidationError = _localization["EitherTicketOrDescriptionRequired"];
 			((IAsyncRelayCommand)SaveCommand).NotifyCanExecuteChanged();
 			return;
 		}
@@ -244,7 +247,7 @@ public class WorkEntryEditViewModel : ViewModelBase
 		{
 			if (EndDateTime.Value <= StartDateTime)
 			{
-				ValidationError = LocalizationService.Instance["EndTimeMustBeAfterStartTime"];
+				ValidationError = _localization["EndTimeMustBeAfterStartTime"];
 				((IAsyncRelayCommand)SaveCommand).NotifyCanExecuteChanged();
 				return;
 			}
@@ -308,7 +311,7 @@ public class WorkEntryEditViewModel : ViewModelBase
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Unexpected error saving work entry");
-			ValidationError = LocalizationService.Instance.GetFormattedString("FailedToSave", ex.Message);
+			ValidationError = _localization.GetFormattedString("FailedToSave", ex.Message);
 		}
 	}
 

@@ -276,8 +276,14 @@ public sealed class PluginManager : IPluginManager
 
 			if (_pluginContexts.TryGetValue(pluginId, out var context))
 			{
-				context.Unload();
-				_pluginContexts.Remove(pluginId);
+				try
+				{
+					context.Unload();
+				}
+				finally
+				{
+					_pluginContexts.Remove(pluginId);
+				}
 			}
 
 			_logger.LogInformation("Unloaded plugin: {Name}", plugin.Metadata.Name);

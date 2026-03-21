@@ -57,6 +57,13 @@ public partial class App : System.Windows.Application
 				// Note: IWorkEntryService and IWorklogSubmissionService are registered in Infrastructure layer
 
 				// WPF-specific services
+				services.AddSingleton<LocalizationService>();
+				services.AddSingleton<ILocalizationService>(sp =>
+				{
+					var instance = sp.GetRequiredService<LocalizationService>();
+					LocalizationService.SetInstance(instance);
+					return instance;
+				});
 				services.AddSingleton<IDialogService, DialogService>(); // Stateless dialog service (factory for ViewModels)
 
 				// Shared MessageQueue for notifications
@@ -91,7 +98,7 @@ public partial class App : System.Windows.Application
 	private void OnDispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
 	{
 		MessageBox.Show(
-			$"An unhandled exception occurred:\n\n{e.Exception.Message}\n\nStack trace:\n{e.Exception.StackTrace}",
+			$"An unhandled exception occurred:\n\n{e.Exception.Message}\n\nStack trace:\n{e.Exception.StackTrace ?? "(not available)"}",
 			"Error",
 			MessageBoxButton.OK,
 			MessageBoxImage.Error);
@@ -142,7 +149,7 @@ public partial class App : System.Windows.Application
 		catch (Exception ex)
 		{
 			MessageBox.Show(
-				$"Failed to start application:\n\n{ex.Message}\n\nStack trace:\n{ex.StackTrace}",
+				$"Failed to start application:\n\n{ex.Message}\n\nStack trace:\n{ex.StackTrace ?? "(not available)"}",
 				"Startup Error",
 				MessageBoxButton.OK,
 				MessageBoxImage.Error);

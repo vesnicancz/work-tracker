@@ -41,6 +41,13 @@ public partial class App : global::Avalonia.Application
 			{
 				services.AddInfrastructure(context.Configuration);
 
+				services.AddSingleton<LocalizationService>();
+				services.AddSingleton<ILocalizationService>(sp =>
+				{
+					var instance = sp.GetRequiredService<LocalizationService>();
+					LocalizationService.SetInstance(instance);
+					return instance;
+				});
 				services.AddSingleton<ISettingsService, SettingsService>();
 				services.AddSingleton<IWorklogStateService, WorklogStateService>();
 
