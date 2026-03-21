@@ -85,37 +85,9 @@ public sealed class AutostartManager : IAutostartManager
 	/// <summary>
 	/// Gets the path to the application executable
 	/// </summary>
-	private string GetExecutablePath()
+	private static string GetExecutablePath()
 	{
-		var assembly = Assembly.GetExecutingAssembly();
-		var location = assembly.Location;
-
-		// If we're running as a single-file app, get the actual executable path
-		if (string.IsNullOrEmpty(location) || location.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
-		{
-			// Get the path from the process
-			var processPath = Environment.ProcessPath;
-			if (!string.IsNullOrEmpty(processPath))
-			{
-				return processPath;
-			}
-		}
-
-		// For regular .dll assembly, find the .exe in the same directory
-		if (location.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
-		{
-			var directory = Path.GetDirectoryName(location);
-			if (!string.IsNullOrEmpty(directory))
-			{
-				var exeName = Path.GetFileNameWithoutExtension(location) + ".exe";
-				var exePath = Path.Combine(directory, exeName);
-				if (File.Exists(exePath))
-				{
-					return exePath;
-				}
-			}
-		}
-
-		return location;
+		return Environment.ProcessPath
+			?? Path.Combine(AppContext.BaseDirectory, "WorkTracker.WPF.exe");
 	}
 }
