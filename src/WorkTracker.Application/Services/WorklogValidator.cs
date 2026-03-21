@@ -11,11 +11,6 @@ public sealed class WorklogValidator : IWorklogValidator
 
 	public ValidationResult ValidateForSubmission(WorkEntry entry)
 	{
-		if (entry == null)
-		{
-			return ValidationResult.Failure("Work entry cannot be null");
-		}
-
 		if (string.IsNullOrWhiteSpace(entry.TicketId))
 		{
 			return ValidationResult.Failure("Ticket ID is required");

@@ -245,6 +245,7 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 			);
 
 			// Retry on transient failures
+			string? lastError = null;
 			for (var attempt = 0; attempt <= MaxRetries; attempt++)
 			{
 				using var response = await _tempoHttpClient!.PostAsJsonAsync("worklogs", tempoWorklog, cancellationToken);
@@ -261,6 +262,7 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 
 				var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
 				var statusCode = (int)response.StatusCode;
+				lastError = $"Upload failed: {response.StatusCode} - {errorContent}";
 
 				// Only retry on server errors (5xx) or rate limiting (429)
 				if (attempt < MaxRetries && (statusCode >= 500 || statusCode == 429))
@@ -272,16 +274,11 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 					continue;
 				}
 
-				Logger?.LogWarning(
-					"Failed to upload worklog: {StatusCode} - {Content}",
-					response.StatusCode,
-					errorContent
-				);
-
-				return PluginResult<bool>.Failure($"Upload failed: {response.StatusCode} - {errorContent}");
+				break;
 			}
 
-			return PluginResult<bool>.Failure("Upload failed after retries");
+			Logger?.LogWarning("Failed to upload worklog: {Error}", lastError);
+			return PluginResult<bool>.Failure(lastError ?? "Upload failed");
 		}
 		catch (Exception ex)
 		{

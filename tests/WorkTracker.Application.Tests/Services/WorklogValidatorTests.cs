@@ -36,17 +36,6 @@ public class WorklogValidatorTests
 	}
 
 	[Fact]
-	public void ValidateForSubmission_WithNullEntry_ShouldReturnFailure()
-	{
-		// Act
-		var result = _validator.ValidateForSubmission(null!);
-
-		// Assert
-		result.IsValid.Should().BeFalse();
-		result.Errors.Should().Contain(e => e.Contains("cannot be null"));
-	}
-
-	[Fact]
 	public void ValidateForSubmission_WithoutTicketId_ShouldReturnFailure()
 	{
 		// Arrange
