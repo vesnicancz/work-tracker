@@ -129,6 +129,10 @@ public class SettingsViewModel : ViewModelBase
         set => SetProperty(ref _startMinimized, value);
     }
 
+    public string AppVersion => Application.AppInfo.Version;
+    public string RuntimeVersion => $".NET {Environment.Version}";
+    public string PlatformInfo => System.Runtime.InteropServices.RuntimeInformation.OSDescription;
+
     public string[] AvailableThemes { get; } = ["Dark", "Light", "Purple"];
 
     public string SelectedTheme

@@ -1,0 +1,189 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  CONFIGURATION: Release
+
+jobs:
+  test:
+    name: Run tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore -c ${{ env.CONFIGURATION }}
+
+      - name: Test
+        run: dotnet test --no-build -c ${{ env.CONFIGURATION }}
+
+  publish-cli:
+    name: Publish CLI (${{ matrix.rid }})
+    needs: test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - rid: win-x64
+            artifact: WorkTracker-CLI-win-x64
+          - rid: linux-x64
+            artifact: WorkTracker-CLI-linux-x64
+          - rid: osx-x64
+            artifact: WorkTracker-CLI-osx-x64
+          - rid: osx-arm64
+            artifact: WorkTracker-CLI-osx-arm64
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Publish
+        run: >
+          dotnet publish src/WorkTracker.CLI/WorkTracker.CLI.csproj
+          -c ${{ env.CONFIGURATION }}
+          -r ${{ matrix.rid }}
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -o publish/${{ matrix.artifact }}
+
+      - name: Archive
+        run: |
+          cd publish
+          zip -r ${{ matrix.artifact }}.zip ${{ matrix.artifact }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: publish/${{ matrix.artifact }}.zip
+
+  publish-wpf:
+    name: Publish WPF
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Publish
+        run: >
+          dotnet publish src/WorkTracker.WPF/WorkTracker.WPF.csproj
+          -c ${{ env.CONFIGURATION }}
+          -r win-x64
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -o publish/WorkTracker-WPF-win-x64
+
+      - name: Archive
+        run: Compress-Archive -Path publish/WorkTracker-WPF-win-x64/* -DestinationPath publish/WorkTracker-WPF-win-x64.zip
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: WorkTracker-WPF-win-x64
+          path: publish/WorkTracker-WPF-win-x64.zip
+
+  publish-avalonia:
+    name: Publish Avalonia (${{ matrix.rid }})
+    needs: test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - rid: win-x64
+            os: windows-latest
+            artifact: WorkTracker-Avalonia-win-x64
+          - rid: linux-x64
+            os: ubuntu-latest
+            artifact: WorkTracker-Avalonia-linux-x64
+          - rid: osx-x64
+            os: macos-latest
+            artifact: WorkTracker-Avalonia-osx-x64
+          - rid: osx-arm64
+            os: macos-latest
+            artifact: WorkTracker-Avalonia-osx-arm64
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Publish
+        run: >
+          dotnet publish src/WorkTracker.Avalonia/WorkTracker.Avalonia.csproj
+          -c ${{ env.CONFIGURATION }}
+          -r ${{ matrix.rid }}
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -o publish/${{ matrix.artifact }}
+
+      - name: Archive (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: |
+          cd publish
+          zip -r ${{ matrix.artifact }}.zip ${{ matrix.artifact }}
+
+      - name: Archive (Windows)
+        if: runner.os == 'Windows'
+        run: Compress-Archive -Path publish/${{ matrix.artifact }}/* -DestinationPath publish/${{ matrix.artifact }}.zip
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: publish/${{ matrix.artifact }}.zip
+
+  release:
+    name: Create GitHub Release
+    needs: [publish-cli, publish-wpf, publish-avalonia]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: artifacts/*.zip

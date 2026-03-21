@@ -11,6 +11,9 @@ public partial class MessageBoxWindow : Window
 {
     public bool Result { get; private set; }
 
+    // Required by Avalonia XAML loader (AVLN3001)
+    public MessageBoxWindow() : this(string.Empty, string.Empty) { }
+
     public MessageBoxWindow(string title, string message, bool isConfirmation = false)
     {
         InitializeComponent();

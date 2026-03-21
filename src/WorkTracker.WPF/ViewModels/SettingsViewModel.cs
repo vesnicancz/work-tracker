@@ -127,6 +127,10 @@ public class SettingsViewModel : ViewModelBase
 		set => SetProperty(ref _startMinimized, value);
 	}
 
+	public string AppVersion => Application.AppInfo.Version;
+	public string RuntimeVersion => $".NET {Environment.Version}";
+	public string PlatformInfo => System.Runtime.InteropServices.RuntimeInformation.OSDescription;
+
 	public Action? CloseAction { get; set; }
 	public bool DialogResult { get; set; }
 

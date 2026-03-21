@@ -62,6 +62,7 @@ try
 		"edit" => await HandleEditCommand(commandHandler, args),
 		"delete" => await HandleDeleteCommand(commandHandler, args),
 		"send" => await HandleSendCommand(commandHandler, args),
+		"version" or "--version" or "-v" => ShowVersion(),
 		"help" or "--help" or "-h" => ShowHelp(),
 		_ => ShowUnknownCommand(command)
 	};
@@ -334,6 +335,12 @@ static async Task<int> HandleSendCommand(CommandHandler handler, string[] args)
 	}
 
 	return await handler.HandleSendCommand(date, isWeek);
+}
+
+static int ShowVersion()
+{
+	AnsiConsole.MarkupLine($"[bold]WorkTracker CLI[/] {WorkTracker.Application.AppInfo.Version}");
+	return 0;
 }
 
 static int ShowHelp()

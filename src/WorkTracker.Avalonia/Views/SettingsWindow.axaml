@@ -295,6 +295,89 @@
                         </Grid>
                     </TabItem>
 
+                    <!-- ===== About ===== -->
+                    <TabItem Header="About">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled">
+                            <StackPanel Margin="20,12" Spacing="14">
+
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="Work Tracker" FontSize="18" FontWeight="SemiBold" />
+                                    <TextBlock Text="{Binding AppVersion, StringFormat='Version {0}'}"
+                                               FontSize="13" Foreground="{DynamicResource TextMuted}" />
+                                </StackPanel>
+
+                                <Separator />
+
+                                <!-- Quick Reference -->
+                                <TextBlock Text="Quick Reference" FontSize="13" FontWeight="SemiBold" />
+
+                                <Grid ColumnDefinitions="130,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" Margin="0,0,0,4">
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Start tracking"
+                                               FontSize="12" Foreground="{DynamicResource TextMuted}" Margin="0,0,0,4" />
+                                    <TextBlock Grid.Row="0" Grid.Column="1" FontSize="12" Margin="0,0,0,4"
+                                               Text="Type ticket ID + description, press Enter" />
+
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Jira ticket format"
+                                               FontSize="12" Foreground="{DynamicResource TextMuted}" Margin="0,0,0,4" />
+                                    <TextBlock Grid.Row="1" Grid.Column="1" FontSize="12" Margin="0,0,0,4"
+                                               Text="PROJ-123 is detected automatically from input" />
+
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Favorites"
+                                               FontSize="12" Foreground="{DynamicResource TextMuted}" Margin="0,0,0,4" />
+                                    <TextBlock Grid.Row="2" Grid.Column="1" FontSize="12" Margin="0,0,0,4"
+                                               Text="Quick-start frequent tasks from the sidebar or tray menu" />
+
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Submit worklogs"
+                                               FontSize="12" Foreground="{DynamicResource TextMuted}" Margin="0,0,0,4" />
+                                    <TextBlock Grid.Row="3" Grid.Column="1" FontSize="12" Margin="0,0,0,4"
+                                               Text="Send a single day or entire week to Jira Tempo" />
+
+                                    <TextBlock Grid.Row="4" Grid.Column="0" Text="System tray"
+                                               FontSize="12" Foreground="{DynamicResource TextMuted}" Margin="0,0,0,4" />
+                                    <TextBlock Grid.Row="4" Grid.Column="1" FontSize="12" Margin="0,0,0,4"
+                                               Text="Runs in background, start/stop from tray icon" />
+                                </Grid>
+
+                                <Separator />
+
+                                <!-- System Info -->
+                                <TextBlock Text="System" FontSize="13" FontWeight="SemiBold" />
+
+                                <Grid ColumnDefinitions="100,*" RowDefinitions="Auto,Auto,Auto" Margin="0,0,0,4">
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Runtime"
+                                               Foreground="{DynamicResource TextMuted}" FontSize="12" Margin="0,0,0,6" />
+                                    <TextBlock Grid.Row="0" Grid.Column="1"
+                                               Text="{Binding RuntimeVersion}"
+                                               FontSize="12" Margin="0,0,0,6" />
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Platform"
+                                               Foreground="{DynamicResource TextMuted}" FontSize="12" Margin="0,0,0,6" />
+                                    <TextBlock Grid.Row="1" Grid.Column="1"
+                                               Text="{Binding PlatformInfo}"
+                                               FontSize="12" Margin="0,0,0,6" />
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="UI Framework"
+                                               Foreground="{DynamicResource TextMuted}" FontSize="12" />
+                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="Avalonia"
+                                               FontSize="12" />
+                                </Grid>
+
+                                <Separator />
+
+                                <!-- Data -->
+                                <TextBlock Text="Data Storage" FontSize="13" FontWeight="SemiBold" />
+                                <TextBlock FontSize="12" Foreground="{DynamicResource TextMuted}" TextWrapping="Wrap" LineHeight="18"
+                                           Text="All work entries are stored locally in a SQLite database. Settings and plugin configurations are saved to a JSON file. Data location: %LocalAppData%/WorkTracker/" />
+
+                                <Separator />
+
+                                <TextBlock FontSize="11" Foreground="{DynamicResource TextMuted}" TextWrapping="Wrap"
+                                           FontStyle="Italic" HorizontalAlignment="Center" Opacity="0.7"
+                                           Text="&quot;The universe is under no obligation to make sense to you.&quot; — Neil deGrasse Tyson&#x0a;Neither is your timesheet." />
+
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+
                 </TabControl>
 
                 <!-- Bottom bar -->
