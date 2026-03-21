@@ -18,7 +18,7 @@ public sealed class PluginBasedWorklogSubmissionService : IWorklogSubmissionServ
 		StartTime = e.StartTime,
 		EndTime = e.EndTime!.Value,
 		Description = e.Description,
-		DurationMinutes = (int)(e.EndTime!.Value - e.StartTime).TotalMinutes
+		DurationMinutes = Math.Max(1, (int)Math.Ceiling((e.EndTime!.Value - e.StartTime).TotalMinutes))
 	};
 
 	private readonly IWorkEntryService _workEntryService;

@@ -44,7 +44,8 @@ public sealed class SettingsService : ISettingsService
 			if (!File.Exists(_settingsFilePath))
 			{
 				_logger.LogInformation("Settings file not found, using defaults");
-				return new ApplicationSettings();
+				_settings = new ApplicationSettings();
+				return _settings;
 			}
 
 			var json = File.ReadAllText(_settingsFilePath);
@@ -53,16 +54,19 @@ public sealed class SettingsService : ISettingsService
 			if (settings == null)
 			{
 				_logger.LogWarning("Failed to deserialize settings, using defaults");
-				return new ApplicationSettings();
+				_settings = new ApplicationSettings();
+				return _settings;
 			}
 
 			_logger.LogInformation("Settings loaded successfully");
-			return settings;
+			_settings = settings;
+			return _settings;
 		}
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Error loading settings, using defaults");
-			return new ApplicationSettings();
+			_settings = new ApplicationSettings();
+			return _settings;
 		}
 	}
 
