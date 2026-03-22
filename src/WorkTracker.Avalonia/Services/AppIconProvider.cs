@@ -1,4 +1,3 @@
-using System.Reflection;
 using Avalonia.Controls;
 
 namespace WorkTracker.Avalonia.Services;

@@ -1,6 +1,5 @@
 using System.Drawing;
 using System.IO;
-using System.Reflection;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
