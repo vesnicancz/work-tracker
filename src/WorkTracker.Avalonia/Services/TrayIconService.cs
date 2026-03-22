@@ -46,12 +46,12 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 		_menu = new NativeMenu();
 
 		// Show window
-		var showItem = new NativeMenuItem(_localizationService["TrayShow"]);
+		var showItem = new NativeMenuItem($"❐ {_localizationService["TrayShow"]}");
 		showItem.Click += (_, _) => ShowMainWindow();
 		_menu.Items.Add(showItem);
 
 		// New work entry
-		var newEntryItem = new NativeMenuItem(_localizationService["TrayNewWorkEntry"]);
+		var newEntryItem = new NativeMenuItem($"➕ {_localizationService["TrayNewWorkEntry"]}");
 		newEntryItem.Click += async (_, _) => await OpenNewWorkEntryAsync();
 		_menu.Items.Add(newEntryItem);
 
@@ -62,7 +62,7 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 		_menu.Items.Add(new NativeMenuItemSeparator());
 
 		// Exit
-		var exitItem = new NativeMenuItem(_localizationService["TrayExit"]);
+		var exitItem = new NativeMenuItem($"⏻ {_localizationService["TrayExit"]}");
 		exitItem.Click += (_, _) =>
 		{
 			if (global::Avalonia.Application.Current?.ApplicationLifetime
