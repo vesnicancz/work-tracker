@@ -46,7 +46,11 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 		};
 
 		// Load initial icon
-		_taskbarIcon.Icon = AppIconProvider.GetTrayIcon(false);
+		var initialIcon = AppIconProvider.GetTrayIcon(false);
+		if (initialIcon is not null)
+		{
+			_taskbarIcon.Icon = initialIcon;
+		}
 
 		// Load tray menu styles
 		var stylesUri = new Uri("pack://application:,,,/Resources/Styles/TrayMenuStyles.xaml", UriKind.Absolute);

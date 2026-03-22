@@ -27,7 +27,7 @@ public static class AppIconProvider
 
 		try
 		{
-			using var resourceStream = Assembly.GetExecutingAssembly().GetManifestResourceStream(resourceName);
+			using var resourceStream = typeof(AppIconProvider).Assembly.GetManifestResourceStream(resourceName);
 			if (resourceStream == null)
 			{
 				return null;

@@ -32,7 +32,7 @@ public static class AppIconProvider
 
 		try
 		{
-			using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(resourceName);
+			using var stream = typeof(AppIconProvider).Assembly.GetManifestResourceStream(resourceName);
 			if (stream == null)
 			{
 				return null;
@@ -78,7 +78,7 @@ public static class AppIconProvider
 
 		try
 		{
-			using var resourceStream = Assembly.GetExecutingAssembly().GetManifestResourceStream(resourceName);
+			using var resourceStream = typeof(AppIconProvider).Assembly.GetManifestResourceStream(resourceName);
 			if (resourceStream == null)
 			{
 				return null;

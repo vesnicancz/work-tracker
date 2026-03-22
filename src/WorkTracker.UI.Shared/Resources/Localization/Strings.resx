@@ -96,7 +96,7 @@
 
   <!-- Main Window -->
   <data name="WorkTracker" xml:space="preserve">
-    <value>WorkTracker</value>
+    <value>Work Tracker</value>
   </data>
   <data name="ActiveWork" xml:space="preserve">
     <value>Active Work</value>
