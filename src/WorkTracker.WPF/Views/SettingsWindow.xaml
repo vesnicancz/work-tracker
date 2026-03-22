@@ -457,12 +457,12 @@
 					</ScrollViewer>
 				</TabItem>
 				<!-- About Tab -->
-				<TabItem Header="About">
+				<TabItem Header="{markup:Localize About}">
 					<ScrollViewer VerticalScrollBarVisibility="Auto"
 								 Padding="24,16,24,0">
 						<StackPanel Margin="8,0,8,0">
 
-							<TextBlock Text="Work Tracker"
+							<TextBlock Text="{markup:Localize WorkTracker}"
 									  FontSize="18"
 									  FontWeight="Medium"
 									  Margin="0,0,0,4" />
@@ -473,7 +473,7 @@
 							<Separator Margin="0,14" />
 
 							<!-- Keyboard Shortcuts -->
-							<TextBlock Text="Keyboard Shortcuts"
+							<TextBlock Text="{markup:Localize KeyboardShortcuts}"
 									  FontSize="14"
 									  FontWeight="Medium"
 									  Margin="0,0,0,10" />
@@ -492,21 +492,21 @@
 										  FontSize="12" FontFamily="Consolas"
 										  Foreground="{DynamicResource MaterialDesign.Brush.Foreground.Light}"
 										  Margin="0,0,0,6" />
-								<TextBlock Grid.Row="0" Grid.Column="1" Text="Show/hide window (global hotkey)"
+								<TextBlock Grid.Row="0" Grid.Column="1" Text="{markup:Localize AboutGlobalHotkeyDesc}"
 										  FontSize="12" Margin="0,0,0,6" />
 
 								<TextBlock Grid.Row="1" Grid.Column="0" Text="Enter"
 										  FontSize="12" FontFamily="Consolas"
 										  Foreground="{DynamicResource MaterialDesign.Brush.Foreground.Light}"
 										  Margin="0,0,0,6" />
-								<TextBlock Grid.Row="1" Grid.Column="1" Text="Start tracking from the input field"
+								<TextBlock Grid.Row="1" Grid.Column="1" Text="{markup:Localize AboutEnterKeyDesc}"
 										  FontSize="12" Margin="0,0,0,6" />
 							</Grid>
 
 							<Separator Margin="0,14" />
 
 							<!-- Quick Reference -->
-							<TextBlock Text="Quick Reference"
+							<TextBlock Text="{markup:Localize QuickReference}"
 									  FontSize="14"
 									  FontWeight="Medium"
 									  Margin="0,0,0,10" />
@@ -524,46 +524,46 @@
 									<RowDefinition Height="Auto" />
 								</Grid.RowDefinitions>
 
-								<TextBlock Grid.Row="0" Grid.Column="0" Text="Start tracking"
+								<TextBlock Grid.Row="0" Grid.Column="0" Text="{markup:Localize AboutStartTracking}"
 										  FontSize="12"
 										  Foreground="{DynamicResource MaterialDesign.Brush.Foreground.Light}"
 										  Margin="0,0,0,6" />
-								<TextBlock Grid.Row="0" Grid.Column="1" Text="Type ticket ID + description, press Enter"
+								<TextBlock Grid.Row="0" Grid.Column="1" Text="{markup:Localize AboutStartTrackingDesc}"
 										  FontSize="12" Margin="0,0,0,6" />
 
-								<TextBlock Grid.Row="1" Grid.Column="0" Text="Jira ticket format"
+								<TextBlock Grid.Row="1" Grid.Column="0" Text="{markup:Localize AboutJiraFormat}"
 										  FontSize="12"
 										  Foreground="{DynamicResource MaterialDesign.Brush.Foreground.Light}"
 										  Margin="0,0,0,6" />
-								<TextBlock Grid.Row="1" Grid.Column="1" Text="PROJ-123 is detected automatically from input"
+								<TextBlock Grid.Row="1" Grid.Column="1" Text="{markup:Localize AboutJiraFormatDesc}"
 										  FontSize="12" Margin="0,0,0,6" />
 
-								<TextBlock Grid.Row="2" Grid.Column="0" Text="Favorites"
+								<TextBlock Grid.Row="2" Grid.Column="0" Text="{markup:Localize Favorites}"
 										  FontSize="12"
 										  Foreground="{DynamicResource MaterialDesign.Brush.Foreground.Light}"
 										  Margin="0,0,0,6" />
-								<TextBlock Grid.Row="2" Grid.Column="1" Text="Quick-start frequent tasks from the sidebar or tray menu"
+								<TextBlock Grid.Row="2" Grid.Column="1" Text="{markup:Localize AboutFavoritesDesc}"
 										  FontSize="12" Margin="0,0,0,6" />
 
-								<TextBlock Grid.Row="3" Grid.Column="0" Text="Submit worklogs"
+								<TextBlock Grid.Row="3" Grid.Column="0" Text="{markup:Localize AboutSubmitWorklogs}"
 										  FontSize="12"
 										  Foreground="{DynamicResource MaterialDesign.Brush.Foreground.Light}"
 										  Margin="0,0,0,6" />
-								<TextBlock Grid.Row="3" Grid.Column="1" Text="Send a single day or entire week to Jira Tempo"
+								<TextBlock Grid.Row="3" Grid.Column="1" Text="{markup:Localize AboutSubmitWorklogsDesc}"
 										  FontSize="12" Margin="0,0,0,6" />
 
-								<TextBlock Grid.Row="4" Grid.Column="0" Text="System tray"
+								<TextBlock Grid.Row="4" Grid.Column="0" Text="{markup:Localize AboutSystemTray}"
 										  FontSize="12"
 										  Foreground="{DynamicResource MaterialDesign.Brush.Foreground.Light}"
 										  Margin="0,0,0,6" />
-								<TextBlock Grid.Row="4" Grid.Column="1" Text="Runs in background, start/stop from tray icon"
+								<TextBlock Grid.Row="4" Grid.Column="1" Text="{markup:Localize AboutSystemTrayDesc}"
 										  FontSize="12" Margin="0,0,0,6" />
 							</Grid>
 
 							<Separator Margin="0,14" />
 
 							<!-- System -->
-							<TextBlock Text="System"
+							<TextBlock Text="{markup:Localize SystemInfo}"
 									  FontSize="14"
 									  FontWeight="Medium"
 									  Margin="0,0,0,10" />
@@ -579,38 +579,25 @@
 									<RowDefinition Height="Auto" />
 								</Grid.RowDefinitions>
 
-								<TextBlock Grid.Row="0" Grid.Column="0" Text="Runtime"
+								<TextBlock Grid.Row="0" Grid.Column="0" Text="{markup:Localize Runtime}"
 										  Foreground="{DynamicResource MaterialDesign.Brush.Foreground.Light}"
 										  Margin="0,0,0,8" />
 								<TextBlock Grid.Row="0" Grid.Column="1"
 										  Text="{Binding RuntimeVersion}"
 										  Margin="0,0,0,8" />
 
-								<TextBlock Grid.Row="1" Grid.Column="0" Text="Platform"
+								<TextBlock Grid.Row="1" Grid.Column="0" Text="{markup:Localize PlatformLabel}"
 										  Foreground="{DynamicResource MaterialDesign.Brush.Foreground.Light}"
 										  Margin="0,0,0,8" />
 								<TextBlock Grid.Row="1" Grid.Column="1"
 										  Text="{Binding PlatformInfo}"
 										  Margin="0,0,0,8" />
 
-								<TextBlock Grid.Row="2" Grid.Column="0" Text="UI Framework"
+								<TextBlock Grid.Row="2" Grid.Column="0" Text="{markup:Localize UIFramework}"
 										  Foreground="{DynamicResource MaterialDesign.Brush.Foreground.Light}" />
 								<TextBlock Grid.Row="2" Grid.Column="1"
 										  Text="WPF" />
 							</Grid>
-
-							<Separator Margin="0,14" />
-
-							<!-- Data -->
-							<TextBlock Text="Data Storage"
-									  FontSize="14"
-									  FontWeight="Medium"
-									  Margin="0,0,0,8" />
-							<TextBlock Text="All work entries are stored locally in a SQLite database. Settings and plugin configurations are saved to a JSON file. Data location: %LocalAppData%/WorkTracker/"
-									  FontSize="12"
-									  Foreground="{DynamicResource MaterialDesign.Brush.Foreground.Light}"
-									  TextWrapping="Wrap"
-									  LineHeight="18" />
 
 							<Separator Margin="0,14" />
 
@@ -620,7 +607,7 @@
 									  FontStyle="Italic"
 									  HorizontalAlignment="Center"
 									  Opacity="0.7"
-									  Text="&quot;The universe is under no obligation to make sense to you.&quot; — Neil deGrasse Tyson&#x0a;Neither is your timesheet." />
+									  Text="{markup:Localize AboutQuote}" />
 
 						</StackPanel>
 					</ScrollViewer>

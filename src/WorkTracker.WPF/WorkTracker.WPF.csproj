@@ -8,14 +8,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="..\..\resources\app-ico.ico" Link="Resources\app-ico.ico">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <TargetPath>Resources\app-ico.ico</TargetPath>
-    </Content>
-    <Content Include="..\..\resources\app-ico-active.ico" Link="Resources\app-ico-active.ico">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <TargetPath>Resources\app-ico-active.ico</TargetPath>
-    </Content>
+    <EmbeddedResource Include="..\..\resources\app-ico.ico" Link="Resources\app-ico.ico" LogicalName="app-ico.ico" />
+    <EmbeddedResource Include="..\..\resources\app-ico-active.ico" Link="Resources\app-ico-active.ico" LogicalName="app-ico-active.ico" />
   </ItemGroup>
 
   <ItemGroup>

@@ -96,7 +96,7 @@
 
   <!-- Hlavní okno -->
   <data name="WorkTracker" xml:space="preserve">
-    <value>WorkTracker</value>
+    <value>Work Tracker</value>
   </data>
   <data name="ActiveWork" xml:space="preserve">
     <value>Aktivní práce</value>
@@ -488,6 +488,15 @@ Popis: {1}
   <!-- Nastavení: O aplikaci -->
   <data name="About" xml:space="preserve">
     <value>O aplikaci</value>
+  </data>
+  <data name="KeyboardShortcuts" xml:space="preserve">
+    <value>Klávesové zkratky</value>
+  </data>
+  <data name="AboutGlobalHotkeyDesc" xml:space="preserve">
+    <value>Zobrazit/skrýt okno (globální zkratka)</value>
+  </data>
+  <data name="AboutEnterKeyDesc" xml:space="preserve">
+    <value>Spustit sledování z vstupního pole</value>
   </data>
   <data name="QuickReference" xml:space="preserve">
     <value>Stručný přehled</value>

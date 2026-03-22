@@ -10,7 +10,7 @@
         mc:Ignorable="d"
         Title="{markup:Localize Settings}"
         Width="640"
-        Height="680"
+        Height="700"
         WindowStartupLocation="CenterOwner"
         CanResize="False"
         ShowInTaskbar="False"
@@ -307,6 +307,25 @@
                                     <TextBlock Text="{Binding AppVersionDisplay}"
                                                FontSize="13" Foreground="{DynamicResource TextMuted}" />
                                 </StackPanel>
+
+                                <Separator />
+
+                                <!-- Keyboard Shortcuts -->
+                                <TextBlock Text="{markup:Localize KeyboardShortcuts}" FontSize="13" FontWeight="SemiBold" />
+
+                                <Grid ColumnDefinitions="130,*" RowDefinitions="Auto,Auto" Margin="0,0,0,4">
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Ctrl + Shift + W"
+                                               FontSize="12" FontFamily="Consolas"
+                                               Foreground="{DynamicResource TextMuted}" Margin="0,0,0,4" />
+                                    <TextBlock Grid.Row="0" Grid.Column="1" FontSize="12" Margin="0,0,0,4"
+                                               Text="{markup:Localize AboutGlobalHotkeyDesc}" />
+
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Enter"
+                                               FontSize="12" FontFamily="Consolas"
+                                               Foreground="{DynamicResource TextMuted}" Margin="0,0,0,4" />
+                                    <TextBlock Grid.Row="1" Grid.Column="1" FontSize="12" Margin="0,0,0,4"
+                                               Text="{markup:Localize AboutEnterKeyDesc}" />
+                                </Grid>
 
                                 <Separator />
 

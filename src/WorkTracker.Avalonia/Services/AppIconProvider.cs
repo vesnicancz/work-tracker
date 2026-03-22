@@ -1,23 +1,54 @@
-﻿using Avalonia.Controls;
-using WorkTracker.UI.Shared.Services;
+using Avalonia.Controls;
 
 namespace WorkTracker.Avalonia.Services;
 
 public static class AppIconProvider
 {
-	private static readonly string IconDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "Icons");
+	private const string IdleIconResource = "app-ico.ico";
+	private const string ActiveIconResource = "app-ico-active.ico";
+
+	private static WindowIcon? _idleIcon;
+	private static WindowIcon? _activeIcon;
 
 	public static WindowIcon? GetIcon(bool isActive)
 	{
-		var path = AppIconResolver.GetIconPath(isActive, IconDirectory);
-		if (path == null)
+		if (isActive && _activeIcon != null)
 		{
-			return null;
+			return _activeIcon;
 		}
+
+		if (!isActive && _idleIcon != null)
+		{
+			return _idleIcon;
+		}
+
+		var resourceName = isActive ? ActiveIconResource : IdleIconResource;
 
 		try
 		{
-			return new WindowIcon(path);
+			using var resourceStream = typeof(AppIconProvider).Assembly.GetManifestResourceStream(resourceName);
+			if (resourceStream == null)
+			{
+				return null;
+			}
+
+			// Copy to MemoryStream so the manifest resource stream can be disposed
+			var memoryStream = new MemoryStream();
+			resourceStream.CopyTo(memoryStream);
+			memoryStream.Position = 0;
+
+			var icon = new WindowIcon(memoryStream);
+
+			if (isActive)
+			{
+				_activeIcon = icon;
+			}
+			else
+			{
+				_idleIcon = icon;
+			}
+
+			return icon;
 		}
 		catch
 		{
