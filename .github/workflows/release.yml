@@ -65,9 +65,10 @@ jobs:
           dotnet publish src/WorkTracker.CLI/WorkTracker.CLI.csproj
           -c ${{ env.CONFIGURATION }}
           -r ${{ matrix.rid }}
-          --self-contained true
+          -p:SelfContained=false
           -p:PublishSingleFile=true
           -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:DebugType=none
           -o publish/${{ matrix.artifact }}
 
       - name: Archive
@@ -100,9 +101,10 @@ jobs:
           dotnet publish src/WorkTracker.WPF/WorkTracker.WPF.csproj
           -c ${{ env.CONFIGURATION }}
           -r win-x64
-          --self-contained true
+          -p:SelfContained=false
           -p:PublishSingleFile=true
           -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:DebugType=none
           -o publish/WorkTracker-WPF-win-x64
 
       - name: Archive
@@ -151,9 +153,10 @@ jobs:
           dotnet publish src/WorkTracker.Avalonia/WorkTracker.Avalonia.csproj
           -c ${{ env.CONFIGURATION }}
           -r ${{ matrix.rid }}
-          --self-contained true
+          -p:SelfContained=false
           -p:PublishSingleFile=true
           -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:DebugType=none
           -o publish/${{ matrix.artifact }}
 
       - name: Archive (Linux/macOS)
