@@ -10,6 +10,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using WorkTracker.Application.Plugins;
 using WorkTracker.Infrastructure;
+using WorkTracker.UI.Shared.Models;
 using WorkTracker.UI.Shared.Services;
 using WorkTracker.Avalonia.Services;
 using WorkTracker.Avalonia.ViewModels;
@@ -200,21 +201,21 @@ public partial class App : global::Avalonia.Application
 
 			if (!File.Exists(settingsPath))
 			{
-				return ("Modern Blue", false);
+				return (ApplicationSettings.DefaultTheme, false);
 			}
 
 			using var stream = File.OpenRead(settingsPath);
 			using var doc = JsonDocument.Parse(stream);
 			var root = doc.RootElement;
 
-			var theme = root.TryGetProperty("Theme", out var t) ? t.GetString() ?? "Modern Blue" : "Modern Blue";
+			var theme = root.TryGetProperty("Theme", out var t) ? t.GetString() ?? ApplicationSettings.DefaultTheme : ApplicationSettings.DefaultTheme;
 			var startMinimized = root.TryGetProperty("StartMinimized", out var s) && s.GetBoolean();
 
 			return (theme, startMinimized);
 		}
 		catch
 		{
-			return ("Modern Blue", false);
+			return (ApplicationSettings.DefaultTheme, false);
 		}
 	}
 
@@ -276,13 +277,13 @@ public partial class App : global::Avalonia.Application
 			"Light" => new Uri("avares://WorkTracker.Avalonia/Resources/Themes/OneLightTheme.axaml"),
 			"Purple" => new Uri("avares://WorkTracker.Avalonia/Resources/Themes/PurpleTheme.axaml"),
 			"Midnight" => new Uri("avares://WorkTracker.Avalonia/Resources/Themes/MidnightTheme.axaml"),
-			"Modern Blue" => new Uri("avares://WorkTracker.Avalonia/Resources/Themes/ModernBlueTheme.axaml"),
+			ApplicationSettings.DefaultTheme => new Uri("avares://WorkTracker.Avalonia/Resources/Themes/ModernBlueTheme.axaml"),
 			_ => new Uri("avares://WorkTracker.Avalonia/Resources/Themes/OneDarkTheme.axaml")
 		};
 		resources.MergedDictionaries.Add(new ResourceInclude(uri) { Source = uri });
 
 		// Keep Avalonia's built-in FluentTheme variant in sync for native controls
-		app.RequestedThemeVariant = (themeName is "Light" or "Modern Blue")
+		app.RequestedThemeVariant = (themeName is "Light" or ApplicationSettings.DefaultTheme)
 			? global::Avalonia.Styling.ThemeVariant.Light
 			: global::Avalonia.Styling.ThemeVariant.Dark;
 	}
