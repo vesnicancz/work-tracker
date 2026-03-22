@@ -10,6 +10,18 @@ public static class AppIconProvider
 	public static WindowIcon? GetIcon(bool isActive)
 	{
 		var path = AppIconResolver.GetIconPath(isActive, IconDirectory);
-		return path != null ? new WindowIcon(path) : null;
+		if (path == null)
+		{
+			return null;
+		}
+
+		try
+		{
+			return new WindowIcon(path);
+		}
+		catch
+		{
+			return null;
+		}
 	}
 }

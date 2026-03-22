@@ -30,22 +30,29 @@ public static class AppIconProvider
 			return null;
 		}
 
-		var image = new BitmapImage();
-		image.BeginInit();
-		image.CacheOption = BitmapCacheOption.OnLoad;
-		image.UriSource = new Uri(path);
-		image.EndInit();
-		image.Freeze();
-
-		if (isActive)
+		try
 		{
-			_activeIcon = image;
-		}
-		else
-		{
-			_idleIcon = image;
-		}
+			var image = new BitmapImage();
+			image.BeginInit();
+			image.CacheOption = BitmapCacheOption.OnLoad;
+			image.UriSource = new Uri(path);
+			image.EndInit();
+			image.Freeze();
 
-		return image;
+			if (isActive)
+			{
+				_activeIcon = image;
+			}
+			else
+			{
+				_idleIcon = image;
+			}
+
+			return image;
+		}
+		catch
+		{
+			return null;
+		}
 	}
 }
