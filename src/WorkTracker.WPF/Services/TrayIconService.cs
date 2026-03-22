@@ -45,9 +45,8 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 			ToolTipText = _localizationService["TrayTooltip"]
 		};
 
-		// Load initial icon with fallback to ensure tray icon is always visible
-		_taskbarIcon.IconSource = AppIconProvider.GetIcon(false)
-			?? System.Windows.Application.Current?.MainWindow?.Icon;
+		// Load initial icon
+		_taskbarIcon.IconSource = AppIconProvider.GetIcon(false);
 
 		// Load tray menu styles
 		var stylesUri = new Uri("pack://application:,,,/Resources/Styles/TrayMenuStyles.xaml", UriKind.Absolute);

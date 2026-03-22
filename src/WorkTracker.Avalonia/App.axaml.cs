@@ -140,11 +140,12 @@ public partial class App : global::Avalonia.Application
 			}
 
 			// Load plugins in the background — not needed for initial UI
+			var pluginLogger = _host.Services.GetRequiredService<ILoggerFactory>().CreateLogger<App>();
+			var configuration = _host.Services.GetRequiredService<IConfiguration>();
 			_ = Task.Run(async () =>
 			{
 				try
 				{
-					var configuration = _host.Services.GetRequiredService<IConfiguration>();
 					await DependencyInjection.InitializePluginsAsync(
 						_host.Services, configuration,
 						settingsService.Settings.EnabledPlugins,
@@ -152,8 +153,7 @@ public partial class App : global::Avalonia.Application
 				}
 				catch (Exception pluginEx)
 				{
-					var logger = _host!.Services.GetRequiredService<ILoggerFactory>().CreateLogger<App>();
-					logger.LogError(pluginEx, "Plugin initialization failed");
+					pluginLogger.LogError(pluginEx, "Plugin initialization failed");
 				}
 			});
 		}
