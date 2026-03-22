@@ -27,13 +27,18 @@ public static class AppIconProvider
 
 		try
 		{
-			var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(resourceName);
-			if (stream == null)
+			using var resourceStream = Assembly.GetExecutingAssembly().GetManifestResourceStream(resourceName);
+			if (resourceStream == null)
 			{
 				return null;
 			}
 
-			var icon = new WindowIcon(stream);
+			// Copy to MemoryStream so the manifest resource stream can be disposed
+			var memoryStream = new MemoryStream();
+			resourceStream.CopyTo(memoryStream);
+			memoryStream.Position = 0;
+
+			var icon = new WindowIcon(memoryStream);
 
 			if (isActive)
 			{

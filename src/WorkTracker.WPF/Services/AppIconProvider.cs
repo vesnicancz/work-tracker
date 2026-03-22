@@ -1,4 +1,5 @@
 using System.Drawing;
+using System.IO;
 using System.Reflection;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -31,7 +32,7 @@ public static class AppIconProvider
 
 		try
 		{
-			var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(resourceName);
+			using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(resourceName);
 			if (stream == null)
 			{
 				return null;
@@ -77,13 +78,18 @@ public static class AppIconProvider
 
 		try
 		{
-			var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(resourceName);
-			if (stream == null)
+			using var resourceStream = Assembly.GetExecutingAssembly().GetManifestResourceStream(resourceName);
+			if (resourceStream == null)
 			{
 				return null;
 			}
 
-			var icon = new Icon(stream);
+			// Icon(Stream) keeps the stream open, so copy to a MemoryStream first
+			var memoryStream = new MemoryStream();
+			resourceStream.CopyTo(memoryStream);
+			memoryStream.Position = 0;
+
+			var icon = new Icon(memoryStream);
 
 			if (isActive)
 			{
