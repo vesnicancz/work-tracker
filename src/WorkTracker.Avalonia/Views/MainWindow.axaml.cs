@@ -1,5 +1,6 @@
 ﻿using Avalonia.Controls;
 using Avalonia.Input;
+using WorkTracker.Avalonia.Services;
 using WorkTracker.Avalonia.ViewModels;
 using WorkTracker.Domain.Entities;
 using WorkTracker.UI.Shared.Models;
@@ -11,6 +12,7 @@ public partial class MainWindow : Window
 {
 	private ITrayIconService? _trayIconService;
 	private ISettingsService? _settingsService;
+	private IWorklogStateService? _worklogStateService;
 
 	public MainWindow()
 	{
@@ -23,22 +25,6 @@ public partial class MainWindow : Window
 		Closing += OnWindowClosing;
 	}
 
-	public void Initialize(MainViewModel viewModel, ITrayIconService trayIconService, ISettingsService settingsService)
-	{
-		DataContext = viewModel;
-		_trayIconService = trayIconService;
-		_settingsService = settingsService;
-
-		_trayIconService.Initialize();
-
-		if (_settingsService.Settings.StartMinimized)
-		{
-			viewModel.PauseTimer();
-			Hide();
-			_trayIconService.Show();
-		}
-	}
-
 	protected override void OnOpened(EventArgs e)
 	{
 		base.OnOpened(e);
@@ -48,6 +34,30 @@ public partial class MainWindow : Window
 		if (IsVisible)
 		{
 			(DataContext as MainViewModel)?.ResumeTimer();
+		}
+	}
+
+	public void Initialize(MainViewModel viewModel, ITrayIconService trayIconService, ISettingsService settingsService, IWorklogStateService worklogStateService)
+	{
+		DataContext = viewModel;
+		_trayIconService = trayIconService;
+		_settingsService = settingsService;
+		_worklogStateService = worklogStateService;
+
+		// Swap loading indicator for main content
+		LoadingPanel.IsVisible = false;
+		MainContent.IsVisible = true;
+
+		// Set initial window icon and subscribe to tracking changes
+		Icon = AppIconProvider.GetIcon(false);
+		_worklogStateService.IsTrackingChanged += OnIsTrackingChanged;
+
+		_trayIconService.Initialize();
+
+		if (_settingsService.Settings.StartMinimized)
+		{
+			viewModel.PauseTimer();
+			_trayIconService.Show();
 		}
 	}
 
@@ -70,6 +80,10 @@ public partial class MainWindow : Window
 		}
 		else
 		{
+			if (_worklogStateService != null)
+			{
+				_worklogStateService.IsTrackingChanged -= OnIsTrackingChanged;
+			}
 			(DataContext as IDisposable)?.Dispose();
 			_trayIconService?.Dispose();
 		}
@@ -83,6 +97,15 @@ public partial class MainWindow : Window
 		}
 	}
 
+	private void OnIsTrackingChanged(object? sender, bool isTracking)
+	{
+		var icon = AppIconProvider.GetIcon(isTracking);
+		if (icon != null)
+		{
+			Icon = icon;
+		}
+	}
+
 	private void OnDataGridDoubleTapped(object? sender, TappedEventArgs e)
 	{
 		if (DataContext is MainViewModel vm && vm.SelectedWorkEntry is WorkEntry entry)
@@ -93,4 +116,5 @@ public partial class MainWindow : Window
 			}
 		}
 	}
+
 }

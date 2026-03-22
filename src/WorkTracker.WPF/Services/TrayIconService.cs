@@ -16,8 +16,6 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 	private readonly ILocalizationService _localizationService;
 	private TaskbarIcon? _taskbarIcon;
 	private bool _isInitialized;
-	private System.Windows.Media.ImageSource? _inactiveIcon;
-	private System.Windows.Media.ImageSource? _activeIcon;
 	private ResourceDictionary? _menuStyles;
 	private int _favoritesInsertIndex;
 	private readonly List<MenuItem> _favoriteMenuItems = new();
@@ -47,36 +45,8 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 			ToolTipText = _localizationService["TrayTooltip"]
 		};
 
-		// Try to load icons, or use default application icon
-		try
-		{
-			var inactiveIconUri = new Uri("pack://application:,,,/Resources/icon.ico", UriKind.Absolute);
-			_inactiveIcon = new System.Windows.Media.Imaging.BitmapImage(inactiveIconUri);
-
-			// Try to load active icon, fallback to inactive if not found
-			try
-			{
-				var activeIconUri = new Uri("pack://application:,,,/Resources/icon-active.ico", UriKind.Absolute);
-				_activeIcon = new System.Windows.Media.Imaging.BitmapImage(activeIconUri);
-			}
-			catch
-			{
-				// Use inactive icon as fallback for active state
-				_activeIcon = _inactiveIcon;
-			}
-
-			_taskbarIcon.IconSource = _inactiveIcon;
-		}
-		catch
-		{
-			// Use application icon as fallback
-			if (System.Windows.Application.Current.MainWindow?.Icon != null)
-			{
-				_inactiveIcon = System.Windows.Application.Current.MainWindow.Icon;
-				_activeIcon = _inactiveIcon;
-				_taskbarIcon.IconSource = _inactiveIcon;
-			}
-		}
+		// Load initial icon
+		_taskbarIcon.IconSource = AppIconProvider.GetIcon(false);
 
 		// Load tray menu styles
 		var stylesUri = new Uri("pack://application:,,,/Resources/Styles/TrayMenuStyles.xaml", UriKind.Absolute);
@@ -222,7 +192,7 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 			return;
 		}
 
-		_taskbarIcon.IconSource = isActive ? _activeIcon : _inactiveIcon;
+		_taskbarIcon.IconSource = AppIconProvider.GetIcon(isActive) ?? _taskbarIcon.IconSource;
 		_taskbarIcon.ToolTipText = isActive
 			? _localizationService["TrayTooltipActive"]
 			: _localizationService["TrayTooltip"];
