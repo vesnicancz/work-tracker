@@ -35,8 +35,10 @@ public class ApplicationSettings
 	/// </summary>
 	public List<FavoriteWorkItem> FavoriteWorkItems { get; set; } = new();
 
+	public const string DefaultTheme = "Modern Blue";
+
 	/// <summary>
-	/// Application theme (e.g. "Dark", "Light", "Midnight", "Purple", "Modern Blue"). Default is "Modern Blue".
+	/// Application theme (e.g. "Dark", "Light", "Midnight", "Purple", "Modern Blue").
 	/// </summary>
-	public string Theme { get; set; } = "Modern Blue";
+	public string Theme { get; set; } = DefaultTheme;
 }

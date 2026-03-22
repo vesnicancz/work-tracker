@@ -1,4 +1,5 @@
-﻿using Avalonia.Controls;
+﻿using System.Text.Json;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Markup.Xaml.Styling;
@@ -9,6 +10,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using WorkTracker.Application.Plugins;
 using WorkTracker.Infrastructure;
+using WorkTracker.UI.Shared.Models;
 using WorkTracker.UI.Shared.Services;
 using WorkTracker.Avalonia.Services;
 using WorkTracker.Avalonia.ViewModels;
@@ -28,119 +30,192 @@ public partial class App : global::Avalonia.Application
 
 	public override void OnFrameworkInitializationCompleted()
 	{
-		// Build host synchronously — no async here
-		_host = Host.CreateDefaultBuilder()
-			.ConfigureAppConfiguration((context, config) =>
-			{
-				config.SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
-					.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-					.AddJsonFile($"appsettings.{context.HostingEnvironment.EnvironmentName}.json", optional: true, reloadOnChange: true)
-					.AddEnvironmentVariables();
-			})
-			.ConfigureServices((context, services) =>
-			{
-				services.AddInfrastructure(context.Configuration);
-
-				// Localization — single instance shared by DI and XAML markup extensions.
-				// Must be created before any XAML is loaded.
-				var localization = new LocalizationService();
-				LocalizationService.SetInstance(localization);
-				services.AddSingleton(localization);
-				services.AddSingleton<ILocalizationService>(localization);
-
-				services.AddSingleton<ISettingsService, SettingsService>();
-				services.AddSingleton<IWorklogStateService, WorklogStateService>();
-
-				services.AddSingleton<IDialogService, DialogService>();
-				services.AddSingleton<INotificationService, NotificationService>();
-				services.AddSingleton<ITrayIconService, TrayIconService>();
-				services.AddSingleton<IAutostartManager, AutostartManager>();
-				services.AddSingleton<IHotkeyService, HotkeyService>();
-
-				services.AddSingleton<MainViewModel>();
-				services.AddTransient<WorkEntryEditViewModel>();
-				services.AddTransient<SubmitWorklogViewModel>();
-				services.AddTransient<SettingsViewModel>();
-			})
-			.ConfigureLogging(logging =>
-			{
-				logging.ClearProviders();
-				logging.AddDebug();
-				logging.AddConsole();
-			})
-			.Build();
+		// Initialize localization early — XAML markup extensions need it before any window is created
+		var localization = new LocalizationService();
+		LocalizationService.SetInstance(localization);
 
 		if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
 		{
-			// Read settings synchronously to check StartMinimized before showing the window.
-			// SettingsService constructor is sync (reads JSON file).
-			var earlySettings = _host.Services.GetRequiredService<ISettingsService>();
-			var startMinimized = earlySettings.Settings.StartMinimized;
+			desktop.ShutdownRequested += OnShutdownRequested;
 
-			// Apply saved theme early to avoid flash of wrong theme
-			SwitchTheme(earlySettings.Settings.Theme ?? "Dark");
-
-			var mainWindow = new MainWindow();
+			// Read theme and startMinimized directly from settings.json (fast, no DI needed)
+			var (theme, startMinimized) = ReadEarlySettings();
+			SwitchTheme(theme);
 
 			if (startMinimized)
 			{
-				// Prevent visible flash: start hidden with zero opacity
-				mainWindow.Opacity = 0;
-				mainWindow.ShowInTaskbar = false;
-				mainWindow.WindowState = WindowState.Minimized;
+				// Don't show window, just start background init
+				Dispatcher.UIThread.Post(() => _ = InitializeAsync(desktop, localization, startMinimized: true), DispatcherPriority.Background);
 			}
+			else
+			{
+				// Show styled empty window immediately, then load data on background
+				var mainWindow = new MainWindow();
+				desktop.MainWindow = mainWindow;
+				mainWindow.Show();
 
-			desktop.MainWindow = mainWindow;
-			desktop.ShutdownRequested += OnShutdownRequested;
-
-			// Kick off async initialization after the UI is running
-			Dispatcher.UIThread.Post(() => _ = InitializeAsync(mainWindow, startMinimized), DispatcherPriority.Background);
+				Dispatcher.UIThread.Post(() => _ = InitializeAsync(desktop, localization, startMinimized: false), DispatcherPriority.Background);
+			}
 		}
 
 		base.OnFrameworkInitializationCompleted();
 	}
 
-	private async Task InitializeAsync(MainWindow mainWindow, bool startMinimized)
+	private async Task InitializeAsync(IClassicDesktopStyleApplicationLifetime desktop, LocalizationService localization, bool startMinimized)
 	{
 		try
 		{
-			await _host!.StartAsync();
-			await AppBootstrapper.InitializeAsync(
-				_host.Services,
-				DependencyInjection.InitializeDatabaseAsync,
-				DependencyInjection.InitializePluginsAsync);
+			// Build host and bootstrap on a background thread (DI, DB migration, plugins)
+			_host = await Task.Run(() =>
+			{
+				var host = Host.CreateDefaultBuilder()
+					.ConfigureAppConfiguration((context, config) =>
+					{
+						config.SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
+							.AddJsonFile("appsettings.json", optional: false, reloadOnChange: false)
+							.AddJsonFile($"appsettings.{context.HostingEnvironment.EnvironmentName}.json", optional: true, reloadOnChange: false)
+							.AddEnvironmentVariables();
+					})
+					.ConfigureServices((context, services) =>
+					{
+						services.AddInfrastructure(context.Configuration);
 
-			// Wire up services to the window
+						services.AddSingleton(localization);
+						services.AddSingleton<ILocalizationService>(localization);
+
+						services.AddSingleton<ISettingsService, SettingsService>();
+						services.AddSingleton<IWorklogStateService, WorklogStateService>();
+
+						services.AddSingleton<IDialogService, DialogService>();
+						services.AddSingleton<INotificationService, NotificationService>();
+						services.AddSingleton<ITrayIconService, TrayIconService>();
+						services.AddSingleton<IAutostartManager, AutostartManager>();
+						services.AddSingleton<IHotkeyService, HotkeyService>();
+
+						services.AddSingleton<MainViewModel>();
+						services.AddTransient<WorkEntryEditViewModel>();
+						services.AddTransient<SubmitWorklogViewModel>();
+						services.AddTransient<SettingsViewModel>();
+					})
+					.ConfigureLogging(logging =>
+					{
+						logging.ClearProviders();
+						logging.AddDebug();
+						logging.AddConsole();
+					})
+					.Build();
+
+				return host;
+			});
+
+			await _host.StartAsync();
+
+			// DB migration + worklog state (needed before showing data)
+			await DependencyInjection.InitializeDatabaseAsync(_host.Services);
+			var worklogStateService = _host.Services.GetRequiredService<IWorklogStateService>();
+			await worklogStateService.InitializeAsync();
+
+			// Wire up services to the window on the UI thread
 			var viewModel = _host.Services.GetRequiredService<MainViewModel>();
 			var trayIconService = _host.Services.GetRequiredService<ITrayIconService>();
 			var settingsService = _host.Services.GetRequiredService<ISettingsService>();
 
-			mainWindow.Initialize(viewModel, trayIconService, settingsService);
+			var mainWindow = desktop.MainWindow as MainWindow;
+			if (mainWindow == null)
+			{
+				// startMinimized — window wasn't created yet
+				mainWindow = new MainWindow();
+				desktop.MainWindow = mainWindow;
+			}
+
+			mainWindow.Initialize(viewModel, trayIconService, settingsService, worklogStateService);
 
 			// Initialize global hotkey (Ctrl+Shift+W) for new work entry dialog
 			_hotkeyService = _host.Services.GetRequiredService<IHotkeyService>();
 			_hotkeyService.HotkeyPressed += OnHotkeyPressed;
 			_hotkeyService.Register();
 
-			// If started minimized, restore opacity so tray show works later
 			if (startMinimized)
 			{
-				mainWindow.Opacity = 1;
-				mainWindow.ShowInTaskbar = true;
+				mainWindow.Hide();
 			}
+
+			// Load plugins in the background — not needed for initial UI
+			var pluginLogger = _host.Services.GetRequiredService<ILoggerFactory>().CreateLogger<App>();
+			var configuration = _host.Services.GetRequiredService<IConfiguration>();
+			_ = Task.Run(async () =>
+			{
+				try
+				{
+					await DependencyInjection.InitializePluginsAsync(
+						_host.Services, configuration,
+						settingsService.Settings.EnabledPlugins,
+						settingsService.Settings.PluginConfigurations);
+				}
+				catch (Exception pluginEx)
+				{
+					pluginLogger.LogError(pluginEx, "Plugin initialization failed");
+				}
+			});
 		}
 		catch (Exception ex)
 		{
 			System.Diagnostics.Debug.WriteLine($"Initialization failed: {ex}");
 			Console.Error.WriteLine($"Initialization failed: {ex}");
 
-			// Show error dialog to the user
-			var dialog = new MessageBoxWindow("Initialization Error",
+			// Show error dialog
+			var errorWindow = new MessageBoxWindow("Initialization Error",
 				$"Application failed to initialize:\n{ex.Message}", false);
-			if (mainWindow.IsVisible)
+
+			if (desktop.MainWindow is Window ownerWindow)
 			{
-				await dialog.ShowDialog(mainWindow);
+				await errorWindow.ShowDialog(ownerWindow);
 			}
+			else
+			{
+				desktop.MainWindow = errorWindow;
+				errorWindow.Show();
+			}
+		}
+	}
+
+	/// <summary>
+	/// Reads theme and startMinimized directly from settings.json without DI.
+	/// This allows showing the correctly themed window before Host.Build() completes.
+	/// </summary>
+	private static (string theme, bool startMinimized) ReadEarlySettings()
+	{
+		try
+		{
+			var appDataFolder = "WorkTracker";
+			var env = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT")
+				?? Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+			if (!string.IsNullOrEmpty(env) && env != "Production")
+			{
+				appDataFolder += $"_{env}";
+			}
+
+			var settingsPath = Path.Combine(
+				Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+				appDataFolder, "settings.json");
+
+			if (!File.Exists(settingsPath))
+			{
+				return (ApplicationSettings.DefaultTheme, false);
+			}
+
+			using var stream = File.OpenRead(settingsPath);
+			using var doc = JsonDocument.Parse(stream);
+			var root = doc.RootElement;
+
+			var theme = root.TryGetProperty("Theme", out var t) ? t.GetString() ?? ApplicationSettings.DefaultTheme : ApplicationSettings.DefaultTheme;
+			var startMinimized = root.TryGetProperty("StartMinimized", out var s) && s.GetBoolean();
+
+			return (theme, startMinimized);
+		}
+		catch
+		{
+			return (ApplicationSettings.DefaultTheme, false);
 		}
 	}
 
@@ -202,13 +277,13 @@ public partial class App : global::Avalonia.Application
 			"Light" => new Uri("avares://WorkTracker.Avalonia/Resources/Themes/OneLightTheme.axaml"),
 			"Purple" => new Uri("avares://WorkTracker.Avalonia/Resources/Themes/PurpleTheme.axaml"),
 			"Midnight" => new Uri("avares://WorkTracker.Avalonia/Resources/Themes/MidnightTheme.axaml"),
-			"Modern Blue" => new Uri("avares://WorkTracker.Avalonia/Resources/Themes/ModernBlueTheme.axaml"),
+			ApplicationSettings.DefaultTheme => new Uri("avares://WorkTracker.Avalonia/Resources/Themes/ModernBlueTheme.axaml"),
 			_ => new Uri("avares://WorkTracker.Avalonia/Resources/Themes/OneDarkTheme.axaml")
 		};
 		resources.MergedDictionaries.Add(new ResourceInclude(uri) { Source = uri });
 
 		// Keep Avalonia's built-in FluentTheme variant in sync for native controls
-		app.RequestedThemeVariant = (themeName is "Light" or "Modern Blue")
+		app.RequestedThemeVariant = (themeName is "Light" or ApplicationSettings.DefaultTheme)
 			? global::Avalonia.Styling.ThemeVariant.Light
 			: global::Avalonia.Styling.ThemeVariant.Dark;
 	}

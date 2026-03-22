@@ -32,7 +32,18 @@
                 BorderThickness="1"
                 BoxShadow="0 4 24 0 #40000000"
                 ClipToBounds="True">
-        <Grid RowDefinitions="Auto,*">
+        <Grid>
+
+            <!-- Loading state (visible before initialization completes) -->
+            <StackPanel x:Name="LoadingPanel"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Spacing="12">
+                <ProgressBar IsIndeterminate="True" Width="180" Height="3" />
+            </StackPanel>
+
+            <!-- Main content (hidden until initialized) -->
+            <Grid x:Name="MainContent" RowDefinitions="Auto,*" IsVisible="False">
 
             <!-- Custom title bar -->
             <Border Grid.Row="0" x:Name="TitleBar"
@@ -358,6 +369,7 @@
                     </DataGrid.Columns>
                 </DataGrid>
             </Grid>
+        </Grid>
         </Grid>
         </Grid>
         </Border>

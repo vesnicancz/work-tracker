@@ -1,8 +1,10 @@
 ﻿using System.ComponentModel;
 using System.Windows;
+using System.Windows.Media;
 using MaterialDesignThemes.Wpf;
 using WorkTracker.UI.Shared.Models;
 using WorkTracker.UI.Shared.Services;
+using WorkTracker.WPF.Services;
 using WorkTracker.WPF.ViewModels;
 
 namespace WorkTracker.WPF.Views;
@@ -15,13 +17,19 @@ public partial class MainWindow : Window
 {
 	private readonly ITrayIconService _trayIconService;
 	private readonly ISettingsService _settingsService;
+	private readonly IWorklogStateService _worklogStateService;
 
-	public MainWindow(MainViewModel viewModel, ITrayIconService trayIconService, ISettingsService settingsService, ISnackbarMessageQueue messageQueue)
+	public MainWindow(MainViewModel viewModel, ITrayIconService trayIconService, ISettingsService settingsService, ISnackbarMessageQueue messageQueue, IWorklogStateService worklogStateService)
 	{
 		InitializeComponent();
 		DataContext = viewModel;
 		_trayIconService = trayIconService;
 		_settingsService = settingsService;
+		_worklogStateService = worklogStateService;
+
+		// Set initial window icon based on current tracking state and subscribe to changes
+		_worklogStateService.IsTrackingChanged += OnIsTrackingChanged;
+		OnIsTrackingChanged(this, _worklogStateService.IsTracking);
 
 		// Bind the shared MessageQueue to the Snackbar
 		MainSnackbar.MessageQueue = messageQueue as SnackbarMessageQueue;
@@ -81,8 +89,18 @@ public partial class MainWindow : Window
 		}
 		else
 		{
+			_worklogStateService.IsTrackingChanged -= OnIsTrackingChanged;
 			// Cleanup tray icon before exit
 			_trayIconService.Dispose();
+		}
+	}
+
+	private void OnIsTrackingChanged(object? sender, bool isTracking)
+	{
+		var icon = AppIconProvider.GetIcon(isTracking);
+		if (icon != null)
+		{
+			Icon = icon;
 		}
 	}
 

@@ -4,6 +4,7 @@
     <OutputType>WinExe</OutputType>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>..\..\resources\app-ico.ico</ApplicationIcon>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
   </PropertyGroup>
 
@@ -31,8 +32,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="Resources\Icons\**">
+    <Content Include="..\..\resources\app-ico.ico" Link="Resources\Icons\app-ico.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>Resources\Icons\app-ico.ico</TargetPath>
+    </Content>
+    <Content Include="..\..\resources\app-ico-active.ico" Link="Resources\Icons\app-ico-active.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>Resources\Icons\app-ico-active.ico</TargetPath>
     </Content>
   </ItemGroup>
 

@@ -4,12 +4,18 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
-    <ApplicationIcon>Resources\icon.ico</ApplicationIcon>
+    <ApplicationIcon>..\..\resources\app-ico.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
-    <Resource Include="Resources\icon.ico" />
-    <Resource Include="Resources\icon-active.ico" />
+    <Content Include="..\..\resources\app-ico.ico" Link="Resources\app-ico.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>Resources\app-ico.ico</TargetPath>
+    </Content>
+    <Content Include="..\..\resources\app-ico-active.ico" Link="Resources\app-ico-active.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>Resources\app-ico-active.ico</TargetPath>
+    </Content>
   </ItemGroup>
 
   <ItemGroup>

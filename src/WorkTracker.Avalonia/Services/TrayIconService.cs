@@ -1,7 +1,5 @@
-﻿using Avalonia;
-using Avalonia.Controls;
+﻿using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
-using Avalonia.Platform.Storage;
 using Microsoft.Extensions.Logging;
 using WorkTracker.UI.Shared.Models;
 using WorkTracker.UI.Shared.Services;
@@ -82,19 +80,8 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 			IsVisible = true
 		};
 
-		// Try load icon
-		try
-		{
-			var iconPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "Icons", "icon.ico");
-			if (System.IO.File.Exists(iconPath))
-			{
-				_trayIcon.Icon = new WindowIcon(iconPath);
-			}
-		}
-		catch
-		{
-			// Icon loading is optional
-		}
+		// Load initial icon
+		_trayIcon.Icon = AppIconProvider.GetIcon(false);
 
 		// Double-click / click to show
 		_trayIcon.Clicked += (_, _) => ShowMainWindow();
@@ -208,20 +195,7 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 			? _localizationService["TrayTooltipActive"]
 			: _localizationService["TrayTooltip"];
 
-		// Try swap icon
-		try
-		{
-			var iconName = isActive ? "icon-active.ico" : "icon.ico";
-			var iconPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "Icons", iconName);
-			if (System.IO.File.Exists(iconPath))
-			{
-				_trayIcon.Icon = new WindowIcon(iconPath);
-			}
-		}
-		catch
-		{
-			// Icon swap is optional
-		}
+		_trayIcon.Icon = AppIconProvider.GetIcon(isActive) ?? _trayIcon.Icon;
 	}
 
 	private void OnIsTrackingChanged(object? sender, bool isTracking)
