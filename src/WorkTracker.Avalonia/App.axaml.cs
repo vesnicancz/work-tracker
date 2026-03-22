@@ -152,7 +152,8 @@ public partial class App : global::Avalonia.Application
 				}
 				catch (Exception pluginEx)
 				{
-					System.Diagnostics.Debug.WriteLine($"Plugin initialization failed: {pluginEx}");
+					var logger = _host!.Services.GetRequiredService<ILoggerFactory>().CreateLogger<App>();
+					logger.LogError(pluginEx, "Plugin initialization failed");
 				}
 			});
 		}
@@ -185,9 +186,17 @@ public partial class App : global::Avalonia.Application
 	{
 		try
 		{
+			var appDataFolder = "WorkTracker";
+			var env = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT")
+				?? Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+			if (!string.IsNullOrEmpty(env) && env != "Production")
+			{
+				appDataFolder += $"_{env}";
+			}
+
 			var settingsPath = Path.Combine(
 				Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-				"WorkTracker", "settings.json");
+				appDataFolder, "settings.json");
 
 			if (!File.Exists(settingsPath))
 			{

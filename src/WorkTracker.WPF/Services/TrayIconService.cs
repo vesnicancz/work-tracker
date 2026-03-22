@@ -45,8 +45,9 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 			ToolTipText = _localizationService["TrayTooltip"]
 		};
 
-		// Load initial icon
-		_taskbarIcon.IconSource = AppIconProvider.GetIcon(false);
+		// Load initial icon with fallback to ensure tray icon is always visible
+		_taskbarIcon.IconSource = AppIconProvider.GetIcon(false)
+			?? System.Windows.Application.Current?.MainWindow?.Icon;
 
 		// Load tray menu styles
 		var stylesUri = new Uri("pack://application:,,,/Resources/Styles/TrayMenuStyles.xaml", UriKind.Absolute);
@@ -93,7 +94,7 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 			Style = (Style)_menuStyles["TrayMenuItemStyle"],
 			Icon = CreateFontAwesomeIcon("Solid_PowerOff", Brushes.Crimson)
 		};
-		exitMenuItem.Click += (s, e) => System.Windows.Application.Current.Shutdown();
+		exitMenuItem.Click += (s, e) => System.Windows.Application.Current?.Shutdown();
 		contextMenu.Items.Add(exitMenuItem);
 
 		_taskbarIcon.ContextMenu = contextMenu;

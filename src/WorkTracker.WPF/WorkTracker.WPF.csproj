@@ -10,9 +10,11 @@
   <ItemGroup>
     <Content Include="..\..\resources\app-ico.ico" Link="Resources\app-ico.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>Resources\app-ico.ico</TargetPath>
     </Content>
     <Content Include="..\..\resources\app-ico-active.ico" Link="Resources\app-ico-active.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>Resources\app-ico-active.ico</TargetPath>
     </Content>
   </ItemGroup>
 
