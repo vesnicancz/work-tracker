@@ -27,9 +27,9 @@ public partial class MainWindow : Window
 		_settingsService = settingsService;
 		_worklogStateService = worklogStateService;
 
-		// Set initial window icon and subscribe to tracking changes
-		Icon = AppIconProvider.GetIcon(false);
+		// Set initial window icon based on current tracking state and subscribe to changes
 		_worklogStateService.IsTrackingChanged += OnIsTrackingChanged;
+		OnIsTrackingChanged(this, _worklogStateService.IsTracking);
 
 		// Bind the shared MessageQueue to the Snackbar
 		MainSnackbar.MessageQueue = messageQueue as SnackbarMessageQueue;

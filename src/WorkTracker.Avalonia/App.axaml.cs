@@ -142,11 +142,18 @@ public partial class App : global::Avalonia.Application
 			// Load plugins in the background — not needed for initial UI
 			_ = Task.Run(async () =>
 			{
-				var configuration = _host.Services.GetRequiredService<IConfiguration>();
-				await DependencyInjection.InitializePluginsAsync(
-					_host.Services, configuration,
-					settingsService.Settings.EnabledPlugins,
-					settingsService.Settings.PluginConfigurations);
+				try
+				{
+					var configuration = _host.Services.GetRequiredService<IConfiguration>();
+					await DependencyInjection.InitializePluginsAsync(
+						_host.Services, configuration,
+						settingsService.Settings.EnabledPlugins,
+						settingsService.Settings.PluginConfigurations);
+				}
+				catch (Exception pluginEx)
+				{
+					System.Diagnostics.Debug.WriteLine($"Plugin initialization failed: {pluginEx}");
+				}
 			});
 		}
 		catch (Exception ex)
@@ -157,8 +164,16 @@ public partial class App : global::Avalonia.Application
 			// Show error dialog
 			var errorWindow = new MessageBoxWindow("Initialization Error",
 				$"Application failed to initialize:\n{ex.Message}", false);
-			desktop.MainWindow = errorWindow;
-			errorWindow.Show();
+
+			if (desktop.MainWindow is Window ownerWindow)
+			{
+				await errorWindow.ShowDialog(ownerWindow);
+			}
+			else
+			{
+				desktop.MainWindow = errorWindow;
+				errorWindow.Show();
+			}
 		}
 	}
 

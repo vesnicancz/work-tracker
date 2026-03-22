@@ -48,9 +48,9 @@ public partial class MainWindow : Window
 		LoadingPanel.IsVisible = false;
 		MainContent.IsVisible = true;
 
-		// Set initial window icon and subscribe to tracking changes
-		Icon = AppIconProvider.GetIcon(false);
+		// Set initial window icon based on current tracking state and subscribe to changes
 		_worklogStateService.IsTrackingChanged += OnIsTrackingChanged;
+		OnIsTrackingChanged(this, _worklogStateService.IsTracking);
 
 		_trayIconService.Initialize();
 
