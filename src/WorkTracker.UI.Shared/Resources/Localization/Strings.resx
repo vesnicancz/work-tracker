@@ -489,6 +489,15 @@ Time: {2}</value>
   <data name="About" xml:space="preserve">
     <value>About</value>
   </data>
+  <data name="KeyboardShortcuts" xml:space="preserve">
+    <value>Keyboard Shortcuts</value>
+  </data>
+  <data name="AboutGlobalHotkeyDesc" xml:space="preserve">
+    <value>Show/hide window (global hotkey)</value>
+  </data>
+  <data name="AboutEnterKeyDesc" xml:space="preserve">
+    <value>Start tracking from the input field</value>
+  </data>
   <data name="QuickReference" xml:space="preserve">
     <value>Quick Reference</value>
   </data>

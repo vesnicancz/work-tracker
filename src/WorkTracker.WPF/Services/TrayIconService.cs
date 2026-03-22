@@ -46,7 +46,7 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 		};
 
 		// Load initial icon
-		_taskbarIcon.IconSource = AppIconProvider.GetIcon(false);
+		_taskbarIcon.Icon = AppIconProvider.GetTrayIcon(false);
 
 		// Load tray menu styles
 		var stylesUri = new Uri("pack://application:,,,/Resources/Styles/TrayMenuStyles.xaml", UriKind.Absolute);
@@ -192,7 +192,7 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 			return;
 		}
 
-		_taskbarIcon.IconSource = AppIconProvider.GetIcon(isActive) ?? _taskbarIcon.IconSource;
+		_taskbarIcon.Icon = AppIconProvider.GetTrayIcon(isActive) ?? _taskbarIcon.Icon;
 		_taskbarIcon.ToolTipText = isActive
 			? _localizationService["TrayTooltipActive"]
 			: _localizationService["TrayTooltip"];
