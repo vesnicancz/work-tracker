@@ -480,7 +480,7 @@ public class SubmitWorklogViewModel : ViewModelBase
 
 		if (submission.SuccessfulEntries == 0)
 		{
-			return _localization.GetFormattedString("SubmissionAllFailed", submission.FailedEntries, providerName);
+			return _localization.GetFormattedString("SubmissionAllFailed", submission.TotalEntries, providerName);
 		}
 
 		return _localization.GetFormattedString("SubmissionPartial", submission.SuccessfulEntries, providerName, submission.FailedEntries);
