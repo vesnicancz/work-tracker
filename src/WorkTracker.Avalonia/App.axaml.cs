@@ -123,9 +123,10 @@ public partial class App : global::Avalonia.Application
 			var mainWindow = desktop.MainWindow as MainWindow;
 			if (mainWindow == null)
 			{
-				// startMinimized — window wasn't created yet
-				mainWindow = new MainWindow();
+				// startMinimized — window wasn't created yet; show briefly to create HWND for hotkey registration
+				mainWindow = new MainWindow { ShowInTaskbar = false, Opacity = 0 };
 				desktop.MainWindow = mainWindow;
+				mainWindow.Show();
 			}
 
 			mainWindow.Initialize(viewModel, trayIconService, settingsService, worklogStateService);
@@ -137,6 +138,8 @@ public partial class App : global::Avalonia.Application
 
 			if (startMinimized)
 			{
+				mainWindow.ShowInTaskbar = true;
+				mainWindow.Opacity = 1;
 				mainWindow.Hide();
 			}
 
