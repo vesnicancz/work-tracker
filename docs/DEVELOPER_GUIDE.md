@@ -167,28 +167,6 @@ WorkTracker follows **Clean Architecture** (Onion Architecture) principles:
 3. **SQLite/SQL Server Compact Toolbox** - Database tools
 4. **GitFlow** - Branch management
 
-**Settings:**
-```xml
-<!-- .editorconfig -->
-root = true
-
-[*.cs]
-indent_style = tab
-indent_size = 4
-end_of_line = crlf
-charset = utf-8
-trim_trailing_whitespace = true
-insert_final_newline = true
-
-# Code style rules
-csharp_prefer_braces = true:warning
-csharp_style_var_for_built_in_types = false:suggestion
-csharp_style_var_when_type_is_apparent = true:suggestion
-
-# Nullable reference types
-nullable = enable
-```
-
 ### 3.2 User Secrets for Development
 
 ```bash
@@ -1326,7 +1304,7 @@ public async Task AddTagAsync_WithValidData_AddsTag()
 - [ ] All tests pass
 - [ ] Code coverage meets standards (75%+)
 - [ ] No compiler warnings
-- [ ] Code formatted according to `.editorconfig`
+- [ ] Code formatted consistently
 - [ ] XML documentation added for public APIs
 - [ ] Commit messages follow convention
 - [ ] Branch is up-to-date with master

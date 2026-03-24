@@ -292,19 +292,19 @@
                           DoubleTapped="OnDataGridDoubleTapped">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="{markup:Localize Ticket}"
-                                            Binding="{ReflectionBinding TicketId}"
+                                            Binding="{ReflectionBinding TicketId, Mode=OneWay}"
                                             Width="88" />
                         <DataGridTextColumn Header="{markup:Localize Description}"
-                                            Binding="{ReflectionBinding Description}"
+                                            Binding="{ReflectionBinding Description, Mode=OneWay}"
                                             Width="*" MinWidth="200" />
                         <DataGridTextColumn Header="{markup:Localize Start}"
-                                            Binding="{ReflectionBinding StartTime, Converter={StaticResource DateTimeToStringConverter}, ConverterParameter='HH:mm'}"
+                                            Binding="{ReflectionBinding StartTime, Mode=OneWay, Converter={StaticResource DateTimeToStringConverter}, ConverterParameter='HH:mm'}"
                                             Width="65" />
                         <DataGridTextColumn Header="{markup:Localize End}"
-                                            Binding="{ReflectionBinding EndTime, Converter={StaticResource DateTimeToStringConverter}, ConverterParameter='HH:mm'}"
+                                            Binding="{ReflectionBinding EndTime, Mode=OneWay, Converter={StaticResource DateTimeToStringConverter}, ConverterParameter='HH:mm'}"
                                             Width="65" />
                         <DataGridTextColumn Header="{markup:Localize Duration}"
-                                            Binding="{ReflectionBinding Duration, Converter={StaticResource TimeSpanToStringConverter}}"
+                                            Binding="{ReflectionBinding Duration, Mode=OneWay, Converter={StaticResource TimeSpanToStringConverter}}"
                                             Width="80" />
 
                         <!-- Status -->
