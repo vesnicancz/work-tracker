@@ -263,6 +263,12 @@
   <data name="Submitting" xml:space="preserve">
     <value>Odesílání...</value>
   </data>
+  <data name="RetryFailed" xml:space="preserve">
+    <value>ZNOVU ODESLAT</value>
+  </data>
+  <data name="RetryingFailed" xml:space="preserve">
+    <value>Odesílání neúspěšných záznamů...</value>
+  </data>
 
   <!-- Zprávy a validace -->
   <data name="EitherTicketOrDescriptionRequired" xml:space="preserve">

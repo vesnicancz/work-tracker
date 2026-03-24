@@ -44,6 +44,11 @@
     <SolidColorBrush x:Key="ButtonSecondaryBg"   Color="#e6e7eb" />
     <SolidColorBrush x:Key="ButtonSecondaryFg"   Color="#383a42" />
     <SolidColorBrush x:Key="AccentButtonFg"      Color="#ffffff" />
+    <SolidColorBrush x:Key="WarningButtonBg"        Color="#20c18401" />
+    <SolidColorBrush x:Key="WarningButtonBgHover"   Color="#40c18401" />
+    <SolidColorBrush x:Key="WarningButtonBgPressed"  Color="#60c18401" />
+    <SolidColorBrush x:Key="WarningButtonBorder"     Color="#80c18401" />
+    <SolidColorBrush x:Key="WarningButtonFg"         Color="#986a02" />
 
     <!-- Avalonia system overrides -->
     <SolidColorBrush x:Key="SolidBackgroundFillColorBaseBrush"           Color="#ffffff" />

@@ -82,6 +82,17 @@
         <Setter Property="materialDesign:ButtonAssist.CornerRadius" Value="18" />
     </Style>
 
+    <!-- Warning Button Style -->
+    <Style x:Key="WarningButtonStyle" TargetType="Button" BasedOn="{StaticResource MaterialDesignFlatButton}">
+        <Setter Property="Height" Value="36" />
+        <Setter Property="Padding" Value="16,8" />
+        <Setter Property="Background" Value="#30FF9800" />
+        <Setter Property="BorderBrush" Value="#80FF9800" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Foreground" Value="{StaticResource WarningBrush}" />
+        <Setter Property="materialDesign:ButtonAssist.CornerRadius" Value="18" />
+    </Style>
+
     <!-- TextBox Style -->
     <Style x:Key="InputTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource MaterialDesignOutlinedTextBox}">
         <Setter Property="Margin" Value="0,8" />

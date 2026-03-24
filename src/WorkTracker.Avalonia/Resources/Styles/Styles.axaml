@@ -114,6 +114,24 @@
         <Setter Property="Foreground" Value="White" />
     </Style>
 
+    <!-- Warning button: semi-transparent warning color -->
+    <Style Selector="Button.warning">
+        <Setter Property="Background" Value="{DynamicResource WarningButtonBg}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource WarningButtonBorder}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Foreground" Value="{DynamicResource WarningButtonFg}" />
+    </Style>
+    <Style Selector="Button.warning:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource WarningButtonBgHover}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource WarningButtonBorder}" />
+        <Setter Property="Foreground" Value="{DynamicResource WarningButtonFg}" />
+    </Style>
+    <Style Selector="Button.warning:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource WarningButtonBgPressed}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource WarningButtonBorder}" />
+        <Setter Property="Foreground" Value="{DynamicResource WarningButtonFg}" />
+    </Style>
+
     <!-- Accent button: blue with proper hover/pressed -->
     <Style Selector="Button.accent">
         <Setter Property="Background" Value="{DynamicResource AccentBlue}" />

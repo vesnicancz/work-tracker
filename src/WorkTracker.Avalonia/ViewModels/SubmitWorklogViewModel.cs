@@ -26,6 +26,7 @@ public class SubmitWorklogViewModel : ViewModelBase
 	private string _totalTimeDisplay = string.Empty;
 	private ObservableCollection<Application.DTOs.ProviderInfo> _availableProviders = new();
 	private Application.DTOs.ProviderInfo? _selectedProvider;
+	private bool _hasFailedItems;
 
 	public SubmitWorklogViewModel(
 		IWorklogSubmissionService submissionService,
@@ -40,6 +41,7 @@ public class SubmitWorklogViewModel : ViewModelBase
 		_selectedDate = _timeProvider.GetLocalNow().Date;
 
 		SendCommand = new AsyncRelayCommand(SendAsync, CanSend);
+		RetryFailedCommand = new AsyncRelayCommand(RetryFailedAsync, CanRetryFailed);
 		CancelCommand = new RelayCommand(Cancel);
 		ResetCommand = new RelayCommand(ResetToOriginal);
 
@@ -87,6 +89,7 @@ public class SubmitWorklogViewModel : ViewModelBase
 			if (SetProperty(ref _isSending, value))
 			{
 				SendCommand.NotifyCanExecuteChanged();
+				RetryFailedCommand.NotifyCanExecuteChanged();
 			}
 		}
 	}
@@ -123,6 +126,19 @@ public class SubmitWorklogViewModel : ViewModelBase
 			if (SetProperty(ref _selectedProvider, value))
 			{
 				SendCommand.NotifyCanExecuteChanged();
+				RetryFailedCommand.NotifyCanExecuteChanged();
+			}
+		}
+	}
+
+	public bool HasFailedItems
+	{
+		get => _hasFailedItems;
+		private set
+		{
+			if (SetProperty(ref _hasFailedItems, value))
+			{
+				RetryFailedCommand.NotifyCanExecuteChanged();
 			}
 		}
 	}
@@ -137,6 +153,7 @@ public class SubmitWorklogViewModel : ViewModelBase
 	#region Commands
 
 	public IAsyncRelayCommand SendCommand { get; }
+	public IAsyncRelayCommand RetryFailedCommand { get; }
 	public ICommand CancelCommand { get; }
 	public ICommand ResetCommand { get; }
 
@@ -160,6 +177,7 @@ public class SubmitWorklogViewModel : ViewModelBase
 		try
 		{
 			IsLoading = true;
+			HasFailedItems = false;
 			StatusMessage = _localization["LoadingPreview"];
 
 			if (IsWeekly)
@@ -294,6 +312,9 @@ public class SubmitWorklogViewModel : ViewModelBase
 				StatusMessage = _localization.GetFormattedString("SubmissionSuccess",
 					submission.SuccessfulEntries, SelectedProvider.Name, failedMessage);
 
+				// Mark failed items in the preview list
+				MarkFailedItems(submission);
+
 				// Set dialog result but don't close automatically - let user close manually
 				if (submission.FailedEntries == 0)
 				{
@@ -316,6 +337,80 @@ public class SubmitWorklogViewModel : ViewModelBase
 		}
 	}
 
+	private bool CanRetryFailed()
+	{
+		return !IsSending && !IsLoading && HasFailedItems && SelectedProvider != null;
+	}
+
+	private async Task RetryFailedAsync()
+	{
+		if (SelectedProvider == null)
+		{
+			StatusMessage = _localization["PleaseSelectProvider"];
+			return;
+		}
+
+		try
+		{
+			IsSending = true;
+			StatusMessage = _localization["RetryingFailed"];
+
+			var worklogs = PreviewItems
+				.Where(i => !i.IsDateHeader && i.HasError)
+				.Select(i => new Application.DTOs.WorklogDto
+				{
+					TicketId = i.TicketId,
+					Description = i.Description,
+					StartTime = i.StartTime,
+					EndTime = i.EndTime,
+					DurationMinutes = i.Duration / 60
+				})
+				.ToList();
+
+			if (worklogs.Count == 0)
+			{
+				HasFailedItems = false;
+				StatusMessage = string.Empty;
+				IsSending = false;
+				return;
+			}
+
+			var result = await _submissionService.SubmitCustomWorklogsAsync(worklogs, SelectedProvider.Id);
+
+			if (result.IsSuccess && result.Value != null)
+			{
+				var submission = result.Value;
+
+				// Mark any still-failing items (MarkFailedItems clears previous error state)
+				MarkFailedItems(submission);
+
+				var failedMessage = submission.FailedEntries > 0
+					? _localization.GetFormattedString("SubmissionFailed", submission.FailedEntries)
+					: "";
+				StatusMessage = _localization.GetFormattedString("SubmissionSuccess",
+					submission.SuccessfulEntries, SelectedProvider.Name, failedMessage);
+
+				if (!HasFailedItems)
+				{
+					DialogResult = true;
+				}
+			}
+			else
+			{
+				StatusMessage = _localization.GetFormattedString("ErrorPrefix", result.Error);
+			}
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Failed to retry worklogs");
+			StatusMessage = _localization.GetFormattedString("ErrorPrefix", ex.Message);
+		}
+		finally
+		{
+			IsSending = false;
+		}
+	}
+
 	private void Cancel()
 	{
 		DialogResult = false;
@@ -327,7 +422,11 @@ public class SubmitWorklogViewModel : ViewModelBase
 		foreach (var item in PreviewItems.Where(i => !i.IsDateHeader))
 		{
 			item.RestoreOriginalValues();
+			item.HasError = false;
+			item.ErrorMessage = null;
 		}
+
+		HasFailedItems = false;
 
 		// Recalculate total time
 		var totalSeconds = PreviewItems.Where(i => !i.IsDateHeader).Sum(i => i.Duration);
@@ -386,6 +485,46 @@ public class SubmitWorklogViewModel : ViewModelBase
 		}
 	}
 
+	private void MarkFailedItems(Application.Common.SubmissionResult submission)
+	{
+		// Clear previous error state
+		foreach (var item in PreviewItems.Where(i => !i.IsDateHeader))
+		{
+			item.HasError = false;
+			item.ErrorMessage = null;
+		}
+
+		if (submission.Errors.Count == 0)
+		{
+			HasFailedItems = false;
+			return;
+		}
+
+		// Match errors to preview items by TicketId + Date + time range (from Details)
+		var dataItems = PreviewItems.Where(i => !i.IsDateHeader).ToList();
+		foreach (var error in submission.Errors)
+		{
+			var match = dataItems.FirstOrDefault(i =>
+				i.Date.Date == error.Date.Date &&
+				(string.IsNullOrEmpty(error.TicketId) || i.TicketId == error.TicketId) &&
+				error.Details == $"{i.StartTime:HH:mm}-{i.EndTime:HH:mm}");
+
+			// Fallback: match by TicketId + Date only (ignore TicketId when error has none)
+			match ??= dataItems.FirstOrDefault(i =>
+				i.Date.Date == error.Date.Date &&
+				(string.IsNullOrEmpty(error.TicketId) || i.TicketId == error.TicketId) &&
+				!i.HasError);
+
+			if (match != null)
+			{
+				match.HasError = true;
+				match.ErrorMessage = error.ErrorMessage;
+			}
+		}
+
+		HasFailedItems = PreviewItems.Any(i => i.HasError);
+	}
+
 	#endregion Helpers
 }
 
@@ -402,11 +541,18 @@ public class WorklogPreviewItem : ViewModelBase
 
 	// Cached display strings for performance
 	private string _startTimeDisplay = string.Empty;
+
 	private string _endTimeDisplay = string.Empty;
 	private string _durationDisplay = string.Empty;
 
+	// Error state
+	private bool _hasError;
+
+	private string? _errorMessage;
+
 	// Original values for reset
 	private string? _originalTicketId;
+
 	private string? _originalDescription;
 	private int _originalDuration;
 	private DateTime _originalStartTime;
@@ -417,6 +563,18 @@ public class WorklogPreviewItem : ViewModelBase
 	public bool IsDateHeader { get; set; }
 
 	public string? DateDisplay { get; set; }
+
+	public bool HasError
+	{
+		get => _hasError;
+		set => SetProperty(ref _hasError, value);
+	}
+
+	public string? ErrorMessage
+	{
+		get => _errorMessage;
+		set => SetProperty(ref _errorMessage, value);
+	}
 
 	public string? TicketId
 	{

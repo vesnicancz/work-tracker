@@ -111,7 +111,8 @@ public sealed class PluginBasedWorklogSubmissionService : IWorklogSubmissionServ
 		{
 			TotalEntries = pluginResult.TotalEntries,
 			SuccessfulEntries = pluginResult.SuccessfulEntries,
-			FailedEntries = pluginResult.FailedEntries
+			FailedEntries = pluginResult.FailedEntries,
+			Errors = MapPluginErrors(pluginResult.Errors)
 		};
 
 		_logger.LogInformation("Submitted {Successful}/{Total} worklogs successfully", submissionResult.SuccessfulEntries, submissionResult.TotalEntries);
@@ -204,7 +205,8 @@ public sealed class PluginBasedWorklogSubmissionService : IWorklogSubmissionServ
 		{
 			TotalEntries = pluginResult.TotalEntries,
 			SuccessfulEntries = pluginResult.SuccessfulEntries,
-			FailedEntries = pluginResult.FailedEntries
+			FailedEntries = pluginResult.FailedEntries,
+			Errors = MapPluginErrors(pluginResult.Errors)
 		};
 
 		return Result.Success(submissionResult);
@@ -270,9 +272,21 @@ public sealed class PluginBasedWorklogSubmissionService : IWorklogSubmissionServ
 		{
 			TotalEntries = pluginResult.TotalEntries,
 			SuccessfulEntries = pluginResult.SuccessfulEntries,
-			FailedEntries = pluginResult.FailedEntries
+			FailedEntries = pluginResult.FailedEntries,
+			Errors = MapPluginErrors(pluginResult.Errors)
 		};
 
 		return Result.Success(submissionResult);
+	}
+
+	private static List<SubmissionError> MapPluginErrors(IReadOnlyList<WorklogSubmissionError> pluginErrors)
+	{
+		return pluginErrors.Select(e => new SubmissionError
+		{
+			TicketId = e.Worklog.TicketId ?? string.Empty,
+			Date = e.Worklog.StartTime.Date,
+			ErrorMessage = e.ErrorMessage,
+			Details = $"{e.Worklog.StartTime:HH:mm}-{e.Worklog.EndTime:HH:mm}"
+		}).ToList();
 	}
 }
