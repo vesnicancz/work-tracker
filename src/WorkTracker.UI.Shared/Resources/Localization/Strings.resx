@@ -345,10 +345,13 @@ Time: {2}</value>
     <value>Submitting worklogs to {0}...</value>
   </data>
   <data name="SubmissionSuccess" xml:space="preserve">
-    <value>Success! Submitted {0} worklogs to {1}. {2}</value>
+    <value>Success! Submitted {0} worklogs to {1}.</value>
   </data>
-  <data name="SubmissionFailed" xml:space="preserve">
-    <value>{0} failed.</value>
+  <data name="SubmissionPartial" xml:space="preserve">
+    <value>Submitted {0} worklogs to {1}, but {2} failed.</value>
+  </data>
+  <data name="SubmissionAllFailed" xml:space="preserve">
+    <value>All {0} worklogs failed to submit to {1}.</value>
   </data>
   <data name="ErrorPrefix" xml:space="preserve">
     <value>Error: {0}</value>

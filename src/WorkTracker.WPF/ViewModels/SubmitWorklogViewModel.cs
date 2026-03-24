@@ -306,16 +306,9 @@ public class SubmitWorklogViewModel : ViewModelBase
 			if (result.IsSuccess && result.Value != null)
 			{
 				var submission = result.Value;
-				var failedMessage = submission.FailedEntries > 0
-					? _localization.GetFormattedString("SubmissionFailed", submission.FailedEntries)
-					: "";
-				StatusMessage = _localization.GetFormattedString("SubmissionSuccess",
-					submission.SuccessfulEntries, SelectedProvider.Name, failedMessage);
-
-				// Mark failed items in the preview list
 				MarkFailedItems(submission);
+				StatusMessage = FormatSubmissionStatus(submission, SelectedProvider.Name);
 
-				// Set dialog result but don't close automatically - let user close manually
 				if (submission.FailedEntries == 0)
 				{
 					DialogResult = true;
@@ -380,15 +373,8 @@ public class SubmitWorklogViewModel : ViewModelBase
 			if (result.IsSuccess && result.Value != null)
 			{
 				var submission = result.Value;
-
-				// Mark any still-failing items (MarkFailedItems clears previous error state)
 				MarkFailedItems(submission);
-
-				var failedMessage = submission.FailedEntries > 0
-					? _localization.GetFormattedString("SubmissionFailed", submission.FailedEntries)
-					: "";
-				StatusMessage = _localization.GetFormattedString("SubmissionSuccess",
-					submission.SuccessfulEntries, SelectedProvider.Name, failedMessage);
+				StatusMessage = FormatSubmissionStatus(submission, SelectedProvider.Name);
 
 				if (!HasFailedItems)
 				{
@@ -483,6 +469,21 @@ public class SubmitWorklogViewModel : ViewModelBase
 			var totalSeconds = PreviewItems.Where(i => !i.IsDateHeader).Sum(i => i.Duration);
 			TotalTimeDisplay = FormatDuration(totalSeconds);
 		}
+	}
+
+	private string FormatSubmissionStatus(Application.Common.SubmissionResult submission, string providerName)
+	{
+		if (submission.FailedEntries == 0)
+		{
+			return _localization.GetFormattedString("SubmissionSuccess", submission.SuccessfulEntries, providerName);
+		}
+
+		if (submission.SuccessfulEntries == 0)
+		{
+			return _localization.GetFormattedString("SubmissionAllFailed", submission.TotalEntries, providerName);
+		}
+
+		return _localization.GetFormattedString("SubmissionPartial", submission.SuccessfulEntries, providerName, submission.FailedEntries);
 	}
 
 	private void MarkFailedItems(Application.Common.SubmissionResult submission)
