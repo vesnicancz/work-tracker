@@ -113,48 +113,63 @@
                                             </StackPanel>
 
                                             <!-- Work entry row -->
-                                            <Grid IsVisible="{Binding !IsDateHeader}"
-                                                  ColumnDefinitions="110,*,75,75,55"
-                                                  Margin="4,1">
-                                                <TextBox Grid.Column="0"
-                                                         Text="{Binding TicketId, Mode=TwoWay}"
-                                                         FontSize="12" FontWeight="Medium"
-                                                         Background="{DynamicResource InputBackground}"
-                                                         BorderBrush="{DynamicResource InputBorder}"
-                                                         BorderThickness="1" Padding="6,4"
-                                                         Margin="0,0,3,0" />
-                                                <TextBox Grid.Column="1"
-                                                         Text="{Binding Description, Mode=TwoWay}"
-                                                         FontSize="12"
-                                                         Background="{DynamicResource InputBackground}"
-                                                         BorderBrush="{DynamicResource InputBorder}"
-                                                         BorderThickness="1" Padding="6,4"
-                                                         Margin="0,0,3,0" />
-                                                <TextBox Grid.Column="2"
-                                                         Text="{Binding StartTimeDisplay, Mode=TwoWay}"
-                                                         FontSize="12"
-                                                         FontFamily="JetBrains Mono,Consolas,monospace"
-                                                         Background="{DynamicResource InputBackground}"
-                                                         BorderBrush="{DynamicResource InputBorder}"
-                                                         BorderThickness="1" Padding="6,4"
-                                                         Margin="0,0,3,0" />
-                                                <TextBox Grid.Column="3"
-                                                         Text="{Binding EndTimeDisplay, Mode=TwoWay}"
-                                                         FontSize="12"
-                                                         FontFamily="JetBrains Mono,Consolas,monospace"
-                                                         Background="{DynamicResource InputBackground}"
-                                                         BorderBrush="{DynamicResource InputBorder}"
-                                                         BorderThickness="1" Padding="6,4"
-                                                         Margin="0,0,3,0" />
-                                                <TextBlock Grid.Column="4"
-                                                           Text="{Binding DurationDisplay}"
-                                                           FontSize="12" FontWeight="Medium"
-                                                           FontFamily="JetBrains Mono,Consolas,monospace"
-                                                           Foreground="{DynamicResource TextMuted}"
-                                                           HorizontalAlignment="Right"
-                                                           VerticalAlignment="Center"
-                                                           Margin="4,0,0,0" />
-                                            </Grid>
+                                            <Border IsVisible="{Binding !IsDateHeader}"
+                                                    Classes.error="{Binding HasError}"
+                                                    CornerRadius="2" Padding="0"
+                                                    ToolTip.Tip="{Binding ErrorMessage}"
+                                                    Margin="4,1">
+                                                <Border.Styles>
+                                                    <Style Selector="Border">
+                                                        <Setter Property="Background" Value="Transparent" />
+                                                        <Setter Property="BorderThickness" Value="0" />
+                                                    </Style>
+                                                    <Style Selector="Border.error">
+                                                        <Setter Property="Background" Value="#20FF4444" />
+                                                        <Setter Property="BorderBrush" Value="#60FF4444" />
+                                                        <Setter Property="BorderThickness" Value="1" />
+                                                    </Style>
+                                                </Border.Styles>
+                                                <Grid ColumnDefinitions="110,*,75,75,55">
+                                                    <TextBox Grid.Column="0"
+                                                             Text="{Binding TicketId, Mode=TwoWay}"
+                                                             FontSize="12" FontWeight="Medium"
+                                                             Background="{DynamicResource InputBackground}"
+                                                             BorderBrush="{DynamicResource InputBorder}"
+                                                             BorderThickness="1" Padding="6,4"
+                                                             Margin="0,0,3,0" />
+                                                    <TextBox Grid.Column="1"
+                                                             Text="{Binding Description, Mode=TwoWay}"
+                                                             FontSize="12"
+                                                             Background="{DynamicResource InputBackground}"
+                                                             BorderBrush="{DynamicResource InputBorder}"
+                                                             BorderThickness="1" Padding="6,4"
+                                                             Margin="0,0,3,0" />
+                                                    <TextBox Grid.Column="2"
+                                                             Text="{Binding StartTimeDisplay, Mode=TwoWay}"
+                                                             FontSize="12"
+                                                             FontFamily="JetBrains Mono,Consolas,monospace"
+                                                             Background="{DynamicResource InputBackground}"
+                                                             BorderBrush="{DynamicResource InputBorder}"
+                                                             BorderThickness="1" Padding="6,4"
+                                                             Margin="0,0,3,0" />
+                                                    <TextBox Grid.Column="3"
+                                                             Text="{Binding EndTimeDisplay, Mode=TwoWay}"
+                                                             FontSize="12"
+                                                             FontFamily="JetBrains Mono,Consolas,monospace"
+                                                             Background="{DynamicResource InputBackground}"
+                                                             BorderBrush="{DynamicResource InputBorder}"
+                                                             BorderThickness="1" Padding="6,4"
+                                                             Margin="0,0,3,0" />
+                                                    <TextBlock Grid.Column="4"
+                                                               Text="{Binding DurationDisplay}"
+                                                               FontSize="12" FontWeight="Medium"
+                                                               FontFamily="JetBrains Mono,Consolas,monospace"
+                                                               Foreground="{DynamicResource TextMuted}"
+                                                               HorizontalAlignment="Right"
+                                                               VerticalAlignment="Center"
+                                                               Margin="4,0,0,0" />
+                                                </Grid>
+                                            </Border>
                                         </Panel>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
@@ -200,6 +215,18 @@
                                 Content="{markup:Localize Close}" Padding="20,8"
                                 Background="{DynamicResource ButtonSecondaryBg}"
                                 Foreground="{DynamicResource ButtonSecondaryFg}" />
+
+                        <Button Command="{Binding RetryFailedCommand}"
+                                IsVisible="{Binding HasFailedItems}"
+                                Padding="20,8"
+                                Background="#30FF8800" BorderBrush="#80FF8800" BorderThickness="1">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <material:MaterialIcon Kind="Refresh" Width="16" Height="16"
+                                                      Foreground="#FFCC66" />
+                                <TextBlock Text="{markup:Localize RetryFailed}"
+                                           Foreground="#FFCC66" FontWeight="SemiBold" />
+                            </StackPanel>
+                        </Button>
 
                         <Button Command="{Binding SendCommand}"
                                 Padding="20,8"

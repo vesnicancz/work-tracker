@@ -48,55 +48,71 @@
 
 		<!-- Work Entry Template - Simplified for performance -->
 		<DataTemplate x:Key="WorkEntryTemplate">
-			<Grid Margin="0,2">
-				<Grid.ColumnDefinitions>
-					<ColumnDefinition Width="120" />
-					<ColumnDefinition Width="*" />
-					<ColumnDefinition Width="85" />
-					<ColumnDefinition Width="85" />
-					<ColumnDefinition Width="55" />
-				</Grid.ColumnDefinitions>
+			<Border Margin="0,2" CornerRadius="2" Padding="0"
+					ToolTip="{Binding ErrorMessage}">
+				<Border.Style>
+					<Style TargetType="Border">
+						<Setter Property="Background" Value="Transparent" />
+						<Setter Property="BorderThickness" Value="0" />
+						<Style.Triggers>
+							<DataTrigger Binding="{Binding HasError}" Value="True">
+								<Setter Property="Background" Value="#20FF4444" />
+								<Setter Property="BorderBrush" Value="#60FF4444" />
+								<Setter Property="BorderThickness" Value="1" />
+							</DataTrigger>
+						</Style.Triggers>
+					</Style>
+				</Border.Style>
+				<Grid>
+					<Grid.ColumnDefinitions>
+						<ColumnDefinition Width="120" />
+						<ColumnDefinition Width="*" />
+						<ColumnDefinition Width="85" />
+						<ColumnDefinition Width="85" />
+						<ColumnDefinition Width="55" />
+					</Grid.ColumnDefinitions>
 
-				<TextBox Grid.Column="0"
-						 Text="{Binding TicketId, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
-						 FontWeight="Medium"
-						 VerticalAlignment="Center"
-						 BorderBrush="#CCCCCC"
-					 BorderThickness="1"
-					 Padding="6,4"
+					<TextBox Grid.Column="0"
+							 Text="{Binding TicketId, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+							 FontWeight="Medium"
+							 VerticalAlignment="Center"
+							 BorderBrush="#CCCCCC"
+							 BorderThickness="1"
+							 Padding="6,4"
 							 Margin="0,0,4,0" />
 
-				<TextBox Grid.Column="1"
-						 Text="{Binding Description, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
-						 VerticalAlignment="Center"
-						 BorderBrush="#CCCCCC"
-					 BorderThickness="1"
-					 Padding="6,4"
+					<TextBox Grid.Column="1"
+							 Text="{Binding Description, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+							 VerticalAlignment="Center"
+							 BorderBrush="#CCCCCC"
+							 BorderThickness="1"
+							 Padding="6,4"
 							 Margin="4,0" />
 
-				<TextBox Grid.Column="2"
-						 Text="{Binding StartTimeDisplay, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
-						 VerticalAlignment="Center"
-					 BorderBrush="#CCCCCC"
-					 BorderThickness="1"
-					 Padding="6,4"
-						 Margin="4,0,4,0" />
+					<TextBox Grid.Column="2"
+							 Text="{Binding StartTimeDisplay, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+							 VerticalAlignment="Center"
+							 BorderBrush="#CCCCCC"
+							 BorderThickness="1"
+							 Padding="6,4"
+							 Margin="4,0,4,0" />
 
-				<TextBox Grid.Column="3"
-						 Text="{Binding EndTimeDisplay, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
-						 VerticalAlignment="Center"
-					 BorderBrush="#CCCCCC"
-					 BorderThickness="1"
-					 Padding="6,4"
-						 Margin="4,0,4,0" />
+					<TextBox Grid.Column="3"
+							 Text="{Binding EndTimeDisplay, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+							 VerticalAlignment="Center"
+							 BorderBrush="#CCCCCC"
+							 BorderThickness="1"
+							 Padding="6,4"
+							 Margin="4,0,4,0" />
 
-				<TextBlock Grid.Column="4"
-						   Text="{Binding DurationDisplay, Mode=OneWay}"
-						   FontWeight="Medium"
-						   HorizontalAlignment="Right"
-						   VerticalAlignment="Center"
-						   Margin="4,0,0,0" />
-			</Grid>
+					<TextBlock Grid.Column="4"
+							   Text="{Binding DurationDisplay, Mode=OneWay}"
+							   FontWeight="Medium"
+							   HorizontalAlignment="Right"
+							   VerticalAlignment="Center"
+							   Margin="4,0,0,0" />
+				</Grid>
+			</Border>
 		</DataTemplate>
 
 		<!-- Template Selector -->
@@ -296,6 +312,17 @@
 					   Style="{StaticResource SecondaryButtonStyle}"
 					   Width="100"
 					   Margin="0,0,8,0" />
+						<Button Command="{Binding RetryFailedCommand}"
+						   Width="140"
+						   Margin="0,0,8,0"
+						   Padding="12,8"
+						   Background="#30FF8800"
+						   BorderBrush="#80FF8800"
+						   BorderThickness="1"
+						   Foreground="#FFCC66"
+						   FontWeight="SemiBold"
+						   Content="{markup:Localize RetryFailed}"
+						   Visibility="{Binding HasFailedItems, Converter={StaticResource BoolToVisibilityConverter}}" />
 						<Button Command="{Binding SendCommand}"
 					   Style="{StaticResource PrimaryButtonStyle}"
 					   Width="120">

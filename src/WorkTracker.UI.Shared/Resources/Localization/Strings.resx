@@ -263,6 +263,12 @@
   <data name="Submitting" xml:space="preserve">
     <value>Submitting...</value>
   </data>
+  <data name="RetryFailed" xml:space="preserve">
+    <value>RETRY FAILED</value>
+  </data>
+  <data name="RetryingFailed" xml:space="preserve">
+    <value>Retrying failed...</value>
+  </data>
 
   <!-- Messages and Validation -->
   <data name="EitherTicketOrDescriptionRequired" xml:space="preserve">

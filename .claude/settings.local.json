@@ -25,7 +25,8 @@
       "Bash(if [ -f \"E:\\Claude-shared\\WorkTracker\\src\\WorkTracker.MAUI\\Resources\\Images\\README.md\" ])",
       "Bash(then mv \"E:\\Claude-shared\\WorkTracker\\src\\WorkTracker.MAUI\\Resources\\Images\\README.md\" \"E:\\Claude-shared\\WorkTracker\\src\\WorkTracker.MAUI\\Resources\\Images\\readme.md\")",
       "Bash(fi)",
-      "Bash(gh api:*)"
+      "Bash(gh api:*)",
+      "Bash(xargs grep:*)"
     ],
     "deny": [],
     "ask": []
