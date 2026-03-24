@@ -370,6 +370,7 @@ public class SubmitWorklogViewModel : ViewModelBase
 			if (worklogs.Count == 0)
 			{
 				HasFailedItems = false;
+				StatusMessage = string.Empty;
 				IsSending = false;
 				return;
 			}
@@ -380,14 +381,7 @@ public class SubmitWorklogViewModel : ViewModelBase
 			{
 				var submission = result.Value;
 
-				// Clear error state on previously failed items before re-marking
-				foreach (var item in PreviewItems.Where(i => i.HasError))
-				{
-					item.HasError = false;
-					item.ErrorMessage = null;
-				}
-
-				// Mark any still-failing items
+				// Mark any still-failing items (MarkFailedItems clears previous error state)
 				MarkFailedItems(submission);
 
 				var failedMessage = submission.FailedEntries > 0

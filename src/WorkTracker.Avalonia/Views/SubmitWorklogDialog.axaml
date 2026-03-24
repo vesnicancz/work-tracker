@@ -219,12 +219,11 @@
                         <Button Command="{Binding RetryFailedCommand}"
                                 IsVisible="{Binding HasFailedItems}"
                                 Padding="20,8"
-                                Background="#30FF8800" BorderBrush="#80FF8800" BorderThickness="1">
+                                Classes="warning">
                             <StackPanel Orientation="Horizontal" Spacing="6">
-                                <material:MaterialIcon Kind="Refresh" Width="16" Height="16"
-                                                      Foreground="#FFCC66" />
+                                <material:MaterialIcon Kind="Refresh" Width="16" Height="16" />
                                 <TextBlock Text="{markup:Localize RetryFailed}"
-                                           Foreground="#FFCC66" FontWeight="SemiBold" />
+                                           FontWeight="SemiBold" />
                             </StackPanel>
                         </Button>
 

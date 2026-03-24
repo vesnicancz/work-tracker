@@ -313,13 +313,9 @@
 					   Width="100"
 					   Margin="0,0,8,0" />
 						<Button Command="{Binding RetryFailedCommand}"
+						   Style="{StaticResource WarningButtonStyle}"
 						   Width="140"
 						   Margin="0,0,8,0"
-						   Padding="12,8"
-						   Background="#30FF8800"
-						   BorderBrush="#80FF8800"
-						   BorderThickness="1"
-						   Foreground="#FFCC66"
 						   FontWeight="SemiBold"
 						   Content="{markup:Localize RetryFailed}"
 						   Visibility="{Binding HasFailedItems, Converter={StaticResource BoolToVisibilityConverter}}" />
