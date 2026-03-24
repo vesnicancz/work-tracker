@@ -222,6 +222,7 @@ public class WorkEntryEditViewModel : ViewModelBase
 
     private void Cancel()
     {
-        DialogResult = false; CloseAction?.Invoke();
+        DialogResult = false;
+        CloseAction?.Invoke();
     }
 }
