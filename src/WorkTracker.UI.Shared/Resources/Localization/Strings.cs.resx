@@ -345,10 +345,13 @@ Popis: {1}
     <value>Odesílání záznamů do {0}...</value>
   </data>
   <data name="SubmissionSuccess" xml:space="preserve">
-    <value>Úspěch! Odesláno {0} záznamů do {1}. {2}</value>
+    <value>Úspěch! Odesláno {0} záznamů do {1}.</value>
   </data>
-  <data name="SubmissionFailed" xml:space="preserve">
-    <value>{0} selhalo.</value>
+  <data name="SubmissionPartial" xml:space="preserve">
+    <value>Odesláno {0} záznamů do {1}, ale {2} selhalo.</value>
+  </data>
+  <data name="SubmissionAllFailed" xml:space="preserve">
+    <value>Všech {0} záznamů se nepodařilo odeslat do {1}.</value>
   </data>
   <data name="ErrorPrefix" xml:space="preserve">
     <value>Chyba: {0}</value>
