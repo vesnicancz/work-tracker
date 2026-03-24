@@ -33,7 +33,7 @@ public sealed class DialogService : IDialogService
 		}
 
 		// Main window hidden (e.g. minimized to tray) — show as standalone window
-		var tcs = new TaskCompletionSource<bool>();
+		var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 		dialog.Closed += (_, _) => tcs.TrySetResult(viewModel.DialogResult);
 		dialog.Show();
 		dialog.Activate();

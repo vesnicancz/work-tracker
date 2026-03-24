@@ -126,7 +126,15 @@ public partial class App : global::Avalonia.Application
 				// startMinimized — window wasn't created yet; show briefly to create HWND for hotkey registration
 				mainWindow = new MainWindow { ShowInTaskbar = false, Opacity = 0 };
 				desktop.MainWindow = mainWindow;
-				mainWindow.Show();
+				try
+				{
+					mainWindow.Show();
+				}
+				finally
+				{
+					mainWindow.ShowInTaskbar = true;
+					mainWindow.Opacity = 1;
+				}
 			}
 
 			mainWindow.Initialize(viewModel, trayIconService, settingsService, worklogStateService);
@@ -138,8 +146,6 @@ public partial class App : global::Avalonia.Application
 
 			if (startMinimized)
 			{
-				mainWindow.ShowInTaskbar = true;
-				mainWindow.Opacity = 1;
 				mainWindow.Hide();
 			}
 
