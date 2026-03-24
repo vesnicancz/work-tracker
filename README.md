@@ -326,7 +326,6 @@ dotnet ef database update \
 - SOLID principy, Clean Code
 - Result pattern pro error handling (ne exceptions pro business logiku)
 - Structured logging (`ILogger`)
-- `.editorconfig` v kořenu repozitáře
 
 ---
 
