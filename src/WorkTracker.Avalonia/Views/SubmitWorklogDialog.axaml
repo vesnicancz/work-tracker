@@ -113,17 +113,18 @@
                                             </StackPanel>
 
                                             <!-- Work entry row -->
-                                            <Border IsVisible="{Binding !IsDateHeader}"
+                                            <Border x:Name="WorkEntryRowBorder"
+                                                    IsVisible="{Binding !IsDateHeader}"
                                                     Classes.error="{Binding HasError}"
                                                     CornerRadius="2" Padding="0"
                                                     ToolTip.Tip="{Binding ErrorMessage}"
                                                     Margin="4,1">
                                                 <Border.Styles>
-                                                    <Style Selector="Border">
+                                                    <Style Selector="Border#WorkEntryRowBorder">
                                                         <Setter Property="Background" Value="Transparent" />
                                                         <Setter Property="BorderThickness" Value="0" />
                                                     </Style>
-                                                    <Style Selector="Border.error">
+                                                    <Style Selector="Border#WorkEntryRowBorder.error">
                                                         <Setter Property="Background" Value="#20FF4444" />
                                                         <Setter Property="BorderBrush" Value="#60FF4444" />
                                                         <Setter Property="BorderThickness" Value="1" />

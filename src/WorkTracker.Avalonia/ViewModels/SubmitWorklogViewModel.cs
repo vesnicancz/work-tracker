@@ -506,13 +506,13 @@ public class SubmitWorklogViewModel : ViewModelBase
 		{
 			var match = dataItems.FirstOrDefault(i =>
 				i.Date.Date == error.Date.Date &&
-				(i.TicketId == error.TicketId || (string.IsNullOrEmpty(i.TicketId) && string.IsNullOrEmpty(error.TicketId))) &&
+				(string.IsNullOrEmpty(error.TicketId) || i.TicketId == error.TicketId) &&
 				error.Details == $"{i.StartTime:HH:mm}-{i.EndTime:HH:mm}");
 
-			// Fallback: match by TicketId + Date only
+			// Fallback: match by TicketId + Date only (ignore TicketId when error has none)
 			match ??= dataItems.FirstOrDefault(i =>
 				i.Date.Date == error.Date.Date &&
-				(i.TicketId == error.TicketId || (string.IsNullOrEmpty(i.TicketId) && string.IsNullOrEmpty(error.TicketId))) &&
+				(string.IsNullOrEmpty(error.TicketId) || i.TicketId == error.TicketId) &&
 				!i.HasError);
 
 			if (match != null)
