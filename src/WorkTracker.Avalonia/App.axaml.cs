@@ -129,6 +129,7 @@ public partial class App : global::Avalonia.Application
 				try
 				{
 					mainWindow.Show();
+					mainWindow.Hide();
 				}
 				finally
 				{
@@ -144,10 +145,7 @@ public partial class App : global::Avalonia.Application
 			_hotkeyService.HotkeyPressed += OnHotkeyPressed;
 			_hotkeyService.Register();
 
-			if (startMinimized)
-			{
-				mainWindow.Hide();
-			}
+
 
 			// Load plugins in the background — not needed for initial UI
 			var pluginLogger = _host.Services.GetRequiredService<ILoggerFactory>().CreateLogger<App>();
