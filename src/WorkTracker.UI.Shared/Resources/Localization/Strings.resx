@@ -267,7 +267,7 @@
     <value>RETRY FAILED</value>
   </data>
   <data name="RetryingFailed" xml:space="preserve">
-    <value>Retrying failed...</value>
+    <value>Retrying failed entries...</value>
   </data>
 
   <!-- Messages and Validation -->

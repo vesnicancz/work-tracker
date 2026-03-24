@@ -126,6 +126,7 @@ public class SubmitWorklogViewModel : ViewModelBase
 			if (SetProperty(ref _selectedProvider, value))
 			{
 				SendCommand.NotifyCanExecuteChanged();
+				RetryFailedCommand.NotifyCanExecuteChanged();
 			}
 		}
 	}
@@ -176,6 +177,7 @@ public class SubmitWorklogViewModel : ViewModelBase
 		try
 		{
 			IsLoading = true;
+			HasFailedItems = false;
 			StatusMessage = _localization["LoadingPreview"];
 
 			if (IsWeekly)
@@ -364,6 +366,13 @@ public class SubmitWorklogViewModel : ViewModelBase
 					DurationMinutes = i.Duration / 60
 				})
 				.ToList();
+
+			if (worklogs.Count == 0)
+			{
+				HasFailedItems = false;
+				IsSending = false;
+				return;
+			}
 
 			var result = await _submissionService.SubmitCustomWorklogsAsync(worklogs, SelectedProvider.Id);
 

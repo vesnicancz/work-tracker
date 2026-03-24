@@ -267,7 +267,7 @@
     <value>ZNOVU ODESLAT</value>
   </data>
   <data name="RetryingFailed" xml:space="preserve">
-    <value>Odesílání neúspěšných...</value>
+    <value>Odesílání neúspěšných záznamů...</value>
   </data>
 
   <!-- Zprávy a validace -->
