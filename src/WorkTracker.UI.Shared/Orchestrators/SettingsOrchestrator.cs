@@ -132,7 +132,12 @@ public class SettingsOrchestrator : ISettingsOrchestrator
 
 		// Temporarily initialize plugin with current configuration
 		var tempConfig = new Dictionary<string, string>(plugin.Configuration);
-		await plugin.Plugin.InitializeAsync(tempConfig);
+		var initialized = await plugin.Plugin.InitializeAsync(tempConfig);
+		if (!initialized)
+		{
+			_logger.LogWarning("Initialization failed for plugin {PluginId} during connection test", plugin.Plugin.Metadata.Id);
+			return "✗ Connection failed: Unable to initialize plugin with current configuration";
+		}
 
 		var result = await worklogPlugin.TestConnectionAsync();
 

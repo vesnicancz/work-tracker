@@ -57,7 +57,8 @@ public class WorklogSubmissionOrchestrator : IWorklogSubmissionOrchestrator
 					var item = new WorklogPreviewItem
 					{
 						Date = dayPreview.Key,
-						TicketId = entry.TicketId ?? noTicketLabel,
+						TicketId = entry.TicketId,
+						NoTicketLabel = noTicketLabel,
 						Description = entry.Description ?? string.Empty,
 						Duration = entry.DurationMinutes * 60,
 						StartTime = entry.StartTime,
@@ -80,7 +81,8 @@ public class WorklogSubmissionOrchestrator : IWorklogSubmissionOrchestrator
 				var item = new WorklogPreviewItem
 				{
 					Date = date,
-					TicketId = entry.TicketId ?? noTicketLabel,
+					TicketId = entry.TicketId,
+					NoTicketLabel = noTicketLabel,
 					Description = entry.Description ?? string.Empty,
 					Duration = entry.DurationMinutes * 60,
 					StartTime = entry.StartTime,

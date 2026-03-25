@@ -1,3 +1,4 @@
+using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using WorkTracker.UI.Shared.Orchestrators;
 
@@ -54,8 +55,22 @@ public class WorklogPreviewItem : ObservableObject
 	public string? TicketId
 	{
 		get => _ticketId;
-		set => SetProperty(ref _ticketId, value);
+		set
+		{
+			if (SetProperty(ref _ticketId, value))
+			{
+				OnPropertyChanged(nameof(TicketIdDisplay));
+			}
+		}
 	}
+
+	/// <summary>
+	/// Display-only ticket ID that shows a placeholder for entries without a ticket.
+	/// Set by the orchestrator during preview loading.
+	/// </summary>
+	public string? NoTicketLabel { get; set; }
+
+	public string TicketIdDisplay => TicketId ?? NoTicketLabel ?? string.Empty;
 
 	public string? Description
 	{
@@ -101,12 +116,14 @@ public class WorklogPreviewItem : ObservableObject
 		}
 	}
 
+	private static readonly string[] TimeFormats = ["h\\:mm", "HH\\:mm", "H\\:mm"];
+
 	public string StartTimeDisplay
 	{
 		get => _startTimeDisplay;
 		set
 		{
-			if (TimeSpan.TryParse(value, out var time))
+			if (TimeSpan.TryParseExact(value, TimeFormats, CultureInfo.InvariantCulture, out var time))
 			{
 				StartTime = Date.Date.Add(time);
 			}
@@ -118,7 +135,7 @@ public class WorklogPreviewItem : ObservableObject
 		get => _endTimeDisplay;
 		set
 		{
-			if (TimeSpan.TryParse(value, out var time))
+			if (TimeSpan.TryParseExact(value, TimeFormats, CultureInfo.InvariantCulture, out var time))
 			{
 				EndTime = Date.Date.Add(time);
 			}

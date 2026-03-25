@@ -134,6 +134,7 @@
                                                 <Grid ColumnDefinitions="110,*,75,75,55">
                                                     <TextBox Grid.Column="0"
                                                              Text="{Binding TicketId, Mode=TwoWay}"
+                                                             Watermark="{Binding NoTicketLabel}"
                                                              FontSize="12" FontWeight="Medium"
                                                              Background="{DynamicResource InputBackground}"
                                                              BorderBrush="{DynamicResource InputBorder}"

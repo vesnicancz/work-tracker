@@ -74,6 +74,7 @@
 
 					<TextBox Grid.Column="0"
 							 Text="{Binding TicketId, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+							 materialDesign:HintAssist.Hint="{Binding NoTicketLabel}"
 							 FontWeight="Medium"
 							 VerticalAlignment="Center"
 							 BorderBrush="#CCCCCC"
