@@ -423,7 +423,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 
 	private void NextDay() => SelectedDate = SelectedDate.AddDays(1);
 
-	private void GoToToday() => SelectedDate = DateTime.Today;
+	private void GoToToday() => SelectedDate = _timeProvider.GetLocalNow().Date;
 
 	private void OnTimerTick(object? sender, EventArgs e)
 	{

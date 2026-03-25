@@ -506,7 +506,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 
 	private void GoToToday()
 	{
-		SelectedDate = DateTime.Today;
+		SelectedDate = _timeProvider.GetLocalNow().Date;
 	}
 
 	#endregion Command Implementations
