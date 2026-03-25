@@ -88,7 +88,7 @@ public class WorklogSubmissionOrchestratorTests
 		var dto = new WorklogSubmissionDto { Worklogs = new List<WorklogDto>() };
 		_mockSubmissionService.Setup(s => s.PreviewDailyWorklogAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>())).ReturnsAsync(dto);
 
-		var result = await _orchestrator.LoadPreviewAsync(DateTime.Today, false, "No ticket");
+		var result = await _orchestrator.LoadPreviewAsync(FixedDate, false, "No ticket");
 
 		result.Items.Should().BeEmpty();
 		result.DataItemCount.Should().Be(0);
@@ -166,7 +166,7 @@ public class WorklogSubmissionOrchestratorTests
 			FailedEntries = 1,
 			Errors = new List<SubmissionError>
 			{
-				new() { TicketId = "PROJ-1", Date = DateTime.Today, ErrorMessage = "Conflict", Details = $"{items[0].StartTime:HH:mm}-{items[0].EndTime:HH:mm}" }
+				new() { TicketId = "PROJ-1", Date = FixedDate, ErrorMessage = "Conflict", Details = $"{items[0].StartTime:HH:mm}-{items[0].EndTime:HH:mm}" }
 			}
 		};
 		_mockSubmissionService
@@ -207,7 +207,7 @@ public class WorklogSubmissionOrchestratorTests
 			TotalEntries = 1,
 			SuccessfulEntries = 0,
 			FailedEntries = 1,
-			Errors = new List<SubmissionError> { new() { TicketId = "PROJ-1", Date = DateTime.Today, ErrorMessage = "err", Details = $"{items[0].StartTime:HH:mm}-{items[0].EndTime:HH:mm}" } }
+			Errors = new List<SubmissionError> { new() { TicketId = "PROJ-1", Date = FixedDate, ErrorMessage = "err", Details = $"{items[0].StartTime:HH:mm}-{items[0].EndTime:HH:mm}" } }
 		};
 		_mockSubmissionService
 			.Setup(s => s.SubmitCustomWorklogsAsync(It.IsAny<IEnumerable<WorklogDto>>(), "tempo", It.IsAny<CancellationToken>()))
@@ -287,7 +287,7 @@ public class WorklogSubmissionOrchestratorTests
 		{
 			Errors = new List<SubmissionError>
 			{
-				new() { TicketId = "PROJ-1", Date = DateTime.Today, ErrorMessage = "Conflict", Details = $"{items[0].StartTime:HH:mm}-{items[0].EndTime:HH:mm}" }
+				new() { TicketId = "PROJ-1", Date = FixedDate, ErrorMessage = "Conflict", Details = $"{items[0].StartTime:HH:mm}-{items[0].EndTime:HH:mm}" }
 			}
 		};
 
@@ -361,7 +361,7 @@ public class WorklogSubmissionOrchestratorTests
 		var items = new List<WorklogPreviewItem>
 		{
 			new() { IsDateHeader = true, DateDisplay = "Monday" },
-			new() { TicketId = "PROJ-1", Date = DateTime.Today, StartTime = DateTime.Today.AddHours(9), EndTime = DateTime.Today.AddHours(10), Duration = 3600 }
+			new() { TicketId = "PROJ-1", Date = FixedDate, StartTime = FixedDate.AddHours(9), EndTime = FixedDate.AddHours(10), Duration = 3600 }
 		};
 		items[1].SaveOriginalValues();
 		items[1].TicketId = "CHANGED";
@@ -374,16 +374,18 @@ public class WorklogSubmissionOrchestratorTests
 
 	#endregion ResetItems
 
+	private static readonly DateTime FixedDate = new(2025, 6, 15);
+
 	private static List<WorklogPreviewItem> CreatePreviewItems(string ticketId)
 	{
 		var item = new WorklogPreviewItem
 		{
 			TicketId = ticketId,
 			Description = "Test work",
-			Date = DateTime.Today,
+			Date = FixedDate,
 			Duration = 3600,
-			StartTime = DateTime.Today.AddHours(9),
-			EndTime = DateTime.Today.AddHours(10)
+			StartTime = FixedDate.AddHours(9),
+			EndTime = FixedDate.AddHours(10)
 		};
 		item.SaveOriginalValues();
 		return [item];

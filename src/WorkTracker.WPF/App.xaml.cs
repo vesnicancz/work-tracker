@@ -206,15 +206,24 @@ public partial class App : System.Windows.Application
 
 			var pluginManager = _host.Services.GetRequiredService<IPluginManager>();
 			await pluginManager.DisposeAsync();
-
-			using (_host)
-			{
-				await _host.StopAsync();
-			}
 		}
 		catch (Exception ex)
 		{
 			System.Diagnostics.Trace.WriteLine($"Error during application shutdown: {ex}");
+		}
+		finally
+		{
+			try
+			{
+				using (_host)
+				{
+					await _host.StopAsync();
+				}
+			}
+			catch (Exception ex)
+			{
+				System.Diagnostics.Trace.WriteLine($"Error stopping host: {ex}");
+			}
 		}
 
 		base.OnExit(e);
