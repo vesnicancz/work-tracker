@@ -84,7 +84,14 @@ public class SubmitWorklogViewModel : ViewModelBase
 	public bool IsLoading
 	{
 		get => _isLoading;
-		set => SetProperty(ref _isLoading, value);
+		set
+		{
+			if (SetProperty(ref _isLoading, value))
+			{
+				((IAsyncRelayCommand)SendCommand).NotifyCanExecuteChanged();
+				((IAsyncRelayCommand)RetryFailedCommand).NotifyCanExecuteChanged();
+			}
+		}
 	}
 
 	public bool IsSending
@@ -171,6 +178,7 @@ public class SubmitWorklogViewModel : ViewModelBase
 		OnPropertyChanged(nameof(SelectedDate));
 		_isWeekly = isWeek;
 		OnPropertyChanged(nameof(IsWeekly));
+		OnPropertyChanged(nameof(DialogTitle));
 		await LoadPreviewAsync();
 	}
 
