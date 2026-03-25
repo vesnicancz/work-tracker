@@ -288,7 +288,8 @@ public class WorklogMapperTests
 		// Assert
 		result.IsFailure.Should().BeTrue();
 		result.Error.Should().Be("error message");
-		result.Value.Should().BeNull();
+		var act = () => _ = result.Value;
+		act.Should().Throw<InvalidOperationException>();
 	}
 
 	[Fact]

@@ -41,11 +41,15 @@ public class Result
 /// </summary>
 public class Result<T> : Result
 {
-	public T Value { get; }
+	private readonly T _value;
+
+	public T Value => IsSuccess
+		? _value
+		: throw new InvalidOperationException($"Cannot access Value on a failed result. Error: {Error}");
 
 	protected internal Result(T value, bool isSuccess, string error)
 		: base(isSuccess, error)
 	{
-		Value = value;
+		_value = value;
 	}
 }

@@ -197,21 +197,31 @@ public partial class App : System.Windows.Application
 	/// </summary>
 	protected override async void OnExit(ExitEventArgs e)
 	{
-		// Unregister hotkey
-		_hotkeyService?.Unregister();
+		try { _hotkeyService?.Unregister(); }
+		catch (Exception ex) { System.Diagnostics.Trace.WriteLine($"Error unregistering hotkey: {ex}"); }
 
-		// Dispose MainViewModel (stops timer, unsubscribes events)
-		var mainViewModel = _host.Services.GetRequiredService<MainViewModel>();
-		mainViewModel.Dispose();
-
-		// Dispose plugin manager asynchronously to avoid deadlocks
-		var pluginManager = _host.Services.GetRequiredService<IPluginManager>();
-		await pluginManager.DisposeAsync();
-
-		using (_host)
+		try
 		{
-			await _host.StopAsync();
+			var mainViewModel = _host.Services.GetRequiredService<MainViewModel>();
+			mainViewModel.Dispose();
 		}
+		catch (Exception ex) { System.Diagnostics.Trace.WriteLine($"Error disposing MainViewModel: {ex}"); }
+
+		try
+		{
+			var pluginManager = _host.Services.GetRequiredService<IPluginManager>();
+			await pluginManager.DisposeAsync();
+		}
+		catch (Exception ex) { System.Diagnostics.Trace.WriteLine($"Error disposing PluginManager: {ex}"); }
+
+		try
+		{
+			using (_host)
+			{
+				await _host.StopAsync();
+			}
+		}
+		catch (Exception ex) { System.Diagnostics.Trace.WriteLine($"Error stopping host: {ex}"); }
 
 		base.OnExit(e);
 	}

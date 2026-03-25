@@ -16,6 +16,16 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 	private static readonly TimeSpan CacheTtl = TimeSpan.FromHours(1);
 	private const int MaxRetries = 2;
 
+	private static class ConfigKeys
+	{
+		public const string TempoBaseUrl = "TempoBaseUrl";
+		public const string TempoApiToken = "TempoApiToken";
+		public const string JiraBaseUrl = "JiraBaseUrl";
+		public const string JiraEmail = "JiraEmail";
+		public const string JiraApiToken = "JiraApiToken";
+		public const string JiraAccountId = "JiraAccountId";
+	}
+
 	private HttpClient? _tempoHttpClient;
 	private HttpClient? _jiraHttpClient;
 	private string? _tempoBaseUrl;
@@ -45,7 +55,7 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 		{
 			new()
 			{
-				Key = "TempoBaseUrl",
+				Key = ConfigKeys.TempoBaseUrl,
 				Label = "Tempo API URL",
 				Description = "The base URL for Tempo API (e.g., https://api.eu.tempo.io/4)",
 				Type = PluginConfigurationFieldType.Url,
@@ -57,7 +67,7 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 			},
 			new()
 			{
-				Key = "TempoApiToken",
+				Key = ConfigKeys.TempoApiToken,
 				Label = "Tempo API Token",
 				Description = "Your Tempo API token (get it from Tempo Settings > API Integration)",
 				Type = PluginConfigurationFieldType.Password,
@@ -66,7 +76,7 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 			},
 			new()
 			{
-				Key = "JiraBaseUrl",
+				Key = ConfigKeys.JiraBaseUrl,
 				Label = "Jira Base URL",
 				Description = "Your Jira instance URL (e.g., https://your-domain.atlassian.net)",
 				Type = PluginConfigurationFieldType.Url,
@@ -77,7 +87,7 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 			},
 			new()
 			{
-				Key = "JiraEmail",
+				Key = ConfigKeys.JiraEmail,
 				Label = "Jira Email",
 				Description = "Your Jira account email address",
 				Type = PluginConfigurationFieldType.Text,
@@ -86,7 +96,7 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 			},
 			new()
 			{
-				Key = "JiraApiToken",
+				Key = ConfigKeys.JiraApiToken,
 				Label = "Jira API Token",
 				Description = "Your Jira API token (get it from Atlassian Account Settings > Security > API tokens)",
 				Type = PluginConfigurationFieldType.Password,
@@ -95,7 +105,7 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 			},
 			new()
 			{
-				Key = "JiraAccountId",
+				Key = ConfigKeys.JiraAccountId,
 				Label = "Jira Account ID (Optional)",
 				Description = "Your Jira account ID. If not provided, it will be automatically retrieved.",
 				Type = PluginConfigurationFieldType.Text,
@@ -111,14 +121,14 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 		_issueIdCache.Clear();
 
 		// Load Tempo configuration
-		_tempoBaseUrl = GetRequiredConfigValue("TempoBaseUrl").TrimEnd('/') + "/"; // Add trailing slash for proper URL resolution
-		_tempoApiToken = GetRequiredConfigValue("TempoApiToken");
+		_tempoBaseUrl = GetRequiredConfigValue(ConfigKeys.TempoBaseUrl).TrimEnd('/') + "/";
+		_tempoApiToken = GetRequiredConfigValue(ConfigKeys.TempoApiToken);
 
 		// Load Jira configuration
-		_jiraBaseUrl = GetRequiredConfigValue("JiraBaseUrl").TrimEnd('/');
-		_jiraEmail = GetRequiredConfigValue("JiraEmail");
-		_jiraApiToken = GetRequiredConfigValue("JiraApiToken");
-		_jiraAccountId = GetConfigValue("JiraAccountId");
+		_jiraBaseUrl = GetRequiredConfigValue(ConfigKeys.JiraBaseUrl).TrimEnd('/');
+		_jiraEmail = GetRequiredConfigValue(ConfigKeys.JiraEmail);
+		_jiraApiToken = GetRequiredConfigValue(ConfigKeys.JiraApiToken);
+		_jiraAccountId = GetConfigValue(ConfigKeys.JiraAccountId);
 
 		// Initialize Tempo HTTP client
 		_tempoHttpClient = new HttpClient
