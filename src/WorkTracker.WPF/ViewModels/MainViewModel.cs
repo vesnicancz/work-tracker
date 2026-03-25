@@ -86,6 +86,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 		StartWorkFromHistoryCommand = new AsyncRelayCommand<WorkEntry>(StartWorkFromHistoryAsync);
 		PreviousDayCommand = new RelayCommand(PreviousDay);
 		NextDayCommand = new RelayCommand(NextDay);
+		GoToTodayCommand = new RelayCommand(GoToToday);
 
 		// Initialize data
 		_ = InitializeAsync();
@@ -175,6 +176,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 	public ICommand StartWorkFromHistoryCommand { get; }
 	public ICommand PreviousDayCommand { get; }
 	public ICommand NextDayCommand { get; }
+	public ICommand GoToTodayCommand { get; }
 
 	#endregion Commands
 
@@ -500,6 +502,11 @@ public class MainViewModel : ViewModelBase, IDisposable
 	private void NextDay()
 	{
 		SelectedDate = SelectedDate.AddDays(1);
+	}
+
+	private void GoToToday()
+	{
+		SelectedDate = _timeProvider.GetLocalNow().Date;
 	}
 
 	#endregion Command Implementations
