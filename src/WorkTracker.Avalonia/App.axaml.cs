@@ -123,9 +123,19 @@ public partial class App : global::Avalonia.Application
 			var mainWindow = desktop.MainWindow as MainWindow;
 			if (mainWindow == null)
 			{
-				// startMinimized — window wasn't created yet
-				mainWindow = new MainWindow();
+				// startMinimized — window wasn't created yet; show briefly to create HWND for hotkey registration
+				mainWindow = new MainWindow { ShowInTaskbar = false, Opacity = 0 };
 				desktop.MainWindow = mainWindow;
+				try
+				{
+					mainWindow.Show();
+					mainWindow.Hide();
+				}
+				finally
+				{
+					mainWindow.ShowInTaskbar = true;
+					mainWindow.Opacity = 1;
+				}
 			}
 
 			mainWindow.Initialize(viewModel, trayIconService, settingsService, worklogStateService);
@@ -135,10 +145,7 @@ public partial class App : global::Avalonia.Application
 			_hotkeyService.HotkeyPressed += OnHotkeyPressed;
 			_hotkeyService.Register();
 
-			if (startMinimized)
-			{
-				mainWindow.Hide();
-			}
+
 
 			// Load plugins in the background — not needed for initial UI
 			var pluginLogger = _host.Services.GetRequiredService<ILoggerFactory>().CreateLogger<App>();

@@ -1,4 +1,6 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
+using Microsoft.Extensions.DependencyInjection;
 using WorkTracker.Domain.Entities;
 using WorkTracker.UI.Shared.Services;
 using WorkTracker.Avalonia.ViewModels;
@@ -22,13 +24,20 @@ public sealed class DialogService : IDialogService
 		await viewModel.InitializeAsync(workEntry);
 
 		var dialog = new WorkEntryEditDialog { DataContext = viewModel };
-		var mainWindow = GetMainWindow();
+
+		var mainWindow = GetVisibleMainWindow();
 		if (mainWindow != null)
 		{
 			var result = await dialog.ShowDialog<bool?>(mainWindow);
 			return result == true;
 		}
-		return false;
+
+		// Main window hidden (e.g. minimized to tray) — show as standalone window
+		var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+		dialog.Closed += (_, _) => tcs.TrySetResult(viewModel.DialogResult);
+		dialog.Show();
+		dialog.Activate();
+		return await tcs.Task;
 	}
 
 	public async Task<bool> ShowSubmitWorklogDialogAsync(DateTime? date = null, bool isWeek = false)
@@ -94,9 +103,20 @@ public sealed class DialogService : IDialogService
 		return false;
 	}
 
-	private static global::Avalonia.Controls.Window? GetMainWindow()
+	private static Window? GetVisibleMainWindow()
 	{
-		if (global::Avalonia.Application.Current?.ApplicationLifetime is global::Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
+		if (global::Avalonia.Application.Current?.ApplicationLifetime
+				is IClassicDesktopStyleApplicationLifetime { MainWindow: { IsVisible: true } mainWindow })
+		{
+			return mainWindow;
+		}
+		return null;
+	}
+
+	private static Window? GetMainWindow()
+	{
+		if (global::Avalonia.Application.Current?.ApplicationLifetime
+				is IClassicDesktopStyleApplicationLifetime desktop)
 		{
 			return desktop.MainWindow;
 		}
