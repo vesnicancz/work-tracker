@@ -1,4 +1,4 @@
-﻿using WorkTracker.Application.Common;
+using WorkTracker.Application.Common;
 using WorkTracker.Domain.Entities;
 
 namespace WorkTracker.UI.Shared.Services;

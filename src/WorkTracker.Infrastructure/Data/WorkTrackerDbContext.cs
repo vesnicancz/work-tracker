@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using WorkTracker.Domain.Entities;
 
 namespace WorkTracker.Infrastructure.Data;

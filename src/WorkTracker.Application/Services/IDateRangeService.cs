@@ -1,4 +1,4 @@
-﻿namespace WorkTracker.Application.Services;
+namespace WorkTracker.Application.Services;
 
 /// <summary>
 /// Service for calculating date ranges

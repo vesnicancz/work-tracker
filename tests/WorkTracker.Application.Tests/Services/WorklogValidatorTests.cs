@@ -1,6 +1,6 @@
-﻿using FluentAssertions;
-using WorkTracker.Application.Services;
+using FluentAssertions;
 using WorkTracker.Application.DTOs;
+using WorkTracker.Application.Services;
 using WorkTracker.Domain.Entities;
 
 namespace WorkTracker.Application.Tests.Services;

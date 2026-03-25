@@ -1,4 +1,4 @@
-﻿using WorkTracker.Application.DTOs;
+using WorkTracker.Application.DTOs;
 using WorkTracker.Domain.Entities;
 
 namespace WorkTracker.Application.Services;

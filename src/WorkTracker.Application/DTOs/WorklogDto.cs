@@ -1,4 +1,4 @@
-﻿namespace WorkTracker.Application.DTOs;
+namespace WorkTracker.Application.DTOs;
 
 /// <summary>
 /// Data transfer object for worklog submission to external providers

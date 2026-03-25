@@ -1,4 +1,4 @@
-﻿namespace WorkTracker.Application.Common;
+namespace WorkTracker.Application.Common;
 
 /// <summary>
 /// Represents the result of an operation that can succeed or fail

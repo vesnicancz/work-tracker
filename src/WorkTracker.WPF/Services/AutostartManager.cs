@@ -1,5 +1,4 @@
-﻿using System.IO;
-using System.Reflection;
+using System.IO;
 using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
 using WorkTracker.UI.Shared.Services;

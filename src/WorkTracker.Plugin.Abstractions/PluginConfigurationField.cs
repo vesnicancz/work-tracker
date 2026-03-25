@@ -1,4 +1,4 @@
-﻿namespace WorkTracker.Plugin.Abstractions;
+namespace WorkTracker.Plugin.Abstractions;
 
 /// <summary>
 /// Configuration field definition for plugin settings

@@ -1,4 +1,4 @@
-﻿using FluentAssertions;
+using FluentAssertions;
 using WorkTracker.Application.Services;
 
 namespace WorkTracker.Application.Tests.Services;

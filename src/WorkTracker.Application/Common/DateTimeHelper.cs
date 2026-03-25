@@ -1,4 +1,4 @@
-﻿namespace WorkTracker.Application.Common;
+namespace WorkTracker.Application.Common;
 
 /// <summary>
 /// Helper methods for DateTime operations

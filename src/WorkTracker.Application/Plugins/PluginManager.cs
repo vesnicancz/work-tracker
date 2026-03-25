@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+using System.Reflection;
 using System.Runtime.Loader;
 using Microsoft.Extensions.Logging;
 using WorkTracker.Plugin.Abstractions;

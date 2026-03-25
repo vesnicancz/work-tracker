@@ -1,10 +1,10 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.Windows.Input;
+using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using WorkTracker.Application.Plugins;
 using WorkTracker.Plugin.Abstractions;
-using CommunityToolkit.Mvvm.Input;
 using WorkTracker.UI.Shared.Models;
 using WorkTracker.UI.Shared.Services;
 

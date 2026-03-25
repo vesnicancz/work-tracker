@@ -1,4 +1,4 @@
-﻿using WorkTracker.UI.Shared.Models;
+using WorkTracker.UI.Shared.Models;
 
 namespace WorkTracker.UI.Shared.Services;
 
