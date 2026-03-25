@@ -5,6 +5,7 @@
         xmlns:material="using:Material.Icons.Avalonia"
         xmlns:markup="using:WorkTracker.Avalonia.Markup"
         xmlns:vm="using:WorkTracker.Avalonia.ViewModels"
+        xmlns:shared="using:WorkTracker.UI.Shared.ViewModels"
         x:Class="WorkTracker.Avalonia.Views.SubmitWorklogDialog"
         x:DataType="vm:SubmitWorklogViewModel"
         mc:Ignorable="d"
@@ -102,7 +103,7 @@
                                       VerticalScrollBarVisibility="Auto">
                             <ItemsControl ItemsSource="{Binding PreviewItems}">
                                 <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="vm:WorklogPreviewItem">
+                                    <DataTemplate x:DataType="shared:WorklogPreviewItem">
                                         <Panel>
                                             <!-- Date header -->
                                             <StackPanel IsVisible="{Binding IsDateHeader}" Margin="4,10,4,2">

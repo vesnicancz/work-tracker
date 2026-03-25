@@ -4,9 +4,9 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using WorkTracker.Application.Common;
 using WorkTracker.Application.Services;
 using WorkTracker.Domain.Entities;
+using WorkTracker.UI.Shared.Orchestrators;
 using WorkTracker.UI.Shared.Services;
 
 namespace WorkTracker.Avalonia.ViewModels;
@@ -188,25 +188,9 @@ public class MainViewModel : ViewModelBase, IDisposable
 
 	private void ParseWorkInput(string input)
 	{
-		if (string.IsNullOrWhiteSpace(input))
-		{
-			DetectedTicketId = null;
-			DetectedDescription = null;
-			return;
-		}
-
-		var match = JiraPatterns.TicketId().Match(input);
-		if (match.Success)
-		{
-			DetectedTicketId = match.Groups[1].Value;
-			var remaining = input.Substring(DetectedTicketId.Length).TrimStart();
-			DetectedDescription = string.IsNullOrWhiteSpace(remaining) ? null : remaining;
-		}
-		else
-		{
-			DetectedTicketId = null;
-			DetectedDescription = input;
-		}
+		var (ticketId, description) = WorkInputParser.Parse(input);
+		DetectedTicketId = ticketId;
+		DetectedDescription = description;
 	}
 
 	private bool CanStartWork() => !string.IsNullOrWhiteSpace(WorkInput);

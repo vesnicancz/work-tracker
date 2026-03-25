@@ -5,6 +5,7 @@
         xmlns:material="using:Material.Icons.Avalonia"
         xmlns:markup="using:WorkTracker.Avalonia.Markup"
         xmlns:vm="using:WorkTracker.Avalonia.ViewModels"
+        xmlns:shared="using:WorkTracker.UI.Shared.ViewModels"
         x:Class="WorkTracker.Avalonia.Views.SettingsWindow"
         x:DataType="vm:SettingsViewModel"
         mc:Ignorable="d"
@@ -312,7 +313,7 @@
                                         <!-- Config fields -->
                                         <ItemsControl ItemsSource="{Binding SelectedPlugin.ConfigurationFields}">
                                             <ItemsControl.ItemTemplate>
-                                                <DataTemplate x:DataType="vm:ConfigurationFieldViewModel">
+                                                <DataTemplate x:DataType="shared:ConfigurationFieldViewModel">
                                                     <StackPanel Margin="0,0,0,8" Spacing="3">
                                                         <TextBlock Text="{Binding Label}" FontSize="12" FontWeight="Medium" />
                                                         <TextBox Text="{Binding Value, Mode=TwoWay}"

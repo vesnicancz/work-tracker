@@ -3,13 +3,14 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using WorkTracker.Application.Common;
 using WorkTracker.Domain.Entities;
+using WorkTracker.UI.Shared.Orchestrators;
 using WorkTracker.UI.Shared.Services;
 
 namespace WorkTracker.Avalonia.ViewModels;
 
 public class WorkEntryEditViewModel : ViewModelBase
 {
-	private readonly IWorklogStateService _worklogStateService;
+	private readonly IWorkEntryEditOrchestrator _orchestrator;
 	private readonly TimeProvider _timeProvider;
 	private readonly ILocalizationService _localization;
 	private readonly ILogger<WorkEntryEditViewModel> _logger;
@@ -26,12 +27,12 @@ public class WorkEntryEditViewModel : ViewModelBase
 	private string? _validationError;
 
 	public WorkEntryEditViewModel(
-		IWorklogStateService worklogStateService,
+		IWorkEntryEditOrchestrator orchestrator,
 		ILocalizationService localization,
 		TimeProvider timeProvider,
 		ILogger<WorkEntryEditViewModel> logger)
 	{
-		_worklogStateService = worklogStateService;
+		_orchestrator = orchestrator;
 		_localization = localization;
 		_timeProvider = timeProvider;
 		_logger = logger;
@@ -182,19 +183,7 @@ public class WorkEntryEditViewModel : ViewModelBase
 
 	private void ValidateInput()
 	{
-		ValidationError = null;
-		if (string.IsNullOrWhiteSpace(TicketId) && string.IsNullOrWhiteSpace(Description))
-		{
-			ValidationError = _localization["EitherTicketOrDescriptionRequired"];
-			SaveCommand.NotifyCanExecuteChanged();
-			return;
-		}
-		if (HasEndTime && EndDateTime.HasValue && EndDateTime.Value <= StartDateTime)
-		{
-			ValidationError = _localization["EndTimeMustBeAfterStartTime"];
-			SaveCommand.NotifyCanExecuteChanged();
-			return;
-		}
+		ValidationError = _orchestrator.Validate(TicketId, Description, HasEndTime, StartDateTime, EndDateTime);
 		SaveCommand.NotifyCanExecuteChanged();
 	}
 
@@ -204,16 +193,16 @@ public class WorkEntryEditViewModel : ViewModelBase
 	{
 		try
 		{
-			if (!_isNewEntry)
+			var result = _isNewEntry
+				? await _orchestrator.SaveNewAsync(TicketId, StartDateTime, EndDateTime, Description)
+				: await _orchestrator.SaveExistingAsync(EntryId, TicketId, StartDateTime, EndDateTime, Description);
+
+			if (result.IsFailure)
 			{
-				var result = await _worklogStateService.UpdateWorkEntryAsync(EntryId, TicketId, StartDateTime, EndDateTime, Description);
-				if (result.IsFailure) { ValidationError = result.Error; return; }
+				ValidationError = result.Error;
+				return;
 			}
-			else
-			{
-				var result = await _worklogStateService.CreateWorkEntryAsync(TicketId, StartDateTime, Description, EndDateTime);
-				if (result.IsFailure) { ValidationError = result.Error; return; }
-			}
+
 			DialogResult = true;
 			CloseAction?.Invoke();
 		}

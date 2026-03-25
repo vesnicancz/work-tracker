@@ -1,6 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
-using WorkTracker.WPF.ViewModels;
+using WorkTracker.UI.Shared.ViewModels;
 
 namespace WorkTracker.WPF.Selectors;
 

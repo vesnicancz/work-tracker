@@ -13,6 +13,7 @@ using WorkTracker.Avalonia.Services;
 using WorkTracker.Avalonia.ViewModels;
 using WorkTracker.Avalonia.Views;
 using WorkTracker.Infrastructure;
+using WorkTracker.UI.Shared;
 using WorkTracker.UI.Shared.Models;
 using WorkTracker.UI.Shared.Services;
 
@@ -79,6 +80,7 @@ public partial class App : global::Avalonia.Application
 					.ConfigureServices((context, services) =>
 					{
 						services.AddInfrastructure(context.Configuration);
+						services.AddUIShared();
 
 						services.AddSingleton(localization);
 						services.AddSingleton<ILocalizationService>(localization);
@@ -144,8 +146,6 @@ public partial class App : global::Avalonia.Application
 			_hotkeyService = _host.Services.GetRequiredService<IHotkeyService>();
 			_hotkeyService.HotkeyPressed += OnHotkeyPressed;
 			_hotkeyService.Register();
-
-
 
 			// Load plugins in the background — not needed for initial UI
 			var pluginLogger = _host.Services.GetRequiredService<ILoggerFactory>().CreateLogger<App>();

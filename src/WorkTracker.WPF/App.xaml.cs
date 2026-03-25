@@ -8,6 +8,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using WorkTracker.Application.Plugins;
 using WorkTracker.Infrastructure;
+using WorkTracker.UI.Shared;
 
 using WorkTracker.UI.Shared.Services;
 using WorkTracker.WPF.Services;
@@ -53,6 +54,7 @@ public partial class App : System.Windows.Application
 			{
 				// Infrastructure services (database, API clients, application services)
 				services.AddInfrastructure(context.Configuration);
+				services.AddUIShared();
 				// Note: IWorkEntryService and IWorklogSubmissionService are registered in Infrastructure layer
 
 				// Localization — single instance shared by DI and XAML markup extensions.
