@@ -142,7 +142,7 @@ public class WorklogSubmissionOrchestrator : IWorklogSubmissionOrchestrator
 			_localization.GetFormattedString("ErrorPrefix", result.Error));
 	}
 
-	private bool MarkFailedItems(IReadOnlyList<WorklogPreviewItem> items, SubmissionResult submission)
+	internal bool MarkFailedItems(IReadOnlyList<WorklogPreviewItem> items, SubmissionResult submission)
 	{
 		var dataItems = items.Where(i => !i.IsDateHeader).ToList();
 
@@ -193,7 +193,7 @@ public class WorklogSubmissionOrchestrator : IWorklogSubmissionOrchestrator
 
 	public string FormatDuration(int seconds) => DurationFormatter.Format(seconds);
 
-	private string FormatSubmissionStatus(SubmissionResult submission, string providerName)
+	internal string FormatSubmissionStatus(SubmissionResult submission, string providerName)
 	{
 		if (submission.FailedEntries == 0)
 		{

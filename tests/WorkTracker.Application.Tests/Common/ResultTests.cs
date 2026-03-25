@@ -61,7 +61,8 @@ public class ResultTests
 		result.IsSuccess.Should().BeFalse();
 		result.IsFailure.Should().BeTrue();
 		result.Error.Should().Be(errorMessage);
-		result.Value.Should().BeNull();
+		var act = () => _ = result.Value;
+		act.Should().Throw<InvalidOperationException>();
 	}
 
 	[Fact]
