@@ -1,12 +1,11 @@
 using System.Collections.ObjectModel;
 using System.Windows.Input;
 using CommunityToolkit.Mvvm.Input;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using WorkTracker.Application.Plugins;
-using WorkTracker.Plugin.Abstractions;
 using WorkTracker.UI.Shared.Models;
+using WorkTracker.UI.Shared.Orchestrators;
 using WorkTracker.UI.Shared.Services;
+using WorkTracker.UI.Shared.ViewModels;
 
 namespace WorkTracker.WPF.ViewModels;
 
@@ -15,12 +14,10 @@ namespace WorkTracker.WPF.ViewModels;
 /// </summary>
 public class SettingsViewModel : ViewModelBase
 {
+	private readonly ISettingsOrchestrator _orchestrator;
 	private readonly ISettingsService _settingsService;
-	private readonly IPluginManager _pluginManager;
-	private readonly IConfiguration _configuration;
-	private readonly ILogger<SettingsViewModel> _logger;
 	private readonly IAutostartManager _autostartManager;
-	private readonly ITrayIconService _trayIconService;
+	private readonly ILogger<SettingsViewModel> _logger;
 	private CloseWindowBehavior _closeWindowBehavior;
 	private bool _startWithWindows;
 	private bool _startMinimized;
@@ -30,6 +27,7 @@ public class SettingsViewModel : ViewModelBase
 
 	// Favorites
 	private FavoriteWorkItem? _selectedFavorite;
+
 	private string _editingFavoriteName = string.Empty;
 	private string _editingFavoriteTicket = string.Empty;
 	private string _editingFavoriteDescription = string.Empty;
@@ -37,23 +35,18 @@ public class SettingsViewModel : ViewModelBase
 	private bool _isAddingFavorite;
 
 	public SettingsViewModel(
+		ISettingsOrchestrator orchestrator,
 		ISettingsService settingsService,
-		IPluginManager pluginManager,
-		IConfiguration configuration,
 		ILogger<SettingsViewModel> logger,
-		IAutostartManager autostartManager,
-		ITrayIconService trayIconService)
+		IAutostartManager autostartManager)
 	{
+		_orchestrator = orchestrator;
 		_settingsService = settingsService;
-		_pluginManager = pluginManager;
-		_configuration = configuration;
 		_logger = logger;
 		_autostartManager = autostartManager;
-		_trayIconService = trayIconService;
 
 		// Load current settings
 		_closeWindowBehavior = _settingsService.Settings.CloseWindowBehavior;
-		// Check actual autostart status from registry (more reliable than saved setting)
 		_startWithWindows = _autostartManager.IsEnabled;
 		_startMinimized = _settingsService.Settings.StartMinimized;
 
@@ -73,10 +66,12 @@ public class SettingsViewModel : ViewModelBase
 		// Load favorites
 		LoadFavorites();
 
-		// Load plugins (do this last in case it throws)
+		// Load plugins
 		try
 		{
-			LoadPlugins();
+			var plugins = _orchestrator.LoadPlugins();
+			foreach (var p in plugins) Plugins.Add(p);
+			if (Plugins.Any()) SelectedPlugin = Plugins.First();
 		}
 		catch (Exception ex)
 		{
@@ -95,25 +90,13 @@ public class SettingsViewModel : ViewModelBase
 	public bool IsMinimizeToTray
 	{
 		get => CloseWindowBehavior == CloseWindowBehavior.MinimizeToTray;
-		set
-		{
-			if (value)
-			{
-				CloseWindowBehavior = CloseWindowBehavior.MinimizeToTray;
-			}
-		}
+		set { if (value) CloseWindowBehavior = CloseWindowBehavior.MinimizeToTray; }
 	}
 
 	public bool IsExitApplication
 	{
 		get => CloseWindowBehavior == CloseWindowBehavior.ExitApplication;
-		set
-		{
-			if (value)
-			{
-				CloseWindowBehavior = CloseWindowBehavior.ExitApplication;
-			}
-		}
+		set { if (value) CloseWindowBehavior = CloseWindowBehavior.ExitApplication; }
 	}
 
 	public bool StartWithWindows
@@ -183,7 +166,6 @@ public class SettingsViewModel : ViewModelBase
 				((IRelayCommand)MoveFavoriteDownCommand).NotifyCanExecuteChanged();
 				OnPropertyChanged(nameof(IsEditFormVisible));
 
-				// Cancel add mode when user clicks an existing item
 				if (value != null && IsAddingFavorite)
 				{
 					IsAddingFavorite = false;
@@ -241,7 +223,7 @@ public class SettingsViewModel : ViewModelBase
 
 	public bool IsEditFormVisible => SelectedFavorite != null || IsAddingFavorite;
 
-	#endregion
+	#endregion Properties
 
 	#region Commands
 
@@ -249,7 +231,6 @@ public class SettingsViewModel : ViewModelBase
 	public ICommand CancelCommand { get; }
 	public ICommand TestConnectionCommand { get; }
 
-	// Favorites commands
 	public ICommand AddFavoriteCommand { get; }
 	public ICommand SaveFavoriteCommand { get; }
 	public ICommand CancelEditFavoriteCommand { get; }
@@ -257,7 +238,7 @@ public class SettingsViewModel : ViewModelBase
 	public ICommand MoveFavoriteUpCommand { get; }
 	public ICommand MoveFavoriteDownCommand { get; }
 
-	#endregion
+	#endregion Commands
 
 	#region Command Implementations
 
@@ -265,40 +246,16 @@ public class SettingsViewModel : ViewModelBase
 	{
 		try
 		{
-			var settings = new ApplicationSettings
+			var request = new SettingsSaveRequest
 			{
 				CloseWindowBehavior = CloseWindowBehavior,
 				StartWithWindows = StartWithWindows,
 				StartMinimized = StartMinimized,
-				PluginConfigurations = new Dictionary<string, Dictionary<string, string>>(),
-				EnabledPlugins = new Dictionary<string, bool>(),
-				FavoriteWorkItems = FavoriteWorkItems.ToList()
+				FavoriteWorkItems = FavoriteWorkItems.ToList(),
+				Plugins = Plugins.ToList()
 			};
 
-			// Save plugin configurations and enabled state
-			foreach (var pluginVm in Plugins)
-			{
-				settings.PluginConfigurations[pluginVm.Plugin.Metadata.Id] =
-					new Dictionary<string, string>(pluginVm.Configuration);
-				settings.EnabledPlugins[pluginVm.Plugin.Metadata.Id] = pluginVm.IsEnabled;
-			}
-
-			await _settingsService.SaveSettingsAsync(settings);
-
-			// Update enabled plugins in PluginManager
-			var enabledPluginIds = Plugins.Where(p => p.IsEnabled).Select(p => p.Plugin.Metadata.Id);
-			_pluginManager.SetEnabledPlugins(enabledPluginIds);
-
-			// Re-initialize plugins with new configuration
-			await _pluginManager.InitializePluginsAsync(settings.PluginConfigurations);
-
-			// Apply autostart setting
-			_autostartManager.SetAutostart(StartWithWindows);
-
-			// Refresh tray menu favorites
-			_trayIconService.RefreshFavoritesMenu();
-
-			_logger.LogInformation("Settings saved successfully");
+			await _orchestrator.SaveSettingsAsync(request);
 
 			DialogResult = true;
 			CloseAction?.Invoke();
@@ -316,100 +273,22 @@ public class SettingsViewModel : ViewModelBase
 		CloseAction?.Invoke();
 	}
 
-	private void LoadPlugins()
-	{
-		Plugins.Clear();
-
-		foreach (var plugin in _pluginManager.LoadedPlugins.Values)
-		{
-			var pluginViewModel = new PluginViewModel(plugin);
-
-			// Load enabled state (default to true if not found)
-			if (_settingsService.Settings.EnabledPlugins.TryGetValue(plugin.Metadata.Id, out var isEnabled))
-			{
-				pluginViewModel.IsEnabled = isEnabled;
-			}
-
-			// First try to load from user settings
-			if (_settingsService.Settings.PluginConfigurations.TryGetValue(plugin.Metadata.Id, out var savedConfig))
-			{
-				foreach (var kvp in savedConfig)
-				{
-					pluginViewModel.Configuration[kvp.Key] = kvp.Value;
-				}
-			}
-			else
-			{
-				// Fall back to appsettings.json for initial configuration
-				var configSection = _configuration.GetSection($"Plugins:{plugin.Metadata.Id}");
-				foreach (var field in pluginViewModel.ConfigurationFields)
-				{
-					var value = configSection[field.Key];
-					if (!string.IsNullOrEmpty(value))
-					{
-						pluginViewModel.Configuration[field.Key] = value;
-					}
-				}
-			}
-
-			// Notify ConfigurationFieldViewModels about loaded values
-			foreach (var fieldVm in pluginViewModel.ConfigurationFields)
-			{
-				fieldVm.RefreshValue();
-			}
-
-			Plugins.Add(pluginViewModel);
-		}
-
-		if (Plugins.Any())
-		{
-			SelectedPlugin = Plugins.First();
-		}
-	}
-
 	private async Task TestConnectionAsync()
 	{
-		if (SelectedPlugin == null)
-		{
-			return;
-		}
+		if (SelectedPlugin == null) return;
 
-		// Test connection is only available for worklog upload plugins
-		if (SelectedPlugin.Plugin is not IWorklogUploadPlugin worklogPlugin)
-		{
-			TestConnectionResult = "✗ Test connection not available for this plugin type";
-			return;
-		}
-
+		var pluginId = SelectedPlugin.Plugin.Metadata.Id;
 		IsTestingConnection = true;
 		TestConnectionResult = null;
 
 		try
 		{
-			_logger.LogInformation("Testing connection for plugin {PluginId}", SelectedPlugin.Plugin.Metadata.Id);
-
-			// Temporarily initialize plugin with current configuration
-			var tempConfig = new Dictionary<string, string>(SelectedPlugin.Configuration);
-			await SelectedPlugin.Plugin.InitializeAsync(tempConfig);
-
-			var result = await worklogPlugin.TestConnectionAsync();
-
-			if (result.IsSuccess)
-			{
-				TestConnectionResult = "✓ Connection successful";
-				_logger.LogInformation("Connection test successful for {PluginId}", SelectedPlugin.Plugin.Metadata.Id);
-			}
-			else
-			{
-				TestConnectionResult = $"✗ Connection failed: {result.Error}";
-				_logger.LogWarning("Connection test failed for {PluginId}: {Error}",
-					SelectedPlugin.Plugin.Metadata.Id, result.Error);
-			}
+			TestConnectionResult = await _orchestrator.TestConnectionAsync(SelectedPlugin);
 		}
 		catch (Exception ex)
 		{
 			TestConnectionResult = $"✗ Error: {ex.Message}";
-			_logger.LogError(ex, "Error testing connection for {PluginId}", SelectedPlugin?.Plugin.Metadata.Id);
+			_logger.LogError(ex, "Error testing connection for {PluginId}", pluginId);
 		}
 		finally
 		{
@@ -417,7 +296,7 @@ public class SettingsViewModel : ViewModelBase
 		}
 	}
 
-	#endregion
+	#endregion Command Implementations
 
 	#region Favorites
 
@@ -439,10 +318,7 @@ public class SettingsViewModel : ViewModelBase
 
 	private void SaveFavorite()
 	{
-		if (string.IsNullOrWhiteSpace(EditingFavoriteName))
-		{
-			return;
-		}
+		if (string.IsNullOrWhiteSpace(EditingFavoriteName)) return;
 
 		if (SelectedFavorite != null && !IsAddingFavorite)
 		{
@@ -453,7 +329,6 @@ public class SettingsViewModel : ViewModelBase
 		}
 		else
 		{
-			// Add new favorite
 			var newFavorite = new FavoriteWorkItem
 			{
 				Name = EditingFavoriteName,
@@ -471,35 +346,18 @@ public class SettingsViewModel : ViewModelBase
 	private void CancelEditFavorite()
 	{
 		IsAddingFavorite = false;
-
-		if (SelectedFavorite != null)
-		{
-			LoadEditingFields(SelectedFavorite);
-		}
-		else
-		{
-			ClearEditingFields();
-		}
+		if (SelectedFavorite != null) LoadEditingFields(SelectedFavorite);
+		else ClearEditingFields();
 	}
 
 	private void RemoveFavorite()
 	{
-		if (SelectedFavorite != null)
-		{
-			var index = FavoriteWorkItems.IndexOf(SelectedFavorite);
-			FavoriteWorkItems.Remove(SelectedFavorite);
-
-			// Select next item or previous if at end
-			if (FavoriteWorkItems.Count > 0)
-			{
-				SelectedFavorite = FavoriteWorkItems[Math.Min(index, FavoriteWorkItems.Count - 1)];
-			}
-			else
-			{
-				SelectedFavorite = null;
-				ClearEditingFields();
-			}
-		}
+		if (SelectedFavorite == null) return;
+		var index = FavoriteWorkItems.IndexOf(SelectedFavorite);
+		FavoriteWorkItems.Remove(SelectedFavorite);
+		if (FavoriteWorkItems.Count > 0)
+			SelectedFavorite = FavoriteWorkItems[Math.Min(index, FavoriteWorkItems.Count - 1)];
+		else { SelectedFavorite = null; ClearEditingFields(); }
 	}
 
 	private void LoadEditingFields(FavoriteWorkItem item)
@@ -518,18 +376,11 @@ public class SettingsViewModel : ViewModelBase
 		EditingFavoriteShowAsTemplate = false;
 	}
 
-	private bool CanMoveFavoriteUp()
-	{
-		return SelectedFavorite != null && FavoriteWorkItems.IndexOf(SelectedFavorite) > 0;
-	}
+	private bool CanMoveFavoriteUp() => SelectedFavorite != null && FavoriteWorkItems.IndexOf(SelectedFavorite) > 0;
 
 	private void MoveFavoriteUp()
 	{
-		if (SelectedFavorite == null)
-		{
-			return;
-		}
-
+		if (SelectedFavorite == null) return;
 		var item = SelectedFavorite;
 		var index = FavoriteWorkItems.IndexOf(item);
 		if (index > 0)
@@ -541,18 +392,11 @@ public class SettingsViewModel : ViewModelBase
 		}
 	}
 
-	private bool CanMoveFavoriteDown()
-	{
-		return SelectedFavorite != null && FavoriteWorkItems.IndexOf(SelectedFavorite) < FavoriteWorkItems.Count - 1;
-	}
+	private bool CanMoveFavoriteDown() => SelectedFavorite != null && FavoriteWorkItems.IndexOf(SelectedFavorite) < FavoriteWorkItems.Count - 1;
 
 	private void MoveFavoriteDown()
 	{
-		if (SelectedFavorite == null)
-		{
-			return;
-		}
-
+		if (SelectedFavorite == null) return;
 		var item = SelectedFavorite;
 		var index = FavoriteWorkItems.IndexOf(item);
 		if (index < FavoriteWorkItems.Count - 1)
@@ -564,93 +408,5 @@ public class SettingsViewModel : ViewModelBase
 		}
 	}
 
-	#endregion
-}
-
-/// <summary>
-/// ViewModel for a plugin configuration
-/// </summary>
-public class PluginViewModel : ViewModelBase
-{
-	private bool _isEnabled = true;
-
-	public IPlugin Plugin { get; }
-	public Dictionary<string, string> Configuration { get; } = new();
-	public ObservableCollection<ConfigurationFieldViewModel> ConfigurationFields { get; } = new();
-
-	public PluginViewModel(IPlugin plugin)
-	{
-		Plugin = plugin;
-
-		// Initialize configuration with default values and create field view models
-		// Only worklog upload plugins have configuration fields
-		if (plugin is IWorklogUploadPlugin worklogPlugin)
-		{
-			foreach (var field in worklogPlugin.GetConfigurationFields())
-			{
-				var value = string.Empty;
-				if (!string.IsNullOrEmpty(field.DefaultValue))
-				{
-					value = field.DefaultValue;
-					Configuration[field.Key] = value;
-				}
-
-				ConfigurationFields.Add(new ConfigurationFieldViewModel(field, this));
-			}
-		}
-	}
-
-	public string Name => Plugin.Metadata.Name;
-	public string Description => Plugin.Metadata.Description ?? string.Empty;
-	public string Version => Plugin.Metadata.Version.ToString();
-	public string Author => Plugin.Metadata.Author;
-	public bool SupportsTestConnection => Plugin is IWorklogUploadPlugin;
-
-	public bool IsEnabled
-	{
-		get => _isEnabled;
-		set => SetProperty(ref _isEnabled, value);
-	}
-}
-
-/// <summary>
-/// ViewModel for a configuration field
-/// </summary>
-public class ConfigurationFieldViewModel : ViewModelBase
-{
-	private readonly PluginConfigurationField _field;
-	private readonly PluginViewModel _pluginViewModel;
-
-	public ConfigurationFieldViewModel(PluginConfigurationField field, PluginViewModel pluginViewModel)
-	{
-		_field = field;
-		_pluginViewModel = pluginViewModel;
-	}
-
-	public string Key => _field.Key;
-	public string Label => _field.Label;
-	public string? Description => _field.Description;
-	public string? Placeholder => _field.Placeholder;
-	public PluginConfigurationFieldType Type => _field.Type;
-	public bool IsRequired => _field.IsRequired;
-
-	public string Value
-	{
-		get => _pluginViewModel.Configuration.TryGetValue(Key, out var value) ? value : string.Empty;
-		set
-		{
-			if (_pluginViewModel.Configuration.TryGetValue(Key, out var current) && current == value)
-			{
-				return;
-			}
-
-			_pluginViewModel.Configuration[Key] = value;
-			OnPropertyChanged();
-		}
-	}
-
-	public void RefreshValue()
-	{
-		OnPropertyChanged(nameof(Value));
-	}
+	#endregion Favorites
 }

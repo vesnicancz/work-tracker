@@ -4,9 +4,9 @@ using System.Windows.Threading;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using WorkTracker.Application.Common;
 using WorkTracker.Application.Services;
 using WorkTracker.Domain.Entities;
+using WorkTracker.UI.Shared.Orchestrators;
 using WorkTracker.UI.Shared.Services;
 
 namespace WorkTracker.WPF.ViewModels;
@@ -205,31 +205,11 @@ public class MainViewModel : ViewModelBase, IDisposable
 
 	#region Work Input Parsing
 
-	/// <summary>
-	/// Parses work input to detect Jira ticket ID and description
-	/// Format: "PROJECT-123 Description text" or just "Description text"
-	/// </summary>
 	private void ParseWorkInput(string input)
 	{
-		if (string.IsNullOrWhiteSpace(input))
-		{
-			DetectedTicketId = null;
-			DetectedDescription = null;
-			return;
-		}
-
-		var match = JiraPatterns.TicketId().Match(input);
-		if (match.Success)
-		{
-			DetectedTicketId = match.Groups[1].Value;
-			var remaining = input.Substring(DetectedTicketId.Length).TrimStart();
-			DetectedDescription = string.IsNullOrWhiteSpace(remaining) ? null : remaining;
-		}
-		else
-		{
-			DetectedTicketId = null;
-			DetectedDescription = input;
-		}
+		var (ticketId, description) = WorkInputParser.Parse(input);
+		DetectedTicketId = ticketId;
+		DetectedDescription = description;
 	}
 
 	#endregion Work Input Parsing
@@ -606,5 +586,5 @@ public class MainViewModel : ViewModelBase, IDisposable
 		_worklogStateService.WorkEntriesModified -= OnWorkEntriesModified;
 	}
 
-	#endregion
+	#endregion IDisposable
 }

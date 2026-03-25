@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using WorkTracker.Application.Common;
 using WorkTracker.Domain.Entities;
+using WorkTracker.UI.Shared.Orchestrators;
 using WorkTracker.UI.Shared.Services;
 
 namespace WorkTracker.WPF.ViewModels;
@@ -12,8 +13,7 @@ namespace WorkTracker.WPF.ViewModels;
 /// </summary>
 public class WorkEntryEditViewModel : ViewModelBase
 {
-	private readonly IWorklogStateService _worklogStateService;
-	private readonly INotificationService _notificationService;
+	private readonly IWorkEntryEditOrchestrator _orchestrator;
 	private readonly TimeProvider _timeProvider;
 	private readonly ILocalizationService _localization;
 	private readonly ILogger<WorkEntryEditViewModel> _logger;
@@ -30,14 +30,12 @@ public class WorkEntryEditViewModel : ViewModelBase
 	private string? _validationError;
 
 	public WorkEntryEditViewModel(
-		IWorklogStateService worklogStateService,
-		INotificationService notificationService,
+		IWorkEntryEditOrchestrator orchestrator,
 		ILocalizationService localization,
 		TimeProvider timeProvider,
 		ILogger<WorkEntryEditViewModel> logger)
 	{
-		_worklogStateService = worklogStateService;
-		_notificationService = notificationService;
+		_orchestrator = orchestrator;
 		_localization = localization;
 		_timeProvider = timeProvider;
 		_logger = logger;
@@ -144,7 +142,6 @@ public class WorkEntryEditViewModel : ViewModelBase
 				}
 				else if (EndDate == null)
 				{
-					// Set to current time when enabling end time
 					var now = DateTimeHelper.RoundToMinute(_timeProvider.GetLocalNow().DateTime);
 					EndDate = now.Date;
 					EndTime = new TimeSpan(now.Hour, now.Minute, 0);
@@ -226,79 +223,26 @@ public class WorkEntryEditViewModel : ViewModelBase
 
 	#endregion Initialization
 
-	#region Validation
-
 	private void ValidateInput()
 	{
-		ValidationError = null;
-
-		// At least ticket or description required
-		if (string.IsNullOrWhiteSpace(TicketId) && string.IsNullOrWhiteSpace(Description))
-		{
-			ValidationError = _localization["EitherTicketOrDescriptionRequired"];
-			((IAsyncRelayCommand)SaveCommand).NotifyCanExecuteChanged();
-			return;
-		}
-
-		// End time must be after start time
-		if (HasEndTime && EndDateTime.HasValue)
-		{
-			if (EndDateTime.Value <= StartDateTime)
-			{
-				ValidationError = _localization["EndTimeMustBeAfterStartTime"];
-				((IAsyncRelayCommand)SaveCommand).NotifyCanExecuteChanged();
-				return;
-			}
-		}
-
+		ValidationError = _orchestrator.Validate(TicketId, Description, HasEndTime, StartDateTime, EndDateTime);
 		((IAsyncRelayCommand)SaveCommand).NotifyCanExecuteChanged();
 	}
 
-	#endregion Validation
-
-	#region Command Implementations
-
-	private bool CanSave()
-	{
-		return string.IsNullOrEmpty(ValidationError);
-	}
+	private bool CanSave() => string.IsNullOrEmpty(ValidationError);
 
 	private async Task SaveAsync()
 	{
 		try
 		{
-			var endDateTime = EndDateTime;
+			var result = _isNewEntry
+				? await _orchestrator.SaveNewAsync(TicketId, StartDateTime, EndDateTime, Description)
+				: await _orchestrator.SaveExistingAsync(EntryId, TicketId, StartDateTime, EndDateTime, Description);
 
-			if (!_isNewEntry)
+			if (result.IsFailure)
 			{
-				var result = await _worklogStateService.UpdateWorkEntryAsync(
-					EntryId,
-					TicketId,
-					StartDateTime,
-					endDateTime,
-					Description);
-
-				if (result.IsFailure)
-				{
-					_logger.LogWarning("Failed to update work entry: {Error}", result.Error);
-					ValidationError = result.Error;
-					return;
-				}
-			}
-			else
-			{
-				var result = await _worklogStateService.CreateWorkEntryAsync(
-					TicketId,
-					StartDateTime,
-					Description,
-					endDateTime);
-
-				if (result.IsFailure)
-				{
-					_logger.LogWarning("Failed to create work entry: {Error}", result.Error);
-					ValidationError = result.Error;
-					return;
-				}
+				ValidationError = result.Error;
+				return;
 			}
 
 			DialogResult = true;
@@ -316,6 +260,4 @@ public class WorkEntryEditViewModel : ViewModelBase
 		DialogResult = false;
 		CloseAction?.Invoke();
 	}
-
-	#endregion Command Implementations
 }
