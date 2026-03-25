@@ -1,4 +1,4 @@
-﻿namespace WorkTracker.Plugin.Abstractions;
+namespace WorkTracker.Plugin.Abstractions;
 
 /// <summary>
 /// Result of plugin configuration validation

@@ -1,4 +1,4 @@
-﻿namespace WorkTracker.UI.Shared.Models;
+namespace WorkTracker.UI.Shared.Models;
 
 /// <summary>
 /// Defines what happens when the main window is closed

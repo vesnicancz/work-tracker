@@ -1,10 +1,10 @@
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Microsoft.Extensions.DependencyInjection;
-using WorkTracker.Domain.Entities;
-using WorkTracker.UI.Shared.Services;
 using WorkTracker.Avalonia.ViewModels;
 using WorkTracker.Avalonia.Views;
+using WorkTracker.Domain.Entities;
+using WorkTracker.UI.Shared.Services;
 
 namespace WorkTracker.Avalonia.Services;
 

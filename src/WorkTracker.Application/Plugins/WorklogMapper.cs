@@ -1,4 +1,4 @@
-﻿using WorkTracker.Application.Common;
+using WorkTracker.Application.Common;
 using WorkTracker.Application.DTOs;
 using WorkTracker.Plugin.Abstractions;
 

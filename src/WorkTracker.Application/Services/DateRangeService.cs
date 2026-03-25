@@ -1,4 +1,4 @@
-﻿namespace WorkTracker.Application.Services;
+namespace WorkTracker.Application.Services;
 
 public sealed class DateRangeService : IDateRangeService
 {

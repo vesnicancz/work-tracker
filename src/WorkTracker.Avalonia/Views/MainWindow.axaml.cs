@@ -1,4 +1,4 @@
-﻿using Avalonia.Controls;
+using Avalonia.Controls;
 using Avalonia.Input;
 using WorkTracker.Avalonia.Services;
 using WorkTracker.Avalonia.ViewModels;

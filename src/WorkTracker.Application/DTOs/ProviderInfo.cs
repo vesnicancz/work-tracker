@@ -1,4 +1,4 @@
-﻿namespace WorkTracker.Application.DTOs;
+namespace WorkTracker.Application.DTOs;
 
 /// <summary>
 /// Represents information about a worklog upload provider (plugin)

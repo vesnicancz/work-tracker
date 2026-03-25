@@ -1,7 +1,7 @@
-﻿using FluentAssertions;
+using FluentAssertions;
 using WorkTracker.Application.Common;
-using WorkTracker.Application.Plugins;
 using WorkTracker.Application.DTOs;
+using WorkTracker.Application.Plugins;
 using WorkTracker.Plugin.Abstractions;
 
 namespace WorkTracker.Application.Tests.Plugins;

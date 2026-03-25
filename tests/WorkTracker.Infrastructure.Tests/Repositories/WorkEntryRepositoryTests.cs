@@ -1,4 +1,4 @@
-﻿using FluentAssertions;
+using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using WorkTracker.Domain.Entities;
 using WorkTracker.Infrastructure.Data;

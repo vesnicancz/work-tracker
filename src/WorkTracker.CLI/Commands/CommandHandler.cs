@@ -1,4 +1,4 @@
-﻿using Spectre.Console;
+using Spectre.Console;
 using WorkTracker.Application.Services;
 
 namespace WorkTracker.CLI.Commands;

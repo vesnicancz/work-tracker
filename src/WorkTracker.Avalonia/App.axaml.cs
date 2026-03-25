@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
@@ -9,12 +9,12 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using WorkTracker.Application.Plugins;
-using WorkTracker.Infrastructure;
-using WorkTracker.UI.Shared.Models;
-using WorkTracker.UI.Shared.Services;
 using WorkTracker.Avalonia.Services;
 using WorkTracker.Avalonia.ViewModels;
 using WorkTracker.Avalonia.Views;
+using WorkTracker.Infrastructure;
+using WorkTracker.UI.Shared.Models;
+using WorkTracker.UI.Shared.Services;
 
 namespace WorkTracker.Avalonia;
 

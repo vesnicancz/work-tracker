@@ -1,4 +1,4 @@
-﻿namespace WorkTracker.UI.Shared.Services;
+namespace WorkTracker.UI.Shared.Services;
 
 /// <summary>
 /// Service for showing toast notifications

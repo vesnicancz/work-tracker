@@ -1,6 +1,5 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using System.Windows;
-using System.Windows.Media;
 using MaterialDesignThemes.Wpf;
 using WorkTracker.UI.Shared.Models;
 using WorkTracker.UI.Shared.Services;

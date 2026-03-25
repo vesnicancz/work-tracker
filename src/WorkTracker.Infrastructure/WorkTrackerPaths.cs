@@ -1,4 +1,4 @@
-﻿namespace WorkTracker.Infrastructure;
+namespace WorkTracker.Infrastructure;
 
 /// <summary>
 /// Default file system paths used by the application

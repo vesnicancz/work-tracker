@@ -1,6 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore;
-using WorkTracker.Domain.Interfaces;
+using Microsoft.EntityFrameworkCore;
 using WorkTracker.Domain.Entities;
+using WorkTracker.Domain.Interfaces;
 using WorkTracker.Infrastructure.Data;
 
 namespace WorkTracker.Infrastructure.Repositories;

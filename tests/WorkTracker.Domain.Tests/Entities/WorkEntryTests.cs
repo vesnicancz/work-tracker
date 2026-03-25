@@ -1,4 +1,4 @@
-﻿using FluentAssertions;
+using FluentAssertions;
 using WorkTracker.Domain.Entities;
 
 namespace WorkTracker.Domain.Tests.Entities;

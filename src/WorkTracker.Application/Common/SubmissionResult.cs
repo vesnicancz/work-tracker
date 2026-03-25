@@ -1,4 +1,4 @@
-﻿namespace WorkTracker.Application.Common;
+namespace WorkTracker.Application.Common;
 
 /// <summary>
 /// Detailed result of worklog submission

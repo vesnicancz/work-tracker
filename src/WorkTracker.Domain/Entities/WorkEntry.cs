@@ -1,4 +1,4 @@
-﻿namespace WorkTracker.Domain.Entities;
+namespace WorkTracker.Domain.Entities;
 
 public class WorkEntry
 {
