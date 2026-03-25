@@ -1,4 +1,4 @@
-namespace WorkTracker.UI.Shared.Orchestrators;
+namespace WorkTracker.UI.Shared.Helpers;
 
 public static class DurationFormatter
 {
