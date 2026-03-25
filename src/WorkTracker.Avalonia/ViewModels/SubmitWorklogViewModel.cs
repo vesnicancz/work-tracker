@@ -242,6 +242,7 @@ public class SubmitWorklogViewModel : ViewModelBase
 			if (outcome.AllSucceeded)
 			{
 				DialogResult = true;
+				CloseAction?.Invoke();
 			}
 		}
 		catch (Exception ex)
@@ -277,6 +278,7 @@ public class SubmitWorklogViewModel : ViewModelBase
 			if (outcome.AllSucceeded)
 			{
 				DialogResult = true;
+				CloseAction?.Invoke();
 			}
 		}
 		catch (Exception ex)
