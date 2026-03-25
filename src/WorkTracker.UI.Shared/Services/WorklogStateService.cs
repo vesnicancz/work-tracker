@@ -224,6 +224,7 @@ public sealed class WorklogStateService : IWorklogStateService
 
 			_logger.LogDebug("State refreshed: IsTracking={IsTracking}", IsTracking);
 		}
+		catch (OperationCanceledException) { throw; }
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Failed to refresh state from database");

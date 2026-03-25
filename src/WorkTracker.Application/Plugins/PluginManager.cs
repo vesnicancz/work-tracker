@@ -171,6 +171,7 @@ public sealed class PluginManager : IPluginManager
 			if (pluginTypes.Count == 0)
 			{
 				_logger.LogWarning("No plugin types found in {Assembly}", assemblyPath);
+				context.Unload();
 				return false;
 			}
 
@@ -209,6 +210,11 @@ public sealed class PluginManager : IPluginManager
 				{
 					_logger.LogError(ex, "Failed to instantiate plugin type {Type}", pluginType.FullName);
 				}
+			}
+
+			if (!anyLoaded)
+			{
+				context.Unload();
 			}
 
 			return anyLoaded;
