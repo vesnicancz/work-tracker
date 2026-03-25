@@ -18,7 +18,6 @@ public class SubmitWorklogViewModel : ViewModelBase
 	private readonly TimeProvider _timeProvider;
 	private readonly ILocalizationService _localization;
 	private readonly ILogger<SubmitWorklogViewModel> _logger;
-
 	private DateTime _selectedDate;
 	private bool _isWeekly;
 	private bool _isLoading;

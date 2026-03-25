@@ -70,8 +70,15 @@ public class SettingsViewModel : ViewModelBase
 		try
 		{
 			var plugins = _orchestrator.LoadPlugins();
-			foreach (var p in plugins) Plugins.Add(p);
-			if (Plugins.Any()) SelectedPlugin = Plugins.First();
+			foreach (var p in plugins)
+			{
+				Plugins.Add(p);
+			}
+
+			if (Plugins.Any())
+			{
+				SelectedPlugin = Plugins.First();
+			}
 		}
 		catch (Exception ex)
 		{
@@ -90,13 +97,21 @@ public class SettingsViewModel : ViewModelBase
 	public bool IsMinimizeToTray
 	{
 		get => CloseWindowBehavior == CloseWindowBehavior.MinimizeToTray;
-		set { if (value) CloseWindowBehavior = CloseWindowBehavior.MinimizeToTray; }
+		set { if (value)
+			{
+				CloseWindowBehavior = CloseWindowBehavior.MinimizeToTray;
+			}
+		}
 	}
 
 	public bool IsExitApplication
 	{
 		get => CloseWindowBehavior == CloseWindowBehavior.ExitApplication;
-		set { if (value) CloseWindowBehavior = CloseWindowBehavior.ExitApplication; }
+		set { if (value)
+			{
+				CloseWindowBehavior = CloseWindowBehavior.ExitApplication;
+			}
+		}
 	}
 
 	public bool StartWithWindows
@@ -275,7 +290,10 @@ public class SettingsViewModel : ViewModelBase
 
 	private async Task TestConnectionAsync()
 	{
-		if (SelectedPlugin == null) return;
+		if (SelectedPlugin == null)
+		{
+			return;
+		}
 
 		var pluginId = SelectedPlugin.Plugin.Metadata.Id;
 		IsTestingConnection = true;
@@ -318,7 +336,10 @@ public class SettingsViewModel : ViewModelBase
 
 	private void SaveFavorite()
 	{
-		if (string.IsNullOrWhiteSpace(EditingFavoriteName)) return;
+		if (string.IsNullOrWhiteSpace(EditingFavoriteName))
+		{
+			return;
+		}
 
 		if (SelectedFavorite != null && !IsAddingFavorite)
 		{
@@ -346,17 +367,29 @@ public class SettingsViewModel : ViewModelBase
 	private void CancelEditFavorite()
 	{
 		IsAddingFavorite = false;
-		if (SelectedFavorite != null) LoadEditingFields(SelectedFavorite);
-		else ClearEditingFields();
+		if (SelectedFavorite != null)
+		{
+			LoadEditingFields(SelectedFavorite);
+		}
+		else
+		{
+			ClearEditingFields();
+		}
 	}
 
 	private void RemoveFavorite()
 	{
-		if (SelectedFavorite == null) return;
+		if (SelectedFavorite == null)
+		{
+			return;
+		}
+
 		var index = FavoriteWorkItems.IndexOf(SelectedFavorite);
 		FavoriteWorkItems.Remove(SelectedFavorite);
 		if (FavoriteWorkItems.Count > 0)
+		{
 			SelectedFavorite = FavoriteWorkItems[Math.Min(index, FavoriteWorkItems.Count - 1)];
+		}
 		else { SelectedFavorite = null; ClearEditingFields(); }
 	}
 
@@ -380,7 +413,11 @@ public class SettingsViewModel : ViewModelBase
 
 	private void MoveFavoriteUp()
 	{
-		if (SelectedFavorite == null) return;
+		if (SelectedFavorite == null)
+		{
+			return;
+		}
+
 		var item = SelectedFavorite;
 		var index = FavoriteWorkItems.IndexOf(item);
 		if (index > 0)
@@ -396,7 +433,11 @@ public class SettingsViewModel : ViewModelBase
 
 	private void MoveFavoriteDown()
 	{
-		if (SelectedFavorite == null) return;
+		if (SelectedFavorite == null)
+		{
+			return;
+		}
+
 		var item = SelectedFavorite;
 		var index = FavoriteWorkItems.IndexOf(item);
 		if (index < FavoriteWorkItems.Count - 1)

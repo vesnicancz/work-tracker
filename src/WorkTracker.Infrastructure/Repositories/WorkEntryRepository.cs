@@ -88,7 +88,6 @@ public sealed class WorkEntryRepository : IWorkEntryRepository
 		var entryEnd = workEntry.EndTime ?? DateTime.MaxValue;
 
 		await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
-		// Check for overlaps using SQL query instead of loading all entries into memory
 		// Two time ranges overlap if: start1 < end2 AND end1 > start2
 		return await context.WorkEntries
 			.AsNoTracking()

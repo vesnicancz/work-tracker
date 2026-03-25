@@ -244,15 +244,22 @@ public partial class App : global::Avalonia.Application
 
 	private async void OnShutdownRequested(object? sender, ShutdownRequestedEventArgs e)
 	{
-		if (_host != null)
+		try
 		{
-			_hotkeyService?.Unregister();
-			var mainViewModel = _host.Services.GetRequiredService<MainViewModel>();
-			mainViewModel.Dispose();
-			var pluginManager = _host.Services.GetRequiredService<IPluginManager>();
-			await pluginManager.DisposeAsync();
-			await _host.StopAsync();
-			_host.Dispose();
+			if (_host != null)
+			{
+				_hotkeyService?.Unregister();
+				var mainViewModel = _host.Services.GetRequiredService<MainViewModel>();
+				mainViewModel.Dispose();
+				var pluginManager = _host.Services.GetRequiredService<IPluginManager>();
+				await pluginManager.DisposeAsync();
+				await _host.StopAsync();
+				_host.Dispose();
+			}
+		}
+		catch (Exception ex)
+		{
+			System.Diagnostics.Debug.WriteLine($"Failed to shut down host: {ex}");
 		}
 	}
 

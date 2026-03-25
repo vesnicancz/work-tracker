@@ -36,25 +36,19 @@ public sealed class WorkEntryService : IWorkEntryService
 				// Automatically stop the previous work entry
 				_logger.LogInformation("Auto-stopping previous work on ticket {PreviousTicketId}", activeEntry.TicketId);
 
-				var stopTime = DateTimeHelper.RoundToMinute(startTime ?? now);
-				activeEntry.EndTime = stopTime;
-				activeEntry.IsActive = false;
-				activeEntry.UpdatedAt = DateTimeHelper.RoundToMinute(now);
+				activeEntry.Stop(DateTimeHelper.RoundToMinute(startTime ?? now), DateTimeHelper.RoundToMinute(now));
 
 				await _repository.UpdateAsync(activeEntry, cancellationToken);
 				_logger.LogInformation("Previous work stopped automatically");
 			}
 		}
 
-		var workEntry = new WorkEntry
-		{
-			TicketId = ticketId,
-			StartTime = DateTimeHelper.RoundToMinute(startTime ?? now),
-			EndTime = DateTimeHelper.RoundToMinute(endTime),
-			Description = description,
-			IsActive = !endTime.HasValue,
-			CreatedAt = DateTimeHelper.RoundToMinute(now)
-		};
+		var workEntry = WorkEntry.Create(
+			ticketId,
+			DateTimeHelper.RoundToMinute(startTime ?? now),
+			DateTimeHelper.RoundToMinute(endTime),
+			description,
+			DateTimeHelper.RoundToMinute(now));
 
 		if (!workEntry.IsValid())
 		{
@@ -87,9 +81,7 @@ public sealed class WorkEntryService : IWorkEntryService
 		}
 
 		var now = Now;
-		activeEntry.EndTime = DateTimeHelper.RoundToMinute(endTime ?? now);
-		activeEntry.IsActive = false;
-		activeEntry.UpdatedAt = DateTimeHelper.RoundToMinute(now);
+		activeEntry.Stop(DateTimeHelper.RoundToMinute(endTime ?? now), DateTimeHelper.RoundToMinute(now));
 
 		if (!activeEntry.IsValid())
 		{
@@ -133,19 +125,12 @@ public sealed class WorkEntryService : IWorkEntryService
 		}
 
 		// Always update all fields (allows setting values to null)
-		workEntry.TicketId = ticketId;
-
-		if (startTime.HasValue)
-		{
-			workEntry.StartTime = DateTimeHelper.RoundToMinute(startTime.Value);
-		}
-
-		// Always update endTime (allows clearing it by setting to null)
-		workEntry.EndTime = DateTimeHelper.RoundToMinute(endTime);
-		workEntry.IsActive = !endTime.HasValue;
-
-		workEntry.Description = description;
-		workEntry.UpdatedAt = DateTimeHelper.RoundToMinute(Now);
+		workEntry.UpdateFields(
+			ticketId,
+			startTime.HasValue ? DateTimeHelper.RoundToMinute(startTime.Value) : null,
+			DateTimeHelper.RoundToMinute(endTime),
+			description,
+			DateTimeHelper.RoundToMinute(Now));
 
 		if (!workEntry.IsValid())
 		{

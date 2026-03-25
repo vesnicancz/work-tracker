@@ -19,6 +19,7 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 	private ResourceDictionary? _menuStyles;
 	private int _favoritesInsertIndex;
 	private readonly List<MenuItem> _favoriteMenuItems = new();
+	private readonly CancellationTokenSource _cts = new();
 	private Separator? _favoritesSeparator;
 
 	public TrayIconService(
@@ -135,6 +136,8 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 		// Unsubscribe from events
 		_worklogStateService.IsTrackingChanged -= OnIsTrackingChanged;
 
+		_cts.Cancel();
+		_cts.Dispose();
 		_taskbarIcon?.Dispose();
 		_taskbarIcon = null;
 		_isInitialized = false;
@@ -278,11 +281,11 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 			// Stop current tracking if active
 			if (_worklogStateService.IsTracking)
 			{
-				await _worklogStateService.StopTrackingAsync();
+				await _worklogStateService.StopTrackingAsync(_cts.Token);
 			}
 
 			// Start tracking with favorite's ticket and description
-			var result = await _worklogStateService.StartTrackingAsync(favorite.TicketId, favorite.Description);
+			var result = await _worklogStateService.StartTrackingAsync(favorite.TicketId, favorite.Description, _cts.Token);
 
 			if (!result.IsSuccess)
 			{
@@ -293,6 +296,7 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 					MessageBoxImage.Error);
 			}
 		}
+		catch (OperationCanceledException) { /* Service is being disposed */ }
 		catch (Exception ex)
 		{
 			MessageBox.Show(

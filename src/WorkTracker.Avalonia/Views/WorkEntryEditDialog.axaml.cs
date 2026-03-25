@@ -61,7 +61,14 @@ public partial class WorkEntryEditDialog : Window
 		if (DataContext is WorkEntryEditViewModel vm && vm.SaveCommand.CanExecute(null))
 		{
 			e.Handled = true;
-			await ((IAsyncRelayCommand)vm.SaveCommand).ExecuteAsync(null);
+			try
+			{
+				await ((IAsyncRelayCommand)vm.SaveCommand).ExecuteAsync(null);
+			}
+			catch (Exception ex)
+			{
+				System.Diagnostics.Debug.WriteLine($"Failed to execute save command: {ex}");
+			}
 		}
 	}
 
