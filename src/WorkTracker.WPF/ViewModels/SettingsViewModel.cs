@@ -277,6 +277,7 @@ public class SettingsViewModel : ViewModelBase
 	{
 		if (SelectedPlugin == null) return;
 
+		var pluginId = SelectedPlugin.Plugin.Metadata.Id;
 		IsTestingConnection = true;
 		TestConnectionResult = null;
 
@@ -287,7 +288,7 @@ public class SettingsViewModel : ViewModelBase
 		catch (Exception ex)
 		{
 			TestConnectionResult = $"✗ Error: {ex.Message}";
-			_logger.LogError(ex, "Error testing connection for {PluginId}", SelectedPlugin.Plugin.Metadata.Id);
+			_logger.LogError(ex, "Error testing connection for {PluginId}", pluginId);
 		}
 		finally
 		{

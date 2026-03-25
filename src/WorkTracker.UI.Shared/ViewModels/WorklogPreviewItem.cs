@@ -169,5 +169,9 @@ public class WorklogPreviewItem : ObservableObject
 		{
 			Duration = (int)(EndTime - StartTime).TotalSeconds;
 		}
+		else
+		{
+			Duration = 0;
+		}
 	}
 }

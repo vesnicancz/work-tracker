@@ -110,7 +110,8 @@ public class WorklogSubmissionOrchestrator : IWorklogSubmissionOrchestrator
 			return new SubmissionOutcome(submission.FailedEntries == 0, hasFailedItems, statusMessage);
 		}
 
-		return new SubmissionOutcome(false, false,
+		var hasExistingFailedItems = items.Any(i => !i.IsDateHeader && i.HasError);
+		return new SubmissionOutcome(false, hasExistingFailedItems,
 			_localization.GetFormattedString("ErrorPrefix", result.Error));
 	}
 
