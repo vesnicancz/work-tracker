@@ -12,13 +12,9 @@ public interface IWorklogSubmissionOrchestrator
 
 	Task<SubmissionOutcome> SubmitAsync(IReadOnlyList<WorklogPreviewItem> items, string providerId, string providerName);
 
-	Task<SubmissionOutcome> RetryFailedAsync(IReadOnlyList<WorklogPreviewItem> failedItems, string providerId, string providerName);
-
-	bool MarkFailedItems(IReadOnlyList<WorklogPreviewItem> items, SubmissionResult submission);
+	Task<SubmissionOutcome> RetryFailedAsync(IReadOnlyList<WorklogPreviewItem> items, string providerId, string providerName);
 
 	void ResetItems(IReadOnlyList<WorklogPreviewItem> items);
 
 	string FormatDuration(int seconds);
-
-	string FormatSubmissionStatus(SubmissionResult submission, string providerName);
 }

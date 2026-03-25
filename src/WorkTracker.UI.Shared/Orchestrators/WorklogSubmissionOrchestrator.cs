@@ -116,9 +116,9 @@ public class WorklogSubmissionOrchestrator : IWorklogSubmissionOrchestrator
 	}
 
 	public async Task<SubmissionOutcome> RetryFailedAsync(
-		IReadOnlyList<WorklogPreviewItem> failedItems, string providerId, string providerName)
+		IReadOnlyList<WorklogPreviewItem> items, string providerId, string providerName)
 	{
-		var worklogs = ConvertToWorklogs(failedItems.Where(i => !i.IsDateHeader && i.HasError));
+		var worklogs = ConvertToWorklogs(items.Where(i => !i.IsDateHeader && i.HasError));
 
 		if (worklogs.Count == 0)
 		{
@@ -130,7 +130,7 @@ public class WorklogSubmissionOrchestrator : IWorklogSubmissionOrchestrator
 		if (result.IsSuccess && result.Value != null)
 		{
 			var submission = result.Value;
-			var hasFailedItems = MarkFailedItems(failedItems, submission);
+			var hasFailedItems = MarkFailedItems(items, submission);
 			var statusMessage = FormatSubmissionStatus(submission, providerName);
 			return new SubmissionOutcome(!hasFailedItems, hasFailedItems, statusMessage);
 		}
@@ -139,7 +139,7 @@ public class WorklogSubmissionOrchestrator : IWorklogSubmissionOrchestrator
 			_localization.GetFormattedString("ErrorPrefix", result.Error));
 	}
 
-	public bool MarkFailedItems(IReadOnlyList<WorklogPreviewItem> items, SubmissionResult submission)
+	private bool MarkFailedItems(IReadOnlyList<WorklogPreviewItem> items, SubmissionResult submission)
 	{
 		var dataItems = items.Where(i => !i.IsDateHeader).ToList();
 
@@ -175,7 +175,7 @@ public class WorklogSubmissionOrchestrator : IWorklogSubmissionOrchestrator
 			}
 		}
 
-		return items.Any(i => i.HasError);
+		return dataItems.Any(i => i.HasError);
 	}
 
 	public void ResetItems(IReadOnlyList<WorklogPreviewItem> items)
@@ -190,7 +190,7 @@ public class WorklogSubmissionOrchestrator : IWorklogSubmissionOrchestrator
 
 	public string FormatDuration(int seconds) => DurationFormatter.Format(seconds);
 
-	public string FormatSubmissionStatus(SubmissionResult submission, string providerName)
+	private string FormatSubmissionStatus(SubmissionResult submission, string providerName)
 	{
 		if (submission.FailedEntries == 0)
 		{
