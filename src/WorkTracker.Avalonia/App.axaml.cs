@@ -233,7 +233,7 @@ public partial class App : global::Avalonia.Application
 			await Dispatcher.UIThread.InvokeAsync(async () =>
 			{
 				var dialogService = _host!.Services.GetRequiredService<IDialogService>();
-				await dialogService.ShowEditWorkEntryDialogAsync();
+				await dialogService.ShowNewWorkEntryDialogAsync();
 			});
 		}
 		catch (Exception ex)

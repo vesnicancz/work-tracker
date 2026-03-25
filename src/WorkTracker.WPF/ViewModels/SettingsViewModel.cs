@@ -33,7 +33,8 @@ public class SettingsViewModel : ViewModelBase
 	private string _editingFavoriteName = string.Empty;
 	private string _editingFavoriteTicket = string.Empty;
 	private string _editingFavoriteDescription = string.Empty;
-	private bool _isEditingFavorite;
+	private bool _editingFavoriteShowAsTemplate;
+	private bool _isAddingFavorite;
 
 	public SettingsViewModel(
 		ISettingsService settingsService,
@@ -180,13 +181,17 @@ public class SettingsViewModel : ViewModelBase
 				((IRelayCommand)RemoveFavoriteCommand).NotifyCanExecuteChanged();
 				((IRelayCommand)MoveFavoriteUpCommand).NotifyCanExecuteChanged();
 				((IRelayCommand)MoveFavoriteDownCommand).NotifyCanExecuteChanged();
+				OnPropertyChanged(nameof(IsEditFormVisible));
 
-				// Load selected favorite into editing fields
-				if (value != null && !IsEditingFavorite)
+				// Cancel add mode when user clicks an existing item
+				if (value != null && IsAddingFavorite)
 				{
-					EditingFavoriteName = value.Name;
-					EditingFavoriteTicket = value.TicketId ?? string.Empty;
-					EditingFavoriteDescription = value.Description ?? string.Empty;
+					IsAddingFavorite = false;
+				}
+
+				if (value != null)
+				{
+					LoadEditingFields(value);
 				}
 			}
 		}
@@ -216,11 +221,25 @@ public class SettingsViewModel : ViewModelBase
 		set => SetProperty(ref _editingFavoriteDescription, value);
 	}
 
-	public bool IsEditingFavorite
+	public bool EditingFavoriteShowAsTemplate
 	{
-		get => _isEditingFavorite;
-		set => SetProperty(ref _isEditingFavorite, value);
+		get => _editingFavoriteShowAsTemplate;
+		set => SetProperty(ref _editingFavoriteShowAsTemplate, value);
 	}
+
+	public bool IsAddingFavorite
+	{
+		get => _isAddingFavorite;
+		set
+		{
+			if (SetProperty(ref _isAddingFavorite, value))
+			{
+				OnPropertyChanged(nameof(IsEditFormVisible));
+			}
+		}
+	}
+
+	public bool IsEditFormVisible => SelectedFavorite != null || IsAddingFavorite;
 
 	#endregion
 
@@ -413,11 +432,9 @@ public class SettingsViewModel : ViewModelBase
 
 	private void AddFavorite()
 	{
-		IsEditingFavorite = true;
+		IsAddingFavorite = true;
 		SelectedFavorite = null;
-		EditingFavoriteName = string.Empty;
-		EditingFavoriteTicket = string.Empty;
-		EditingFavoriteDescription = string.Empty;
+		ClearEditingFields();
 	}
 
 	private void SaveFavorite()
@@ -427,19 +444,12 @@ public class SettingsViewModel : ViewModelBase
 			return;
 		}
 
-		if (SelectedFavorite != null && !IsEditingFavorite)
+		if (SelectedFavorite != null && !IsAddingFavorite)
 		{
-			// Update existing favorite
 			SelectedFavorite.Name = EditingFavoriteName;
 			SelectedFavorite.TicketId = string.IsNullOrWhiteSpace(EditingFavoriteTicket) ? null : EditingFavoriteTicket;
 			SelectedFavorite.Description = string.IsNullOrWhiteSpace(EditingFavoriteDescription) ? null : EditingFavoriteDescription;
-
-			// Refresh the list to update UI
-			var index = FavoriteWorkItems.IndexOf(SelectedFavorite);
-			if (index >= 0)
-			{
-				FavoriteWorkItems[index] = SelectedFavorite;
-			}
+			SelectedFavorite.ShowAsTemplate = EditingFavoriteShowAsTemplate;
 		}
 		else
 		{
@@ -448,31 +458,27 @@ public class SettingsViewModel : ViewModelBase
 			{
 				Name = EditingFavoriteName,
 				TicketId = string.IsNullOrWhiteSpace(EditingFavoriteTicket) ? null : EditingFavoriteTicket,
-				Description = string.IsNullOrWhiteSpace(EditingFavoriteDescription) ? null : EditingFavoriteDescription
+				Description = string.IsNullOrWhiteSpace(EditingFavoriteDescription) ? null : EditingFavoriteDescription,
+				ShowAsTemplate = EditingFavoriteShowAsTemplate
 			};
 			FavoriteWorkItems.Add(newFavorite);
 			SelectedFavorite = newFavorite;
 		}
 
-		IsEditingFavorite = false;
+		IsAddingFavorite = false;
 	}
 
 	private void CancelEditFavorite()
 	{
-		IsEditingFavorite = false;
+		IsAddingFavorite = false;
 
-		// Restore values from selected favorite
 		if (SelectedFavorite != null)
 		{
-			EditingFavoriteName = SelectedFavorite.Name;
-			EditingFavoriteTicket = SelectedFavorite.TicketId ?? string.Empty;
-			EditingFavoriteDescription = SelectedFavorite.Description ?? string.Empty;
+			LoadEditingFields(SelectedFavorite);
 		}
 		else
 		{
-			EditingFavoriteName = string.Empty;
-			EditingFavoriteTicket = string.Empty;
-			EditingFavoriteDescription = string.Empty;
+			ClearEditingFields();
 		}
 	}
 
@@ -491,11 +497,25 @@ public class SettingsViewModel : ViewModelBase
 			else
 			{
 				SelectedFavorite = null;
-				EditingFavoriteName = string.Empty;
-				EditingFavoriteTicket = string.Empty;
-				EditingFavoriteDescription = string.Empty;
+				ClearEditingFields();
 			}
 		}
+	}
+
+	private void LoadEditingFields(FavoriteWorkItem item)
+	{
+		EditingFavoriteName = item.Name;
+		EditingFavoriteTicket = item.TicketId ?? string.Empty;
+		EditingFavoriteDescription = item.Description ?? string.Empty;
+		EditingFavoriteShowAsTemplate = item.ShowAsTemplate;
+	}
+
+	private void ClearEditingFields()
+	{
+		EditingFavoriteName = string.Empty;
+		EditingFavoriteTicket = string.Empty;
+		EditingFavoriteDescription = string.Empty;
+		EditingFavoriteShowAsTemplate = false;
 	}
 
 	private bool CanMoveFavoriteUp()
@@ -510,10 +530,12 @@ public class SettingsViewModel : ViewModelBase
 			return;
 		}
 
-		var index = FavoriteWorkItems.IndexOf(SelectedFavorite);
+		var item = SelectedFavorite;
+		var index = FavoriteWorkItems.IndexOf(item);
 		if (index > 0)
 		{
 			FavoriteWorkItems.Move(index, index - 1);
+			SelectedFavorite = item;
 			((IRelayCommand)MoveFavoriteUpCommand).NotifyCanExecuteChanged();
 			((IRelayCommand)MoveFavoriteDownCommand).NotifyCanExecuteChanged();
 		}
@@ -531,10 +553,12 @@ public class SettingsViewModel : ViewModelBase
 			return;
 		}
 
-		var index = FavoriteWorkItems.IndexOf(SelectedFavorite);
+		var item = SelectedFavorite;
+		var index = FavoriteWorkItems.IndexOf(item);
 		if (index < FavoriteWorkItems.Count - 1)
 		{
 			FavoriteWorkItems.Move(index, index + 1);
+			SelectedFavorite = item;
 			((IRelayCommand)MoveFavoriteUpCommand).NotifyCanExecuteChanged();
 			((IRelayCommand)MoveFavoriteDownCommand).NotifyCanExecuteChanged();
 		}

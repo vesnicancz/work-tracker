@@ -155,8 +155,7 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 	{
 		try
 		{
-			// Show the work entry dialog (null = new entry)
-			await _dialogService.ShowEditWorkEntryDialogAsync(null);
+			await _dialogService.ShowNewWorkEntryDialogAsync();
 		}
 		catch (Exception ex)
 		{
@@ -251,7 +250,9 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 				{
 					Header = favorite.Name,
 					Style = (Style)_menuStyles["TrayMenuItemStyle"],
-					Icon = CreateFontAwesomeIcon("Solid_Star", Brushes.Gold),
+					Icon = favorite.ShowAsTemplate
+						? CreateFontAwesomeIcon("Solid_PenToSquare", Brushes.DodgerBlue)
+						: CreateFontAwesomeIcon("Solid_Star", Brushes.Gold),
 					Tag = favorite
 				};
 				menuItem.Click += async (s, e) => await StartFavoriteWorkAsync(favorite);
@@ -267,6 +268,13 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 	{
 		try
 		{
+			if (favorite.ShowAsTemplate)
+			{
+				// Open dialog with pre-filled values for user to edit before starting
+				await _dialogService.ShowNewWorkEntryDialogAsync(favorite.TicketId, favorite.Description);
+				return;
+			}
+
 			// Stop current tracking if active
 			if (_worklogStateService.IsTracking)
 			{

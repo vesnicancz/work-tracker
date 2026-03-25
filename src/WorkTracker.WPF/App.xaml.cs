@@ -161,14 +161,14 @@ public partial class App : System.Windows.Application
 	/// <summary>
 	/// Handle global hotkey press (Ctrl+Shift+W) to open new work entry dialog
 	/// </summary>
-	private async void OnHotkeyPressed(object? sender, EventArgs e)
+	private void OnHotkeyPressed(object? sender, EventArgs e)
 	{
 		try
 		{
 			// Create a new scope for this dialog operation
 			using var scope = _host.Services.CreateScope();
 			var viewModel = scope.ServiceProvider.GetRequiredService<WorkEntryEditViewModel>();
-			await viewModel.InitializeAsync(null);
+			viewModel.InitializeForNew();
 
 			// Create dialog without owner (standalone window)
 			var dialog = new WorkEntryEditDialog

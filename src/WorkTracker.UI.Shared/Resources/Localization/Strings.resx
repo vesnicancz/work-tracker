@@ -465,6 +465,18 @@ Time: {2}</value>
   <data name="FavoritesDescription" xml:space="preserve">
     <value>Define favorite work items for quick access from the system tray menu</value>
   </data>
+  <data name="NewFavorite" xml:space="preserve">
+    <value>New favorite</value>
+  </data>
+  <data name="SelectFavoriteToEdit" xml:space="preserve">
+    <value>Select a favorite to edit or click Add to create a new one</value>
+  </data>
+  <data name="FavoriteShowAsTemplate" xml:space="preserve">
+    <value>Show as template</value>
+  </data>
+  <data name="FavoriteShowAsTemplateDesc" xml:space="preserve">
+    <value>Opens the entry dialog with pre-filled values instead of starting immediately</value>
+  </data>
   <data name="FavoriteStarted" xml:space="preserve">
     <value>Started tracking: {0}</value>
   </data>

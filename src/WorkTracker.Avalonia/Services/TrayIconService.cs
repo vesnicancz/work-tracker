@@ -139,9 +139,9 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 
 			foreach (var favorite in favorites)
 			{
-				var menuItem = new NativeMenuItem($"\u2605 {favorite.Name}");
-				var fav = favorite; // capture for closure
-				menuItem.Click += async (_, _) => await StartFavoriteWorkAsync(fav);
+				var icon = favorite.ShowAsTemplate ? "\u270E" : "\u2605";
+				var menuItem = new NativeMenuItem($"{icon} {favorite.Name}");
+				menuItem.Click += async (_, _) => await StartFavoriteWorkAsync(favorite);
 				_menu.Items.Insert(insertIndex, menuItem);
 				_favoriteMenuItems.Add(menuItem);
 				insertIndex++;
@@ -176,7 +176,7 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 	{
 		try
 		{
-			await _dialogService.ShowEditWorkEntryDialogAsync(null);
+			await _dialogService.ShowNewWorkEntryDialogAsync();
 		}
 		catch (Exception ex)
 		{
@@ -207,6 +207,13 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 	{
 		try
 		{
+			if (favorite.ShowAsTemplate)
+			{
+				// Open dialog with pre-filled values for user to edit before starting
+				await _dialogService.ShowNewWorkEntryDialogAsync(favorite.TicketId, favorite.Description);
+				return;
+			}
+
 			if (_worklogStateService.IsTracking)
 			{
 				await _worklogStateService.StopTrackingAsync();

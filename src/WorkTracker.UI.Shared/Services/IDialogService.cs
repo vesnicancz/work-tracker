@@ -9,11 +9,19 @@ namespace WorkTracker.UI.Shared.Services;
 public interface IDialogService
 {
 	/// <summary>
-	/// Shows the work entry edit dialog
+	/// Shows the work entry edit dialog for an existing entry
 	/// </summary>
-	/// <param name="workEntry">Work entry to edit (null for new entry)</param>
+	/// <param name="workEntry">Work entry to edit</param>
 	/// <returns>True if user confirmed, false if cancelled</returns>
-	Task<bool> ShowEditWorkEntryDialogAsync(WorkEntry? workEntry = null);
+	Task<bool> ShowEditWorkEntryDialogAsync(WorkEntry workEntry);
+
+	/// <summary>
+	/// Shows the work entry dialog for creating a new entry, optionally pre-filled with template values
+	/// </summary>
+	/// <param name="ticketId">Ticket ID to pre-fill</param>
+	/// <param name="description">Description to pre-fill</param>
+	/// <returns>True if user confirmed, false if cancelled</returns>
+	Task<bool> ShowNewWorkEntryDialogAsync(string? ticketId = null, string? description = null);
 
 	/// <summary>
 	/// Shows the submit worklog dialog
