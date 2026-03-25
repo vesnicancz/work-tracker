@@ -35,7 +35,7 @@ public class SettingsViewModel : ViewModelBase
 	private string _editingFavoriteTicket = string.Empty;
 	private string _editingFavoriteDescription = string.Empty;
 	private bool _editingFavoriteShowAsTemplate;
-	private bool _isEditingFavorite;
+	private bool _isAddingFavorite;
 	private string _selectedTheme = "Dark";
 
 	public SettingsViewModel(
@@ -203,9 +203,9 @@ public class SettingsViewModel : ViewModelBase
 				OnPropertyChanged(nameof(IsEditFormVisible));
 
 				// Cancel add mode when user clicks an existing item
-				if (value != null && IsEditingFavorite)
+				if (value != null && IsAddingFavorite)
 				{
-					IsEditingFavorite = false;
+					IsAddingFavorite = false;
 				}
 
 				if (value != null)
@@ -246,19 +246,19 @@ public class SettingsViewModel : ViewModelBase
 		set => SetProperty(ref _editingFavoriteShowAsTemplate, value);
 	}
 
-	public bool IsEditingFavorite
+	public bool IsAddingFavorite
 	{
-		get => _isEditingFavorite;
+		get => _isAddingFavorite;
 		set
 		{
-			if (SetProperty(ref _isEditingFavorite, value))
+			if (SetProperty(ref _isAddingFavorite, value))
 			{
 				OnPropertyChanged(nameof(IsEditFormVisible));
 			}
 		}
 	}
 
-	public bool IsEditFormVisible => SelectedFavorite != null || IsEditingFavorite;
+	public bool IsEditFormVisible => SelectedFavorite != null || IsAddingFavorite;
 
 	#endregion
 
@@ -452,7 +452,7 @@ public class SettingsViewModel : ViewModelBase
 
 	private void AddFavorite()
 	{
-		IsEditingFavorite = true;
+		IsAddingFavorite = true;
 		SelectedFavorite = null;
 		ClearEditingFields();
 	}
@@ -464,7 +464,7 @@ public class SettingsViewModel : ViewModelBase
 			return;
 		}
 
-		if (SelectedFavorite != null && !IsEditingFavorite)
+		if (SelectedFavorite != null && !IsAddingFavorite)
 		{
 			SelectedFavorite.Name = EditingFavoriteName;
 			SelectedFavorite.TicketId = string.IsNullOrWhiteSpace(EditingFavoriteTicket) ? null : EditingFavoriteTicket;
@@ -485,12 +485,12 @@ public class SettingsViewModel : ViewModelBase
 			SelectedFavorite = newFavorite;
 		}
 
-		IsEditingFavorite = false;
+		IsAddingFavorite = false;
 	}
 
 	private void CancelEditFavorite()
 	{
-		IsEditingFavorite = false;
+		IsAddingFavorite = false;
 
 		if (SelectedFavorite != null)
 		{

@@ -308,7 +308,7 @@
 											<Style TargetType="TextBlock">
 												<Setter Property="Text" Value="{markup:Localize EditFavorite}" />
 												<Style.Triggers>
-													<DataTrigger Binding="{Binding IsEditingFavorite}" Value="True">
+													<DataTrigger Binding="{Binding IsAddingFavorite}" Value="True">
 														<Setter Property="Text" Value="{markup:Localize NewFavorite}" />
 													</DataTrigger>
 												</Style.Triggers>

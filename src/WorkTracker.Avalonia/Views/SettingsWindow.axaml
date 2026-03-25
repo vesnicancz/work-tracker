@@ -215,10 +215,10 @@
                                         <!-- Form header indicating mode -->
                                         <TextBlock FontSize="12" Foreground="{DynamicResource TextMuted}"
                                                    Text="{markup:Localize EditFavorite}"
-                                                   IsVisible="{Binding !IsEditingFavorite}" />
+                                                   IsVisible="{Binding !IsAddingFavorite}" />
                                         <TextBlock FontSize="12" Foreground="{DynamicResource TextMuted}"
                                                    Text="{markup:Localize NewFavorite}"
-                                                   IsVisible="{Binding IsEditingFavorite}" />
+                                                   IsVisible="{Binding IsAddingFavorite}" />
 
                                         <TextBox Text="{Binding EditingFavoriteName, Mode=TwoWay}"
                                                  Watermark="{markup:Localize FavoriteName}" FontSize="12" />
