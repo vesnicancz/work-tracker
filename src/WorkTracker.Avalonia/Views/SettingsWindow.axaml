@@ -123,6 +123,155 @@
                         </ScrollViewer>
                     </TabItem>
 
+                    <!-- ===== Favorites ===== -->
+                    <TabItem Header="{markup:Localize Favorites}">
+                        <Grid Margin="20,12" RowDefinitions="*,Auto">
+
+                            <!-- Two-column: list | edit -->
+                            <Grid Grid.Row="0" ColumnDefinitions="*,12,*">
+
+                                <!-- List -->
+                                <Border Grid.Column="0"
+                                        Background="{DynamicResource SidebarBackground}"
+                                        BorderBrush="{DynamicResource CardBorder}"
+                                        BorderThickness="1" CornerRadius="4">
+                                    <Grid RowDefinitions="*,Auto">
+                                        <ListBox Grid.Row="0"
+                                                 ItemsSource="{Binding FavoriteWorkItems}"
+                                                 SelectedItem="{Binding SelectedFavorite}"
+                                                 Background="Transparent">
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <StackPanel Margin="6,3" Spacing="1">
+                                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                                            <material:MaterialIcon Kind="Star" Width="14" Height="14"
+                                                                                  Foreground="Gold"
+                                                                                  VerticalAlignment="Center"
+                                                                                  IsVisible="{Binding !ShowAsTemplate}" />
+                                                            <material:MaterialIcon Kind="SquareEditOutline" Width="14" Height="14"
+                                                                                  Foreground="DodgerBlue"
+                                                                                  VerticalAlignment="Center"
+                                                                                  IsVisible="{Binding ShowAsTemplate}" />
+                                                            <TextBlock Text="{Binding Name}" FontWeight="Medium" FontSize="13"
+                                                                       VerticalAlignment="Center" />
+                                                        </StackPanel>
+                                                        <TextBlock FontSize="11" Foreground="{DynamicResource TextMuted}" Margin="20,0,0,0">
+                                                            <Run Text="{Binding TicketId, TargetNullValue='(no ticket)'}" />
+                                                            <Run Text=" - " />
+                                                            <Run Text="{Binding Description, TargetNullValue='(no description)'}" />
+                                                        </TextBlock>
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+
+                                        <!-- List toolbar: Remove + Move Up/Down -->
+                                        <StackPanel Grid.Row="1" Orientation="Horizontal"
+                                                    HorizontalAlignment="Right" Margin="6" Spacing="2">
+                                            <Button Command="{Binding RemoveFavoriteCommand}"
+                                                    Width="28" Height="28" Padding="0"
+                                                    Background="Transparent" BorderThickness="0"
+                                                    ToolTip.Tip="{markup:Localize RemoveFavorite}">
+                                                <material:MaterialIcon Kind="Delete" Width="16" Height="16"
+                                                                      Foreground="{DynamicResource DangerRed}" />
+                                            </Button>
+                                            <Button Command="{Binding MoveFavoriteUpCommand}"
+                                                    Width="28" Height="28" Padding="0"
+                                                    Background="Transparent" BorderThickness="0"
+                                                    ToolTip.Tip="{markup:Localize MoveUp}">
+                                                <material:MaterialIcon Kind="ArrowUp" Width="16" Height="16"
+                                                                      Foreground="{DynamicResource TextMuted}" />
+                                            </Button>
+                                            <Button Command="{Binding MoveFavoriteDownCommand}"
+                                                    Width="28" Height="28" Padding="0"
+                                                    Background="Transparent" BorderThickness="0"
+                                                    ToolTip.Tip="{markup:Localize MoveDown}">
+                                                <material:MaterialIcon Kind="ArrowDown" Width="16" Height="16"
+                                                                      Foreground="{DynamicResource TextMuted}" />
+                                            </Button>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+
+                                <!-- Placeholder when no favorite selected -->
+                                <TextBlock Grid.Column="2"
+                                           Text="{markup:Localize SelectFavoriteToEdit}"
+                                           Foreground="{DynamicResource TextMuted}"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           TextWrapping="Wrap"
+                                           TextAlignment="Center"
+                                           FontSize="12"
+                                           IsVisible="{Binding !IsEditFormVisible}" />
+
+                                <!-- Edit form -->
+                                <Border Grid.Column="2"
+                                        Background="{DynamicResource SidebarBackground}"
+                                        BorderBrush="{DynamicResource CardBorder}"
+                                        BorderThickness="1"
+                                        CornerRadius="4" Padding="14"
+                                        IsVisible="{Binding IsEditFormVisible}">
+                                    <StackPanel Spacing="8">
+                                        <!-- Form header indicating mode -->
+                                        <TextBlock FontSize="12" Foreground="{DynamicResource TextMuted}"
+                                                   Text="{markup:Localize EditFavorite}"
+                                                   IsVisible="{Binding !IsEditingFavorite}" />
+                                        <TextBlock FontSize="12" Foreground="{DynamicResource TextMuted}"
+                                                   Text="{markup:Localize NewFavorite}"
+                                                   IsVisible="{Binding IsEditingFavorite}" />
+
+                                        <TextBox Text="{Binding EditingFavoriteName, Mode=TwoWay}"
+                                                 Watermark="{markup:Localize FavoriteName}" FontSize="12" />
+                                        <TextBox Text="{Binding EditingFavoriteTicket, Mode=TwoWay}"
+                                                 Watermark="{markup:Localize FavoriteTicket}" FontSize="12" />
+                                        <TextBox Text="{Binding EditingFavoriteDescription, Mode=TwoWay}"
+                                                 Watermark="{markup:Localize FavoriteDescription}"
+                                                 FontSize="12" TextWrapping="Wrap"
+                                                 AcceptsReturn="True" MinHeight="50" />
+
+                                        <!-- Show as template checkbox -->
+                                        <CheckBox IsChecked="{Binding EditingFavoriteShowAsTemplate}" Margin="0,4,0,0">
+                                            <StackPanel Spacing="2">
+                                                <TextBlock Text="{markup:Localize FavoriteShowAsTemplate}" FontSize="12" FontWeight="Medium" />
+                                                <TextBlock Text="{markup:Localize FavoriteShowAsTemplateDesc}"
+                                                           FontSize="11" Foreground="{DynamicResource TextMuted}" TextWrapping="Wrap" />
+                                            </StackPanel>
+                                        </CheckBox>
+
+                                        <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right">
+                                            <Button Command="{Binding CancelEditFavoriteCommand}"
+                                                    Background="Transparent" BorderThickness="0" Padding="8,6">
+                                                <TextBlock Text="{markup:Localize Cancel}" FontSize="12" Foreground="{DynamicResource TextSecondary}" />
+                                            </Button>
+                                            <Button Command="{Binding SaveFavoriteCommand}"
+                                                    Padding="8,6" Classes="accent">
+                                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                                    <material:MaterialIcon Kind="ContentSave" Width="14" Height="14" />
+                                                    <TextBlock Text="{markup:Localize Save}" FontSize="12" FontWeight="SemiBold" />
+                                                </StackPanel>
+                                            </Button>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+
+                            </Grid>
+
+                            <!-- Add button -->
+                            <Button Grid.Row="1"
+                                    Command="{Binding AddFavoriteCommand}"
+                                    Background="Transparent" BorderThickness="0"
+                                    Padding="8,6" Margin="0,8,0,0"
+                                    HorizontalAlignment="Left">
+                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                    <material:MaterialIcon Kind="Plus" Width="14" Height="14"
+                                                          Foreground="{DynamicResource TextMuted}" />
+                                    <TextBlock Text="{markup:Localize AddFavorite}" FontSize="12" Foreground="{DynamicResource TextSecondary}" />
+                                </StackPanel>
+                            </Button>
+
+                        </Grid>
+                    </TabItem>
+
                     <!-- ===== Plugins ===== -->
                     <TabItem Header="{markup:Localize Plugins}">
                         <ScrollViewer VerticalScrollBarVisibility="Auto"
@@ -195,105 +344,6 @@
 
                             </StackPanel>
                         </ScrollViewer>
-                    </TabItem>
-
-                    <!-- ===== Favorites ===== -->
-                    <TabItem Header="{markup:Localize Favorites}">
-                        <Grid Margin="20,12" RowDefinitions="*,Auto">
-
-                            <!-- Two-column: list | edit -->
-                            <Grid Grid.Row="0" ColumnDefinitions="*,12,*">
-
-                                <!-- List -->
-                                <Border Grid.Column="0"
-                                        Background="{DynamicResource SidebarBackground}"
-                                        BorderBrush="{DynamicResource CardBorder}"
-                                        BorderThickness="1" CornerRadius="4">
-                                    <Grid RowDefinitions="*,Auto">
-                                        <ListBox Grid.Row="0"
-                                                 ItemsSource="{Binding FavoriteWorkItems}"
-                                                 SelectedItem="{Binding SelectedFavorite}"
-                                                 Background="Transparent">
-                                            <ListBox.ItemTemplate>
-                                                <DataTemplate>
-                                                    <StackPanel Margin="6,3" Spacing="1">
-                                                        <TextBlock Text="{Binding Name}" FontWeight="Medium" FontSize="13" />
-                                                        <TextBlock FontSize="11" Foreground="{DynamicResource TextMuted}">
-                                                            <Run Text="{Binding TicketId, TargetNullValue='(no ticket)'}" />
-                                                        </TextBlock>
-                                                    </StackPanel>
-                                                </DataTemplate>
-                                            </ListBox.ItemTemplate>
-                                        </ListBox>
-
-                                        <StackPanel Grid.Row="1" Orientation="Horizontal"
-                                                    HorizontalAlignment="Right" Margin="6" Spacing="2">
-                                            <Button Command="{Binding MoveFavoriteUpCommand}"
-                                                    Width="28" Height="28" Padding="0"
-                                                    Background="Transparent" BorderThickness="0"
-                                                    ToolTip.Tip="{markup:Localize MoveUp}">
-                                                <material:MaterialIcon Kind="ArrowUp" Width="16" Height="16"
-                                                                      Foreground="{DynamicResource TextMuted}" />
-                                            </Button>
-                                            <Button Command="{Binding MoveFavoriteDownCommand}"
-                                                    Width="28" Height="28" Padding="0"
-                                                    Background="Transparent" BorderThickness="0"
-                                                    ToolTip.Tip="{markup:Localize MoveDown}">
-                                                <material:MaterialIcon Kind="ArrowDown" Width="16" Height="16"
-                                                                      Foreground="{DynamicResource TextMuted}" />
-                                            </Button>
-                                        </StackPanel>
-                                    </Grid>
-                                </Border>
-
-                                <!-- Edit form -->
-                                <Border Grid.Column="2"
-                                        Background="{DynamicResource SidebarBackground}"
-                                        BorderBrush="{DynamicResource CardBorder}"
-                                        BorderThickness="1"
-                                        CornerRadius="4" Padding="14">
-                                    <StackPanel Spacing="8">
-                                        <TextBlock Text="{markup:Localize EditFavorite}" FontSize="12" Foreground="{DynamicResource TextMuted}" />
-                                        <TextBox Text="{Binding EditingFavoriteName, Mode=TwoWay}"
-                                                 Watermark="{markup:Localize FavoriteName}" FontSize="12" />
-                                        <TextBox Text="{Binding EditingFavoriteTicket, Mode=TwoWay}"
-                                                 Watermark="{markup:Localize FavoriteTicket}" FontSize="12" />
-                                        <TextBox Text="{Binding EditingFavoriteDescription, Mode=TwoWay}"
-                                                 Watermark="{markup:Localize FavoriteDescription}"
-                                                 FontSize="12" TextWrapping="Wrap"
-                                                 AcceptsReturn="True" MinHeight="50" />
-
-                                        <StackPanel Orientation="Horizontal" Spacing="6">
-                                            <Button Command="{Binding AddFavoriteCommand}"
-                                                    Background="Transparent" BorderThickness="0" Padding="8,6">
-                                                <StackPanel Orientation="Horizontal" Spacing="4">
-                                                    <material:MaterialIcon Kind="Plus" Width="14" Height="14"
-                                                                          Foreground="{DynamicResource TextMuted}" />
-                                                    <TextBlock Text="{markup:Localize AddFavorite}" FontSize="12" Foreground="{DynamicResource TextSecondary}" />
-                                                </StackPanel>
-                                            </Button>
-                                            <Button Command="{Binding RemoveFavoriteCommand}"
-                                                    Background="Transparent" BorderThickness="0" Padding="8,6">
-                                                <StackPanel Orientation="Horizontal" Spacing="4">
-                                                    <material:MaterialIcon Kind="Delete" Width="14" Height="14"
-                                                                          Foreground="{DynamicResource DangerRed}" />
-                                                    <TextBlock Text="{markup:Localize RemoveFavorite}" FontSize="12" Foreground="{DynamicResource DangerRed}" />
-                                                </StackPanel>
-                                            </Button>
-                                            <Button Command="{Binding SaveFavoriteCommand}"
-                                                    Padding="8,6" Classes="accent">
-                                                <StackPanel Orientation="Horizontal" Spacing="4">
-                                                    <material:MaterialIcon Kind="ContentSave" Width="14" Height="14" />
-                                                    <TextBlock Text="{markup:Localize Save}" FontSize="12" FontWeight="SemiBold" />
-                                                </StackPanel>
-                                            </Button>
-                                        </StackPanel>
-                                    </StackPanel>
-                                </Border>
-
-                            </Grid>
-
-                        </Grid>
                     </TabItem>
 
                     <!-- ===== About ===== -->

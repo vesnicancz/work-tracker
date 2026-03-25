@@ -19,7 +19,7 @@ public class WorkEntryEditViewModel : ViewModelBase
 	private readonly ILocalizationService _localization;
 	private readonly ILogger<WorkEntryEditViewModel> _logger;
 
-	private WorkEntry? _originalEntry;
+	private bool _isNewEntry = true;
 	private int _entryId;
 	private string? _ticketId;
 	private string? _description;
@@ -49,7 +49,7 @@ public class WorkEntryEditViewModel : ViewModelBase
 
 	#region Properties
 
-	public bool IsNewEntry => _originalEntry == null;
+	public bool IsNewEntry => _isNewEntry;
 
 	public string DialogTitle => IsNewEntry ? _localization["NewWorkEntry"] : _localization["EditWorkEntry"];
 
@@ -189,41 +189,40 @@ public class WorkEntryEditViewModel : ViewModelBase
 
 	#region Initialization
 
-	public Task InitializeAsync(WorkEntry? workEntry)
+	public void InitializeForEdit(WorkEntry workEntry)
 	{
-		_originalEntry = workEntry;
+		_isNewEntry = false;
+		EntryId = workEntry.Id;
+		TicketId = workEntry.TicketId;
+		Description = workEntry.Description;
+		StartDate = workEntry.StartTime.Date;
+		StartTime = workEntry.StartTime.TimeOfDay;
 
-		if (workEntry != null)
+		if (workEntry.EndTime.HasValue)
 		{
-			// Edit mode
-			EntryId = workEntry.Id;
-			TicketId = workEntry.TicketId;
-			Description = workEntry.Description;
-			StartDate = workEntry.StartTime.Date;
-			StartTime = workEntry.StartTime.TimeOfDay;
-
-			if (workEntry.EndTime.HasValue)
-			{
-				HasEndTime = true;
-				EndDate = workEntry.EndTime.Value.Date;
-				EndTime = workEntry.EndTime.Value.TimeOfDay;
-			}
-			else
-			{
-				HasEndTime = false;
-			}
+			HasEndTime = true;
+			EndDate = workEntry.EndTime.Value.Date;
+			EndTime = workEntry.EndTime.Value.TimeOfDay;
 		}
 		else
 		{
-			// New entry mode
-			var now = DateTimeHelper.RoundToMinute(_timeProvider.GetLocalNow().DateTime);
-			StartDate = now.Date;
-			StartTime = new TimeSpan(now.Hour, now.Minute, 0);
 			HasEndTime = false;
 		}
 
 		ValidateInput();
-		return Task.CompletedTask;
+	}
+
+	public void InitializeForNew(string? ticketId = null, string? description = null)
+	{
+		_isNewEntry = true;
+		var now = DateTimeHelper.RoundToMinute(_timeProvider.GetLocalNow().DateTime);
+		StartDate = now.Date;
+		StartTime = new TimeSpan(now.Hour, now.Minute, 0);
+		HasEndTime = false;
+		TicketId = ticketId;
+		Description = description;
+
+		ValidateInput();
 	}
 
 	#endregion Initialization
@@ -271,9 +270,8 @@ public class WorkEntryEditViewModel : ViewModelBase
 		{
 			var endDateTime = EndDateTime;
 
-			if (_originalEntry != null)
+			if (!_isNewEntry)
 			{
-				// Update existing entry
 				var result = await _worklogStateService.UpdateWorkEntryAsync(
 					EntryId,
 					TicketId,
@@ -290,7 +288,6 @@ public class WorkEntryEditViewModel : ViewModelBase
 			}
 			else
 			{
-				// Create new entry with optional end time
 				var result = await _worklogStateService.CreateWorkEntryAsync(
 					TicketId,
 					StartDateTime,

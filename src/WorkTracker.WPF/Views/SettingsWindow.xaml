@@ -6,6 +6,7 @@
 		xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
 		xmlns:viewmodels="clr-namespace:WorkTracker.WPF.ViewModels"
 		xmlns:markup="clr-namespace:WorkTracker.WPF.Markup"
+		xmlns:converters="clr-namespace:WorkTracker.WPF.Converters"
 		d:DataContext="{d:DesignInstance Type=viewmodels:SettingsViewModel}"
 		mc:Ignorable="d"
 		Title="{markup:Localize Settings}"
@@ -30,6 +31,7 @@
 
 	<Window.Resources>
 		<BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+		<converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
 	</Window.Resources>
 
 	<Border BorderBrush="{DynamicResource MaterialDesign.Brush.Border}"
@@ -211,10 +213,30 @@
 										<ListBox.ItemTemplate>
 											<DataTemplate>
 												<StackPanel Margin="8,4">
-													<TextBlock Text="{Binding Name}"
-															  FontWeight="Medium" />
+													<StackPanel Orientation="Horizontal">
+														<materialDesign:PackIcon Width="14" Height="14"
+																				VerticalAlignment="Center"
+																				Margin="0,0,6,0">
+															<materialDesign:PackIcon.Style>
+																<Style TargetType="materialDesign:PackIcon">
+																	<Setter Property="Kind" Value="Star" />
+																	<Setter Property="Foreground" Value="Gold" />
+																	<Style.Triggers>
+																		<DataTrigger Binding="{Binding ShowAsTemplate}" Value="True">
+																			<Setter Property="Kind" Value="SquareEditOutline" />
+																			<Setter Property="Foreground" Value="DodgerBlue" />
+																		</DataTrigger>
+																	</Style.Triggers>
+																</Style>
+															</materialDesign:PackIcon.Style>
+														</materialDesign:PackIcon>
+														<TextBlock Text="{Binding Name}"
+																  FontWeight="Medium"
+																  VerticalAlignment="Center" />
+													</StackPanel>
 													<TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground.Light}"
-															  FontSize="11">
+															  FontSize="11"
+															  Margin="20,0,0,0">
 														<TextBlock.Text>
 															<MultiBinding StringFormat="{}{0} - {1}">
 																<Binding Path="TicketId" TargetNullValue="(no ticket)" />
@@ -227,11 +249,20 @@
 										</ListBox.ItemTemplate>
 									</ListBox>
 
-									<!-- Move Up/Down buttons -->
+									<!-- List toolbar: Remove + Move Up/Down -->
 									<StackPanel Grid.Row="1"
 											   Orientation="Horizontal"
 											   HorizontalAlignment="Right"
 											   Margin="8">
+										<Button Command="{Binding RemoveFavoriteCommand}"
+											   Style="{StaticResource MaterialDesignIconButton}"
+											   ToolTip="{markup:Localize RemoveFavorite}"
+											   Foreground="Crimson"
+											   Width="32"
+											   Height="32"
+											   Margin="0,0,8,0">
+											<materialDesign:PackIcon Kind="Delete" />
+										</Button>
 										<Button Command="{Binding MoveFavoriteUpCommand}"
 											   Style="{StaticResource MaterialDesignIconButton}"
 											   ToolTip="{markup:Localize MoveUp}"
@@ -250,14 +281,41 @@
 								</Grid>
 							</Border>
 
+							<!-- Right: Placeholder when no favorite selected -->
+							<TextBlock Grid.Column="2"
+									  Text="{markup:Localize SelectFavoriteToEdit}"
+									  Foreground="{DynamicResource MaterialDesign.Brush.Foreground.Light}"
+									  HorizontalAlignment="Center"
+									  VerticalAlignment="Center"
+									  TextWrapping="Wrap"
+									  TextAlignment="Center"
+									  Visibility="{Binding IsEditFormVisible, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}" />
+
 							<!-- Right: Edit form -->
 							<Border Grid.Column="2"
 								   BorderBrush="{DynamicResource MaterialDesign.Brush.Border}"
 								   BorderThickness="1"
 								   CornerRadius="4"
 								   Padding="16"
-								   Background="{DynamicResource MaterialDesign.Brush.Background.Light}">
+								   Background="{DynamicResource MaterialDesign.Brush.Background.Light}"
+								   Visibility="{Binding IsEditFormVisible, Converter={StaticResource BoolToVisibilityConverter}}">
 								<StackPanel>
+									<!-- Form header indicating mode -->
+									<TextBlock FontSize="14"
+											  FontWeight="Medium"
+											  Margin="0,0,0,16">
+										<TextBlock.Style>
+											<Style TargetType="TextBlock">
+												<Setter Property="Text" Value="{markup:Localize EditFavorite}" />
+												<Style.Triggers>
+													<DataTrigger Binding="{Binding IsEditingFavorite}" Value="True">
+														<Setter Property="Text" Value="{markup:Localize NewFavorite}" />
+													</DataTrigger>
+												</Style.Triggers>
+											</Style>
+										</TextBlock.Style>
+									</TextBlock>
+
 									<TextBox Text="{Binding EditingFavoriteName, UpdateSourceTrigger=PropertyChanged}"
 											materialDesign:HintAssist.Hint="{markup:Localize FavoriteName}"
 											Style="{StaticResource MaterialDesignOutlinedTextBox}"
@@ -276,12 +334,24 @@
 											MinHeight="60"
 											Margin="0,0,0,16" />
 
+									<CheckBox IsChecked="{Binding EditingFavoriteShowAsTemplate}"
+											 Margin="0,0,0,16">
+										<StackPanel>
+											<TextBlock Text="{markup:Localize FavoriteShowAsTemplate}"
+													  FontWeight="Medium" />
+											<TextBlock Text="{markup:Localize FavoriteShowAsTemplateDesc}"
+													  Foreground="{DynamicResource MaterialDesign.Brush.Foreground.Light}"
+													  FontSize="11"
+													  TextWrapping="Wrap"
+													  Margin="0,4,0,0" />
+										</StackPanel>
+									</CheckBox>
+
 									<StackPanel Orientation="Horizontal"
 											   HorizontalAlignment="Right">
-										<Button Content="{markup:Localize RemoveFavorite}"
-											   Command="{Binding RemoveFavoriteCommand}"
+										<Button Content="{markup:Localize Cancel}"
+											   Command="{Binding CancelEditFavoriteCommand}"
 											   Style="{StaticResource MaterialDesignOutlinedButton}"
-											   Foreground="Crimson"
 											   Margin="0,0,8,0" />
 										<Button Content="{markup:Localize Save}"
 											   Command="{Binding SaveFavoriteCommand}"
@@ -608,7 +678,6 @@
 									  HorizontalAlignment="Center"
 									  Opacity="0.7"
 									  Text="{markup:Localize AboutQuote}" />
-
 						</StackPanel>
 					</ScrollViewer>
 				</TabItem>

@@ -259,7 +259,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 	{
 		try
 		{
-			var result = await _dialogService.ShowEditWorkEntryDialogAsync(null);
+			var result = await _dialogService.ShowNewWorkEntryDialogAsync();
 			if (result)
 			{
 				await RefreshWorkEntriesAsync();

@@ -465,6 +465,18 @@ Popis: {1}
   <data name="FavoritesDescription" xml:space="preserve">
     <value>Definujte oblíbené položky pro rychlý přístup z kontextové nabídky v systémové liště</value>
   </data>
+  <data name="NewFavorite" xml:space="preserve">
+    <value>Nová oblíbená položka</value>
+  </data>
+  <data name="SelectFavoriteToEdit" xml:space="preserve">
+    <value>Vyberte oblíbenou položku k úpravě nebo klikněte na Přidat</value>
+  </data>
+  <data name="FavoriteShowAsTemplate" xml:space="preserve">
+    <value>Zobrazit jako šablonu</value>
+  </data>
+  <data name="FavoriteShowAsTemplateDesc" xml:space="preserve">
+    <value>Otevře dialog pro zadání záznamu s předvyplněnými hodnotami místo okamžitého spuštění</value>
+  </data>
   <data name="FavoriteStarted" xml:space="preserve">
     <value>Zahájeno sledování: {0}</value>
   </data>

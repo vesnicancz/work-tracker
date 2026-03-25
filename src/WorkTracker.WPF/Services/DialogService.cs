@@ -20,12 +20,29 @@ public sealed class DialogService : IDialogService
 		_scopeFactory = scopeFactory;
 	}
 
-	public async Task<bool> ShowEditWorkEntryDialogAsync(WorkEntry? workEntry = null)
+	public Task<bool> ShowEditWorkEntryDialogAsync(WorkEntry workEntry)
 	{
-		// Create a new scope for this dialog operation
+		return ShowWorkEntryDialogCoreAsync(workEntry);
+	}
+
+	public Task<bool> ShowNewWorkEntryDialogAsync(string? ticketId = null, string? description = null)
+	{
+		return ShowWorkEntryDialogCoreAsync(null, ticketId, description);
+	}
+
+	private Task<bool> ShowWorkEntryDialogCoreAsync(WorkEntry? workEntry, string? templateTicketId = null, string? templateDescription = null)
+	{
 		using var scope = _scopeFactory.CreateScope();
 		var viewModel = scope.ServiceProvider.GetRequiredService<WorkEntryEditViewModel>();
-		await viewModel.InitializeAsync(workEntry);
+
+		if (workEntry != null)
+		{
+			viewModel.InitializeForEdit(workEntry);
+		}
+		else
+		{
+			viewModel.InitializeForNew(templateTicketId, templateDescription);
+		}
 
 		var dialog = new WorkEntryEditDialog
 		{
@@ -33,7 +50,7 @@ public sealed class DialogService : IDialogService
 			Owner = System.Windows.Application.Current.MainWindow
 		};
 
-		return dialog.ShowDialog() == true;
+		return Task.FromResult(dialog.ShowDialog() == true);
 	}
 
 	public async Task<bool> ShowSubmitWorklogDialogAsync(DateTime? date = null, bool isWeek = false)
