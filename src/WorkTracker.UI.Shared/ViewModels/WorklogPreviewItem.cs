@@ -116,7 +116,7 @@ public class WorklogPreviewItem : ObservableObject
 		}
 	}
 
-	private static readonly string[] TimeFormats = ["h\\:mm", "HH\\:mm", "H\\:mm"];
+	private static readonly string[] TimeFormats = ["h\\:mm", "hh\\:mm"];
 
 	public string StartTimeDisplay
 	{
