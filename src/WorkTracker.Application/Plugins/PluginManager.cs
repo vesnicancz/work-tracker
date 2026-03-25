@@ -331,9 +331,7 @@ public sealed class PluginManager : IPluginManager
 				return false;
 			}
 
-			_loadedPlugins.Remove(pluginId);
 			_pluginContexts.TryGetValue(pluginId, out context);
-			_pluginContexts.Remove(pluginId);
 		}
 
 		try
@@ -342,14 +340,13 @@ public sealed class PluginManager : IPluginManager
 
 			if (context != null)
 			{
-				try
-				{
-					context.Unload();
-				}
-				catch (Exception ex)
-				{
-					_logger.LogError(ex, "Failed to unload assembly context for plugin: {PluginId}", pluginId);
-				}
+				context.Unload();
+			}
+
+			lock (_lock)
+			{
+				_loadedPlugins.Remove(pluginId);
+				_pluginContexts.Remove(pluginId);
 			}
 
 			_logger.LogInformation("Unloaded plugin: {Name}", plugin.Metadata.Name);

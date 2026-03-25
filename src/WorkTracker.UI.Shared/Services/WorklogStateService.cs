@@ -153,6 +153,7 @@ public sealed class WorklogStateService : IWorklogStateService
 
 			return result;
 		}
+		catch (OperationCanceledException) { throw; }
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Unexpected error starting work tracking");
@@ -196,6 +197,7 @@ public sealed class WorklogStateService : IWorklogStateService
 
 			return result;
 		}
+		catch (OperationCanceledException) { throw; }
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Unexpected error stopping work tracking");
@@ -268,6 +270,7 @@ public sealed class WorklogStateService : IWorklogStateService
 
 			return result;
 		}
+		catch (OperationCanceledException) { throw; }
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Unexpected error creating work entry");
@@ -315,6 +318,7 @@ public sealed class WorklogStateService : IWorklogStateService
 
 			return result;
 		}
+		catch (OperationCanceledException) { throw; }
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Unexpected error updating work entry");
@@ -351,6 +355,7 @@ public sealed class WorklogStateService : IWorklogStateService
 
 			return result;
 		}
+		catch (OperationCanceledException) { throw; }
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Unexpected error deleting work entry");
