@@ -161,7 +161,7 @@ public partial class App : System.Windows.Application
 	/// <summary>
 	/// Handle global hotkey press (Ctrl+Shift+W) to open new work entry dialog
 	/// </summary>
-	private async void OnHotkeyPressed(object? sender, EventArgs e)
+	private void OnHotkeyPressed(object? sender, EventArgs e)
 	{
 		try
 		{
