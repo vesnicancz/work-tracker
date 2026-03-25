@@ -337,11 +337,19 @@
 												   Width="200"
 												   VerticalAlignment="Center" />
 
+										<Button Command="{Binding GoToTodayCommand}"
+											   Style="{StaticResource MaterialDesignIconButton}"
+											   ToolTip="{markup:Localize GoToToday}"
+											   VerticalAlignment="Center"
+											   Margin="0,0,0,0">
+											<materialDesign:PackIcon Kind="CalendarToday" Width="20" Height="20" />
+										</Button>
+
 										<Button Command="{Binding NextDayCommand}"
 											   Style="{StaticResource MaterialDesignIconButton}"
 											   ToolTip="{markup:Localize NextDay}"
 											   VerticalAlignment="Center"
-											   Margin="8,0,0,0">
+											   Margin="0,0,0,0">
 											<materialDesign:PackIcon Kind="ChevronRight" Width="24" Height="24" />
 										</Button>
 									</StackPanel>

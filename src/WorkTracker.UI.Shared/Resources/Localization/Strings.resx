@@ -93,6 +93,9 @@
   <data name="NextDay" xml:space="preserve">
     <value>Next day</value>
   </data>
+  <data name="GoToToday" xml:space="preserve">
+    <value>Go to today</value>
+  </data>
 
   <!-- Main Window -->
   <data name="WorkTracker" xml:space="preserve">

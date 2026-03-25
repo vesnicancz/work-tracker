@@ -263,6 +263,12 @@
                         </Button>
                         <CalendarDatePicker SelectedDate="{Binding SelectedDate}"
                                             Width="180" VerticalAlignment="Center" />
+                        <Button Command="{Binding GoToTodayCommand}" Padding="5"
+                                Background="Transparent" BorderThickness="0"
+                                ToolTip.Tip="{markup:Localize GoToToday}">
+                            <material:MaterialIcon Kind="CalendarToday" Width="18" Height="18"
+                                                  Foreground="{DynamicResource TextMuted}" />
+                        </Button>
                         <Button Command="{Binding NextDayCommand}" Padding="5"
                                 Background="Transparent" BorderThickness="0"
                                 ToolTip.Tip="{markup:Localize NextDay}">

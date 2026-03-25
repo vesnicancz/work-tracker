@@ -93,6 +93,9 @@
   <data name="NextDay" xml:space="preserve">
     <value>Následující den</value>
   </data>
+  <data name="GoToToday" xml:space="preserve">
+    <value>Přejít na dnešek</value>
+  </data>
 
   <!-- Hlavní okno -->
   <data name="WorkTracker" xml:space="preserve">
