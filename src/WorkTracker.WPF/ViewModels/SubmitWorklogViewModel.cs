@@ -88,8 +88,8 @@ public class SubmitWorklogViewModel : ViewModelBase
 		{
 			if (SetProperty(ref _isLoading, value))
 			{
-				((IAsyncRelayCommand)SendCommand).NotifyCanExecuteChanged();
-				((IAsyncRelayCommand)RetryFailedCommand).NotifyCanExecuteChanged();
+				SendCommand.NotifyCanExecuteChanged();
+				RetryFailedCommand.NotifyCanExecuteChanged();
 			}
 		}
 	}
@@ -101,8 +101,8 @@ public class SubmitWorklogViewModel : ViewModelBase
 		{
 			if (SetProperty(ref _isSending, value))
 			{
-				((IAsyncRelayCommand)SendCommand).NotifyCanExecuteChanged();
-				((IAsyncRelayCommand)RetryFailedCommand).NotifyCanExecuteChanged();
+				SendCommand.NotifyCanExecuteChanged();
+				RetryFailedCommand.NotifyCanExecuteChanged();
 			}
 		}
 	}
@@ -138,8 +138,8 @@ public class SubmitWorklogViewModel : ViewModelBase
 		{
 			if (SetProperty(ref _selectedProvider, value))
 			{
-				((IAsyncRelayCommand)SendCommand).NotifyCanExecuteChanged();
-				((IAsyncRelayCommand)RetryFailedCommand).NotifyCanExecuteChanged();
+				SendCommand.NotifyCanExecuteChanged();
+				RetryFailedCommand.NotifyCanExecuteChanged();
 			}
 		}
 	}
@@ -151,7 +151,7 @@ public class SubmitWorklogViewModel : ViewModelBase
 		{
 			if (SetProperty(ref _hasFailedItems, value))
 			{
-				((IAsyncRelayCommand)RetryFailedCommand).NotifyCanExecuteChanged();
+				RetryFailedCommand.NotifyCanExecuteChanged();
 			}
 		}
 	}
@@ -165,8 +165,8 @@ public class SubmitWorklogViewModel : ViewModelBase
 
 	#region Commands
 
-	public ICommand SendCommand { get; }
-	public ICommand RetryFailedCommand { get; }
+	public IAsyncRelayCommand SendCommand { get; }
+	public IAsyncRelayCommand RetryFailedCommand { get; }
 	public ICommand CancelCommand { get; }
 	public ICommand ResetCommand { get; }
 
@@ -242,7 +242,6 @@ public class SubmitWorklogViewModel : ViewModelBase
 			if (outcome.AllSucceeded)
 			{
 				DialogResult = true;
-				CloseAction?.Invoke();
 			}
 		}
 		catch (Exception ex)
@@ -278,7 +277,6 @@ public class SubmitWorklogViewModel : ViewModelBase
 			if (outcome.AllSucceeded)
 			{
 				DialogResult = true;
-				CloseAction?.Invoke();
 			}
 		}
 		catch (Exception ex)
