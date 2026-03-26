@@ -1,7 +1,7 @@
 # Architektonické Review — WorkTracker
 
-**Datum:** 2026-03-21
-**Verze:** na základě commitu `ad4bba1`
+**Datum:** 2026-03-26
+**Verze:** na základě commitu `b1b1090`
 **Scope:** Celý codebase (src/, plugins/, tests/)
 
 ---
@@ -65,25 +65,26 @@ Přidán `?? "(not available)"` fallback na řádcích 94 a 145 v `App.xaml.cs` 
 
 ---
 
-### 3.4 STŘEDNÍ — Nulové testovací pokrytí UI vrstvy
+### 3.4 STŘEDNÍ — Částečné testovací pokrytí UI vrstvy
 
-**Problém:** Existují testy pro Domain (~5), Application (~35) a Infrastructure (~30), ale:
+**Problém:** Existují testy pro Domain (~5), Application (~35), Infrastructure (~30) a UI.Shared (orchestrátory), ale:
 
 | Netestováno | Důležitost |
 |-------------|-----------|
-| `WorklogStateService` | Kritická stavová služba — žádné testy pro event raising, stavové přechody |
 | `MainViewModel` (obě verze) | Jádro UI logiky — commands, timer, input parsing v kontextu VM |
 | `SettingsViewModel` | Ukládání/načítání nastavení |
-| `LocalizationService` | Nyní testovatelná díky `ILocalizationService` (viz 3.1) |
+| `WorklogStateService` | Kritická stavová služba — žádné testy pro event raising, stavové přechody |
 | `SettingsService` | Serializace/deserializace JSON |
 | `PluginManager.LoadPluginFromFile` | Načítání z externích DLL |
+
+**Pokrok:** Přidány testy pro UI.Shared orchestrátory (SettingsOrchestrator, WorkEntryEditOrchestrator, WorklogSubmissionOrchestrator) v rámci #16.
 
 **Doporučení:**
 
 Prioritizovat testy podle rizikovosti:
 
-1. **WorklogStateService** — stavové přechody, event raising, inicializace
-2. **MainViewModel** — testovat logiku commands, input parsing, stavové přechody
+1. **MainViewModel** — testovat logiku commands, input parsing, stavové přechody
+2. **WorklogStateService** — stavové přechody, event raising, inicializace
 3. **SettingsService** — serializace/deserializace, chybějící soubor, poškozený JSON
 4. **PluginManager.LoadPluginFromFile** — neexistující soubor, nevalidní assembly, chybějící interface
 
@@ -136,10 +137,10 @@ Prioritizovat testy podle rizikovosti:
 
 | Metrika | Hodnota |
 |---------|---------|
-| Počet projektů | 12 (8 src + 3 tests + 1 plugin) |
+| Počet projektů | 13 (8 src + 4 tests + 1 plugin) |
 | Target framework | .NET 10.0 |
 | Testů celkem | ~198 |
-| Pokrytí UI vrstvy | 0 % |
+| Pokrytí UI vrstvy | Částečné (orchestrátory testovány, ViewModely ne) |
 | NuGet závislostí | ~20 unikátních |
 
 ---
@@ -168,4 +169,4 @@ Prioritizovat testy podle rizikovosti:
 
 | # | Nález | Závažnost | Effort |
 |---|-------|-----------|--------|
-| 3.4 | Nulové testy UI vrstvy | Střední | Vysoký |
+| 3.4 | Částečné testy UI vrstvy (ViewModely chybí) | Střední | Vysoký |

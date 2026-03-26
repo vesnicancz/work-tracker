@@ -65,7 +65,7 @@ dotnet run --project src/WorkTracker.Avalonia
 ### 1.3 Solution Structure
 
 ```
-WorkTracker.sln
+WorkTracker.slnx
 ├── src/
 │   ├── WorkTracker.Domain/              # Core business logic
 │   ├── WorkTracker.Application/         # Use cases & orchestration
@@ -81,7 +81,8 @@ WorkTracker.sln
 ├── tests/
 │   ├── WorkTracker.Domain.Tests/
 │   ├── WorkTracker.Application.Tests/
-│   └── WorkTracker.Infrastructure.Tests/
+│   ├── WorkTracker.Infrastructure.Tests/
+│   └── WorkTracker.UI.Shared.Tests/
 └── docs/                                # Documentation
 ```
 
@@ -232,39 +233,36 @@ WorkTracker.Domain/
 └── WorkTracker.Domain.csproj           # No external dependencies!
 ```
 
-**Example Entity:**
+**Example Entity (controlled mutation with encapsulated setters and factory methods):**
 
 ```csharp
 namespace WorkTracker.Domain.Entities;
 
-public class WorkEntry
+public sealed class WorkEntry
 {
-    public int Id { get; set; }
-    public string? TicketId { get; set; }
-    public DateTime StartTime { get; set; }
-    public DateTime? EndTime { get; set; }
-    public string? Description { get; set; }
-    public bool IsActive { get; set; }
-    public DateTime CreatedAt { get; set; }
-    public DateTime? UpdatedAt { get; set; }
+    public int Id { get; init; }
+    public string? TicketId { get; private set; }
+    public DateTime StartTime { get; private set; }
+    public DateTime? EndTime { get; private set; }
+    public string? Description { get; private set; }
+    public bool IsActive { get; private set; }
+    public DateTime CreatedAt { get; init; }
+    public DateTime? UpdatedAt { get; private set; }
 
-    // Calculated property
-    public TimeSpan? Duration => EndTime.HasValue
-        ? EndTime.Value - StartTime
-        : null;
+    public TimeSpan? Duration => EndTime.HasValue ? EndTime.Value - StartTime : null;
 
-    // Domain validation
-    public bool IsValid()
-    {
-        if (string.IsNullOrWhiteSpace(TicketId) &&
-            string.IsNullOrWhiteSpace(Description))
-            return false;
+    private WorkEntry() { }
 
-        if (EndTime.HasValue && EndTime.Value < StartTime)
-            return false;
+    public bool IsValid() { /* ... */ }
 
-        return true;
-    }
+    public void Stop(DateTime endTime, DateTime now) { /* ... */ }
+    public void UpdateFields(string? ticketId, DateTime? startTime, DateTime? endTime, string? description, DateTime now) { /* ... */ }
+
+    // Factory method — the only way to create new instances
+    public static WorkEntry Create(string? ticketId, DateTime startTime, DateTime? endTime, string? description, DateTime now) { /* ... */ }
+
+    // Reconstitute from persistence (internal)
+    internal static WorkEntry Reconstitute(int id, string? ticketId, DateTime startTime, DateTime? endTime, string? description, bool isActive, DateTime createdAt, DateTime? updatedAt = null) { /* ... */ }
 }
 ```
 
@@ -584,16 +582,42 @@ WorkTracker.CLI/
 
 **Location:** `src/WorkTracker.UI.Shared/`
 
-**Purpose:** Shared UI models, service interfaces, and framework-agnostic service implementations used by both WPF and Avalonia projects.
+**Purpose:** Shared UI models, service interfaces, orchestrators, and framework-agnostic service implementations used by both WPF and Avalonia projects.
 
 ```
 WorkTracker.UI.Shared/
 ├── Models/                               # Shared UI models
-├── Interfaces/                           # Service interfaces
+│   ├── ApplicationSettings.cs           # Settings model
+│   ├── FavoriteWorkItem.cs              # Favorite templates
+│   └── CloseWindowBehavior.cs           # Window close behavior enum
+├── Orchestrators/                        # Framework-agnostic business orchestration
+│   ├── ISettingsOrchestrator.cs         # Settings operations interface
+│   ├── SettingsOrchestrator.cs          # Settings save/load orchestration
+│   ├── IWorkEntryEditOrchestrator.cs    # Edit operations interface
+│   ├── WorkEntryEditOrchestrator.cs     # Work entry edit orchestration
+│   ├── IWorklogSubmissionOrchestrator.cs # Submission operations interface
+│   ├── WorklogSubmissionOrchestrator.cs # Worklog submission orchestration
+│   └── WorkInputParser.cs              # Input parsing logic
+├── ViewModels/                           # Shared ViewModels
+│   ├── ConfigurationFieldViewModel.cs   # Plugin config field VM
+│   ├── PluginViewModel.cs              # Plugin VM
+│   └── WorklogPreviewItem.cs           # Preview item VM
+├── Helpers/
+│   └── DurationFormatter.cs            # Duration formatting utility
 ├── Services/
+│   ├── ILocalizationService.cs          # Localization interface
+│   ├── LocalizationService.cs           # Localization support
+│   ├── ISettingsService.cs              # Settings interface
 │   ├── SettingsService.cs               # Application settings management
+│   ├── IWorklogStateService.cs          # Worklog state interface
 │   ├── WorklogStateService.cs           # Worklog state tracking
-│   └── LocalizationService.cs           # Localization support
+│   ├── IDialogService.cs               # Dialog abstraction
+│   ├── INotificationService.cs         # Notification abstraction
+│   ├── ITrayIconService.cs             # Tray icon abstraction
+│   ├── IAutostartManager.cs            # Autostart abstraction
+│   ├── IHotkeyService.cs              # Hotkey abstraction
+│   └── AppBootstrapper.cs              # App initialization
+├── DependencyInjection.cs               # DI registration
 └── WorkTracker.UI.Shared.csproj
 ```
 

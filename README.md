@@ -2,8 +2,15 @@
 
 **Aplikace pro sledování pracovní doby s plugin systémem pro integraci s externími systémy.**
 
+[![Build](https://github.com/vesnicancz/work-tracker/actions/workflows/dotnet.yml/badge.svg)](https://github.com/vesnicancz/work-tracker/actions/workflows/dotnet.yml)
+[![Release](https://img.shields.io/github/v/release/vesnicancz/work-tracker)](https://github.com/vesnicancz/work-tracker/releases/latest)
 [![.NET 10](https://img.shields.io/badge/.NET-10.0-purple)](https://dotnet.microsoft.com/)
+[![C# 13](https://img.shields.io/badge/C%23-13-blue)](https://learn.microsoft.com/en-us/dotnet/csharp/)
 [![Architecture](https://img.shields.io/badge/architecture-Clean%20Architecture-green)](ARCHITECTURE_REVIEW.md)
+![Platform](https://img.shields.io/badge/platform-Windows%20|%20Linux%20|%20macOS-lightgrey)
+[![EF Core](https://img.shields.io/badge/EF%20Core-10.0-blueviolet)](https://learn.microsoft.com/en-us/ef/core/)
+[![Avalonia](https://img.shields.io/badge/Avalonia-11.3-blue)](https://avaloniaui.net/)
+[![WPF](https://img.shields.io/badge/WPF-Material%20Design-orange)](https://github.com/MaterialDesignInXAML/MaterialDesignInXamlToolkit)
 
 ---
 
@@ -17,7 +24,10 @@ WorkTracker je desktopová aplikace pro sledování pracovní doby postavená na
 - Export worklogs do Jira Tempo
 - Detekce překrývajících se časových intervalů
 - Denní a týdenní přehledy
-- System tray notifikace (WPF, Avalonia)
+- System tray notifikace a toggle okna klikem na ikonu (WPF, Avalonia)
+- Oblíbené položky jako šablony
+- Navigace "Přejít na dnešek"
+- Opakované odeslání neúspěšných worklogů
 
 ---
 
@@ -115,8 +125,10 @@ Moderní desktopová aplikace s Material Design (Windows only):
 - Dashboard s přehledem práce a real-time timer
 - Start/Stop tracking s automatickou detekcí Jira kódu
 - Editace a mazání záznamů v dialogu
-- Odeslání worklogs do Tempo (denní/týdenní)
-- System tray ikona s rychlým menu a notifikacemi
+- Odeslání worklogs do Tempo (denní/týdenní) s opakovaným odesláním neúspěšných
+- System tray ikona s rychlým menu, notifikacemi a toggle okna klikem
+- Oblíbené položky jako šablony pro rychlé spuštění
+- Navigace "Přejít na dnešek"
 - Lokalizace (CZ/EN)
 
 ```bash
@@ -133,7 +145,7 @@ Cross-platform desktopová aplikace (Windows, Linux, macOS) s Fluent theme:
 - Přepínatelné Dark/Light motivy (One Dark Pro / One Light palety)
 - Material.Icons.Avalonia pro ikony
 - CommunityToolkit.Mvvm pro MVVM
-- System tray ikona s notifikacemi
+- System tray ikona s notifikacemi a toggle okna klikem
 - Lokalizace (CZ/EN)
 
 ```bash
@@ -255,7 +267,7 @@ Domain (WorkEntry, Business Rules)
 | `WorkTracker.CLI` | Konzolové rozhraní (Spectre.Console) | net10.0 |
 | `WorkTracker.WPF` | Desktop GUI - Windows (Material Design, MVVM) | net10.0-windows |
 | `WorkTracker.Avalonia` | Desktop GUI - cross-platform (Avalonia 11.3, Fluent theme, MVVM) | net10.0 |
-| `WorkTracker.Plugin.Abstractions` | Plugin API | net9.0 |
+| `WorkTracker.Plugin.Abstractions` | Plugin API | net10.0 |
 | `WorkTracker.Plugin.Tempo` | Tempo/Jira integrace | net10.0 |
 
 ### Struktura repozitáře
@@ -276,7 +288,8 @@ work-tracker/
 ├── tests/
 │   ├── WorkTracker.Domain.Tests/
 │   ├── WorkTracker.Application.Tests/
-│   └── WorkTracker.Infrastructure.Tests/
+│   ├── WorkTracker.Infrastructure.Tests/
+│   └── WorkTracker.UI.Shared.Tests/
 └── docs/                                # Dokumentace
 ```
 
