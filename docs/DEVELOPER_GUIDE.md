@@ -233,7 +233,7 @@ WorkTracker.Domain/
 └── WorkTracker.Domain.csproj           # No external dependencies!
 ```
 
-**Example Entity (immutable design with factory methods):**
+**Example Entity (controlled mutation with encapsulated setters and factory methods):**
 
 ```csharp
 namespace WorkTracker.Domain.Entities;

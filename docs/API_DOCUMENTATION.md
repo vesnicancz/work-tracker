@@ -23,7 +23,7 @@ Last Updated: March 2026
 
 **Namespace:** `WorkTracker.Domain.Entities`
 
-Main business entity representing a work tracking entry. The class is `sealed` with an immutable design — properties use `init` or `private set` accessors and instances are created via factory methods.
+Main business entity representing a work tracking entry. The class is `sealed` with encapsulated state and controlled mutation — properties use `init` or `private set` accessors, instances are created via factory methods, and state changes are performed via domain methods (e.g. `Stop()`, `UpdateFields()`).
 
 #### Properties
 

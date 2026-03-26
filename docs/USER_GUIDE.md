@@ -471,15 +471,15 @@ Po spuštění WPF aplikace uvidíte:
 
 #### Přejít na dnešek
 
-Tlačítko **"Go to today"** (nebo klávesová zkratka) rychle přepne zobrazení na dnešní datum, pokud procházíte záznamy z jiných dnů.
+Tlačítko **"Go to today"** rychle přepne zobrazení na dnešní datum, pokud procházíte záznamy z jiných dnů.
 
 #### Oblíbené položky jako šablony
 
-Často používané pracovní záznamy můžete uložit jako šablony:
-1. V seznamu prací klikněte pravým tlačítkem na záznam
-2. Vyberte **"Zobrazit jako šablonu"** / **"Show as template"**
-3. Šablona se zobrazí v panelu pro rychlé spuštění
-4. Jedním klikem na šablonu začnete sledovat práci s předvyplněnými údaji
+Často používané pracovní záznamy můžete uložit jako šablony pomocí oblíbených položek:
+1. Otevřete **Settings → Favorites**
+2. V seznamu oblíbených položek u vybrané položky zaškrtněte **"Show as template"**
+3. Takto označené položky se zobrazí v panelu šablon v hlavním okně
+4. Kliknutím na šablonu začnete sledovat práci s předvyplněnými údaji, které můžete před spuštěním upravit
 
 #### Start Work Panel
 
