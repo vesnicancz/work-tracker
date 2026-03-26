@@ -267,8 +267,8 @@ public class WorkEntryServiceTests
 		var date = DateTime.Today;
 		var entries = new List<WorkEntry>
 		{
-			WorkEntry.Reconstitute(1, "PROJ-123", date.AddHours(9), null, null, false, DateTime.MinValue),
-			WorkEntry.Reconstitute(2, "PROJ-124", date.AddHours(13), null, null, false, DateTime.MinValue)
+			WorkEntry.Reconstitute(1, "PROJ-123", date.AddHours(9), null, null, true, DateTime.MinValue),
+			WorkEntry.Reconstitute(2, "PROJ-124", date.AddHours(13), null, null, true, DateTime.MinValue)
 		};
 		_mockRepository
 			.Setup(r => r.GetByDateAsync(date, It.IsAny<CancellationToken>()))
@@ -291,8 +291,8 @@ public class WorkEntryServiceTests
 		var endDate = DateTime.Today.AddDays(7);
 		var entries = new List<WorkEntry>
 		{
-			WorkEntry.Reconstitute(1, "PROJ-123", startDate, null, null, false, DateTime.MinValue),
-			WorkEntry.Reconstitute(2, "PROJ-124", startDate.AddDays(3), null, null, false, DateTime.MinValue)
+			WorkEntry.Reconstitute(1, "PROJ-123", startDate, null, null, true, DateTime.MinValue),
+			WorkEntry.Reconstitute(2, "PROJ-124", startDate.AddDays(3), null, null, true, DateTime.MinValue)
 		};
 		_mockRepository
 			.Setup(r => r.GetByDateRangeAsync(startDate, endDate, It.IsAny<CancellationToken>()))
