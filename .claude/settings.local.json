@@ -26,7 +26,13 @@
       "Bash(then mv \"E:\\Claude-shared\\WorkTracker\\src\\WorkTracker.MAUI\\Resources\\Images\\README.md\" \"E:\\Claude-shared\\WorkTracker\\src\\WorkTracker.MAUI\\Resources\\Images\\readme.md\")",
       "Bash(fi)",
       "Bash(gh api:*)",
-      "Bash(xargs grep:*)"
+      "Bash(xargs grep:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(gh pr:*)",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__query-docs"
     ],
     "deny": [],
     "ask": []
