@@ -120,13 +120,16 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 			ticketId,
 			description);
 
-		var oldActiveWork = _activeWork;
-		var oldIsTracking = _isTracking;
+		WorkEntry? oldActiveWork = null;
+		var oldIsTracking = false;
 		var workEntriesModified = false;
 
 		await _stateLock.WaitAsync(cancellationToken);
 		try
 		{
+			oldActiveWork = _activeWork;
+			oldIsTracking = _isTracking;
+
 			using var scope = _scopeFactory.CreateScope();
 			var workEntryService = scope.ServiceProvider.GetRequiredService<IWorkEntryService>();
 
@@ -163,13 +166,16 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 	{
 		ThrowIfNotInitialized();
 
-		var oldActiveWork = _activeWork;
-		var oldIsTracking = _isTracking;
+		WorkEntry? oldActiveWork = null;
+		var oldIsTracking = false;
 		var workEntriesModified = false;
 
 		await _stateLock.WaitAsync(cancellationToken);
 		try
 		{
+			oldActiveWork = _activeWork;
+			oldIsTracking = _isTracking;
+
 			if (!_isTracking)
 			{
 				_logger.LogDebug("No active work to stop");
@@ -214,12 +220,15 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 	{
 		ThrowIfNotInitialized();
 
-		var oldActiveWork = _activeWork;
-		var oldIsTracking = _isTracking;
+		WorkEntry? oldActiveWork = null;
+		var oldIsTracking = false;
 
 		await _stateLock.WaitAsync(cancellationToken);
 		try
 		{
+			oldActiveWork = _activeWork;
+			oldIsTracking = _isTracking;
+
 			await RefreshFromDatabaseCoreAsync(cancellationToken);
 		}
 		catch (OperationCanceledException) { throw; }
@@ -251,13 +260,16 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 			endTime,
 			description);
 
-		var oldActiveWork = _activeWork;
-		var oldIsTracking = _isTracking;
+		WorkEntry? oldActiveWork = null;
+		var oldIsTracking = false;
 		var workEntriesModified = false;
 
 		await _stateLock.WaitAsync(cancellationToken);
 		try
 		{
+			oldActiveWork = _activeWork;
+			oldIsTracking = _isTracking;
+
 			using var scope = _scopeFactory.CreateScope();
 			var workEntryService = scope.ServiceProvider.GetRequiredService<IWorkEntryService>();
 
@@ -307,13 +319,16 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 			startTime,
 			endTime);
 
-		var oldActiveWork = _activeWork;
-		var oldIsTracking = _isTracking;
+		WorkEntry? oldActiveWork = null;
+		var oldIsTracking = false;
 		var workEntriesModified = false;
 
 		await _stateLock.WaitAsync(cancellationToken);
 		try
 		{
+			oldActiveWork = _activeWork;
+			oldIsTracking = _isTracking;
+
 			using var scope = _scopeFactory.CreateScope();
 			var workEntryService = scope.ServiceProvider.GetRequiredService<IWorkEntryService>();
 
@@ -352,13 +367,16 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 
 		_logger.LogInformation("Deleting work entry: Id={Id}", id);
 
-		var oldActiveWork = _activeWork;
-		var oldIsTracking = _isTracking;
+		WorkEntry? oldActiveWork = null;
+		var oldIsTracking = false;
 		var workEntriesModified = false;
 
 		await _stateLock.WaitAsync(cancellationToken);
 		try
 		{
+			oldActiveWork = _activeWork;
+			oldIsTracking = _isTracking;
+
 			using var scope = _scopeFactory.CreateScope();
 			var workEntryService = scope.ServiceProvider.GetRequiredService<IWorkEntryService>();
 
@@ -397,13 +415,16 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 
 		_logger.LogInformation("Work entries modified notification received (external)");
 
-		var oldActiveWork = _activeWork;
-		var oldIsTracking = _isTracking;
+		WorkEntry? oldActiveWork = null;
+		var oldIsTracking = false;
 		var refreshed = false;
 
 		await _stateLock.WaitAsync(cancellationToken);
 		try
 		{
+			oldActiveWork = _activeWork;
+			oldIsTracking = _isTracking;
+
 			await RefreshFromDatabaseCoreAsync(cancellationToken);
 			refreshed = true;
 		}
