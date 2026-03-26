@@ -69,13 +69,7 @@ public class WorkEntryServiceTests
 	public async Task StartWorkAsync_WithActiveEntry_ShouldAutoStopPrevious()
 	{
 		// Arrange
-		var existingEntry = new WorkEntry
-		{
-			Id = 1,
-			TicketId = "PROJ-100",
-			StartTime = DateTime.Now.AddHours(-2),
-			IsActive = true
-		};
+		var existingEntry = WorkEntry.Reconstitute(1, "PROJ-100", DateTime.Now.AddHours(-2), null, null, true, DateTime.MinValue);
 		_mockRepository
 			.Setup(r => r.GetActiveWorkEntryAsync(It.IsAny<CancellationToken>()))
 			.ReturnsAsync(existingEntry);
@@ -120,13 +114,7 @@ public class WorkEntryServiceTests
 	public async Task StopWorkAsync_WithActiveEntry_ShouldReturnSuccess()
 	{
 		// Arrange
-		var activeEntry = new WorkEntry
-		{
-			Id = 1,
-			TicketId = "PROJ-123",
-			StartTime = DateTime.Now.AddHours(-2),
-			IsActive = true
-		};
+		var activeEntry = WorkEntry.Reconstitute(1, "PROJ-123", DateTime.Now.AddHours(-2), null, null, true, DateTime.MinValue);
 		_mockRepository
 			.Setup(r => r.GetActiveWorkEntryAsync(It.IsAny<CancellationToken>()))
 			.ReturnsAsync(activeEntry);
@@ -166,13 +154,7 @@ public class WorkEntryServiceTests
 	public async Task StopWorkAsync_WithEndTimeBeforeStartTime_ShouldReturnFailure()
 	{
 		// Arrange
-		var activeEntry = new WorkEntry
-		{
-			Id = 1,
-			TicketId = "PROJ-123",
-			StartTime = DateTime.Now,
-			IsActive = true
-		};
+		var activeEntry = WorkEntry.Reconstitute(1, "PROJ-123", DateTime.Now, null, null, true, DateTime.MinValue);
 		_mockRepository
 			.Setup(r => r.GetActiveWorkEntryAsync(It.IsAny<CancellationToken>()))
 			.ReturnsAsync(activeEntry);
@@ -190,13 +172,7 @@ public class WorkEntryServiceTests
 	public async Task GetActiveWorkAsync_ShouldReturnActiveEntry()
 	{
 		// Arrange
-		var activeEntry = new WorkEntry
-		{
-			Id = 1,
-			TicketId = "PROJ-123",
-			StartTime = DateTime.Now,
-			IsActive = true
-		};
+		var activeEntry = WorkEntry.Reconstitute(1, "PROJ-123", DateTime.Now, null, null, true, DateTime.MinValue);
 		_mockRepository
 			.Setup(r => r.GetActiveWorkEntryAsync(It.IsAny<CancellationToken>()))
 			.ReturnsAsync(activeEntry);
@@ -214,14 +190,7 @@ public class WorkEntryServiceTests
 	public async Task UpdateWorkEntryAsync_WithValidData_ShouldReturnSuccess()
 	{
 		// Arrange
-		var existingEntry = new WorkEntry
-		{
-			Id = 1,
-			TicketId = "PROJ-123",
-			StartTime = DateTime.Now.AddHours(-2),
-			EndTime = DateTime.Now,
-			IsActive = false
-		};
+		var existingEntry = WorkEntry.Reconstitute(1, "PROJ-123", DateTime.Now.AddHours(-2), DateTime.Now, null, false, DateTime.MinValue);
 		_mockRepository
 			.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
 			.ReturnsAsync(existingEntry);
@@ -261,12 +230,7 @@ public class WorkEntryServiceTests
 	public async Task DeleteWorkEntryAsync_WithValidId_ShouldReturnSuccess()
 	{
 		// Arrange
-		var existingEntry = new WorkEntry
-		{
-			Id = 1,
-			TicketId = "PROJ-123",
-			StartTime = DateTime.Now
-		};
+		var existingEntry = WorkEntry.Reconstitute(1, "PROJ-123", DateTime.Now, null, null, false, DateTime.MinValue);
 		_mockRepository
 			.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
 			.ReturnsAsync(existingEntry);
@@ -303,8 +267,8 @@ public class WorkEntryServiceTests
 		var date = DateTime.Today;
 		var entries = new List<WorkEntry>
 		{
-			new() { Id = 1, TicketId = "PROJ-123", StartTime = date.AddHours(9) },
-			new() { Id = 2, TicketId = "PROJ-124", StartTime = date.AddHours(13) }
+			WorkEntry.Reconstitute(1, "PROJ-123", date.AddHours(9), null, null, false, DateTime.MinValue),
+			WorkEntry.Reconstitute(2, "PROJ-124", date.AddHours(13), null, null, false, DateTime.MinValue)
 		};
 		_mockRepository
 			.Setup(r => r.GetByDateAsync(date, It.IsAny<CancellationToken>()))
@@ -327,8 +291,8 @@ public class WorkEntryServiceTests
 		var endDate = DateTime.Today.AddDays(7);
 		var entries = new List<WorkEntry>
 		{
-			new() { Id = 1, TicketId = "PROJ-123", StartTime = startDate },
-			new() { Id = 2, TicketId = "PROJ-124", StartTime = startDate.AddDays(3) }
+			WorkEntry.Reconstitute(1, "PROJ-123", startDate, null, null, false, DateTime.MinValue),
+			WorkEntry.Reconstitute(2, "PROJ-124", startDate.AddDays(3), null, null, false, DateTime.MinValue)
 		};
 		_mockRepository
 			.Setup(r => r.GetByDateRangeAsync(startDate, endDate, It.IsAny<CancellationToken>()))

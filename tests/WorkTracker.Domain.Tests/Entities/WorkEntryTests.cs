@@ -9,12 +9,7 @@ public class WorkEntryTests
 	public void IsValid_WithTicketId_ShouldReturnTrue()
 	{
 		// Arrange
-		var workEntry = new WorkEntry
-		{
-			TicketId = "PROJ-123",
-			StartTime = DateTime.Now,
-			EndTime = DateTime.Now.AddHours(1)
-		};
+		var workEntry = WorkEntry.Create("PROJ-123", DateTime.Now, DateTime.Now.AddHours(1), null, DateTime.Now);
 
 		// Act
 		var result = workEntry.IsValid();
@@ -27,12 +22,7 @@ public class WorkEntryTests
 	public void IsValid_WithDescription_ShouldReturnTrue()
 	{
 		// Arrange
-		var workEntry = new WorkEntry
-		{
-			Description = "Working on feature",
-			StartTime = DateTime.Now,
-			EndTime = DateTime.Now.AddHours(1)
-		};
+		var workEntry = WorkEntry.Create(null, DateTime.Now, DateTime.Now.AddHours(1), "Working on feature", DateTime.Now);
 
 		// Act
 		var result = workEntry.IsValid();
@@ -45,13 +35,7 @@ public class WorkEntryTests
 	public void IsValid_WithBothTicketIdAndDescription_ShouldReturnTrue()
 	{
 		// Arrange
-		var workEntry = new WorkEntry
-		{
-			TicketId = "PROJ-123",
-			Description = "Working on feature",
-			StartTime = DateTime.Now,
-			EndTime = DateTime.Now.AddHours(1)
-		};
+		var workEntry = WorkEntry.Create("PROJ-123", DateTime.Now, DateTime.Now.AddHours(1), "Working on feature", DateTime.Now);
 
 		// Act
 		var result = workEntry.IsValid();
@@ -64,11 +48,7 @@ public class WorkEntryTests
 	public void IsValid_WithoutTicketIdAndDescription_ShouldReturnFalse()
 	{
 		// Arrange
-		var workEntry = new WorkEntry
-		{
-			StartTime = DateTime.Now,
-			EndTime = DateTime.Now.AddHours(1)
-		};
+		var workEntry = WorkEntry.Create(null, DateTime.Now, DateTime.Now.AddHours(1), null, DateTime.Now);
 
 		// Act
 		var result = workEntry.IsValid();
@@ -81,13 +61,7 @@ public class WorkEntryTests
 	public void IsValid_WithWhitespaceTicketIdAndDescription_ShouldReturnFalse()
 	{
 		// Arrange
-		var workEntry = new WorkEntry
-		{
-			TicketId = "   ",
-			Description = "   ",
-			StartTime = DateTime.Now,
-			EndTime = DateTime.Now.AddHours(1)
-		};
+		var workEntry = WorkEntry.Create("   ", DateTime.Now, DateTime.Now.AddHours(1), "   ", DateTime.Now);
 
 		// Act
 		var result = workEntry.IsValid();
@@ -100,12 +74,7 @@ public class WorkEntryTests
 	public void IsValid_WithEndTimeBeforeStartTime_ShouldReturnFalse()
 	{
 		// Arrange
-		var workEntry = new WorkEntry
-		{
-			TicketId = "PROJ-123",
-			StartTime = DateTime.Now,
-			EndTime = DateTime.Now.AddHours(-1)
-		};
+		var workEntry = WorkEntry.Create("PROJ-123", DateTime.Now, DateTime.Now.AddHours(-1), null, DateTime.Now);
 
 		// Act
 		var result = workEntry.IsValid();
@@ -118,12 +87,7 @@ public class WorkEntryTests
 	public void IsValid_WithNullEndTime_ShouldReturnTrue()
 	{
 		// Arrange
-		var workEntry = new WorkEntry
-		{
-			TicketId = "PROJ-123",
-			StartTime = DateTime.Now,
-			EndTime = null
-		};
+		var workEntry = WorkEntry.Create("PROJ-123", DateTime.Now, null, null, DateTime.Now);
 
 		// Act
 		var result = workEntry.IsValid();
@@ -138,12 +102,7 @@ public class WorkEntryTests
 		// Arrange
 		var startTime = new DateTime(2025, 11, 2, 9, 0, 0);
 		var endTime = new DateTime(2025, 11, 2, 11, 30, 0);
-		var workEntry = new WorkEntry
-		{
-			TicketId = "PROJ-123",
-			StartTime = startTime,
-			EndTime = endTime
-		};
+		var workEntry = WorkEntry.Create("PROJ-123", startTime, endTime, null, startTime);
 
 		// Act
 		var duration = workEntry.Duration;
@@ -157,12 +116,7 @@ public class WorkEntryTests
 	public void Duration_WithNullEndTime_ShouldReturnNull()
 	{
 		// Arrange
-		var workEntry = new WorkEntry
-		{
-			TicketId = "PROJ-123",
-			StartTime = DateTime.Now,
-			EndTime = null
-		};
+		var workEntry = WorkEntry.Create("PROJ-123", DateTime.Now, null, null, DateTime.Now);
 
 		// Act
 		var duration = workEntry.Duration;
@@ -176,12 +130,7 @@ public class WorkEntryTests
 	{
 		// Arrange
 		var time = DateTime.Now;
-		var workEntry = new WorkEntry
-		{
-			TicketId = "PROJ-123",
-			StartTime = time,
-			EndTime = time
-		};
+		var workEntry = WorkEntry.Create("PROJ-123", time, time, null, time);
 
 		// Act
 		var duration = workEntry.Duration;
@@ -195,7 +144,7 @@ public class WorkEntryTests
 	public void IsActive_DefaultValue_ShouldBeFalse()
 	{
 		// Arrange & Act
-		var workEntry = new WorkEntry();
+		var workEntry = WorkEntry.Create(null, DateTime.Now, DateTime.Now.AddHours(1), null, DateTime.Now);
 
 		// Assert
 		workEntry.IsActive.Should().BeFalse();
@@ -206,10 +155,7 @@ public class WorkEntryTests
 	{
 		// Arrange
 		var now = DateTime.Now;
-		var workEntry = new WorkEntry
-		{
-			CreatedAt = now
-		};
+		var workEntry = WorkEntry.Create(null, DateTime.MinValue, null, null, now);
 
 		// Act & Assert
 		workEntry.CreatedAt.Should().Be(now);
@@ -220,10 +166,7 @@ public class WorkEntryTests
 	{
 		// Arrange
 		var now = DateTime.Now;
-		var workEntry = new WorkEntry
-		{
-			UpdatedAt = now
-		};
+		var workEntry = WorkEntry.Reconstitute(0, null, DateTime.MinValue, null, null, false, DateTime.MinValue, now);
 
 		// Act & Assert
 		workEntry.UpdatedAt.Should().NotBeNull();
@@ -234,7 +177,7 @@ public class WorkEntryTests
 	public void UpdatedAt_DefaultValue_ShouldBeNull()
 	{
 		// Arrange & Act
-		var workEntry = new WorkEntry();
+		var workEntry = WorkEntry.Create(null, DateTime.MinValue, null, null, DateTime.MinValue);
 
 		// Assert
 		workEntry.UpdatedAt.Should().BeNull();
@@ -247,12 +190,7 @@ public class WorkEntryTests
 		var startTime = new DateTime(2026, 3, 25, 9, 0, 0);
 		var endTime = new DateTime(2026, 3, 25, 11, 0, 0);
 		var now = new DateTime(2026, 3, 25, 11, 0, 0);
-		var workEntry = new WorkEntry
-		{
-			TicketId = "PROJ-123",
-			StartTime = startTime,
-			IsActive = true
-		};
+		var workEntry = WorkEntry.Reconstitute(0, "PROJ-123", startTime, null, null, true, startTime);
 
 		// Act
 		workEntry.Stop(endTime, now);
@@ -269,15 +207,7 @@ public class WorkEntryTests
 		// Arrange
 		var startTime = new DateTime(2026, 3, 25, 9, 0, 0);
 		var createdAt = new DateTime(2026, 3, 25, 9, 0, 0);
-		var workEntry = new WorkEntry
-		{
-			Id = 42,
-			TicketId = "PROJ-999",
-			StartTime = startTime,
-			Description = "Important task",
-			IsActive = true,
-			CreatedAt = createdAt
-		};
+		var workEntry = WorkEntry.Reconstitute(42, "PROJ-999", startTime, null, "Important task", true, createdAt);
 
 		// Act
 		workEntry.Stop(new DateTime(2026, 3, 25, 11, 0, 0), new DateTime(2026, 3, 25, 11, 0, 0));
@@ -298,13 +228,7 @@ public class WorkEntryTests
 		var newStart = new DateTime(2026, 3, 25, 9, 0, 0);
 		var newEnd = new DateTime(2026, 3, 25, 11, 0, 0);
 		var now = new DateTime(2026, 3, 25, 11, 0, 0);
-		var workEntry = new WorkEntry
-		{
-			TicketId = "OLD-001",
-			StartTime = originalStart,
-			Description = "Old description",
-			IsActive = true
-		};
+		var workEntry = WorkEntry.Reconstitute(0, "OLD-001", originalStart, null, "Old description", true, DateTime.MinValue);
 
 		// Act
 		workEntry.UpdateFields("NEW-002", newStart, newEnd, "New description", now);
@@ -321,12 +245,7 @@ public class WorkEntryTests
 	public void UpdateFields_WithEndTime_SetsIsActiveFalse()
 	{
 		// Arrange
-		var workEntry = new WorkEntry
-		{
-			TicketId = "PROJ-123",
-			StartTime = new DateTime(2026, 3, 25, 9, 0, 0),
-			IsActive = true
-		};
+		var workEntry = WorkEntry.Reconstitute(0, "PROJ-123", new DateTime(2026, 3, 25, 9, 0, 0), null, null, true, DateTime.MinValue);
 
 		// Act
 		workEntry.UpdateFields("PROJ-123", null, new DateTime(2026, 3, 25, 11, 0, 0), null, new DateTime(2026, 3, 25, 11, 0, 0));
@@ -339,13 +258,7 @@ public class WorkEntryTests
 	public void UpdateFields_WithoutEndTime_SetsIsActiveTrue()
 	{
 		// Arrange
-		var workEntry = new WorkEntry
-		{
-			TicketId = "PROJ-123",
-			StartTime = new DateTime(2026, 3, 25, 9, 0, 0),
-			EndTime = new DateTime(2026, 3, 25, 10, 0, 0),
-			IsActive = false
-		};
+		var workEntry = WorkEntry.Reconstitute(0, "PROJ-123", new DateTime(2026, 3, 25, 9, 0, 0), new DateTime(2026, 3, 25, 10, 0, 0), null, false, DateTime.MinValue);
 
 		// Act
 		workEntry.UpdateFields("PROJ-123", null, null, null, new DateTime(2026, 3, 25, 11, 0, 0));
@@ -360,11 +273,7 @@ public class WorkEntryTests
 	{
 		// Arrange
 		var originalStart = new DateTime(2026, 3, 25, 9, 0, 0);
-		var workEntry = new WorkEntry
-		{
-			TicketId = "PROJ-123",
-			StartTime = originalStart
-		};
+		var workEntry = WorkEntry.Reconstitute(0, "PROJ-123", originalStart, null, null, false, DateTime.MinValue);
 
 		// Act
 		workEntry.UpdateFields("PROJ-123", null, null, "Updated description", new DateTime(2026, 3, 25, 11, 0, 0));

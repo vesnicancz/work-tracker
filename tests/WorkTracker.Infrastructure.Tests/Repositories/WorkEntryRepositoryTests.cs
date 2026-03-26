@@ -38,12 +38,7 @@ public class WorkEntryRepositoryTests : IDisposable
 	public async Task GetByIdAsync_WithExistingId_ShouldReturnWorkEntry()
 	{
 		// Arrange
-		var entry = new WorkEntry
-		{
-			TicketId = "PROJ-123",
-			StartTime = DateTime.Now,
-			EndTime = DateTime.Now.AddHours(1)
-		};
+		var entry = WorkEntry.Create("PROJ-123", DateTime.Now, DateTime.Now.AddHours(1), null, DateTime.Now);
 		await _testContext.WorkEntries.AddAsync(entry, TestContext.Current.CancellationToken);
 		await _testContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
@@ -74,12 +69,7 @@ public class WorkEntryRepositoryTests : IDisposable
 	public async Task GetActiveWorkEntryAsync_WithActiveEntry_ShouldReturnIt()
 	{
 		// Arrange
-		var activeEntry = new WorkEntry
-		{
-			TicketId = "PROJ-123",
-			StartTime = DateTime.Now,
-			IsActive = true
-		};
+		var activeEntry = WorkEntry.Create("PROJ-123", DateTime.Now, null, null, DateTime.Now);
 		await _testContext.WorkEntries.AddAsync(activeEntry, TestContext.Current.CancellationToken);
 		await _testContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
@@ -96,18 +86,8 @@ public class WorkEntryRepositoryTests : IDisposable
 	public async Task GetActiveWorkEntryAsync_WithMultipleActiveEntries_ShouldReturnMostRecent()
 	{
 		// Arrange
-		var olderEntry = new WorkEntry
-		{
-			TicketId = "PROJ-123",
-			StartTime = DateTime.Now.AddHours(-2),
-			IsActive = true
-		};
-		var newerEntry = new WorkEntry
-		{
-			TicketId = "PROJ-124",
-			StartTime = DateTime.Now,
-			IsActive = true
-		};
+		var olderEntry = WorkEntry.Create("PROJ-123", DateTime.Now.AddHours(-2), null, null, DateTime.Now.AddHours(-2));
+		var newerEntry = WorkEntry.Create("PROJ-124", DateTime.Now, null, null, DateTime.Now);
 		await _testContext.WorkEntries.AddRangeAsync([olderEntry, newerEntry], TestContext.Current.CancellationToken);
 		await _testContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
@@ -124,13 +104,7 @@ public class WorkEntryRepositoryTests : IDisposable
 	public async Task GetActiveWorkEntryAsync_WithNoActiveEntries_ShouldReturnNull()
 	{
 		// Arrange
-		var inactiveEntry = new WorkEntry
-		{
-			TicketId = "PROJ-123",
-			StartTime = DateTime.Now.AddHours(-1),
-			EndTime = DateTime.Now,
-			IsActive = false
-		};
+		var inactiveEntry = WorkEntry.Create("PROJ-123", DateTime.Now.AddHours(-1), DateTime.Now, null, DateTime.Now.AddHours(-1));
 		await _testContext.WorkEntries.AddAsync(inactiveEntry, TestContext.Current.CancellationToken);
 		await _testContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
@@ -150,18 +124,8 @@ public class WorkEntryRepositoryTests : IDisposable
 	{
 		// Arrange
 		var targetDate = new DateTime(2025, 11, 2);
-		var entry1 = new WorkEntry
-		{
-			TicketId = "PROJ-1",
-			StartTime = targetDate.AddHours(9),
-			EndTime = targetDate.AddHours(10)
-		};
-		var entry2 = new WorkEntry
-		{
-			TicketId = "PROJ-2",
-			StartTime = targetDate.AddHours(14),
-			EndTime = targetDate.AddHours(16)
-		};
+		var entry1 = WorkEntry.Create("PROJ-1", targetDate.AddHours(9), targetDate.AddHours(10), null, targetDate.AddHours(9));
+		var entry2 = WorkEntry.Create("PROJ-2", targetDate.AddHours(14), targetDate.AddHours(16), null, targetDate.AddHours(14));
 		await _testContext.WorkEntries.AddRangeAsync([entry1, entry2], TestContext.Current.CancellationToken);
 		await _testContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
@@ -179,16 +143,8 @@ public class WorkEntryRepositoryTests : IDisposable
 	{
 		// Arrange
 		var targetDate = new DateTime(2025, 11, 2);
-		var laterEntry = new WorkEntry
-		{
-			TicketId = "PROJ-LATER",
-			StartTime = targetDate.AddHours(14)
-		};
-		var earlierEntry = new WorkEntry
-		{
-			TicketId = "PROJ-EARLIER",
-			StartTime = targetDate.AddHours(9)
-		};
+		var laterEntry = WorkEntry.Create("PROJ-LATER", targetDate.AddHours(14), null, null, targetDate.AddHours(14));
+		var earlierEntry = WorkEntry.Create("PROJ-EARLIER", targetDate.AddHours(9), null, null, targetDate.AddHours(9));
 		await _testContext.WorkEntries.AddRangeAsync([laterEntry, earlierEntry], TestContext.Current.CancellationToken);
 		await _testContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
@@ -207,11 +163,7 @@ public class WorkEntryRepositoryTests : IDisposable
 		// Arrange
 		var targetDate = new DateTime(2025, 11, 2);
 		var differentDate = new DateTime(2025, 11, 3);
-		var entry = new WorkEntry
-		{
-			TicketId = "PROJ-1",
-			StartTime = differentDate.AddHours(9)
-		};
+		var entry = WorkEntry.Create("PROJ-1", differentDate.AddHours(9), null, null, differentDate.AddHours(9));
 		await _testContext.WorkEntries.AddAsync(entry, TestContext.Current.CancellationToken);
 		await _testContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
@@ -227,16 +179,8 @@ public class WorkEntryRepositoryTests : IDisposable
 	{
 		// Arrange
 		var targetDate = new DateTime(2025, 11, 2);
-		var onDate = new WorkEntry
-		{
-			TicketId = "PROJ-ON-DATE",
-			StartTime = targetDate.AddHours(23)
-		};
-		var nextDay = new WorkEntry
-		{
-			TicketId = "PROJ-NEXT-DAY",
-			StartTime = targetDate.AddDays(1).AddHours(1)
-		};
+		var onDate = WorkEntry.Create("PROJ-ON-DATE", targetDate.AddHours(23), null, null, targetDate.AddHours(23));
+		var nextDay = WorkEntry.Create("PROJ-NEXT-DAY", targetDate.AddDays(1).AddHours(1), null, null, targetDate.AddDays(1).AddHours(1));
 		await _testContext.WorkEntries.AddRangeAsync([onDate, nextDay], TestContext.Current.CancellationToken);
 		await _testContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
@@ -260,9 +204,9 @@ public class WorkEntryRepositoryTests : IDisposable
 		var startDate = new DateTime(2025, 11, 1);
 		var endDate = new DateTime(2025, 11, 7);
 
-		var entry1 = new WorkEntry { TicketId = "PROJ-1", StartTime = startDate.AddHours(9) };
-		var entry2 = new WorkEntry { TicketId = "PROJ-2", StartTime = startDate.AddDays(3).AddHours(9) };
-		var entry3 = new WorkEntry { TicketId = "PROJ-3", StartTime = endDate.AddHours(9) };
+		var entry1 = WorkEntry.Create("PROJ-1", startDate.AddHours(9), null, null, startDate.AddHours(9));
+		var entry2 = WorkEntry.Create("PROJ-2", startDate.AddDays(3).AddHours(9), null, null, startDate.AddDays(3).AddHours(9));
+		var entry3 = WorkEntry.Create("PROJ-3", endDate.AddHours(9), null, null, endDate.AddHours(9));
 
 		await _testContext.WorkEntries.AddRangeAsync([entry1, entry2, entry3], TestContext.Current.CancellationToken);
 		await _testContext.SaveChangesAsync(TestContext.Current.CancellationToken);
@@ -281,9 +225,9 @@ public class WorkEntryRepositoryTests : IDisposable
 		var startDate = new DateTime(2025, 11, 1);
 		var endDate = new DateTime(2025, 11, 7);
 
-		var entry3 = new WorkEntry { TicketId = "PROJ-3", StartTime = endDate.AddHours(9) };
-		var entry1 = new WorkEntry { TicketId = "PROJ-1", StartTime = startDate.AddHours(9) };
-		var entry2 = new WorkEntry { TicketId = "PROJ-2", StartTime = startDate.AddDays(3).AddHours(9) };
+		var entry3 = WorkEntry.Create("PROJ-3", endDate.AddHours(9), null, null, endDate.AddHours(9));
+		var entry1 = WorkEntry.Create("PROJ-1", startDate.AddHours(9), null, null, startDate.AddHours(9));
+		var entry2 = WorkEntry.Create("PROJ-2", startDate.AddDays(3).AddHours(9), null, null, startDate.AddDays(3).AddHours(9));
 
 		await _testContext.WorkEntries.AddRangeAsync([entry3, entry1, entry2], TestContext.Current.CancellationToken);
 		await _testContext.SaveChangesAsync(TestContext.Current.CancellationToken);
@@ -305,9 +249,9 @@ public class WorkEntryRepositoryTests : IDisposable
 		var startDate = new DateTime(2025, 11, 1);
 		var endDate = new DateTime(2025, 11, 7);
 
-		var before = new WorkEntry { TicketId = "PROJ-BEFORE", StartTime = startDate.AddDays(-1) };
-		var inRange = new WorkEntry { TicketId = "PROJ-IN-RANGE", StartTime = startDate.AddDays(3) };
-		var after = new WorkEntry { TicketId = "PROJ-AFTER", StartTime = endDate.AddDays(1) };
+		var before = WorkEntry.Create("PROJ-BEFORE", startDate.AddDays(-1), null, null, startDate.AddDays(-1));
+		var inRange = WorkEntry.Create("PROJ-IN-RANGE", startDate.AddDays(3), null, null, startDate.AddDays(3));
+		var after = WorkEntry.Create("PROJ-AFTER", endDate.AddDays(1), null, null, endDate.AddDays(1));
 
 		await _testContext.WorkEntries.AddRangeAsync([before, inRange, after], TestContext.Current.CancellationToken);
 		await _testContext.SaveChangesAsync(TestContext.Current.CancellationToken);
@@ -325,7 +269,7 @@ public class WorkEntryRepositoryTests : IDisposable
 	{
 		// Arrange
 		var date = new DateTime(2025, 11, 2);
-		var entry = new WorkEntry { TicketId = "PROJ-1", StartTime = date.AddHours(9) };
+		var entry = WorkEntry.Create("PROJ-1", date.AddHours(9), null, null, date.AddHours(9));
 		await _testContext.WorkEntries.AddAsync(entry, TestContext.Current.CancellationToken);
 		await _testContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
@@ -345,12 +289,7 @@ public class WorkEntryRepositoryTests : IDisposable
 	public async Task AddAsync_ShouldAddWorkEntry()
 	{
 		// Arrange
-		var entry = new WorkEntry
-		{
-			TicketId = "PROJ-123",
-			StartTime = DateTime.Now,
-			Description = "Test work"
-		};
+		var entry = WorkEntry.Create("PROJ-123", DateTime.Now, null, "Test work", DateTime.Now);
 
 		// Act
 		var result = await _repository.AddAsync(entry, TestContext.Current.CancellationToken);
@@ -368,12 +307,7 @@ public class WorkEntryRepositoryTests : IDisposable
 	public async Task AddAsync_ShouldPersistToDatabase()
 	{
 		// Arrange
-		var entry = new WorkEntry
-		{
-			TicketId = "PROJ-123",
-			StartTime = DateTime.Now,
-			CreatedAt = DateTime.Now
-		};
+		var entry = WorkEntry.Create("PROJ-123", DateTime.Now, null, null, DateTime.Now);
 
 		// Act
 		await _repository.AddAsync(entry, TestContext.Current.CancellationToken);
@@ -392,18 +326,13 @@ public class WorkEntryRepositoryTests : IDisposable
 	public async Task UpdateAsync_ShouldUpdateWorkEntry()
 	{
 		// Arrange
-		var entry = new WorkEntry
-		{
-			TicketId = "PROJ-123",
-			StartTime = DateTime.Now
-		};
+		var entry = WorkEntry.Create("PROJ-123", DateTime.Now, null, null, DateTime.Now);
 		await _testContext.WorkEntries.AddAsync(entry, TestContext.Current.CancellationToken);
 		await _testContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 		_testContext.Entry(entry).State = EntityState.Detached;
 
 		// Modify
-		entry.TicketId = "PROJ-456";
-		entry.Description = "Updated description";
+		entry.UpdateFields("PROJ-456", null, null, "Updated description", DateTime.Now);
 
 		// Act
 		await _repository.UpdateAsync(entry, TestContext.Current.CancellationToken);
@@ -419,19 +348,13 @@ public class WorkEntryRepositoryTests : IDisposable
 	public async Task UpdateAsync_ShouldPersistChanges()
 	{
 		// Arrange
-		var entry = new WorkEntry
-		{
-			TicketId = "PROJ-123",
-			StartTime = DateTime.Now,
-			CreatedAt = DateTime.Now
-		};
+		var entry = WorkEntry.Create("PROJ-123", DateTime.Now, null, null, DateTime.Now);
 		await _testContext.WorkEntries.AddAsync(entry, TestContext.Current.CancellationToken);
 		await _testContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 		_testContext.Entry(entry).State = EntityState.Detached;
 
 		// Modify
-		entry.Description = "Updated";
-		entry.TicketId = "PROJ-456";
+		entry.UpdateFields("PROJ-456", null, null, "Updated", DateTime.Now);
 
 		// Act
 		await _repository.UpdateAsync(entry, TestContext.Current.CancellationToken);
@@ -451,11 +374,7 @@ public class WorkEntryRepositoryTests : IDisposable
 	public async Task DeleteAsync_WithExistingEntry_ShouldRemoveIt()
 	{
 		// Arrange
-		var entry = new WorkEntry
-		{
-			TicketId = "PROJ-123",
-			StartTime = DateTime.Now
-		};
+		var entry = WorkEntry.Create("PROJ-123", DateTime.Now, null, null, DateTime.Now);
 		await _testContext.WorkEntries.AddAsync(entry, TestContext.Current.CancellationToken);
 		await _testContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 		var entryId = entry.Id;
@@ -484,21 +403,11 @@ public class WorkEntryRepositoryTests : IDisposable
 	public async Task HasOverlappingEntriesAsync_WithNoOverlap_ShouldReturnFalse()
 	{
 		// Arrange
-		var existing = new WorkEntry
-		{
-			TicketId = "PROJ-1",
-			StartTime = new DateTime(2025, 11, 2, 9, 0, 0),
-			EndTime = new DateTime(2025, 11, 2, 11, 0, 0)
-		};
+		var existing = WorkEntry.Create("PROJ-1", new DateTime(2025, 11, 2, 9, 0, 0), new DateTime(2025, 11, 2, 11, 0, 0), null, new DateTime(2025, 11, 2, 9, 0, 0));
 		await _testContext.WorkEntries.AddAsync(existing, TestContext.Current.CancellationToken);
 		await _testContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-		var newEntry = new WorkEntry
-		{
-			TicketId = "PROJ-2",
-			StartTime = new DateTime(2025, 11, 2, 13, 0, 0),
-			EndTime = new DateTime(2025, 11, 2, 15, 0, 0)
-		};
+		var newEntry = WorkEntry.Create("PROJ-2", new DateTime(2025, 11, 2, 13, 0, 0), new DateTime(2025, 11, 2, 15, 0, 0), null, new DateTime(2025, 11, 2, 13, 0, 0));
 
 		// Act
 		var hasOverlap = await _repository.HasOverlappingEntriesAsync(newEntry, TestContext.Current.CancellationToken);
@@ -511,21 +420,11 @@ public class WorkEntryRepositoryTests : IDisposable
 	public async Task HasOverlappingEntriesAsync_WithCompleteOverlap_ShouldReturnTrue()
 	{
 		// Arrange
-		var existing = new WorkEntry
-		{
-			TicketId = "PROJ-1",
-			StartTime = new DateTime(2025, 11, 2, 9, 0, 0),
-			EndTime = new DateTime(2025, 11, 2, 17, 0, 0)
-		};
+		var existing = WorkEntry.Create("PROJ-1", new DateTime(2025, 11, 2, 9, 0, 0), new DateTime(2025, 11, 2, 17, 0, 0), null, new DateTime(2025, 11, 2, 9, 0, 0));
 		await _testContext.WorkEntries.AddAsync(existing, TestContext.Current.CancellationToken);
 		await _testContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-		var newEntry = new WorkEntry
-		{
-			TicketId = "PROJ-2",
-			StartTime = new DateTime(2025, 11, 2, 10, 0, 0),
-			EndTime = new DateTime(2025, 11, 2, 12, 0, 0)
-		};
+		var newEntry = WorkEntry.Create("PROJ-2", new DateTime(2025, 11, 2, 10, 0, 0), new DateTime(2025, 11, 2, 12, 0, 0), null, new DateTime(2025, 11, 2, 10, 0, 0));
 
 		// Act
 		var hasOverlap = await _repository.HasOverlappingEntriesAsync(newEntry, TestContext.Current.CancellationToken);
@@ -538,21 +437,11 @@ public class WorkEntryRepositoryTests : IDisposable
 	public async Task HasOverlappingEntriesAsync_WithPartialOverlap_ShouldReturnTrue()
 	{
 		// Arrange
-		var existing = new WorkEntry
-		{
-			TicketId = "PROJ-1",
-			StartTime = new DateTime(2025, 11, 2, 9, 0, 0),
-			EndTime = new DateTime(2025, 11, 2, 12, 0, 0)
-		};
+		var existing = WorkEntry.Create("PROJ-1", new DateTime(2025, 11, 2, 9, 0, 0), new DateTime(2025, 11, 2, 12, 0, 0), null, new DateTime(2025, 11, 2, 9, 0, 0));
 		await _testContext.WorkEntries.AddAsync(existing, TestContext.Current.CancellationToken);
 		await _testContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-		var newEntry = new WorkEntry
-		{
-			TicketId = "PROJ-2",
-			StartTime = new DateTime(2025, 11, 2, 11, 0, 0),
-			EndTime = new DateTime(2025, 11, 2, 14, 0, 0)
-		};
+		var newEntry = WorkEntry.Create("PROJ-2", new DateTime(2025, 11, 2, 11, 0, 0), new DateTime(2025, 11, 2, 14, 0, 0), null, new DateTime(2025, 11, 2, 11, 0, 0));
 
 		// Act
 		var hasOverlap = await _repository.HasOverlappingEntriesAsync(newEntry, TestContext.Current.CancellationToken);
@@ -565,22 +454,11 @@ public class WorkEntryRepositoryTests : IDisposable
 	public async Task HasOverlappingEntriesAsync_WithActiveEntry_ShouldReturnTrue()
 	{
 		// Arrange
-		var activeEntry = new WorkEntry
-		{
-			TicketId = "PROJ-1",
-			StartTime = new DateTime(2025, 11, 2, 9, 0, 0),
-			EndTime = null,
-			IsActive = true
-		};
+		var activeEntry = WorkEntry.Create("PROJ-1", new DateTime(2025, 11, 2, 9, 0, 0), null, null, new DateTime(2025, 11, 2, 9, 0, 0));
 		await _testContext.WorkEntries.AddAsync(activeEntry, TestContext.Current.CancellationToken);
 		await _testContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-		var newEntry = new WorkEntry
-		{
-			TicketId = "PROJ-2",
-			StartTime = new DateTime(2025, 11, 2, 10, 0, 0),
-			EndTime = new DateTime(2025, 11, 2, 12, 0, 0)
-		};
+		var newEntry = WorkEntry.Create("PROJ-2", new DateTime(2025, 11, 2, 10, 0, 0), new DateTime(2025, 11, 2, 12, 0, 0), null, new DateTime(2025, 11, 2, 10, 0, 0));
 
 		// Act
 		var hasOverlap = await _repository.HasOverlappingEntriesAsync(newEntry, TestContext.Current.CancellationToken);
@@ -593,21 +471,11 @@ public class WorkEntryRepositoryTests : IDisposable
 	public async Task HasOverlappingEntriesAsync_WithAdjacentEntries_ShouldReturnFalse()
 	{
 		// Arrange
-		var existing = new WorkEntry
-		{
-			TicketId = "PROJ-1",
-			StartTime = new DateTime(2025, 11, 2, 9, 0, 0),
-			EndTime = new DateTime(2025, 11, 2, 11, 0, 0)
-		};
+		var existing = WorkEntry.Create("PROJ-1", new DateTime(2025, 11, 2, 9, 0, 0), new DateTime(2025, 11, 2, 11, 0, 0), null, new DateTime(2025, 11, 2, 9, 0, 0));
 		await _testContext.WorkEntries.AddAsync(existing, TestContext.Current.CancellationToken);
 		await _testContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-		var newEntry = new WorkEntry
-		{
-			TicketId = "PROJ-2",
-			StartTime = new DateTime(2025, 11, 2, 11, 0, 0),
-			EndTime = new DateTime(2025, 11, 2, 13, 0, 0)
-		};
+		var newEntry = WorkEntry.Create("PROJ-2", new DateTime(2025, 11, 2, 11, 0, 0), new DateTime(2025, 11, 2, 13, 0, 0), null, new DateTime(2025, 11, 2, 11, 0, 0));
 
 		// Act
 		var hasOverlap = await _repository.HasOverlappingEntriesAsync(newEntry, TestContext.Current.CancellationToken);
@@ -620,12 +488,7 @@ public class WorkEntryRepositoryTests : IDisposable
 	public async Task HasOverlappingEntriesAsync_ShouldIgnoreSameEntry()
 	{
 		// Arrange
-		var entry = new WorkEntry
-		{
-			TicketId = "PROJ-1",
-			StartTime = new DateTime(2025, 11, 2, 9, 0, 0),
-			EndTime = new DateTime(2025, 11, 2, 11, 0, 0)
-		};
+		var entry = WorkEntry.Create("PROJ-1", new DateTime(2025, 11, 2, 9, 0, 0), new DateTime(2025, 11, 2, 11, 0, 0), null, new DateTime(2025, 11, 2, 9, 0, 0));
 		await _testContext.WorkEntries.AddAsync(entry, TestContext.Current.CancellationToken);
 		await _testContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
@@ -640,22 +503,11 @@ public class WorkEntryRepositoryTests : IDisposable
 	public async Task HasOverlappingEntriesAsync_WithNewActiveEntry_ShouldCheckAgainstExisting()
 	{
 		// Arrange
-		var existing = new WorkEntry
-		{
-			TicketId = "PROJ-1",
-			StartTime = new DateTime(2025, 11, 2, 9, 0, 0),
-			EndTime = new DateTime(2025, 11, 2, 11, 0, 0)
-		};
+		var existing = WorkEntry.Create("PROJ-1", new DateTime(2025, 11, 2, 9, 0, 0), new DateTime(2025, 11, 2, 11, 0, 0), null, new DateTime(2025, 11, 2, 9, 0, 0));
 		await _testContext.WorkEntries.AddAsync(existing, TestContext.Current.CancellationToken);
 		await _testContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-		var newActiveEntry = new WorkEntry
-		{
-			TicketId = "PROJ-2",
-			StartTime = new DateTime(2025, 11, 2, 10, 0, 0),
-			EndTime = null,
-			IsActive = true
-		};
+		var newActiveEntry = WorkEntry.Create("PROJ-2", new DateTime(2025, 11, 2, 10, 0, 0), null, null, new DateTime(2025, 11, 2, 10, 0, 0));
 
 		// Act
 		var hasOverlap = await _repository.HasOverlappingEntriesAsync(newActiveEntry, TestContext.Current.CancellationToken);
