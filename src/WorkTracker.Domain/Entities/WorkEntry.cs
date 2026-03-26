@@ -1,6 +1,6 @@
 namespace WorkTracker.Domain.Entities;
 
-public class WorkEntry
+public sealed class WorkEntry
 {
 	public int Id { get; init; }
 
@@ -19,6 +19,10 @@ public class WorkEntry
 	public DateTime? UpdatedAt { get; private set; }
 
 	public TimeSpan? Duration => EndTime.HasValue ? EndTime.Value - StartTime : null;
+
+	private WorkEntry()
+	{
+	}
 
 	public bool IsValid()
 	{

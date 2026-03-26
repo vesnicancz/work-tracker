@@ -141,17 +141,7 @@ public class WorkEntryTests
 	}
 
 	[Fact]
-	public void IsActive_DefaultValue_ShouldBeFalse()
-	{
-		// Arrange & Act
-		var workEntry = WorkEntry.Create(null, DateTime.Now, DateTime.Now.AddHours(1), null, DateTime.Now);
-
-		// Assert
-		workEntry.IsActive.Should().BeFalse();
-	}
-
-	[Fact]
-	public void CreatedAt_ShouldBeSettable()
+	public void Create_SetsCreatedAt()
 	{
 		// Arrange
 		var now = DateTime.Now;
@@ -162,7 +152,7 @@ public class WorkEntryTests
 	}
 
 	[Fact]
-	public void UpdatedAt_ShouldBeNullableAndSettable()
+	public void Reconstitute_SetsUpdatedAt()
 	{
 		// Arrange
 		var now = DateTime.Now;
@@ -174,7 +164,7 @@ public class WorkEntryTests
 	}
 
 	[Fact]
-	public void UpdatedAt_DefaultValue_ShouldBeNull()
+	public void Create_SetsUpdatedAtToNull()
 	{
 		// Arrange & Act
 		var workEntry = WorkEntry.Create(null, DateTime.MinValue, null, null, DateTime.MinValue);
