@@ -34,13 +34,13 @@ public interface IWorklogStateService
 	/// Starts tracking a new work entry with the current time.
 	/// Automatically notifies about state changes.
 	/// </summary>
-	Task<Result<WorkEntry>> StartTrackingAsync(string? ticketId, string? description);
+	Task<Result<WorkEntry>> StartTrackingAsync(string? ticketId, string? description, CancellationToken cancellationToken);
 
 	/// <summary>
 	/// Stops tracking the currently active work entry.
 	/// Automatically notifies about state changes.
 	/// </summary>
-	Task<Result> StopTrackingAsync();
+	Task<Result> StopTrackingAsync(CancellationToken cancellationToken);
 
 	/// <summary>
 	/// Creates a new work entry with custom start/end times.
@@ -50,7 +50,8 @@ public interface IWorklogStateService
 		string? ticketId,
 		DateTime startTime,
 		string? description,
-		DateTime? endTime);
+		DateTime? endTime,
+		CancellationToken cancellationToken);
 
 	/// <summary>
 	/// Updates an existing work entry.
@@ -61,18 +62,19 @@ public interface IWorklogStateService
 		string? ticketId,
 		DateTime startTime,
 		DateTime? endTime,
-		string? description);
+		string? description,
+		CancellationToken cancellationToken);
 
 	/// <summary>
 	/// Deletes a work entry.
 	/// Automatically notifies about state changes.
 	/// </summary>
-	Task<Result> DeleteWorkEntryAsync(int id);
+	Task<Result> DeleteWorkEntryAsync(int id, CancellationToken cancellationToken);
 
 	/// <summary>
 	/// Refreshes the state from the database.
 	/// </summary>
-	Task RefreshFromDatabaseAsync();
+	Task RefreshFromDatabaseAsync(CancellationToken cancellationToken);
 
 	/// <summary>
 	/// Event raised when the active work entry changes
@@ -93,5 +95,5 @@ public interface IWorklogStateService
 	/// Notifies that work entries have been modified by external operations.
 	/// Refreshes internal state from the database before raising the event.
 	/// </summary>
-	Task NotifyWorkEntriesModifiedAsync();
+	Task NotifyWorkEntriesModifiedAsync(CancellationToken cancellationToken);
 }

@@ -102,7 +102,7 @@ public class WorkEntryEditOrchestratorTests
 	{
 		var entry = new WorkEntry { Id = 1, TicketId = "PROJ-1", StartTime = DateTime.Now };
 		_mockStateService
-			.Setup(s => s.CreateWorkEntryAsync(It.IsAny<string?>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<DateTime?>()))
+			.Setup(s => s.CreateWorkEntryAsync(It.IsAny<string?>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(Result.Success(entry));
 
 		var result = await _orchestrator.SaveNewAsync("PROJ-1", DateTime.Now, null, "desc");
@@ -114,7 +114,7 @@ public class WorkEntryEditOrchestratorTests
 	public async Task SaveNewAsync_Failure_ReturnsFailure()
 	{
 		_mockStateService
-			.Setup(s => s.CreateWorkEntryAsync(It.IsAny<string?>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<DateTime?>()))
+			.Setup(s => s.CreateWorkEntryAsync(It.IsAny<string?>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(Result.Failure<WorkEntry>("Overlap detected"));
 
 		var result = await _orchestrator.SaveNewAsync("PROJ-1", DateTime.Now, null, "desc");
@@ -127,7 +127,7 @@ public class WorkEntryEditOrchestratorTests
 	public async Task SaveExistingAsync_Success_ReturnsSuccess()
 	{
 		_mockStateService
-			.Setup(s => s.UpdateWorkEntryAsync(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<DateTime>(), It.IsAny<DateTime?>(), It.IsAny<string?>()))
+			.Setup(s => s.UpdateWorkEntryAsync(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<DateTime>(), It.IsAny<DateTime?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(Result.Success());
 
 		var result = await _orchestrator.SaveExistingAsync(1, "PROJ-1", DateTime.Now, null, "desc");
@@ -139,7 +139,7 @@ public class WorkEntryEditOrchestratorTests
 	public async Task SaveExistingAsync_Failure_ReturnsFailure()
 	{
 		_mockStateService
-			.Setup(s => s.UpdateWorkEntryAsync(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<DateTime>(), It.IsAny<DateTime?>(), It.IsAny<string?>()))
+			.Setup(s => s.UpdateWorkEntryAsync(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<DateTime>(), It.IsAny<DateTime?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(Result.Failure("Not found"));
 
 		var result = await _orchestrator.SaveExistingAsync(99, "PROJ-1", DateTime.Now, null, "desc");

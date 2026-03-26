@@ -1,5 +1,7 @@
+using System.Collections.ObjectModel;
 using System.Reflection;
 using System.Runtime.Loader;
+using System.Threading;
 using Microsoft.Extensions.Logging;
 using WorkTracker.Plugin.Abstractions;
 
@@ -11,6 +13,7 @@ namespace WorkTracker.Application.Plugins;
 public sealed class PluginManager : IPluginManager
 {
 	private readonly ILogger<PluginManager> _logger;
+	private readonly Lock _lock = new();
 
 	private readonly Dictionary<string, IPlugin> _loadedPlugins = new();
 	private readonly Dictionary<string, AssemblyLoadContext> _pluginContexts = new();
@@ -25,33 +28,62 @@ public sealed class PluginManager : IPluginManager
 	/// <summary>
 	/// Gets all loaded plugins
 	/// </summary>
-	public IReadOnlyDictionary<string, IPlugin> LoadedPlugins => _loadedPlugins;
+	public IReadOnlyDictionary<string, IPlugin> LoadedPlugins
+	{
+		get
+		{
+			lock (_lock)
+			{
+				return new ReadOnlyDictionary<string, IPlugin>(new Dictionary<string, IPlugin>(_loadedPlugins));
+			}
+		}
+	}
 
 	/// <summary>
 	/// Gets all loaded worklog upload plugins (unfiltered - includes disabled plugins)
 	/// </summary>
-	public IEnumerable<IWorklogUploadPlugin> AllWorklogUploadPlugins =>
-		_loadedPlugins.Values.OfType<IWorklogUploadPlugin>();
+	public IEnumerable<IWorklogUploadPlugin> AllWorklogUploadPlugins
+	{
+		get
+		{
+			lock (_lock)
+			{
+				return _loadedPlugins.Values.OfType<IWorklogUploadPlugin>().ToList();
+			}
+		}
+	}
 
 	/// <summary>
 	/// Gets all enabled worklog upload plugins (filtered by enabled state)
 	/// </summary>
-	public IEnumerable<IWorklogUploadPlugin> WorklogUploadPlugins =>
-		_loadedPlugins.Values
-			.OfType<IWorklogUploadPlugin>()
-			.Where(p => _enabledPluginIds.Contains(p.Metadata.Id));
+	public IEnumerable<IWorklogUploadPlugin> WorklogUploadPlugins
+	{
+		get
+		{
+			lock (_lock)
+			{
+				return _loadedPlugins.Values
+					.OfType<IWorklogUploadPlugin>()
+					.Where(p => _enabledPluginIds.Contains(p.Metadata.Id))
+					.ToList();
+			}
+		}
+	}
 
 	/// <summary>
 	/// Sets which plugins are enabled
 	/// </summary>
 	public void SetEnabledPlugins(IEnumerable<string> pluginIds)
 	{
-		_enabledPluginIds.Clear();
-		foreach (var id in pluginIds)
+		lock (_lock)
 		{
-			_enabledPluginIds.Add(id);
+			_enabledPluginIds.Clear();
+			foreach (var id in pluginIds)
+			{
+				_enabledPluginIds.Add(id);
+			}
+			_logger.LogInformation("Updated enabled plugins: {PluginIds}", string.Join(", ", _enabledPluginIds));
 		}
-		_logger.LogInformation("Updated enabled plugins: {PluginIds}", string.Join(", ", _enabledPluginIds));
 	}
 
 	/// <summary>
@@ -61,7 +93,10 @@ public sealed class PluginManager : IPluginManager
 	{
 		if (Directory.Exists(directory))
 		{
-			_pluginDirectories.Add(directory);
+			lock (_lock)
+			{
+				_pluginDirectories.Add(directory);
+			}
 			_logger.LogInformation("Added plugin directory: {Directory}", directory);
 		}
 		else
@@ -75,9 +110,15 @@ public sealed class PluginManager : IPluginManager
 	/// </summary>
 	public int DiscoverAndLoadPlugins()
 	{
+		List<string> directoriesSnapshot;
+		lock (_lock)
+		{
+			directoriesSnapshot = new List<string>(_pluginDirectories);
+		}
+
 		var loadedCount = 0;
 
-		foreach (var directory in _pluginDirectories)
+		foreach (var directory in directoriesSnapshot)
 		{
 			var pluginFiles = Directory.GetFiles(directory, "*.dll", SearchOption.AllDirectories);
 			foreach (var pluginFile in pluginFiles)
@@ -96,7 +137,7 @@ public sealed class PluginManager : IPluginManager
 			}
 		}
 
-		_logger.LogInformation("Loaded {Count} plugins from {DirectoryCount} directories", loadedCount, _pluginDirectories.Count);
+		_logger.LogInformation("Loaded {Count} plugins from {DirectoryCount} directories", loadedCount, directoriesSnapshot.Count);
 
 		return loadedCount;
 	}
@@ -130,6 +171,7 @@ public sealed class PluginManager : IPluginManager
 			if (pluginTypes.Count == 0)
 			{
 				_logger.LogWarning("No plugin types found in {Assembly}", assemblyPath);
+				context.Unload();
 				return false;
 			}
 
@@ -148,14 +190,18 @@ public sealed class PluginManager : IPluginManager
 
 					var pluginId = plugin.Metadata.Id;
 
-					if (_loadedPlugins.ContainsKey(pluginId))
+					lock (_lock)
 					{
-						_logger.LogWarning("Plugin {Id} is already loaded, skipping", pluginId);
-						continue;
+						if (_loadedPlugins.ContainsKey(pluginId))
+						{
+							_logger.LogWarning("Plugin {Id} is already loaded, skipping", pluginId);
+							continue;
+						}
+
+						_loadedPlugins[pluginId] = plugin;
+						_pluginContexts[pluginId] = context;
 					}
 
-					_loadedPlugins[pluginId] = plugin;
-					_pluginContexts[pluginId] = context;
 					anyLoaded = true;
 
 					_logger.LogInformation("Loaded plugin: {Name} v{Version} by {Author}", plugin.Metadata.Name, plugin.Metadata.Version, plugin.Metadata.Author);
@@ -164,6 +210,11 @@ public sealed class PluginManager : IPluginManager
 				{
 					_logger.LogError(ex, "Failed to instantiate plugin type {Type}", pluginType.FullName);
 				}
+			}
+
+			if (!anyLoaded)
+			{
+				context.Unload();
 			}
 
 			return anyLoaded;
@@ -186,19 +237,22 @@ public sealed class PluginManager : IPluginManager
 			var plugin = new T();
 			var pluginId = plugin.Metadata.Id;
 
-			if (_loadedPlugins.ContainsKey(pluginId))
-			{
-				_logger.LogWarning("Plugin {Id} is already loaded", pluginId);
-				return false;
-			}
-
 			// Set logger for plugins that support it
 			if (plugin is WorklogUploadPluginBase worklogPlugin)
 			{
 				worklogPlugin.SetLogger(_logger);
 			}
 
-			_loadedPlugins[pluginId] = plugin;
+			lock (_lock)
+			{
+				if (_loadedPlugins.ContainsKey(pluginId))
+				{
+					_logger.LogWarning("Plugin {Id} is already loaded", pluginId);
+					return false;
+				}
+
+				_loadedPlugins[pluginId] = plugin;
+			}
 
 			_logger.LogInformation("Loaded embedded plugin: {Name} v{Version} by {Author}", plugin.Metadata.Name, plugin.Metadata.Version, plugin.Metadata.Author);
 
@@ -216,7 +270,13 @@ public sealed class PluginManager : IPluginManager
 	/// </summary>
 	public async Task InitializePluginsAsync(Dictionary<string, Dictionary<string, string>>? configurations = null, CancellationToken cancellationToken = default)
 	{
-		foreach (var kvp in _loadedPlugins)
+		List<KeyValuePair<string, IPlugin>> pluginsSnapshot;
+		lock (_lock)
+		{
+			pluginsSnapshot = new List<KeyValuePair<string, IPlugin>>(_loadedPlugins);
+		}
+
+		foreach (var kvp in pluginsSnapshot)
 		{
 			var pluginId = kvp.Key;
 			var plugin = kvp.Value;
@@ -247,7 +307,10 @@ public sealed class PluginManager : IPluginManager
 	/// </summary>
 	public IPlugin? GetPlugin(string pluginId)
 	{
-		return _loadedPlugins.GetValueOrDefault(pluginId);
+		lock (_lock)
+		{
+			return _loadedPlugins.GetValueOrDefault(pluginId);
+		}
 	}
 
 	/// <summary>
@@ -264,26 +327,32 @@ public sealed class PluginManager : IPluginManager
 	/// </summary>
 	public async Task<bool> UnloadPluginAsync(string pluginId)
 	{
-		if (!_loadedPlugins.TryGetValue(pluginId, out var plugin))
+		IPlugin? plugin;
+		AssemblyLoadContext? context;
+
+		lock (_lock)
 		{
-			return false;
+			if (!_loadedPlugins.TryGetValue(pluginId, out plugin))
+			{
+				return false;
+			}
+
+			_pluginContexts.TryGetValue(pluginId, out context);
 		}
 
 		try
 		{
 			await plugin.ShutdownAsync();
-			_loadedPlugins.Remove(pluginId);
 
-			if (_pluginContexts.TryGetValue(pluginId, out var context))
+			if (context != null)
 			{
-				try
-				{
-					context.Unload();
-				}
-				finally
-				{
-					_pluginContexts.Remove(pluginId);
-				}
+				context.Unload();
+			}
+
+			lock (_lock)
+			{
+				_loadedPlugins.Remove(pluginId);
+				_pluginContexts.Remove(pluginId);
 			}
 
 			_logger.LogInformation("Unloaded plugin: {Name}", plugin.Metadata.Name);
@@ -301,7 +370,13 @@ public sealed class PluginManager : IPluginManager
 	/// </summary>
 	public async Task UnloadAllPluginsAsync()
 	{
-		foreach (var pluginId in _loadedPlugins.Keys.ToList())
+		List<string> pluginIds;
+		lock (_lock)
+		{
+			pluginIds = _loadedPlugins.Keys.ToList();
+		}
+
+		foreach (var pluginId in pluginIds)
 		{
 			await UnloadPluginAsync(pluginId);
 		}

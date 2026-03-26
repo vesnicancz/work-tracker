@@ -65,15 +65,17 @@ public sealed class WorklogStateService : IWorklogStateService
 		}
 	}
 
-	#endregion
+	#endregion Properties
 
 	#region Events
 
 	public event EventHandler<WorkEntry?>? ActiveWorkChanged;
+
 	public event EventHandler<bool>? IsTrackingChanged;
+
 	public event EventHandler? WorkEntriesModified;
 
-	#endregion
+	#endregion Events
 
 	#region Initialization
 
@@ -110,13 +112,14 @@ public sealed class WorklogStateService : IWorklogStateService
 		}
 	}
 
-	#endregion
+	#endregion Initialization
 
 	#region State Operations
 
 	public async Task<Result<WorkEntry>> StartTrackingAsync(
 		string? ticketId,
-		string? description)
+		string? description,
+		CancellationToken cancellationToken)
 	{
 		ThrowIfNotInitialized();
 
@@ -130,20 +133,8 @@ public sealed class WorklogStateService : IWorklogStateService
 			using var scope = _scopeFactory.CreateScope();
 			var workEntryService = scope.ServiceProvider.GetRequiredService<IWorkEntryService>();
 
-			// If there's already active work, stop it first
-			if (IsTracking && ActiveWork != null)
-			{
-				_logger.LogDebug("Stopping current active work before starting new");
-				var stopResult = await workEntryService.StopWorkAsync();
-				if (stopResult.IsFailure)
-				{
-					_logger.LogWarning("Failed to stop current work: {Error}", stopResult.Error);
-					return Result.Failure<WorkEntry>(stopResult.Error);
-				}
-			}
-
-			// Start new work - second parameter is startTime (null = now), third is description
-			var result = await workEntryService.StartWorkAsync(ticketId, null, description);
+			// WorkEntryService.StartWorkAsync handles auto-stopping any active entry
+			var result = await workEntryService.StartWorkAsync(ticketId, null, description, cancellationToken: cancellationToken);
 
 			if (result.IsSuccess)
 			{
@@ -162,6 +153,7 @@ public sealed class WorklogStateService : IWorklogStateService
 
 			return result;
 		}
+		catch (OperationCanceledException) { throw; }
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Unexpected error starting work tracking");
@@ -169,7 +161,7 @@ public sealed class WorklogStateService : IWorklogStateService
 		}
 	}
 
-	public async Task<Result> StopTrackingAsync()
+	public async Task<Result> StopTrackingAsync(CancellationToken cancellationToken)
 	{
 		ThrowIfNotInitialized();
 
@@ -186,7 +178,7 @@ public sealed class WorklogStateService : IWorklogStateService
 			using var scope = _scopeFactory.CreateScope();
 			var workEntryService = scope.ServiceProvider.GetRequiredService<IWorkEntryService>();
 
-			var result = await workEntryService.StopWorkAsync();
+			var result = await workEntryService.StopWorkAsync(cancellationToken: cancellationToken);
 
 			if (result.IsSuccess)
 			{
@@ -205,6 +197,7 @@ public sealed class WorklogStateService : IWorklogStateService
 
 			return result;
 		}
+		catch (OperationCanceledException) { throw; }
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Unexpected error stopping work tracking");
@@ -212,7 +205,7 @@ public sealed class WorklogStateService : IWorklogStateService
 		}
 	}
 
-	public async Task RefreshFromDatabaseAsync()
+	public async Task RefreshFromDatabaseAsync(CancellationToken cancellationToken)
 	{
 		ThrowIfNotInitialized();
 
@@ -223,7 +216,7 @@ public sealed class WorklogStateService : IWorklogStateService
 			using var scope = _scopeFactory.CreateScope();
 			var workEntryService = scope.ServiceProvider.GetRequiredService<IWorkEntryService>();
 
-			var activeWork = await workEntryService.GetActiveWorkAsync();
+			var activeWork = await workEntryService.GetActiveWorkAsync(cancellationToken);
 
 			// Update state - this will trigger events if values changed
 			ActiveWork = activeWork;
@@ -231,6 +224,7 @@ public sealed class WorklogStateService : IWorklogStateService
 
 			_logger.LogDebug("State refreshed: IsTracking={IsTracking}", IsTracking);
 		}
+		catch (OperationCanceledException) { throw; }
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Failed to refresh state from database");
@@ -242,7 +236,8 @@ public sealed class WorklogStateService : IWorklogStateService
 		string? ticketId,
 		DateTime startTime,
 		string? description,
-		DateTime? endTime)
+		DateTime? endTime,
+		CancellationToken cancellationToken)
 	{
 		ThrowIfNotInitialized();
 
@@ -259,14 +254,14 @@ public sealed class WorklogStateService : IWorklogStateService
 			var workEntryService = scope.ServiceProvider.GetRequiredService<IWorkEntryService>();
 
 			// Create the entry
-			var result = await workEntryService.StartWorkAsync(ticketId, startTime, description, endTime);
+			var result = await workEntryService.StartWorkAsync(ticketId, startTime, description, endTime, cancellationToken);
 
 			if (result.IsSuccess)
 			{
 				_logger.LogInformation("Work entry created successfully: WorkEntryId={WorkEntryId}", result.Value.Id);
 
 				// Refresh state and notify
-				await RefreshFromDatabaseAsync();
+				await RefreshFromDatabaseAsync(cancellationToken);
 				OnWorkEntriesModified();
 			}
 			else
@@ -276,6 +271,7 @@ public sealed class WorklogStateService : IWorklogStateService
 
 			return result;
 		}
+		catch (OperationCanceledException) { throw; }
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Unexpected error creating work entry");
@@ -288,7 +284,8 @@ public sealed class WorklogStateService : IWorklogStateService
 		string? ticketId,
 		DateTime startTime,
 		DateTime? endTime,
-		string? description)
+		string? description,
+		CancellationToken cancellationToken)
 	{
 		ThrowIfNotInitialized();
 
@@ -305,14 +302,14 @@ public sealed class WorklogStateService : IWorklogStateService
 			var workEntryService = scope.ServiceProvider.GetRequiredService<IWorkEntryService>();
 
 			// Update the entry
-			var result = await workEntryService.UpdateWorkEntryAsync(id, ticketId, startTime, endTime, description);
+			var result = await workEntryService.UpdateWorkEntryAsync(id, ticketId, startTime, endTime, description, cancellationToken);
 
 			if (result.IsSuccess)
 			{
 				_logger.LogInformation("Work entry updated successfully: WorkEntryId={WorkEntryId}", id);
 
 				// Refresh state and notify
-				await RefreshFromDatabaseAsync();
+				await RefreshFromDatabaseAsync(cancellationToken);
 				OnWorkEntriesModified();
 			}
 			else
@@ -322,6 +319,7 @@ public sealed class WorklogStateService : IWorklogStateService
 
 			return result;
 		}
+		catch (OperationCanceledException) { throw; }
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Unexpected error updating work entry");
@@ -329,7 +327,7 @@ public sealed class WorklogStateService : IWorklogStateService
 		}
 	}
 
-	public async Task<Result> DeleteWorkEntryAsync(int id)
+	public async Task<Result> DeleteWorkEntryAsync(int id, CancellationToken cancellationToken)
 	{
 		ThrowIfNotInitialized();
 
@@ -341,14 +339,14 @@ public sealed class WorklogStateService : IWorklogStateService
 			var workEntryService = scope.ServiceProvider.GetRequiredService<IWorkEntryService>();
 
 			// Delete the entry
-			var result = await workEntryService.DeleteWorkEntryAsync(id);
+			var result = await workEntryService.DeleteWorkEntryAsync(id, cancellationToken);
 
 			if (result.IsSuccess)
 			{
 				_logger.LogInformation("Work entry deleted successfully: WorkEntryId={WorkEntryId}", id);
 
 				// Refresh state and notify
-				await RefreshFromDatabaseAsync();
+				await RefreshFromDatabaseAsync(cancellationToken);
 				OnWorkEntriesModified();
 			}
 			else
@@ -358,6 +356,7 @@ public sealed class WorklogStateService : IWorklogStateService
 
 			return result;
 		}
+		catch (OperationCanceledException) { throw; }
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Unexpected error deleting work entry");
@@ -365,7 +364,7 @@ public sealed class WorklogStateService : IWorklogStateService
 		}
 	}
 
-	public async Task NotifyWorkEntriesModifiedAsync()
+	public async Task NotifyWorkEntriesModifiedAsync(CancellationToken cancellationToken)
 	{
 		ThrowIfNotInitialized();
 
@@ -373,18 +372,19 @@ public sealed class WorklogStateService : IWorklogStateService
 
 		try
 		{
-			await RefreshFromDatabaseAsync();
+			await RefreshFromDatabaseAsync(cancellationToken);
 
 			// Raise event only after successful refresh so listeners see consistent data
 			OnWorkEntriesModified();
 		}
+		catch (OperationCanceledException) { throw; }
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Failed to refresh state after work entries modification");
 		}
 	}
 
-	#endregion
+	#endregion State Operations
 
 	#region Event Raising
 
@@ -406,7 +406,7 @@ public sealed class WorklogStateService : IWorklogStateService
 		WorkEntriesModified?.Invoke(this, EventArgs.Empty);
 	}
 
-	#endregion
+	#endregion Event Raising
 
 	#region Validation
 
@@ -420,5 +420,5 @@ public sealed class WorklogStateService : IWorklogStateService
 		}
 	}
 
-	#endregion
+	#endregion Validation
 }

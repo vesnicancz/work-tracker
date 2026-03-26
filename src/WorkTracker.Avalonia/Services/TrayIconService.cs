@@ -20,6 +20,7 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 	private NativeMenu? _menu;
 	private bool _isInitialized;
 	private readonly List<NativeMenuItem> _favoriteMenuItems = new();
+	private readonly CancellationTokenSource _cts = new();
 	private NativeMenuItemSeparator? _favoritesSeparator;
 
 	public TrayIconService(
@@ -152,6 +153,8 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 	public void Dispose()
 	{
 		_worklogStateService.IsTrackingChanged -= OnIsTrackingChanged;
+		_cts.Cancel();
+		_cts.Dispose();
 		_trayIcon?.Dispose();
 		_trayIcon = null;
 		_isInitialized = false;
@@ -216,10 +219,11 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 
 			if (_worklogStateService.IsTracking)
 			{
-				await _worklogStateService.StopTrackingAsync();
+				await _worklogStateService.StopTrackingAsync(_cts.Token);
 			}
-			await _worklogStateService.StartTrackingAsync(favorite.TicketId, favorite.Description);
+			await _worklogStateService.StartTrackingAsync(favorite.TicketId, favorite.Description, _cts.Token);
 		}
+		catch (OperationCanceledException) { /* Service is being disposed */ }
 		catch (Exception ex)
 		{
 			_logger.LogWarning(ex, "Failed to start favorite work '{FavoriteName}' from tray", favorite.Name);

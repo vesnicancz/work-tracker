@@ -22,12 +22,12 @@ public sealed class DialogService : IDialogService
 		return ShowWorkEntryDialogCoreAsync(workEntry);
 	}
 
-	public Task<bool> ShowNewWorkEntryDialogAsync(string? ticketId = null, string? description = null)
+	public Task<bool> ShowNewWorkEntryDialogAsync(string? ticketId = null, string? description = null, DateTime? date = null)
 	{
-		return ShowWorkEntryDialogCoreAsync(null, ticketId, description);
+		return ShowWorkEntryDialogCoreAsync(null, ticketId, description, date);
 	}
 
-	private async Task<bool> ShowWorkEntryDialogCoreAsync(WorkEntry? workEntry, string? templateTicketId = null, string? templateDescription = null)
+	private async Task<bool> ShowWorkEntryDialogCoreAsync(WorkEntry? workEntry, string? templateTicketId = null, string? templateDescription = null, DateTime? date = null)
 	{
 		using var scope = _scopeFactory.CreateScope();
 		var viewModel = scope.ServiceProvider.GetRequiredService<WorkEntryEditViewModel>();
@@ -38,7 +38,7 @@ public sealed class DialogService : IDialogService
 		}
 		else
 		{
-			viewModel.InitializeForNew(templateTicketId, templateDescription);
+			viewModel.InitializeForNew(templateTicketId, templateDescription, date);
 		}
 
 		var dialog = new WorkEntryEditDialog { DataContext = viewModel };

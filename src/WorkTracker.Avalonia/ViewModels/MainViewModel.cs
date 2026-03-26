@@ -201,16 +201,16 @@ public class MainViewModel : ViewModelBase, IDisposable
 	{
 		try
 		{
-			var result = await _worklogStateService.StartTrackingAsync(DetectedTicketId, DetectedDescription);
+			var result = await _worklogStateService.StartTrackingAsync(DetectedTicketId, DetectedDescription, _cts.Token);
 			if (result.IsFailure)
 			{
 				await _dialogService.ShowErrorAsync(result.Error);
 				return;
 			}
 			WorkInput = string.Empty;
-			await RefreshWorkEntriesAsync();
 			_notificationService.ShowSuccess(_localization["WorkTrackingStarted"]);
 		}
+		catch (OperationCanceledException) when (_disposed) { }
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Unexpected error starting work");
@@ -224,16 +224,15 @@ public class MainViewModel : ViewModelBase, IDisposable
 	{
 		try
 		{
-			var result = await _worklogStateService.StopTrackingAsync();
+			var result = await _worklogStateService.StopTrackingAsync(_cts.Token);
 			if (result.IsFailure)
 			{
 				await _dialogService.ShowErrorAsync(result.Error);
 				return;
 			}
-			ElapsedTime = "00:00:00";
-			await RefreshWorkEntriesAsync();
 			_notificationService.ShowSuccess(_localization["WorkTrackingStopped"]);
 		}
+		catch (OperationCanceledException) when (_disposed) { }
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Unexpected error stopping work");
@@ -245,11 +244,9 @@ public class MainViewModel : ViewModelBase, IDisposable
 	{
 		try
 		{
-			var result = await _dialogService.ShowNewWorkEntryDialogAsync();
+			var result = await _dialogService.ShowNewWorkEntryDialogAsync(date: SelectedDate);
 			if (result)
 			{
-				await RefreshWorkEntriesAsync();
-				await _worklogStateService.RefreshFromDatabaseAsync();
 				_notificationService.ShowSuccess(_localization["WorkEntryCreated"]);
 			}
 		}
@@ -272,14 +269,6 @@ public class MainViewModel : ViewModelBase, IDisposable
 			var result = await _dialogService.ShowEditWorkEntryDialogAsync(workEntry);
 			if (result)
 			{
-				var wasActive = workEntry.Id == ActiveWork?.Id;
-				await RefreshWorkEntriesAsync();
-				await _worklogStateService.RefreshFromDatabaseAsync();
-				if (wasActive && !IsTracking)
-				{
-					ElapsedTime = "00:00:00";
-				}
-
 				_notificationService.ShowSuccess(_localization["WorkEntryUpdated"]);
 			}
 		}
@@ -308,21 +297,17 @@ public class MainViewModel : ViewModelBase, IDisposable
 
 			if (confirmed)
 			{
-				var wasActive = workEntry.Id == ActiveWork?.Id;
-				var result = await _worklogStateService.DeleteWorkEntryAsync(workEntry.Id);
+				var result = await _worklogStateService.DeleteWorkEntryAsync(workEntry.Id, _cts.Token);
 				if (result.IsFailure)
 				{
 					await _dialogService.ShowErrorAsync(result.Error);
 					return;
 				}
-				if (wasActive)
-				{
-					ElapsedTime = "00:00:00";
-				}
 
 				_notificationService.ShowSuccess(_localization["WorkEntryDeleted"]);
 			}
 		}
+		catch (OperationCanceledException) when (_disposed) { }
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Failed to delete work entry");
@@ -339,15 +324,15 @@ public class MainViewModel : ViewModelBase, IDisposable
 
 		try
 		{
-			var result = await _worklogStateService.StartTrackingAsync(workEntry.TicketId, workEntry.Description);
+			var result = await _worklogStateService.StartTrackingAsync(workEntry.TicketId, workEntry.Description, _cts.Token);
 			if (result.IsFailure)
 			{
 				await _dialogService.ShowErrorAsync(result.Error);
 				return;
 			}
-			await RefreshWorkEntriesAsync();
 			_notificationService.ShowSuccess(_localization["WorkRestartedSuccessfully"]);
 		}
+		catch (OperationCanceledException) when (_disposed) { }
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Unexpected error restarting work from history");
@@ -438,6 +423,11 @@ public class MainViewModel : ViewModelBase, IDisposable
 
 	private async void OnWorkEntriesModified(object? sender, EventArgs e)
 	{
+		if (_disposed)
+		{
+			return;
+		}
+
 		try { await RefreshWorkEntriesAsync(); }
 		catch (Exception ex) { _logger.LogError(ex, "Failed to refresh work entries after modification"); }
 	}
@@ -458,6 +448,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 		else
 		{
 			_timer.Stop();
+			ElapsedTime = "00:00:00";
 		}
 
 		OnPropertyChanged(nameof(IsTracking));

@@ -14,7 +14,6 @@ public class WorkEntryEditViewModel : ViewModelBase
 	private readonly TimeProvider _timeProvider;
 	private readonly ILocalizationService _localization;
 	private readonly ILogger<WorkEntryEditViewModel> _logger;
-
 	private bool _isNewEntry = true;
 	private int _entryId;
 	private string? _ticketId;
@@ -168,11 +167,11 @@ public class WorkEntryEditViewModel : ViewModelBase
 		ValidateInput();
 	}
 
-	public void InitializeForNew(string? ticketId = null, string? description = null)
+	public void InitializeForNew(string? ticketId = null, string? description = null, DateTime? date = null)
 	{
 		_isNewEntry = true;
 		var now = DateTimeHelper.RoundToMinute(_timeProvider.GetLocalNow().DateTime);
-		StartDate = now.Date;
+		StartDate = date ?? now.Date;
 		StartTime = new TimeSpan(now.Hour, now.Minute, 0);
 		HasEndTime = false;
 		TicketId = ticketId;

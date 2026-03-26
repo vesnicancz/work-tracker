@@ -21,7 +21,7 @@ public interface IDialogService
 	/// <param name="ticketId">Ticket ID to pre-fill</param>
 	/// <param name="description">Description to pre-fill</param>
 	/// <returns>True if user confirmed, false if cancelled</returns>
-	Task<bool> ShowNewWorkEntryDialogAsync(string? ticketId = null, string? description = null);
+	Task<bool> ShowNewWorkEntryDialogAsync(string? ticketId = null, string? description = null, DateTime? date = null);
 
 	/// <summary>
 	/// Shows the submit worklog dialog

@@ -37,7 +37,7 @@ public class WorkEntryEditOrchestrator : IWorkEntryEditOrchestrator
 
 	public async Task<Result> SaveNewAsync(string? ticketId, DateTime startDateTime, DateTime? endDateTime, string? description)
 	{
-		var result = await _worklogStateService.CreateWorkEntryAsync(ticketId, startDateTime, description, endDateTime);
+		var result = await _worklogStateService.CreateWorkEntryAsync(ticketId, startDateTime, description, endDateTime, CancellationToken.None);
 		if (result.IsFailure)
 		{
 			_logger.LogWarning("Failed to create work entry: {Error}", result.Error);
@@ -47,7 +47,7 @@ public class WorkEntryEditOrchestrator : IWorkEntryEditOrchestrator
 
 	public async Task<Result> SaveExistingAsync(int entryId, string? ticketId, DateTime startDateTime, DateTime? endDateTime, string? description)
 	{
-		var result = await _worklogStateService.UpdateWorkEntryAsync(entryId, ticketId, startDateTime, endDateTime, description);
+		var result = await _worklogStateService.UpdateWorkEntryAsync(entryId, ticketId, startDateTime, endDateTime, description, CancellationToken.None);
 		if (result.IsFailure)
 		{
 			_logger.LogWarning("Failed to update work entry: {Error}", result.Error);

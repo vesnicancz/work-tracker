@@ -62,7 +62,14 @@ public partial class WorkEntryEditDialog : Window
 			if (command.CanExecute(null))
 			{
 				e.Handled = true;
-				await command.ExecuteAsync(null);
+				try
+				{
+					await command.ExecuteAsync(null);
+				}
+				catch (Exception ex)
+				{
+					System.Diagnostics.Debug.WriteLine($"Failed to execute save command: {ex}");
+				}
 			}
 		}
 	}
