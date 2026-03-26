@@ -7,11 +7,11 @@ public interface IWorklogSubmissionOrchestrator
 {
 	List<ProviderInfo> LoadAvailableProviders();
 
-	Task<PreviewLoadResult> LoadPreviewAsync(DateTime date, bool isWeekly, string noTicketLabel);
+	Task<PreviewLoadResult> LoadPreviewAsync(DateTime date, bool isWeekly, string noTicketLabel, CancellationToken cancellationToken);
 
-	Task<SubmissionOutcome> SubmitAsync(IReadOnlyList<WorklogPreviewItem> items, string providerId, string providerName);
+	Task<SubmissionOutcome> SubmitAsync(IReadOnlyList<WorklogPreviewItem> items, string providerId, string providerName, CancellationToken cancellationToken);
 
-	Task<SubmissionOutcome> RetryFailedAsync(IReadOnlyList<WorklogPreviewItem> items, string providerId, string providerName);
+	Task<SubmissionOutcome> RetryFailedAsync(IReadOnlyList<WorklogPreviewItem> items, string providerId, string providerName, CancellationToken cancellationToken);
 
 	void ResetItems(IReadOnlyList<WorklogPreviewItem> items);
 

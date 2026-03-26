@@ -37,11 +37,11 @@ public class WorklogSubmissionOrchestrator : IWorklogSubmissionOrchestrator
 		}
 	}
 
-	public async Task<PreviewLoadResult> LoadPreviewAsync(DateTime date, bool isWeekly, string noTicketLabel)
+	public async Task<PreviewLoadResult> LoadPreviewAsync(DateTime date, bool isWeekly, string noTicketLabel, CancellationToken cancellationToken)
 	{
 		if (isWeekly)
 		{
-			var weeklyPreview = await _submissionService.PreviewWeeklyWorklogAsync(date);
+			var weeklyPreview = await _submissionService.PreviewWeeklyWorklogAsync(date, cancellationToken);
 			var items = new List<WorklogPreviewItem>();
 
 			foreach (var dayPreview in weeklyPreview.OrderBy(kvp => kvp.Key))
@@ -76,7 +76,7 @@ public class WorklogSubmissionOrchestrator : IWorklogSubmissionOrchestrator
 		}
 		else
 		{
-			var dailyPreview = await _submissionService.PreviewDailyWorklogAsync(date);
+			var dailyPreview = await _submissionService.PreviewDailyWorklogAsync(date, cancellationToken);
 			var items = dailyPreview.Worklogs.Select(entry =>
 			{
 				var item = new WorklogPreviewItem
@@ -99,11 +99,11 @@ public class WorklogSubmissionOrchestrator : IWorklogSubmissionOrchestrator
 	}
 
 	public async Task<SubmissionOutcome> SubmitAsync(
-		IReadOnlyList<WorklogPreviewItem> items, string providerId, string providerName)
+		IReadOnlyList<WorklogPreviewItem> items, string providerId, string providerName, CancellationToken cancellationToken)
 	{
 		var worklogs = ConvertToWorklogs(items.Where(i => !i.IsDateHeader));
 
-		var result = await _submissionService.SubmitCustomWorklogsAsync(worklogs, providerId);
+		var result = await _submissionService.SubmitCustomWorklogsAsync(worklogs, providerId, cancellationToken);
 
 		if (result.IsSuccess && result.Value != null)
 		{
@@ -119,7 +119,7 @@ public class WorklogSubmissionOrchestrator : IWorklogSubmissionOrchestrator
 	}
 
 	public async Task<SubmissionOutcome> RetryFailedAsync(
-		IReadOnlyList<WorklogPreviewItem> items, string providerId, string providerName)
+		IReadOnlyList<WorklogPreviewItem> items, string providerId, string providerName, CancellationToken cancellationToken)
 	{
 		var worklogs = ConvertToWorklogs(items.Where(i => !i.IsDateHeader && i.HasError));
 
@@ -128,7 +128,7 @@ public class WorklogSubmissionOrchestrator : IWorklogSubmissionOrchestrator
 			return new SubmissionOutcome(true, false, string.Empty);
 		}
 
-		var result = await _submissionService.SubmitCustomWorklogsAsync(worklogs, providerId);
+		var result = await _submissionService.SubmitCustomWorklogsAsync(worklogs, providerId, cancellationToken);
 
 		if (result.IsSuccess && result.Value != null)
 		{

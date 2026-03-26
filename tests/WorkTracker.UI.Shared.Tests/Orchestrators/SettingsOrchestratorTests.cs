@@ -142,7 +142,7 @@ public class SettingsOrchestratorTests
 			Plugins = new List<PluginViewModel> { pluginVm }
 		};
 
-		await _orchestrator.SaveSettingsAsync(request);
+		await _orchestrator.SaveSettingsAsync(request, TestContext.Current.CancellationToken);
 
 		_mockSettingsService.Verify(s => s.SaveSettingsAsync(It.Is<ApplicationSettings>(a =>
 			a.CloseWindowBehavior == CloseWindowBehavior.MinimizeToTray &&
@@ -167,7 +167,7 @@ public class SettingsOrchestratorTests
 			Plugins = new List<PluginViewModel>()
 		};
 
-		await _orchestrator.SaveSettingsAsync(request);
+		await _orchestrator.SaveSettingsAsync(request, TestContext.Current.CancellationToken);
 
 		_mockSettingsService.Verify(s => s.SaveSettingsAsync(
 			It.Is<ApplicationSettings>(a => a.Theme == "Midnight"), It.IsAny<CancellationToken>()), Times.Once);
@@ -183,7 +183,7 @@ public class SettingsOrchestratorTests
 		var plugin = CreateMockPlugin("basic", "Basic");
 		var vm = new PluginViewModel(plugin.Object);
 
-		var result = await _orchestrator.TestConnectionAsync(vm);
+		var result = await _orchestrator.TestConnectionAsync(vm, TestContext.Current.CancellationToken);
 
 		result.Should().Contain("not available");
 	}
@@ -197,7 +197,7 @@ public class SettingsOrchestratorTests
 
 		var vm = new PluginViewModel(worklogPlugin.Object);
 
-		var result = await _orchestrator.TestConnectionAsync(vm);
+		var result = await _orchestrator.TestConnectionAsync(vm, TestContext.Current.CancellationToken);
 
 		result.Should().Contain("successful");
 	}
@@ -211,7 +211,7 @@ public class SettingsOrchestratorTests
 
 		var vm = new PluginViewModel(worklogPlugin.Object);
 
-		var result = await _orchestrator.TestConnectionAsync(vm);
+		var result = await _orchestrator.TestConnectionAsync(vm, TestContext.Current.CancellationToken);
 
 		result.Should().Contain("Auth failed");
 	}

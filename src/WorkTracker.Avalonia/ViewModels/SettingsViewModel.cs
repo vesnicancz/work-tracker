@@ -294,7 +294,7 @@ public class SettingsViewModel : ViewModelBase
 				Plugins = Plugins.ToList()
 			};
 
-			await _orchestrator.SaveSettingsAsync(request);
+			await _orchestrator.SaveSettingsAsync(request, CancellationToken.None);
 
 			DialogResult = true;
 			CloseAction?.Invoke();
@@ -325,7 +325,7 @@ public class SettingsViewModel : ViewModelBase
 
 		try
 		{
-			TestConnectionResult = await _orchestrator.TestConnectionAsync(SelectedPlugin);
+			TestConnectionResult = await _orchestrator.TestConnectionAsync(SelectedPlugin, CancellationToken.None);
 		}
 		catch (Exception ex)
 		{

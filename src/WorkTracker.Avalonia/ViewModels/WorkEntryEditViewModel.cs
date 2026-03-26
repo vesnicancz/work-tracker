@@ -193,8 +193,8 @@ public class WorkEntryEditViewModel : ViewModelBase
 		try
 		{
 			var result = _isNewEntry
-				? await _orchestrator.SaveNewAsync(TicketId, StartDateTime, EndDateTime, Description)
-				: await _orchestrator.SaveExistingAsync(EntryId, TicketId, StartDateTime, EndDateTime, Description);
+				? await _orchestrator.SaveNewAsync(TicketId, StartDateTime, EndDateTime, Description, CancellationToken.None)
+				: await _orchestrator.SaveExistingAsync(EntryId, TicketId, StartDateTime, EndDateTime, Description, CancellationToken.None);
 
 			if (result.IsFailure)
 			{
