@@ -84,8 +84,8 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 		// Load initial icon
 		_trayIcon.Icon = AppIconProvider.GetIcon(false);
 
-		// Double-click / click to show
-		_trayIcon.Clicked += (_, _) => ShowMainWindow();
+		// Click to toggle window visibility
+		_trayIcon.Clicked += (_, _) => ToggleMainWindow();
 
 		// Subscribe to tracking state changes
 		_worklogStateService.IsTrackingChanged += OnIsTrackingChanged;
@@ -172,6 +172,30 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 				window.WindowState = WindowState.Normal;
 				window.Activate();
 			}
+		}
+	}
+
+	private void ToggleMainWindow()
+	{
+		if (global::Avalonia.Application.Current?.ApplicationLifetime
+			is not IClassicDesktopStyleApplicationLifetime desktop)
+		{
+			return;
+		}
+
+		var window = desktop.MainWindow;
+		if (window == null)
+		{
+			return;
+		}
+
+		if (window.IsVisible && window.WindowState != WindowState.Minimized)
+		{
+			window.WindowState = WindowState.Minimized;
+		}
+		else
+		{
+			ShowMainWindow();
 		}
 	}
 

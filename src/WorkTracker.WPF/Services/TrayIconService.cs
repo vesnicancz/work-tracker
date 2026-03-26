@@ -103,8 +103,8 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 
 		_taskbarIcon.ContextMenu = contextMenu;
 
-		// Double-click to show window
-		_taskbarIcon.TrayLeftMouseUp += (s, e) => ShowMainWindow();
+		// Click to toggle window visibility
+		_taskbarIcon.TrayLeftMouseUp += (s, e) => ToggleMainWindow();
 
 		// Subscribe to tracking state changes
 		_worklogStateService.IsTrackingChanged += OnIsTrackingChanged;
@@ -151,6 +151,24 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 			mainWindow.Show();
 			mainWindow.WindowState = WindowState.Normal;
 			mainWindow.Activate();
+		}
+	}
+
+	private void ToggleMainWindow()
+	{
+		var mainWindow = System.Windows.Application.Current.MainWindow;
+		if (mainWindow == null)
+		{
+			return;
+		}
+
+		if (mainWindow.IsVisible && mainWindow.WindowState != WindowState.Minimized)
+		{
+			mainWindow.WindowState = WindowState.Minimized;
+		}
+		else
+		{
+			ShowMainWindow();
 		}
 	}
 
