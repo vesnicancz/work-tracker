@@ -71,6 +71,7 @@ dotnet build
 ### Závislosti
 
 - WorkTracker.Plugin.Abstractions
+- WorkTracker.Domain
 - Microsoft.Extensions.Logging
 - System.Net.Http.Json
 
