@@ -263,7 +263,7 @@ public class WorkEntryTests
 	{
 		// Arrange
 		var originalStart = new DateTime(2026, 3, 25, 9, 0, 0);
-		var workEntry = WorkEntry.Reconstitute(0, "PROJ-123", originalStart, null, null, false, DateTime.MinValue);
+		var workEntry = WorkEntry.Reconstitute(0, "PROJ-123", originalStart, null, null, true, DateTime.MinValue);
 
 		// Act
 		workEntry.UpdateFields("PROJ-123", null, null, "Updated description", new DateTime(2026, 3, 25, 11, 0, 0));
