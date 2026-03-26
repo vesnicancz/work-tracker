@@ -344,15 +344,16 @@ public sealed class PluginManager : IPluginManager
 		{
 			await plugin.ShutdownAsync();
 
-			if (context != null)
-			{
-				context.Unload();
-			}
-
 			lock (_lock)
 			{
 				_loadedPlugins.Remove(pluginId);
 				_pluginContexts.Remove(pluginId);
+
+				// Only unload the context if no other plugin shares it
+				if (context != null && !_pluginContexts.ContainsValue(context))
+				{
+					context.Unload();
+				}
 			}
 
 			_logger.LogInformation("Unloaded plugin: {Name}", plugin.Metadata.Name);

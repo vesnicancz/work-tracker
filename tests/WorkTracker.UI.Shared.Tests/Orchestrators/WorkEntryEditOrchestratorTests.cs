@@ -105,7 +105,7 @@ public class WorkEntryEditOrchestratorTests
 			.Setup(s => s.CreateWorkEntryAsync(It.IsAny<string?>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(Result.Success(entry));
 
-		var result = await _orchestrator.SaveNewAsync("PROJ-1", DateTime.Now, null, "desc");
+		var result = await _orchestrator.SaveNewAsync("PROJ-1", DateTime.Now, null, "desc", TestContext.Current.CancellationToken);
 
 		result.IsSuccess.Should().BeTrue();
 	}
@@ -117,7 +117,7 @@ public class WorkEntryEditOrchestratorTests
 			.Setup(s => s.CreateWorkEntryAsync(It.IsAny<string?>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(Result.Failure<WorkEntry>("Overlap detected"));
 
-		var result = await _orchestrator.SaveNewAsync("PROJ-1", DateTime.Now, null, "desc");
+		var result = await _orchestrator.SaveNewAsync("PROJ-1", DateTime.Now, null, "desc", TestContext.Current.CancellationToken);
 
 		result.IsFailure.Should().BeTrue();
 		result.Error.Should().Be("Overlap detected");
@@ -130,7 +130,7 @@ public class WorkEntryEditOrchestratorTests
 			.Setup(s => s.UpdateWorkEntryAsync(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<DateTime>(), It.IsAny<DateTime?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(Result.Success());
 
-		var result = await _orchestrator.SaveExistingAsync(1, "PROJ-1", DateTime.Now, null, "desc");
+		var result = await _orchestrator.SaveExistingAsync(1, "PROJ-1", DateTime.Now, null, "desc", TestContext.Current.CancellationToken);
 
 		result.IsSuccess.Should().BeTrue();
 	}
@@ -142,7 +142,7 @@ public class WorkEntryEditOrchestratorTests
 			.Setup(s => s.UpdateWorkEntryAsync(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<DateTime>(), It.IsAny<DateTime?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(Result.Failure("Not found"));
 
-		var result = await _orchestrator.SaveExistingAsync(99, "PROJ-1", DateTime.Now, null, "desc");
+		var result = await _orchestrator.SaveExistingAsync(99, "PROJ-1", DateTime.Now, null, "desc", TestContext.Current.CancellationToken);
 
 		result.IsFailure.Should().BeTrue();
 	}

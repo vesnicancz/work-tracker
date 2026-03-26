@@ -75,7 +75,7 @@ public class WorklogSubmissionOrchestratorTests
 		};
 		_mockSubmissionService.Setup(s => s.PreviewDailyWorklogAsync(date, It.IsAny<CancellationToken>())).ReturnsAsync(dto);
 
-		var result = await _orchestrator.LoadPreviewAsync(date, false, "No ticket");
+		var result = await _orchestrator.LoadPreviewAsync(date, false, "No ticket", TestContext.Current.CancellationToken);
 
 		result.Items.Should().HaveCount(2);
 		result.DataItemCount.Should().Be(2);
@@ -88,7 +88,7 @@ public class WorklogSubmissionOrchestratorTests
 		var dto = new WorklogSubmissionDto { Worklogs = new List<WorklogDto>() };
 		_mockSubmissionService.Setup(s => s.PreviewDailyWorklogAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>())).ReturnsAsync(dto);
 
-		var result = await _orchestrator.LoadPreviewAsync(FixedDate, false, "No ticket");
+		var result = await _orchestrator.LoadPreviewAsync(FixedDate, false, "No ticket", TestContext.Current.CancellationToken);
 
 		result.Items.Should().BeEmpty();
 		result.DataItemCount.Should().Be(0);
@@ -108,7 +108,7 @@ public class WorklogSubmissionOrchestratorTests
 		};
 		_mockSubmissionService.Setup(s => s.PreviewDailyWorklogAsync(date, It.IsAny<CancellationToken>())).ReturnsAsync(dto);
 
-		var result = await _orchestrator.LoadPreviewAsync(date, false, "No ticket");
+		var result = await _orchestrator.LoadPreviewAsync(date, false, "No ticket", TestContext.Current.CancellationToken);
 
 		result.Items.Should().ContainSingle();
 		result.Items[0].TicketId.Should().BeNull();
@@ -128,7 +128,7 @@ public class WorklogSubmissionOrchestratorTests
 		};
 		_mockSubmissionService.Setup(s => s.PreviewWeeklyWorklogAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>())).ReturnsAsync(weeklyPreview);
 
-		var result = await _orchestrator.LoadPreviewAsync(monday, true, "No ticket");
+		var result = await _orchestrator.LoadPreviewAsync(monday, true, "No ticket", TestContext.Current.CancellationToken);
 
 		result.Items.Should().HaveCount(4); // 2 headers + 2 data items
 		result.DataItemCount.Should().Be(2);
@@ -149,7 +149,7 @@ public class WorklogSubmissionOrchestratorTests
 			.Setup(s => s.SubmitCustomWorklogsAsync(It.IsAny<IEnumerable<WorklogDto>>(), "tempo", It.IsAny<CancellationToken>()))
 			.ReturnsAsync(Result.Success(submission));
 
-		var outcome = await _orchestrator.SubmitAsync(items, "tempo", "Tempo");
+		var outcome = await _orchestrator.SubmitAsync(items, "tempo", "Tempo", TestContext.Current.CancellationToken);
 
 		outcome.AllSucceeded.Should().BeTrue();
 		outcome.HasFailedItems.Should().BeFalse();
@@ -173,7 +173,7 @@ public class WorklogSubmissionOrchestratorTests
 			.Setup(s => s.SubmitCustomWorklogsAsync(It.IsAny<IEnumerable<WorklogDto>>(), "tempo", It.IsAny<CancellationToken>()))
 			.ReturnsAsync(Result.Success(submission));
 
-		var outcome = await _orchestrator.SubmitAsync(items, "tempo", "Tempo");
+		var outcome = await _orchestrator.SubmitAsync(items, "tempo", "Tempo", TestContext.Current.CancellationToken);
 
 		outcome.AllSucceeded.Should().BeFalse();
 		outcome.HasFailedItems.Should().BeTrue();
@@ -192,7 +192,7 @@ public class WorklogSubmissionOrchestratorTests
 			.Setup(s => s.SubmitCustomWorklogsAsync(It.IsAny<IEnumerable<WorklogDto>>(), "tempo", It.IsAny<CancellationToken>()))
 			.ReturnsAsync(Result.Success(submission));
 
-		await _orchestrator.SubmitAsync(items, "tempo", "Tempo");
+		await _orchestrator.SubmitAsync(items, "tempo", "Tempo", TestContext.Current.CancellationToken);
 
 		items[0].HasError.Should().BeFalse();
 		items[0].ErrorMessage.Should().BeNull();
@@ -213,7 +213,7 @@ public class WorklogSubmissionOrchestratorTests
 			.Setup(s => s.SubmitCustomWorklogsAsync(It.IsAny<IEnumerable<WorklogDto>>(), "tempo", It.IsAny<CancellationToken>()))
 			.ReturnsAsync(Result.Success(submission));
 
-		var outcome = await _orchestrator.SubmitAsync(items, "tempo", "Tempo");
+		var outcome = await _orchestrator.SubmitAsync(items, "tempo", "Tempo", TestContext.Current.CancellationToken);
 
 		outcome.StatusMessage.Should().Contain("SubmissionAllFailed");
 	}
@@ -226,7 +226,7 @@ public class WorklogSubmissionOrchestratorTests
 			.Setup(s => s.SubmitCustomWorklogsAsync(It.IsAny<IEnumerable<WorklogDto>>(), "tempo", It.IsAny<CancellationToken>()))
 			.ReturnsAsync(Result.Failure<SubmissionResult>("Network error"));
 
-		var outcome = await _orchestrator.SubmitAsync(items, "tempo", "Tempo");
+		var outcome = await _orchestrator.SubmitAsync(items, "tempo", "Tempo", TestContext.Current.CancellationToken);
 
 		outcome.AllSucceeded.Should().BeFalse();
 		outcome.StatusMessage.Should().Contain("Network error");
@@ -241,7 +241,7 @@ public class WorklogSubmissionOrchestratorTests
 	{
 		var items = CreatePreviewItems("PROJ-1");
 
-		var outcome = await _orchestrator.RetryFailedAsync(items, "tempo", "Tempo");
+		var outcome = await _orchestrator.RetryFailedAsync(items, "tempo", "Tempo", TestContext.Current.CancellationToken);
 
 		outcome.AllSucceeded.Should().BeTrue();
 		outcome.HasFailedItems.Should().BeFalse();
@@ -258,7 +258,7 @@ public class WorklogSubmissionOrchestratorTests
 			.Setup(s => s.SubmitCustomWorklogsAsync(It.IsAny<IEnumerable<WorklogDto>>(), "tempo", It.IsAny<CancellationToken>()))
 			.ReturnsAsync(Result.Success(submission));
 
-		var outcome = await _orchestrator.RetryFailedAsync(items, "tempo", "Tempo");
+		var outcome = await _orchestrator.RetryFailedAsync(items, "tempo", "Tempo", TestContext.Current.CancellationToken);
 
 		outcome.AllSucceeded.Should().BeTrue();
 		_mockSubmissionService.Verify(s => s.SubmitCustomWorklogsAsync(

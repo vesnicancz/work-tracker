@@ -81,7 +81,7 @@ public class SettingsOrchestrator : ISettingsOrchestrator
 		return plugins;
 	}
 
-	public async Task SaveSettingsAsync(SettingsSaveRequest request)
+	public async Task SaveSettingsAsync(SettingsSaveRequest request, CancellationToken cancellationToken)
 	{
 		var settings = new ApplicationSettings
 		{
@@ -102,14 +102,14 @@ public class SettingsOrchestrator : ISettingsOrchestrator
 			settings.EnabledPlugins[pluginVm.Plugin.Metadata.Id] = pluginVm.IsEnabled;
 		}
 
-		await _settingsService.SaveSettingsAsync(settings);
+		await _settingsService.SaveSettingsAsync(settings, cancellationToken);
 
 		// Update enabled plugins in PluginManager
 		var enabledPluginIds = request.Plugins.Where(p => p.IsEnabled).Select(p => p.Plugin.Metadata.Id);
 		_pluginManager.SetEnabledPlugins(enabledPluginIds);
 
 		// Re-initialize plugins with new configuration
-		await _pluginManager.InitializePluginsAsync(settings.PluginConfigurations);
+		await _pluginManager.InitializePluginsAsync(settings.PluginConfigurations, cancellationToken);
 
 		// Apply autostart setting
 		_autostartManager.SetAutostart(request.StartWithWindows);
@@ -120,7 +120,7 @@ public class SettingsOrchestrator : ISettingsOrchestrator
 		_logger.LogInformation("Settings saved successfully");
 	}
 
-	public async Task<string> TestConnectionAsync(PluginViewModel plugin)
+	public async Task<string> TestConnectionAsync(PluginViewModel plugin, CancellationToken cancellationToken)
 	{
 		// Test connection is only available for worklog upload plugins
 		if (plugin.Plugin is not IWorklogUploadPlugin worklogPlugin)
@@ -132,14 +132,14 @@ public class SettingsOrchestrator : ISettingsOrchestrator
 
 		// Temporarily initialize plugin with current configuration
 		var tempConfig = new Dictionary<string, string>(plugin.Configuration);
-		var initialized = await plugin.Plugin.InitializeAsync(tempConfig);
+		var initialized = await plugin.Plugin.InitializeAsync(tempConfig, cancellationToken);
 		if (!initialized)
 		{
 			_logger.LogWarning("Initialization failed for plugin {PluginId} during connection test", plugin.Plugin.Metadata.Id);
 			return "✗ Connection failed: Unable to initialize plugin with current configuration";
 		}
 
-		var result = await worklogPlugin.TestConnectionAsync();
+		var result = await worklogPlugin.TestConnectionAsync(cancellationToken);
 
 		if (result.IsSuccess)
 		{

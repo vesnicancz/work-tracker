@@ -189,7 +189,7 @@ public class SubmitWorklogViewModel : ViewModelBase
 			HasFailedItems = false;
 			StatusMessage = _localization["LoadingPreview"];
 
-			var result = await _orchestrator.LoadPreviewAsync(SelectedDate, IsWeekly, _localization["NoTicket"]);
+			var result = await _orchestrator.LoadPreviewAsync(SelectedDate, IsWeekly, _localization["NoTicket"], CancellationToken.None);
 
 			// Unsubscribe from old items before replacing
 			foreach (var item in PreviewItems.Where(i => !i.IsDateHeader))
@@ -234,7 +234,7 @@ public class SubmitWorklogViewModel : ViewModelBase
 			IsSending = true;
 			StatusMessage = _localization.GetFormattedString("SubmittingTo", SelectedProvider.Name);
 
-			var outcome = await _orchestrator.SubmitAsync(PreviewItems, SelectedProvider.Id, SelectedProvider.Name);
+			var outcome = await _orchestrator.SubmitAsync(PreviewItems, SelectedProvider.Id, SelectedProvider.Name, CancellationToken.None);
 			HasFailedItems = outcome.HasFailedItems;
 			StatusMessage = outcome.StatusMessage;
 
@@ -269,7 +269,7 @@ public class SubmitWorklogViewModel : ViewModelBase
 			IsSending = true;
 			StatusMessage = _localization["RetryingFailed"];
 
-			var outcome = await _orchestrator.RetryFailedAsync(PreviewItems, SelectedProvider.Id, SelectedProvider.Name);
+			var outcome = await _orchestrator.RetryFailedAsync(PreviewItems, SelectedProvider.Id, SelectedProvider.Name, CancellationToken.None);
 			HasFailedItems = outcome.HasFailedItems;
 			StatusMessage = outcome.StatusMessage;
 

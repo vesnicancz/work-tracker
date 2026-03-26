@@ -6,7 +6,7 @@ public interface ISettingsOrchestrator
 {
 	List<PluginViewModel> LoadPlugins();
 
-	Task SaveSettingsAsync(SettingsSaveRequest request);
+	Task SaveSettingsAsync(SettingsSaveRequest request, CancellationToken cancellationToken);
 
-	Task<string> TestConnectionAsync(PluginViewModel plugin);
+	Task<string> TestConnectionAsync(PluginViewModel plugin, CancellationToken cancellationToken);
 }
