@@ -156,7 +156,7 @@ public class WorkEntryTests
 	{
 		// Arrange
 		var now = DateTime.Now;
-		var workEntry = WorkEntry.Reconstitute(0, null, DateTime.MinValue, null, null, false, DateTime.MinValue, now);
+		var workEntry = WorkEntry.Reconstitute(0, null, DateTime.MinValue, null, null, true, DateTime.MinValue, now);
 
 		// Act & Assert
 		workEntry.UpdatedAt.Should().NotBeNull();
