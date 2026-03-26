@@ -2,8 +2,8 @@
 
 **Complete API reference for WorkTracker**
 
-Version: 1.0
-Last Updated: November 2025
+Version: 1.1
+Last Updated: March 2026
 
 ---
 
@@ -23,21 +23,50 @@ Last Updated: November 2025
 
 **Namespace:** `WorkTracker.Domain.Entities`
 
-Main business entity representing a work tracking entry.
+Main business entity representing a work tracking entry. The class is `sealed` with an immutable design — properties use `init` or `private set` accessors and instances are created via factory methods.
 
 #### Properties
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `Id` | `int` | Unique identifier (auto-generated) |
-| `TicketId` | `string?` | Jira ticket ID (e.g., "PROJ-123") |
-| `StartTime` | `DateTime` | When work started |
-| `EndTime` | `DateTime?` | When work ended (null if active) |
-| `Description` | `string?` | Work description |
-| `IsActive` | `bool` | Whether entry is currently active |
-| `CreatedAt` | `DateTime` | Creation timestamp |
-| `UpdatedAt` | `DateTime?` | Last update timestamp |
-| `Duration` | `TimeSpan?` | Calculated duration (EndTime - StartTime) |
+| Property | Type | Access | Description |
+|----------|------|--------|-------------|
+| `Id` | `int` | `init` | Unique identifier (auto-generated) |
+| `TicketId` | `string?` | `private set` | Jira ticket ID (e.g., "PROJ-123") |
+| `StartTime` | `DateTime` | `private set` | When work started |
+| `EndTime` | `DateTime?` | `private set` | When work ended (null if active) |
+| `Description` | `string?` | `private set` | Work description |
+| `IsActive` | `bool` | `private set` | Whether entry is currently active |
+| `CreatedAt` | `DateTime` | `init` | Creation timestamp |
+| `UpdatedAt` | `DateTime?` | `private set` | Last update timestamp |
+| `Duration` | `TimeSpan?` | calculated | Calculated duration (EndTime - StartTime) |
+
+#### Factory Methods
+
+##### Create()
+
+Creates a new work entry. Times should be pre-rounded by the caller.
+
+```csharp
+public static WorkEntry Create(string? ticketId, DateTime startTime, DateTime? endTime, string? description, DateTime now)
+```
+
+**Example:**
+
+```csharp
+var entry = WorkEntry.Create(
+    ticketId: "PROJ-123",
+    startTime: DateTime.Now,
+    endTime: null,
+    description: "Implementing new feature",
+    now: DateTime.Now);
+```
+
+##### Reconstitute()
+
+Reconstitutes a work entry from persistence (internal access).
+
+```csharp
+internal static WorkEntry Reconstitute(int id, string? ticketId, DateTime startTime, DateTime? endTime, string? description, bool isActive, DateTime createdAt, DateTime? updatedAt = null)
+```
 
 #### Methods
 
@@ -55,20 +84,30 @@ public bool IsValid()
 - At least one of `TicketId` or `Description` must be provided
 - If `EndTime` is set, it must be after `StartTime`
 
+##### Stop()
+
+Stops this work entry by setting end time and marking as inactive.
+
+```csharp
+public void Stop(DateTime endTime, DateTime now)
+```
+
+##### UpdateFields()
+
+Updates mutable fields of this work entry.
+
+```csharp
+public void UpdateFields(string? ticketId, DateTime? startTime, DateTime? endTime, string? description, DateTime now)
+```
+
 **Example:**
 
 ```csharp
-var entry = new WorkEntry
-{
-    TicketId = "PROJ-123",
-    StartTime = DateTime.Now,
-    IsActive = true,
-    CreatedAt = DateTime.Now
-};
+var entry = WorkEntry.Create("PROJ-123", DateTime.Now, null, "API work", DateTime.Now);
 
 if (entry.IsValid())
 {
-    // Entry is valid
+    // Entry is valid, use it
 }
 ```
 
@@ -953,5 +992,5 @@ public class WorkflowExample
 
 ---
 
-**Last Updated:** November 2025
-**Version:** 1.0
+**Last Updated:** March 2026
+**Version:** 1.1

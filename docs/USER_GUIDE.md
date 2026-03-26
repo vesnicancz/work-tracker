@@ -39,6 +39,9 @@ WorkTracker je aplikace pro **sledování pracovní doby** určená pro vývojá
 | **Jira Integration** | Automatická detekce Jira ticket ID (např. PROJ-123) |
 | **Tempo Export** | Jedním příkazem odeslat worklogs do Tempo |
 | **Triple Interface** | CLI pro rychlé operace, WPF pro Windows GUI, Avalonia pro cross-platform GUI |
+| **Favorite Templates** | Oblíbené pracovní položky jako šablony pro rychlé spuštění |
+| **Go to Today** | Rychlá navigace na dnešní datum |
+| **Failed Worklog Resubmission** | Opakované odeslání neúspěšných worklogů |
 | **Validation** | Detekce překrývajících se časů, kontrola validních dat |
 | **Offline First** | Práce bez připojení, sync když je potřeba |
 
@@ -466,6 +469,18 @@ Po spuštění WPF aplikace uvidíte:
 
 ### 4.2 Hlavní Funkce
 
+#### Přejít na dnešek
+
+Tlačítko **"Go to today"** (nebo klávesová zkratka) rychle přepne zobrazení na dnešní datum, pokud procházíte záznamy z jiných dnů.
+
+#### Oblíbené položky jako šablony
+
+Často používané pracovní záznamy můžete uložit jako šablony:
+1. V seznamu prací klikněte pravým tlačítkem na záznam
+2. Vyberte **"Zobrazit jako šablonu"** / **"Show as template"**
+3. Šablona se zobrazí v panelu pro rychlé spuštění
+4. Jedním klikem na šablonu začnete sledovat práci s předvyplněnými údaji
+
 #### Start Work Panel
 
 1. **Zadejte Ticket ID** (volitelné)
@@ -558,6 +573,8 @@ Po spuštění WPF aplikace uvidíte:
 ```
 
 ### 4.5 System Tray
+
+**Toggle okna:** Kliknutím na ikonu v system tray se hlavní okno zobrazí/skryje (toggle). Toto chování funguje jak ve WPF, tak v Avalonia verzi.
 
 **Tray Icon Menu:**
 
