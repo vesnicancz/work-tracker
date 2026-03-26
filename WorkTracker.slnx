@@ -27,7 +27,7 @@
     <Project Path="src/WorkTracker.UI.Shared/WorkTracker.UI.Shared.csproj" />
     <Project Path="src/WorkTracker.WPF/WorkTracker.WPF.csproj" />
   </Folder>
-  <Folder Name="/src/plugins/">
+  <Folder Name="/plugins/">
     <Project Path="plugins/WorkTracker.Plugin.Tempo/WorkTracker.Plugin.Tempo.csproj" />
   </Folder>
   <Folder Name="/tests/">

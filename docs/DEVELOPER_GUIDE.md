@@ -65,7 +65,7 @@ dotnet run --project src/WorkTracker.Avalonia
 ### 1.3 Solution Structure
 
 ```
-WorkTracker.sln
+WorkTracker.slnx
 ├── src/
 │   ├── WorkTracker.Domain/              # Core business logic
 │   ├── WorkTracker.Application/         # Use cases & orchestration
