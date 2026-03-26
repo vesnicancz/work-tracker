@@ -377,6 +377,7 @@ public sealed class WorklogStateService : IWorklogStateService
 			// Raise event only after successful refresh so listeners see consistent data
 			OnWorkEntriesModified();
 		}
+		catch (OperationCanceledException) { throw; }
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Failed to refresh state after work entries modification");

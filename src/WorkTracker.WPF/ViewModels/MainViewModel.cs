@@ -246,6 +246,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 
 			_notificationService.ShowSuccess(_localization["WorkTrackingStarted"]);
 		}
+		catch (OperationCanceledException) when (_disposed) { }
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Unexpected error starting work");
@@ -273,6 +274,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 
 			_notificationService.ShowSuccess(_localization["WorkTrackingStopped"]);
 		}
+		catch (OperationCanceledException) when (_disposed) { }
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Unexpected error stopping work");
@@ -349,6 +351,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 				_notificationService.ShowSuccess(_localization["WorkEntryDeleted"]);
 			}
 		}
+		catch (OperationCanceledException) when (_disposed) { }
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Failed to delete work entry");
@@ -380,6 +383,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 
 			_notificationService.ShowSuccess(_localization["WorkRestartedSuccessfully"]);
 		}
+		catch (OperationCanceledException) when (_disposed) { }
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Unexpected error restarting work from history");

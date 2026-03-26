@@ -179,7 +179,7 @@ public sealed class PluginBasedWorklogSubmissionService : IWorklogSubmissionServ
 
 		if (completedEntries.Count == 0)
 		{
-			_logger.LogWarning("No completed entries found for {Date}", date.ToShortDateString());
+			_logger.LogWarning("No completed entries found for the specified period (reference date: {Date})", date.ToShortDateString());
 			return Result.Success(new SubmissionResult
 			{
 				TotalEntries = 0,
