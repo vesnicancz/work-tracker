@@ -20,13 +20,7 @@ public class WorklogValidatorTests
 	public void ValidateForSubmission_WithValidEntry_ShouldReturnSuccess()
 	{
 		// Arrange
-		var entry = new WorkEntry
-		{
-			TicketId = "PROJ-123",
-			StartTime = DateTime.Now.AddHours(-2),
-			EndTime = DateTime.Now,
-			Description = "Working on feature"
-		};
+		var entry = WorkEntry.Create("PROJ-123", DateTime.Now.AddHours(-2), DateTime.Now, "Working on feature", DateTime.Now);
 
 		// Act
 		var result = _validator.ValidateForSubmission(entry);
@@ -39,12 +33,7 @@ public class WorklogValidatorTests
 	public void ValidateForSubmission_WithoutTicketId_ShouldReturnFailure()
 	{
 		// Arrange
-		var entry = new WorkEntry
-		{
-			StartTime = DateTime.Now.AddHours(-2),
-			EndTime = DateTime.Now,
-			Description = "Working on feature"
-		};
+		var entry = WorkEntry.Create(null, DateTime.Now.AddHours(-2), DateTime.Now, "Working on feature", DateTime.Now);
 
 		// Act
 		var result = _validator.ValidateForSubmission(entry);
@@ -58,12 +47,7 @@ public class WorklogValidatorTests
 	public void ValidateForSubmission_WithWhitespaceTicketId_ShouldReturnFailure()
 	{
 		// Arrange
-		var entry = new WorkEntry
-		{
-			TicketId = "   ",
-			StartTime = DateTime.Now.AddHours(-2),
-			EndTime = DateTime.Now
-		};
+		var entry = WorkEntry.Create("   ", DateTime.Now.AddHours(-2), DateTime.Now, null, DateTime.Now);
 
 		// Act
 		var result = _validator.ValidateForSubmission(entry);
@@ -77,13 +61,7 @@ public class WorklogValidatorTests
 	public void ValidateForSubmission_WithActiveEntry_ShouldReturnFailure()
 	{
 		// Arrange
-		var entry = new WorkEntry
-		{
-			TicketId = "PROJ-123",
-			StartTime = DateTime.Now.AddHours(-2),
-			EndTime = null,
-			IsActive = true
-		};
+		var entry = WorkEntry.Create("PROJ-123", DateTime.Now.AddHours(-2), null, null, DateTime.Now);
 
 		// Act
 		var result = _validator.ValidateForSubmission(entry);
@@ -97,12 +75,7 @@ public class WorklogValidatorTests
 	public void ValidateForSubmission_WithStartTimeAfterEndTime_ShouldReturnFailure()
 	{
 		// Arrange
-		var entry = new WorkEntry
-		{
-			TicketId = "PROJ-123",
-			StartTime = DateTime.Now,
-			EndTime = DateTime.Now.AddHours(-1)
-		};
+		var entry = WorkEntry.Create("PROJ-123", DateTime.Now, DateTime.Now.AddHours(-1), null, DateTime.Now);
 
 		// Act
 		var result = _validator.ValidateForSubmission(entry);
@@ -117,12 +90,7 @@ public class WorklogValidatorTests
 	{
 		// Arrange
 		var now = DateTime.Now;
-		var entry = new WorkEntry
-		{
-			TicketId = "PROJ-123",
-			StartTime = now,
-			EndTime = now
-		};
+		var entry = WorkEntry.Create("PROJ-123", now, now, null, now);
 
 		// Act
 		var result = _validator.ValidateForSubmission(entry);
@@ -137,12 +105,7 @@ public class WorklogValidatorTests
 	{
 		// Arrange
 		var startTime = DateTime.Now;
-		var entry = new WorkEntry
-		{
-			TicketId = "PROJ-123",
-			StartTime = startTime,
-			EndTime = startTime.AddMilliseconds(500)
-		};
+		var entry = WorkEntry.Create("PROJ-123", startTime, startTime.AddMilliseconds(500), null, startTime);
 
 		// Act
 		var result = _validator.ValidateForSubmission(entry);
@@ -156,12 +119,7 @@ public class WorklogValidatorTests
 	public void ValidateForSubmission_WithDurationExceeding24Hours_ShouldReturnFailure()
 	{
 		// Arrange
-		var entry = new WorkEntry
-		{
-			TicketId = "PROJ-123",
-			StartTime = DateTime.Now,
-			EndTime = DateTime.Now.AddHours(25)
-		};
+		var entry = WorkEntry.Create("PROJ-123", DateTime.Now, DateTime.Now.AddHours(25), null, DateTime.Now);
 
 		// Act
 		var result = _validator.ValidateForSubmission(entry);
@@ -176,12 +134,7 @@ public class WorklogValidatorTests
 	{
 		// Arrange
 		var startTime = DateTime.Now;
-		var entry = new WorkEntry
-		{
-			TicketId = "PROJ-123",
-			StartTime = startTime,
-			EndTime = startTime.AddHours(24)
-		};
+		var entry = WorkEntry.Create("PROJ-123", startTime, startTime.AddHours(24), null, startTime);
 
 		// Act
 		var result = _validator.ValidateForSubmission(entry);
@@ -200,18 +153,8 @@ public class WorklogValidatorTests
 		// Arrange
 		var entries = new List<WorkEntry>
 		{
-			new()
-			{
-				TicketId = "PROJ-123",
-				StartTime = DateTime.Now.AddHours(-3),
-				EndTime = DateTime.Now.AddHours(-2)
-			},
-			new()
-			{
-				TicketId = "PROJ-124",
-				StartTime = DateTime.Now.AddHours(-1),
-				EndTime = DateTime.Now
-			}
+			WorkEntry.Create("PROJ-123", DateTime.Now.AddHours(-3), DateTime.Now.AddHours(-2), null, DateTime.Now),
+			WorkEntry.Create("PROJ-124", DateTime.Now.AddHours(-1), DateTime.Now, null, DateTime.Now)
 		};
 
 		// Act
@@ -241,18 +184,8 @@ public class WorklogValidatorTests
 		// Arrange
 		var entries = new List<WorkEntry>
 		{
-			new()
-			{
-				TicketId = "PROJ-123",
-				StartTime = DateTime.Now.AddHours(-2),
-				EndTime = DateTime.Now
-			},
-			new()
-			{
-				TicketId = "PROJ-124",
-				StartTime = DateTime.Now,
-				EndTime = null // Invalid - active entry
-			}
+			WorkEntry.Create("PROJ-123", DateTime.Now.AddHours(-2), DateTime.Now, null, DateTime.Now),
+			WorkEntry.Create("PROJ-124", DateTime.Now, null, null, DateTime.Now) // Active entry
 		};
 
 		// Act
@@ -269,17 +202,8 @@ public class WorklogValidatorTests
 		// Arrange
 		var entries = new List<WorkEntry>
 		{
-			new()
-			{
-				StartTime = DateTime.Now,
-				EndTime = DateTime.Now.AddHours(1) // Missing TicketId
-			},
-			new()
-			{
-				TicketId = "PROJ-124",
-				StartTime = DateTime.Now,
-				EndTime = null // Active entry
-			}
+			WorkEntry.Create(null, DateTime.Now, DateTime.Now.AddHours(1), null, DateTime.Now), // Missing TicketId
+			WorkEntry.Create("PROJ-124", DateTime.Now, null, null, DateTime.Now) // Active entry
 		};
 
 		// Act

@@ -100,7 +100,7 @@ public class WorkEntryEditOrchestratorTests
 	[Fact]
 	public async Task SaveNewAsync_Success_ReturnsSuccess()
 	{
-		var entry = new WorkEntry { Id = 1, TicketId = "PROJ-1", StartTime = DateTime.Now };
+		var entry = WorkEntry.Reconstitute(1, "PROJ-1", DateTime.Now, null, null, true, DateTime.MinValue);
 		_mockStateService
 			.Setup(s => s.CreateWorkEntryAsync(It.IsAny<string?>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(Result.Success(entry));

@@ -1,24 +1,28 @@
 namespace WorkTracker.Domain.Entities;
 
-public class WorkEntry
+public sealed class WorkEntry
 {
-	public int Id { get; set; }
+	public int Id { get; init; }
 
-	public string? TicketId { get; set; }
+	public string? TicketId { get; private set; }
 
-	public DateTime StartTime { get; set; }
+	public DateTime StartTime { get; private set; }
 
-	public DateTime? EndTime { get; set; }
+	public DateTime? EndTime { get; private set; }
 
-	public string? Description { get; set; }
+	public string? Description { get; private set; }
 
-	public bool IsActive { get; set; }
+	public bool IsActive { get; private set; }
 
-	public DateTime CreatedAt { get; set; }
+	public DateTime CreatedAt { get; init; }
 
-	public DateTime? UpdatedAt { get; set; }
+	public DateTime? UpdatedAt { get; private set; }
 
 	public TimeSpan? Duration => EndTime.HasValue ? EndTime.Value - StartTime : null;
+
+	private WorkEntry()
+	{
+	}
 
 	public bool IsValid()
 	{
@@ -78,6 +82,24 @@ public class WorkEntry
 			Description = description,
 			IsActive = !endTime.HasValue,
 			CreatedAt = now
+		};
+	}
+
+	/// <summary>
+	/// Reconstitutes a work entry from persistence. Use this to rebuild an entity with all fields including Id.
+	/// </summary>
+	internal static WorkEntry Reconstitute(int id, string? ticketId, DateTime startTime, DateTime? endTime, string? description, bool isActive, DateTime createdAt, DateTime? updatedAt = null)
+	{
+		return new WorkEntry
+		{
+			Id = id,
+			TicketId = ticketId,
+			StartTime = startTime,
+			EndTime = endTime,
+			Description = description,
+			IsActive = isActive,
+			CreatedAt = createdAt,
+			UpdatedAt = updatedAt
 		};
 	}
 }
