@@ -2,8 +2,8 @@
 
 **Complete guide to creating WorkTracker plugins**
 
-Version: 1.0
-Last Updated: November 2025
+Version: 1.1
+Last Updated: March 2026
 
 ---
 
@@ -230,7 +230,7 @@ public class MySystemPlugin : WorklogUploadPluginBase
 dotnet build -c Release
 
 # Copy to plugin directory
-copy bin/Release/net9.0/WorkTracker.Plugin.MySystem.dll %AppData%\WorkTracker\Plugins\
+copy bin/Release/net10.0/WorkTracker.Plugin.MySystem.dll %AppData%\WorkTracker\Plugins\
 ```
 
 ### 3.4 Configure Plugin

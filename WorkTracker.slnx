@@ -1,0 +1,39 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/docs/">
+    <File Path="docs/API_DOCUMENTATION.md" />
+    <File Path="docs/DEVELOPER_GUIDE.md" />
+    <File Path="docs/PLUGIN_DEVELOPMENT.md" />
+    <File Path="docs/USER_GUIDE.md" />
+  </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path=".gitignore" />
+    <File Path="ARCHITECTURE_REVIEW.md" />
+    <File Path="Directory.Build.props" />
+    <File Path="README.md" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/WorkTracker.Application/WorkTracker.Application.csproj" />
+    <Project Path="src/WorkTracker.Avalonia/WorkTracker.Avalonia.csproj" />
+    <Project Path="src/WorkTracker.CLI/WorkTracker.CLI.csproj" />
+    <Project Path="src/WorkTracker.Domain/WorkTracker.Domain.csproj" />
+    <Project Path="src/WorkTracker.Infrastructure/WorkTracker.Infrastructure.csproj" />
+    <Project Path="src/WorkTracker.Plugin.Abstractions/WorkTracker.Plugin.Abstractions.csproj" />
+    <Project Path="src/WorkTracker.UI.Shared/WorkTracker.UI.Shared.csproj" />
+    <Project Path="src/WorkTracker.WPF/WorkTracker.WPF.csproj" />
+  </Folder>
+  <Folder Name="/src/plugins/">
+    <Project Path="plugins/WorkTracker.Plugin.Tempo/WorkTracker.Plugin.Tempo.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/WorkTracker.Application.Tests/WorkTracker.Application.Tests.csproj" />
+    <Project Path="tests/WorkTracker.Domain.Tests/WorkTracker.Domain.Tests.csproj" />
+    <Project Path="tests/WorkTracker.Infrastructure.Tests/WorkTracker.Infrastructure.Tests.csproj" />
+    <Project Path="tests/WorkTracker.UI.Shared.Tests/WorkTracker.UI.Shared.Tests.csproj" />
+  </Folder>
+</Solution>

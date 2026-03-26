@@ -9,8 +9,10 @@ A modern, production-ready WPF desktop application for tracking work time and su
 - **Smart Input Parsing**: Automatically detects Jira ticket codes (e.g., PROJ-123) from input
 - **Real-time Timer**: Live elapsed time display for active work entries
 - **Work Entry Management**: View, edit, and delete work entries
-- **Date-based Filtering**: Browse work entries by date
-- **Tempo Integration**: Send worklogs to Tempo (daily or weekly)
+- **Date-based Filtering**: Browse work entries by date with "Go to today" navigation
+- **Tempo Integration**: Send worklogs to Tempo (daily or weekly) with failed worklog resubmission
+- **Favorite Templates**: Save frequent work items as templates for quick start
+- **Tray Icon Toggle**: Click system tray icon to show/hide main window
 
 ### User Experience
 - **Modern Material Design UI**: Clean, professional interface using MaterialDesignThemes
@@ -99,7 +101,7 @@ WorkTracker.WPF/
 ## How to Run
 
 ### Prerequisites
-- .NET 9.0 SDK or later
+- .NET 10.0 SDK or later
 - Windows 10/11
 
 ### Build & Run
@@ -178,7 +180,6 @@ The application is designed with testability in mind:
 ## Future Enhancements
 
 Potential improvements:
-- Dark/Light theme toggle
 - Keyboard shortcuts (Ctrl+N, Ctrl+S, etc.)
 - Export to CSV/Excel
 - Statistics and reporting
@@ -188,13 +189,17 @@ Potential improvements:
 ## Dependencies
 
 ### NuGet Packages
-- **MaterialDesignThemes** (5.1.0): Modern UI components
-- **MaterialDesignColors** (3.1.0): Color palette
-- **CommunityToolkit.Mvvm** (8.3.2): MVVM helpers (if needed for future enhancements)
-- **Microsoft.Extensions.Hosting** (9.0.10): Dependency injection
-- **Microsoft.Extensions.Configuration.Json** (9.0.10): Configuration
+- **MaterialDesignThemes** (5.3.1): Modern UI components
+- **MaterialDesignColors** (5.3.1): Color palette
+- **CommunityToolkit.Mvvm** (8.4.2): MVVM helpers
+- **Hardcodet.NotifyIcon.Wpf** (2.0.1): System tray icon
+- **FontAwesome6.Svg** (2.5.1): Icon set
+- **Microsoft.Extensions.Hosting** (10.0.5): Dependency injection
+- **Microsoft.Extensions.Configuration.Json** (10.0.5): Configuration
+- **Microsoft.Extensions.Logging** (10.0.5): Logging
 
 ### Project References
+- **WorkTracker.UI.Shared**: Shared models, services, orchestrators
 - **WorkTracker.Application**: Business logic and services
 - **WorkTracker.Infrastructure**: Data access and API clients
 
