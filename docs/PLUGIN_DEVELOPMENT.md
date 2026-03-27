@@ -274,13 +274,13 @@ public interface IPlugin
     /// <summary>
     /// Initialize plugin with configuration
     /// </summary>
-    Task<bool> InitializeAsync(Dictionary<string, string>? configuration = null);
+    Task<bool> InitializeAsync(IDictionary<string, string>? configuration = null, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Validate configuration without initializing
+    /// Validate configuration
     /// </summary>
     Task<PluginValidationResult> ValidateConfigurationAsync(
-        Dictionary<string, string> configuration);
+        IDictionary<string, string> configuration, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Shutdown and cleanup resources

@@ -639,7 +639,4 @@ Neither is your timesheet.</value>
   <data name="PomodoroLongBreakStarted" xml:space="preserve">
     <value>Time for a long break!</value>
   </data>
-  <data name="Pomodoro" xml:space="preserve">
-    <value>Pomodoro</value>
-  </data>
 </root>

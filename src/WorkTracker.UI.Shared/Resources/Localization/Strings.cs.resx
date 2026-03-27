@@ -639,7 +639,4 @@ Váš výkaz práce také ne.</value>
   <data name="PomodoroLongBreakStarted" xml:space="preserve">
     <value>Čas na dlouhou pauzu!</value>
   </data>
-  <data name="Pomodoro" xml:space="preserve">
-    <value>Pomodoro</value>
-  </data>
 </root>
