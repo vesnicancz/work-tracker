@@ -30,6 +30,7 @@
   </Folder>
   <Folder Name="/plugins/">
     <Project Path="plugins/WorkTracker.Plugin.Luxafor/WorkTracker.Plugin.Luxafor.csproj" />
+    <Project Path="plugins/WorkTracker.Plugin.GoranG3/WorkTracker.Plugin.GoranG3.csproj" />
     <Project Path="plugins/WorkTracker.Plugin.Tempo/WorkTracker.Plugin.Tempo.csproj" />
   </Folder>
   <Folder Name="/tests/">

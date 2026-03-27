@@ -7,6 +7,7 @@ using WorkTracker.Application.Plugins;
 using WorkTracker.Domain.Interfaces;
 using WorkTracker.Infrastructure.Data;
 using WorkTracker.Infrastructure.Repositories;
+
 namespace WorkTracker.Infrastructure;
 
 public static class DependencyInjection
@@ -41,20 +42,33 @@ public static class DependencyInjection
 			var logger = serviceProvider.GetRequiredService<ILogger<PluginManager>>();
 			var pluginManager = new PluginManager(logger);
 
-			// Add default plugin directory (plugins/ subfolder next to the application executable)
-			var defaultPluginsPath = WorkTrackerPaths.DefaultPluginsPath;
-			try
+			// Load plugin directories from configuration, default to "plugins" subfolder next to executable
+			// Relative paths are resolved against AppContext.BaseDirectory (the exe location)
+			var pluginDirs = configuration.GetSection("Plugins:Directories").Get<string[]>()
+				?? [WorkTrackerPaths.DefaultPluginsPath];
+
+			foreach (var dir in pluginDirs)
 			{
-				if (!Directory.Exists(defaultPluginsPath))
+				if (string.IsNullOrWhiteSpace(dir))
 				{
-					Directory.CreateDirectory(defaultPluginsPath);
+					continue;
 				}
+
+				var resolvedDir = Path.IsPathRooted(dir)
+					? dir
+					: Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, dir));
+
+				try
+				{
+					Directory.CreateDirectory(resolvedDir);
+				}
+				catch (Exception ex)
+				{
+					logger.LogWarning(ex, "Could not create plugins directory at {Path}", resolvedDir);
+				}
+
+				pluginManager.AddPluginDirectory(resolvedDir);
 			}
-			catch (Exception ex)
-			{
-				logger.LogWarning(ex, "Could not create plugins directory at {Path}", defaultPluginsPath);
-			}
-			pluginManager.AddPluginDirectory(defaultPluginsPath);
 
 			return pluginManager;
 		});

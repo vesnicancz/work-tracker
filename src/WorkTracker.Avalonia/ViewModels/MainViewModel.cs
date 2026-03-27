@@ -524,7 +524,11 @@ public class MainViewModel : ViewModelBase, IDisposable
 		};
 
 		var app = global::Avalonia.Application.Current;
-		if (app == null) return;
+		if (app == null)
+		{
+			return;
+		}
+
 		app.TryFindResource(bgKey, app.ActualThemeVariant, out var bg);
 		app.TryFindResource(borderKey, app.ActualThemeVariant, out var border);
 		app.TryFindResource(fgKey, app.ActualThemeVariant, out var fg);
