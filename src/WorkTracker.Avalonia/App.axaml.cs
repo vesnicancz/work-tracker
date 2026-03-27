@@ -302,7 +302,7 @@ public partial class App : global::Avalonia.Application
 			? global::Avalonia.Styling.ThemeVariant.Light
 			: global::Avalonia.Styling.ThemeVariant.Dark;
 
-		ThemeChanged?.Invoke(null, EventArgs.Empty);
+		ThemeChanged?.Invoke(app, EventArgs.Empty);
 	}
 
 	public static event EventHandler? ThemeChanged;
