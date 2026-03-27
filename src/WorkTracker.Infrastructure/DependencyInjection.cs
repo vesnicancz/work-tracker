@@ -67,13 +67,12 @@ public static class DependencyInjection
 				try
 				{
 					Directory.CreateDirectory(resolvedDir);
+					pluginManager.AddPluginDirectory(resolvedDir);
 				}
 				catch (Exception ex)
 				{
 					logger.LogWarning(ex, "Could not create plugins directory at {Path}", resolvedDir);
 				}
-
-				pluginManager.AddPluginDirectory(resolvedDir);
 			}
 
 			return pluginManager;
