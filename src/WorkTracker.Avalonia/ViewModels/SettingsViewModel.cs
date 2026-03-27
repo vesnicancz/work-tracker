@@ -34,7 +34,6 @@ public class SettingsViewModel : ViewModelBase
 	private int _pomodorosBeforeLongBreak;
 	private bool _pomodoroAutoStartTracking;
 	private bool _pomodoroAutoStopTracking;
-	private bool _pomodoroLuxaforEnabled;
 
 	// Favorites
 	private FavoriteWorkItem? _selectedFavorite;
@@ -74,7 +73,6 @@ public class SettingsViewModel : ViewModelBase
 		_pomodorosBeforeLongBreak = pomodoro.PomodorosBeforeLongBreak;
 		_pomodoroAutoStartTracking = pomodoro.AutoStartWorkTracking;
 		_pomodoroAutoStopTracking = pomodoro.AutoStopWorkTracking;
-		_pomodoroLuxaforEnabled = pomodoro.LuxaforEnabled;
 
 		// Initialize commands
 		SaveCommand = new AsyncRelayCommand(SaveAsync);
@@ -325,12 +323,6 @@ public class SettingsViewModel : ViewModelBase
 		set => SetProperty(ref _pomodoroAutoStopTracking, value);
 	}
 
-	public bool PomodoroLuxaforEnabled
-	{
-		get => _pomodoroLuxaforEnabled;
-		set => SetProperty(ref _pomodoroLuxaforEnabled, value);
-	}
-
 	#endregion Properties
 
 	#region Commands
@@ -370,8 +362,7 @@ public class SettingsViewModel : ViewModelBase
 					LongBreakMinutes = PomodoroLongBreakMinutes,
 					PomodorosBeforeLongBreak = PomodorosBeforeLongBreak,
 					AutoStartWorkTracking = PomodoroAutoStartTracking,
-					AutoStopWorkTracking = PomodoroAutoStopTracking,
-					LuxaforEnabled = PomodoroLuxaforEnabled
+					AutoStopWorkTracking = PomodoroAutoStopTracking
 				}
 			};
 

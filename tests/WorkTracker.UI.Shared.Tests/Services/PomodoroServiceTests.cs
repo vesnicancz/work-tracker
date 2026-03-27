@@ -1,6 +1,8 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
+using WorkTracker.Application.Plugins;
+using WorkTracker.Plugin.Abstractions;
 using WorkTracker.UI.Shared.Models;
 using WorkTracker.UI.Shared.Services;
 
@@ -11,7 +13,8 @@ public class PomodoroServiceTests : IDisposable
 	private readonly Mock<ISettingsService> _settingsService = new();
 	private readonly Mock<INotificationService> _notificationService = new();
 	private readonly Mock<IWorklogStateService> _worklogStateService = new();
-	private readonly Mock<ILuxaforService> _luxaforService = new();
+	private readonly Mock<IPluginManager> _pluginManager = new();
+	private readonly Mock<IStatusIndicatorPlugin> _statusIndicatorPlugin = new();
 	private readonly Mock<ILocalizationService> _localization = new();
 	private readonly PomodoroService _sut;
 
@@ -31,12 +34,13 @@ public class PomodoroServiceTests : IDisposable
 		_worklogStateService.Setup(s => s.IsInitialized).Returns(true);
 		_worklogStateService.Setup(s => s.IsTracking).Returns(false);
 		_localization.Setup(l => l[It.IsAny<string>()]).Returns((string key) => key);
+		_pluginManager.Setup(p => p.StatusIndicatorPlugins).Returns(new List<IStatusIndicatorPlugin> { _statusIndicatorPlugin.Object });
 
 		_sut = new PomodoroService(
 			_settingsService.Object,
 			_notificationService.Object,
 			_worklogStateService.Object,
-			_luxaforService.Object,
+			_pluginManager.Object,
 			_localization.Object,
 			TimeProvider.System,
 			NullLogger<PomodoroService>.Instance);
@@ -218,46 +222,39 @@ public class PomodoroServiceTests : IDisposable
 	}
 
 	[Fact]
-	public void Start_WithLuxaforEnabled_SetsRedColor()
+	public void Start_SetsStatusIndicatorToWork()
 	{
-		var settings = _settingsService.Object.Settings;
-		settings.Pomodoro.LuxaforEnabled = true;
-
 		_sut.Start();
 
-		_luxaforService.Verify(l => l.SetColor(255, 0, 0), Times.Once);
+		_statusIndicatorPlugin.Verify(p => p.SetStateAsync(StatusIndicatorState.Work, It.IsAny<CancellationToken>()), Times.Once);
 	}
 
 	[Fact]
-	public void Skip_ToShortBreak_WithLuxaforEnabled_SetsGreenColor()
+	public void Skip_ToShortBreak_SetsStatusIndicatorToShortBreak()
 	{
-		var settings = _settingsService.Object.Settings;
-		settings.Pomodoro.LuxaforEnabled = true;
-
 		_sut.Start();
 		_sut.Skip(); // Work -> ShortBreak
 
-		_luxaforService.Verify(l => l.SetColor(0, 255, 0), Times.Once);
+		_statusIndicatorPlugin.Verify(p => p.SetStateAsync(StatusIndicatorState.ShortBreak, It.IsAny<CancellationToken>()), Times.Once);
 	}
 
 	[Fact]
-	public void Stop_WithLuxaforEnabled_TurnsOff()
+	public void Stop_SetsStatusIndicatorToIdle()
 	{
-		var settings = _settingsService.Object.Settings;
-		settings.Pomodoro.LuxaforEnabled = true;
-
 		_sut.Start();
 		_sut.Stop();
 
-		_luxaforService.Verify(l => l.TurnOff(), Times.Once);
+		_statusIndicatorPlugin.Verify(p => p.SetStateAsync(StatusIndicatorState.Idle, It.IsAny<CancellationToken>()), Times.Once);
 	}
 
 	[Fact]
-	public void Start_WithLuxaforDisabled_DoesNotCallLuxafor()
+	public void Start_WithNoPlugins_DoesNotThrow()
 	{
-		_sut.Start();
+		_pluginManager.Setup(p => p.StatusIndicatorPlugins).Returns(new List<IStatusIndicatorPlugin>());
 
-		_luxaforService.Verify(l => l.SetColor(It.IsAny<byte>(), It.IsAny<byte>(), It.IsAny<byte>()), Times.Never);
+		var act = () => _sut.Start();
+
+		act.Should().NotThrow();
 	}
 
 	[Fact]

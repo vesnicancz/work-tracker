@@ -332,15 +332,6 @@
                                         </StackPanel>
                                     </CheckBox>
 
-                                    <Separator Margin="0,16" />
-
-                                    <CheckBox IsChecked="{Binding PomodoroLuxaforEnabled}">
-                                        <StackPanel>
-                                            <TextBlock Text="{markup:Localize PomodoroLuxaforEnabled}" FontWeight="Medium" />
-                                            <TextBlock Text="{markup:Localize PomodoroLuxaforEnabledDesc}"
-                                                       Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,2,0,0" />
-                                        </StackPanel>
-                                    </CheckBox>
                                 </StackPanel>
                             </StackPanel>
                         </ScrollViewer>

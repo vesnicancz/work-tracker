@@ -1,4 +1,6 @@
 using Microsoft.Extensions.Logging;
+using WorkTracker.Application.Plugins;
+using WorkTracker.Plugin.Abstractions;
 using WorkTracker.UI.Shared.Models;
 
 namespace WorkTracker.UI.Shared.Services;
@@ -8,7 +10,7 @@ public sealed class PomodoroService : IPomodoroService, IDisposable
 	private readonly ISettingsService _settingsService;
 	private readonly INotificationService _notificationService;
 	private readonly IWorklogStateService _worklogStateService;
-	private readonly ILuxaforService _luxaforService;
+	private readonly IPluginManager _pluginManager;
 	private readonly ILocalizationService _localization;
 	private readonly TimeProvider _timeProvider;
 	private readonly ILogger<PomodoroService> _logger;
@@ -33,7 +35,7 @@ public sealed class PomodoroService : IPomodoroService, IDisposable
 		ISettingsService settingsService,
 		INotificationService notificationService,
 		IWorklogStateService worklogStateService,
-		ILuxaforService luxaforService,
+		IPluginManager pluginManager,
 		ILocalizationService localization,
 		TimeProvider timeProvider,
 		ILogger<PomodoroService> logger)
@@ -41,7 +43,7 @@ public sealed class PomodoroService : IPomodoroService, IDisposable
 		_settingsService = settingsService;
 		_notificationService = notificationService;
 		_worklogStateService = worklogStateService;
-		_luxaforService = luxaforService;
+		_pluginManager = pluginManager;
 		_localization = localization;
 		_timeProvider = timeProvider;
 		_logger = logger;
@@ -49,27 +51,47 @@ public sealed class PomodoroService : IPomodoroService, IDisposable
 
 	public PomodoroPhase CurrentPhase
 	{
-		get { lock (_lock) return _currentPhase; }
+		get { lock (_lock)
+			{
+				return _currentPhase;
+			}
+		}
 	}
 
 	public TimeSpan TimeRemaining
 	{
-		get { lock (_lock) return _timeRemaining; }
+		get { lock (_lock)
+			{
+				return _timeRemaining;
+			}
+		}
 	}
 
 	public int CompletedPomodoros
 	{
-		get { lock (_lock) return _completedPomodoros; }
+		get { lock (_lock)
+			{
+				return _completedPomodoros;
+			}
+		}
 	}
 
 	public int PomodorosBeforeLongBreak
 	{
-		get { lock (_lock) return _pomodorosBeforeLongBreak; }
+		get { lock (_lock)
+			{
+				return _pomodorosBeforeLongBreak;
+			}
+		}
 	}
 
 	public bool IsRunning
 	{
-		get { lock (_lock) return _isRunning; }
+		get { lock (_lock)
+			{
+				return _isRunning;
+			}
+		}
 	}
 
 	public event EventHandler<PomodoroPhase>? PhaseChanged;
@@ -78,13 +100,19 @@ public sealed class PomodoroService : IPomodoroService, IDisposable
 
 	public void Start()
 	{
-		if (_disposed) return;
+		if (_disposed)
+		{
+			return;
+		}
 
 		PomodoroPhase newPhase;
 
 		lock (_lock)
 		{
-			if (_isRunning) return;
+			if (_isRunning)
+			{
+				return;
+			}
 
 			_activeSettings = _settingsService.Settings.Pomodoro;
 			_pomodorosBeforeLongBreak = _activeSettings.PomodorosBeforeLongBreak;
@@ -101,18 +129,24 @@ public sealed class PomodoroService : IPomodoroService, IDisposable
 
 		_logger.LogInformation("Pomodoro started: {Phase}, {Duration}min", newPhase, _activeSettings.WorkMinutes);
 
-		SetLuxaforForPhase(newPhase);
+		SetStatusIndicatorsForPhase(newPhase);
 		AutoStartTracking();
 		PhaseChanged?.Invoke(this, newPhase);
 	}
 
 	public void Stop()
 	{
-		if (_disposed) return;
+		if (_disposed)
+		{
+			return;
+		}
 
 		lock (_lock)
 		{
-			if (!_isRunning) return;
+			if (!_isRunning)
+			{
+				return;
+			}
 
 			_isRunning = false;
 			_currentPhase = PomodoroPhase.Idle;
@@ -122,17 +156,23 @@ public sealed class PomodoroService : IPomodoroService, IDisposable
 
 		_logger.LogInformation("Pomodoro stopped");
 
-		SetLuxaforForPhase(PomodoroPhase.Idle);
+		SetStatusIndicatorsForPhase(PomodoroPhase.Idle);
 		PhaseChanged?.Invoke(this, PomodoroPhase.Idle);
 	}
 
 	public void Skip()
 	{
-		if (_disposed) return;
+		if (_disposed)
+		{
+			return;
+		}
 
 		lock (_lock)
 		{
-			if (!_isRunning) return;
+			if (!_isRunning)
+			{
+				return;
+			}
 		}
 
 		_logger.LogInformation("Pomodoro phase skipped");
@@ -141,7 +181,10 @@ public sealed class PomodoroService : IPomodoroService, IDisposable
 
 	public void Reset()
 	{
-		if (_disposed) return;
+		if (_disposed)
+		{
+			return;
+		}
 
 		lock (_lock)
 		{
@@ -154,19 +197,25 @@ public sealed class PomodoroService : IPomodoroService, IDisposable
 
 		_logger.LogInformation("Pomodoro reset");
 
-		SetLuxaforForPhase(PomodoroPhase.Idle);
+		SetStatusIndicatorsForPhase(PomodoroPhase.Idle);
 		PhaseChanged?.Invoke(this, PomodoroPhase.Idle);
 	}
 
 	private void OnTimerTick(object? state)
 	{
-		if (_disposed) return;
+		if (_disposed)
+		{
+			return;
+		}
 
 		bool phaseExpired;
 
 		lock (_lock)
 		{
-			if (!_isRunning) return;
+			if (!_isRunning)
+			{
+				return;
+			}
 
 			_timeRemaining -= TimeSpan.FromSeconds(1);
 			phaseExpired = _timeRemaining <= TimeSpan.Zero;
@@ -243,7 +292,7 @@ public sealed class PomodoroService : IPomodoroService, IDisposable
 		}
 
 		// Luxafor
-		SetLuxaforForPhase(newPhase);
+		SetStatusIndicatorsForPhase(newPhase);
 
 		// Auto-tracking
 		if (oldPhase == PomodoroPhase.Work && newPhase != PomodoroPhase.Work)
@@ -258,31 +307,26 @@ public sealed class PomodoroService : IPomodoroService, IDisposable
 		PhaseChanged?.Invoke(this, newPhase);
 	}
 
-	private void SetLuxaforForPhase(PomodoroPhase phase)
+	private void SetStatusIndicatorsForPhase(PomodoroPhase phase)
 	{
-		if (!_activeSettings.LuxaforEnabled) return;
+		var state = phase switch
+		{
+			PomodoroPhase.Work => StatusIndicatorState.Work,
+			PomodoroPhase.ShortBreak => StatusIndicatorState.ShortBreak,
+			PomodoroPhase.LongBreak => StatusIndicatorState.LongBreak,
+			_ => StatusIndicatorState.Idle
+		};
 
-		try
+		foreach (var plugin in _pluginManager.StatusIndicatorPlugins)
 		{
-			switch (phase)
+			try
 			{
-				case PomodoroPhase.Work:
-					_luxaforService.SetColor(255, 0, 0);
-					break;
-				case PomodoroPhase.ShortBreak:
-					_luxaforService.SetColor(0, 255, 0);
-					break;
-				case PomodoroPhase.LongBreak:
-					_luxaforService.SetColor(0, 0, 255);
-					break;
-				default:
-					_luxaforService.TurnOff();
-					break;
+				_ = plugin.SetStateAsync(state, CancellationToken.None);
 			}
-		}
-		catch (Exception ex)
-		{
-			_logger.LogWarning(ex, "Failed to set Luxafor color for phase {Phase}", phase);
+			catch (Exception ex)
+			{
+				_logger.LogWarning(ex, "Failed to set status indicator for phase {Phase} on plugin {Plugin}", phase, plugin.Metadata.Name);
+			}
 		}
 	}
 
@@ -298,10 +342,25 @@ public sealed class PomodoroService : IPomodoroService, IDisposable
 
 	private void AutoStartTracking()
 	{
-		if (!_activeSettings.AutoStartWorkTracking) return;
-		if (!_worklogStateService.IsInitialized) return;
-		if (_worklogStateService.IsTracking) return;
-		if (_lastTicketId == null && _lastDescription == null) return;
+		if (!_activeSettings.AutoStartWorkTracking)
+		{
+			return;
+		}
+
+		if (!_worklogStateService.IsInitialized)
+		{
+			return;
+		}
+
+		if (_worklogStateService.IsTracking)
+		{
+			return;
+		}
+
+		if (_lastTicketId == null && _lastDescription == null)
+		{
+			return;
+		}
 
 		_ = Task.Run(async () =>
 		{
@@ -318,9 +377,20 @@ public sealed class PomodoroService : IPomodoroService, IDisposable
 
 	private void AutoStopTracking()
 	{
-		if (!_activeSettings.AutoStopWorkTracking) return;
-		if (!_worklogStateService.IsInitialized) return;
-		if (!_worklogStateService.IsTracking) return;
+		if (!_activeSettings.AutoStopWorkTracking)
+		{
+			return;
+		}
+
+		if (!_worklogStateService.IsInitialized)
+		{
+			return;
+		}
+
+		if (!_worklogStateService.IsTracking)
+		{
+			return;
+		}
 
 		// Remember before stopping
 		RememberCurrentTracking();
@@ -352,10 +422,14 @@ public sealed class PomodoroService : IPomodoroService, IDisposable
 
 	public void Dispose()
 	{
-		if (_disposed) return;
+		if (_disposed)
+		{
+			return;
+		}
+
 		_disposed = true;
 
 		StopTimer();
-		SetLuxaforForPhase(PomodoroPhase.Idle);
+		SetStatusIndicatorsForPhase(PomodoroPhase.Idle);
 	}
 }

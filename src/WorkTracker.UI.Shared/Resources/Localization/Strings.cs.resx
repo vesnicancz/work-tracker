@@ -630,13 +630,4 @@ Váš výkaz práce také ne.</value>
   <data name="PomodoroAutoStopTrackingDesc" xml:space="preserve">
     <value>Automaticky zastaví sledování práce při zahájení pauzy</value>
   </data>
-  <data name="PomodoroLuxaforEnabled" xml:space="preserve">
-    <value>Povolit Luxafor LED indikátor</value>
-  </data>
-  <data name="PomodoroLuxaforEnabledDesc" xml:space="preserve">
-    <value>Zobrazí aktuální fázi na Luxafor Bluetooth Pro (červená = práce, zelená = pauza)</value>
-  </data>
-  <data name="PomodoroLuxaforNotFound" xml:space="preserve">
-    <value>Luxafor zařízení nenalezeno</value>
-  </data>
 </root>

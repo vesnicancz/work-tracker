@@ -23,6 +23,16 @@ public interface IPluginManager : IAsyncDisposable
 	IEnumerable<IWorklogUploadPlugin> WorklogUploadPlugins { get; }
 
 	/// <summary>
+	/// Gets all loaded status indicator plugins (unfiltered - includes disabled plugins)
+	/// </summary>
+	IEnumerable<IStatusIndicatorPlugin> AllStatusIndicatorPlugins { get; }
+
+	/// <summary>
+	/// Gets all enabled status indicator plugins (filtered by enabled state)
+	/// </summary>
+	IEnumerable<IStatusIndicatorPlugin> StatusIndicatorPlugins { get; }
+
+	/// <summary>
 	/// Sets which plugins are enabled
 	/// </summary>
 	void SetEnabledPlugins(IEnumerable<string> pluginIds);

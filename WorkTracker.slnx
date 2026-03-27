@@ -22,12 +22,14 @@
     <Project Path="src/WorkTracker.Avalonia/WorkTracker.Avalonia.csproj" />
     <Project Path="src/WorkTracker.CLI/WorkTracker.CLI.csproj" />
     <Project Path="src/WorkTracker.Domain/WorkTracker.Domain.csproj" />
+    <Project Path="src/Luxafor.HidSharp/Luxafor.HidSharp.csproj" />
     <Project Path="src/WorkTracker.Infrastructure/WorkTracker.Infrastructure.csproj" />
     <Project Path="src/WorkTracker.Plugin.Abstractions/WorkTracker.Plugin.Abstractions.csproj" />
     <Project Path="src/WorkTracker.UI.Shared/WorkTracker.UI.Shared.csproj" />
     <Project Path="src/WorkTracker.WPF/WorkTracker.WPF.csproj" />
   </Folder>
   <Folder Name="/plugins/">
+    <Project Path="plugins/WorkTracker.Plugin.Luxafor/WorkTracker.Plugin.Luxafor.csproj" />
     <Project Path="plugins/WorkTracker.Plugin.Tempo/WorkTracker.Plugin.Tempo.csproj" />
   </Folder>
   <Folder Name="/tests/">

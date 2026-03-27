@@ -630,13 +630,4 @@ Neither is your timesheet.</value>
   <data name="PomodoroAutoStopTrackingDesc" xml:space="preserve">
     <value>Automatically stop work tracking when a break phase starts</value>
   </data>
-  <data name="PomodoroLuxaforEnabled" xml:space="preserve">
-    <value>Enable Luxafor LED indicator</value>
-  </data>
-  <data name="PomodoroLuxaforEnabledDesc" xml:space="preserve">
-    <value>Show current phase on Luxafor Bluetooth Pro (red = work, green = break)</value>
-  </data>
-  <data name="PomodoroLuxaforNotFound" xml:space="preserve">
-    <value>Luxafor device not found</value>
-  </data>
 </root>

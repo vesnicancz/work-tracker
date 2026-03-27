@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\WorkTracker.Plugin.Abstractions\WorkTracker.Plugin.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\Luxafor.HidSharp\Luxafor.HidSharp.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Update="MinVer" Version="7.0.0" />
+  </ItemGroup>
+
+</Project>

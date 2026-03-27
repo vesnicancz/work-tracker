@@ -71,6 +71,37 @@ public sealed class PluginManager : IPluginManager
 	}
 
 	/// <summary>
+	/// Gets all loaded status indicator plugins (unfiltered - includes disabled plugins)
+	/// </summary>
+	public IEnumerable<IStatusIndicatorPlugin> AllStatusIndicatorPlugins
+	{
+		get
+		{
+			lock (_lock)
+			{
+				return _loadedPlugins.Values.OfType<IStatusIndicatorPlugin>().ToList();
+			}
+		}
+	}
+
+	/// <summary>
+	/// Gets all enabled status indicator plugins (filtered by enabled state)
+	/// </summary>
+	public IEnumerable<IStatusIndicatorPlugin> StatusIndicatorPlugins
+	{
+		get
+		{
+			lock (_lock)
+			{
+				return _loadedPlugins.Values
+					.OfType<IStatusIndicatorPlugin>()
+					.Where(p => _enabledPluginIds.Contains(p.Metadata.Id))
+					.ToList();
+			}
+		}
+	}
+
+	/// <summary>
 	/// Sets which plugins are enabled
 	/// </summary>
 	public void SetEnabledPlugins(IEnumerable<string> pluginIds)
@@ -241,6 +272,10 @@ public sealed class PluginManager : IPluginManager
 			if (plugin is WorklogUploadPluginBase worklogPlugin)
 			{
 				worklogPlugin.SetLogger(_logger);
+			}
+			else if (plugin is StatusIndicatorPluginBase statusPlugin)
+			{
+				statusPlugin.SetLogger(_logger);
 			}
 
 			lock (_lock)

@@ -77,7 +77,10 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 		await _stateLock.WaitAsync();
 		try
 		{
-			if (_isInitialized) return;
+			if (_isInitialized)
+			{
+				return;
+			}
 
 			using var scope = _scopeFactory.CreateScope();
 			var workEntryService = scope.ServiceProvider.GetRequiredService<IWorkEntryService>();
