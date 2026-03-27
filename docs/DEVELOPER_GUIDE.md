@@ -77,6 +77,7 @@ WorkTracker.slnx
 │   ├── WorkTracker.Plugin.Abstractions/ # Plugin API
 │   └── WorkTracker.Plugin.*/           # Plugin implementations
 ├── plugins/
+│   ├── WorkTracker.Plugin.Luxafor/     # Luxafor LED status indicator
 │   └── WorkTracker.Plugin.Tempo/       # Tempo/Jira integration
 ├── tests/
 │   ├── WorkTracker.Domain.Tests/
@@ -140,9 +141,9 @@ WorkTracker follows **Clean Architecture** (Onion Architecture) principles:
 | **Repository** | Data access abstraction | `IWorkEntryRepository` |
 | **Dependency Injection** | Loose coupling | Throughout |
 | **Result Pattern** | Functional error handling | `Result<T>` |
-| **Strategy** | Plugin system | `IWorklogUploadPlugin` |
+| **Strategy** | Plugin system | `IWorklogUploadPlugin`, `IStatusIndicatorPlugin` |
 | **MVVM** | WPF & Avalonia presentation | ViewModels |
-| **Template Method** | Plugin base classes | `WorklogUploadPluginBase` |
+| **Template Method** | Plugin base classes | `WorklogUploadPluginBase`, `StatusIndicatorPluginBase` |
 | **Factory** | DbContext creation | `WorkTrackerDbContextFactory` |
 
 ### 2.3 Technology Stack

@@ -37,6 +37,7 @@ Plugins can:
 - ✅ Retrieve existing worklogs
 - ✅ Check for duplicate entries
 - ✅ Define custom configuration fields
+- ✅ Control status indicator devices (LED lights, etc.)
 
 Plugins cannot:
 - ❌ Modify WorkTracker's core behavior
@@ -46,10 +47,10 @@ Plugins cannot:
 
 ### 1.3 Plugin Types
 
-Currently, WorkTracker supports:
+WorkTracker supports two plugin types:
 
-1. **IWorklogUploadPlugin** - Upload work logs to external systems
-2. **Custom Plugin Types** - Planned for future releases
+1. **IWorklogUploadPlugin** - Upload work logs to external systems (e.g. Tempo, Azure DevOps)
+2. **IStatusIndicatorPlugin** - Control physical status indicator devices (e.g. Luxafor LED)
 
 ---
 
@@ -114,6 +115,7 @@ Plugins are discovered from:
    ```
    src/WorkTracker.Infrastructure/DependencyInjection.cs
    → LoadEmbeddedPlugin<TempoWorklogPlugin>()
+   → LoadEmbeddedPlugin<LuxaforStatusIndicatorPlugin>()
    ```
 
 2. **External Plugins** - Loaded from directory
@@ -265,6 +267,11 @@ public interface IPlugin
     PluginMetadata Metadata { get; }
 
     /// <summary>
+    /// Get configuration fields for this plugin (e.g. API keys, colors, URLs)
+    /// </summary>
+    IReadOnlyList<PluginConfigurationField> GetConfigurationFields();
+
+    /// <summary>
     /// Initialize plugin with configuration
     /// </summary>
     Task<bool> InitializeAsync(Dictionary<string, string>? configuration = null);
@@ -272,7 +279,7 @@ public interface IPlugin
     /// <summary>
     /// Validate configuration without initializing
     /// </summary>
-    Task<PluginResult<bool>> ValidateConfigurationAsync(
+    Task<PluginValidationResult> ValidateConfigurationAsync(
         Dictionary<string, string> configuration);
 
     /// <summary>
@@ -289,10 +296,6 @@ public interface IPlugin
 ```csharp
 public interface IWorklogUploadPlugin : IPlugin
 {
-    /// <summary>
-    /// Get required configuration fields
-    /// </summary>
-    List<PluginConfigurationField> GetConfigurationFields();
 
     /// <summary>
     /// Test connection to external system
@@ -324,7 +327,32 @@ public interface IWorklogUploadPlugin : IPlugin
 }
 ```
 
-### 4.3 WorklogUploadPluginBase
+### 4.3 IStatusIndicatorPlugin Interface
+
+**Specialized interface for physical status indicator devices (LED lights, etc.):**
+
+```csharp
+public interface IStatusIndicatorPlugin : IPlugin
+{
+    /// <summary>
+    /// Whether the physical device is connected and ready
+    /// </summary>
+    bool IsDeviceAvailable { get; }
+
+    /// <summary>
+    /// Update device to reflect the given Pomodoro phase
+    /// </summary>
+    Task SetStateAsync(StatusIndicatorState state, CancellationToken cancellationToken);
+}
+
+public enum StatusIndicatorState { Idle, Work, ShortBreak, LongBreak }
+```
+
+The Pomodoro timer calls `SetStateAsync()` on every phase transition. The plugin maps states to device-specific actions (e.g. LED colors).
+
+See `plugins/WorkTracker.Plugin.Luxafor/` for a complete example using the `Luxafor.HidSharp` library.
+
+### 4.4 WorklogUploadPluginBase
 
 **Abstract base class with helper methods:**
 
@@ -1287,11 +1315,15 @@ protected override async Task<PluginResult<bool>> UploadWorklogInternalAsync(
 
 ## 10. Example Plugins
 
-### 10.1 Tempo Plugin (Built-in)
+### 10.1 Tempo Plugin (Built-in, Worklog Upload)
 
-See `plugins/WorkTracker.Plugin.Tempo/` for complete example.
+See `plugins/WorkTracker.Plugin.Tempo/` for a complete worklog upload plugin example.
 
-### 10.2 Minimal Mock Plugin
+### 10.2 Luxafor Plugin (Built-in, Status Indicator)
+
+See `plugins/WorkTracker.Plugin.Luxafor/` for a complete status indicator plugin example. Uses the `Luxafor.HidSharp` library (`src/Luxafor.HidSharp/`) for HID device communication.
+
+### 10.3 Minimal Mock Plugin
 
 ```csharp
 public class MockPlugin : WorklogUploadPluginBase
