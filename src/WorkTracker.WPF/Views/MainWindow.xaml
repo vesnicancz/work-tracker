@@ -1,4 +1,4 @@
-﻿<Window x:Class="WorkTracker.WPF.Views.MainWindow"
+<Window x:Class="WorkTracker.WPF.Views.MainWindow"
 		xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
 		xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
 		xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -265,6 +265,77 @@
 											 FontWeight="Medium" />
 									</StackPanel>
 								</Grid>
+							</materialDesign:Card>
+
+							<!-- Pomodoro Timer -->
+							<materialDesign:Card Style="{StaticResource CardStyle}"
+										   Visibility="{Binding IsPomodoroEnabled, Converter={StaticResource BoolToVisibilityConverter}}">
+								<StackPanel>
+									<StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+										<materialDesign:PackIcon Kind="Timer"
+															Width="24"
+															Height="24"
+															VerticalAlignment="Center"
+															Foreground="{DynamicResource MaterialDesign.Brush.Primary}"
+															Margin="0,0,8,0" />
+										<TextBlock Text="{markup:Localize Pomodoro}"
+											 Style="{StaticResource SubheaderTextStyle}"
+											 Margin="0" />
+									</StackPanel>
+
+									<!-- Pomodoro Active State -->
+									<StackPanel Visibility="{Binding IsPomodoroRunning, Converter={StaticResource BoolToVisibilityConverter}}">
+										<!-- Countdown -->
+										<TextBlock Text="{Binding PomodoroTimeRemaining}"
+											 FontSize="36"
+											 FontWeight="Bold"
+											 HorizontalAlignment="Center"
+											 Margin="0,0,0,8" />
+
+										<!-- Phase + Count -->
+										<StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,12">
+											<TextBlock Text="{Binding PomodoroPhaseDisplay}"
+												 FontSize="14"
+												 FontWeight="Medium"
+												 VerticalAlignment="Center" />
+											<TextBlock Text=" · "
+												 FontSize="14"
+												 Foreground="{DynamicResource MaterialDesign.Brush.Foreground.Light}"
+												 VerticalAlignment="Center" />
+											<TextBlock Text="{Binding PomodoroCount}"
+												 FontSize="14"
+												 Foreground="{DynamicResource MaterialDesign.Brush.Foreground.Light}"
+												 VerticalAlignment="Center" />
+										</StackPanel>
+
+										<!-- Controls -->
+										<StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+											<Button Command="{Binding SkipPomodoroPhaseCommand}"
+												   Style="{StaticResource MaterialDesignIconButton}"
+												   ToolTip="{markup:Localize PomodoroSkip}"
+												   Margin="0,0,8,0">
+												<materialDesign:PackIcon Kind="SkipNext" Width="24" Height="24" />
+											</Button>
+											<Button Command="{Binding StopPomodoroCommand}"
+												   Style="{StaticResource MaterialDesignIconButton}"
+												   ToolTip="{markup:Localize PomodoroStop}">
+												<materialDesign:PackIcon Kind="Stop" Width="24" Height="24"
+																   Foreground="{StaticResource ErrorBrush}" />
+											</Button>
+										</StackPanel>
+									</StackPanel>
+
+									<!-- Pomodoro Idle State -->
+									<Button Content="{markup:Localize PomodoroStart}"
+										   Command="{Binding StartPomodoroCommand}"
+										   Style="{StaticResource SecondaryButtonStyle}"
+										   HorizontalAlignment="Stretch"
+										   Height="40">
+										<Button.Visibility>
+											<Binding Path="IsPomodoroRunning" Converter="{StaticResource BoolToVisibilityConverter}" ConverterParameter="Inverse" />
+										</Button.Visibility>
+									</Button>
+								</StackPanel>
 							</materialDesign:Card>
 
 							<!-- Quick Actions -->

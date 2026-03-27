@@ -1,4 +1,4 @@
-﻿<Window x:Class="WorkTracker.WPF.Views.SettingsWindow"
+<Window x:Class="WorkTracker.WPF.Views.SettingsWindow"
 		xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
 		xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
 		xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -376,6 +376,105 @@
 							</StackPanel>
 						</Button>
 					</Grid>
+				</TabItem>
+
+				<!-- Pomodoro Tab -->
+				<TabItem Header="{markup:Localize Pomodoro}">
+					<ScrollViewer VerticalScrollBarVisibility="Auto"
+								 Padding="24,16,24,0">
+						<StackPanel Margin="8,0,8,0">
+							<TextBlock Text="{markup:Localize Pomodoro}"
+									  FontSize="16"
+									  FontWeight="Medium"
+									  Margin="0,0,0,16" />
+
+							<CheckBox IsChecked="{Binding PomodoroEnabled}"
+									 Margin="0,0,0,12">
+								<StackPanel>
+									<TextBlock Text="{markup:Localize PomodoroEnabled}"
+											  FontWeight="Medium" />
+									<TextBlock Text="{markup:Localize PomodoroEnabledDesc}"
+											  Foreground="{DynamicResource MaterialDesign.Brush.Foreground.Light}"
+											  FontSize="11"
+											  TextWrapping="Wrap"
+											  Margin="0,4,0,0" />
+								</StackPanel>
+							</CheckBox>
+
+							<Separator Margin="0,8,0,24" />
+
+							<StackPanel IsEnabled="{Binding PomodoroEnabled}">
+								<!-- Duration settings -->
+								<TextBox Text="{Binding PomodoroWorkMinutes, UpdateSourceTrigger=PropertyChanged}"
+									materialDesign:HintAssist.Hint="{markup:Localize PomodoroWorkMinutes}"
+									materialDesign:HintAssist.IsFloating="True"
+									Style="{StaticResource MaterialDesignOutlinedTextBox}"
+									Margin="0,0,0,16" />
+
+								<TextBox Text="{Binding PomodoroShortBreakMinutes, UpdateSourceTrigger=PropertyChanged}"
+									materialDesign:HintAssist.Hint="{markup:Localize PomodoroShortBreakMinutes}"
+									materialDesign:HintAssist.IsFloating="True"
+									Style="{StaticResource MaterialDesignOutlinedTextBox}"
+									Margin="0,0,0,16" />
+
+								<TextBox Text="{Binding PomodoroLongBreakMinutes, UpdateSourceTrigger=PropertyChanged}"
+									materialDesign:HintAssist.Hint="{markup:Localize PomodoroLongBreakMinutes}"
+									materialDesign:HintAssist.IsFloating="True"
+									Style="{StaticResource MaterialDesignOutlinedTextBox}"
+									Margin="0,0,0,16" />
+
+								<TextBox Text="{Binding PomodorosBeforeLongBreak, UpdateSourceTrigger=PropertyChanged}"
+									materialDesign:HintAssist.Hint="{markup:Localize PomodorosBeforeLongBreak}"
+									materialDesign:HintAssist.IsFloating="True"
+									Style="{StaticResource MaterialDesignOutlinedTextBox}"
+									Margin="0,0,0,16" />
+
+								<Separator Margin="0,8,0,24" />
+
+								<!-- Integration toggles -->
+								<CheckBox IsChecked="{Binding PomodoroAutoStartTracking}"
+									 Margin="0,0,0,12">
+									<StackPanel>
+										<TextBlock Text="{markup:Localize PomodoroAutoStartTracking}"
+											  FontWeight="Medium" />
+										<TextBlock Text="{markup:Localize PomodoroAutoStartTrackingDesc}"
+											  Foreground="{DynamicResource MaterialDesign.Brush.Foreground.Light}"
+											  FontSize="11"
+											  TextWrapping="Wrap"
+											  Margin="0,4,0,0" />
+									</StackPanel>
+								</CheckBox>
+
+								<CheckBox IsChecked="{Binding PomodoroAutoStopTracking}"
+									 Margin="0,0,0,12">
+									<StackPanel>
+										<TextBlock Text="{markup:Localize PomodoroAutoStopTracking}"
+											  FontWeight="Medium" />
+										<TextBlock Text="{markup:Localize PomodoroAutoStopTrackingDesc}"
+											  Foreground="{DynamicResource MaterialDesign.Brush.Foreground.Light}"
+											  FontSize="11"
+											  TextWrapping="Wrap"
+											  Margin="0,4,0,0" />
+									</StackPanel>
+								</CheckBox>
+
+								<Separator Margin="0,12,0,24" />
+
+								<!-- Luxafor -->
+								<CheckBox IsChecked="{Binding PomodoroLuxaforEnabled}">
+									<StackPanel>
+										<TextBlock Text="{markup:Localize PomodoroLuxaforEnabled}"
+											  FontWeight="Medium" />
+										<TextBlock Text="{markup:Localize PomodoroLuxaforEnabledDesc}"
+											  Foreground="{DynamicResource MaterialDesign.Brush.Foreground.Light}"
+											  FontSize="11"
+											  TextWrapping="Wrap"
+											  Margin="0,4,0,0" />
+									</StackPanel>
+								</CheckBox>
+							</StackPanel>
+						</StackPanel>
+					</ScrollViewer>
 				</TabItem>
 
 				<!-- Plugins Tab -->

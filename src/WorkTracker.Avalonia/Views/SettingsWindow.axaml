@@ -273,6 +273,79 @@
                         </Grid>
                     </TabItem>
 
+                    <!-- ===== Pomodoro ===== -->
+                    <TabItem Header="{markup:Localize Pomodoro}">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled">
+                            <StackPanel Margin="20,12">
+                                <TextBlock Text="{markup:Localize Pomodoro}"
+                                           FontSize="15" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextBright}"
+                                           Margin="0,0,0,10" />
+
+                                <CheckBox IsChecked="{Binding PomodoroEnabled}" Margin="0,0,0,6">
+                                    <StackPanel>
+                                        <TextBlock Text="{markup:Localize PomodoroEnabled}" FontWeight="Medium" />
+                                        <TextBlock Text="{markup:Localize PomodoroEnabledDesc}"
+                                                   Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,2,0,0" />
+                                    </StackPanel>
+                                </CheckBox>
+
+                                <Separator Margin="0,16" />
+
+                                <StackPanel IsEnabled="{Binding PomodoroEnabled}">
+                                    <StackPanel Margin="0,0,0,8" Spacing="3">
+                                        <TextBlock Text="{markup:Localize PomodoroWorkMinutes}" FontSize="12" FontWeight="Medium" />
+                                        <TextBox Text="{Binding PomodoroWorkMinutes}" FontSize="12" />
+                                    </StackPanel>
+
+                                    <StackPanel Margin="0,0,0,8" Spacing="3">
+                                        <TextBlock Text="{markup:Localize PomodoroShortBreakMinutes}" FontSize="12" FontWeight="Medium" />
+                                        <TextBox Text="{Binding PomodoroShortBreakMinutes}" FontSize="12" />
+                                    </StackPanel>
+
+                                    <StackPanel Margin="0,0,0,8" Spacing="3">
+                                        <TextBlock Text="{markup:Localize PomodoroLongBreakMinutes}" FontSize="12" FontWeight="Medium" />
+                                        <TextBox Text="{Binding PomodoroLongBreakMinutes}" FontSize="12" />
+                                    </StackPanel>
+
+                                    <StackPanel Margin="0,0,0,8" Spacing="3">
+                                        <TextBlock Text="{markup:Localize PomodorosBeforeLongBreak}" FontSize="12" FontWeight="Medium" />
+                                        <TextBox Text="{Binding PomodorosBeforeLongBreak}" FontSize="12" />
+                                    </StackPanel>
+
+                                    <Separator Margin="0,16" />
+
+                                    <CheckBox IsChecked="{Binding PomodoroAutoStartTracking}" Margin="0,0,0,6">
+                                        <StackPanel>
+                                            <TextBlock Text="{markup:Localize PomodoroAutoStartTracking}" FontWeight="Medium" />
+                                            <TextBlock Text="{markup:Localize PomodoroAutoStartTrackingDesc}"
+                                                       Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,2,0,0" />
+                                        </StackPanel>
+                                    </CheckBox>
+
+                                    <CheckBox IsChecked="{Binding PomodoroAutoStopTracking}">
+                                        <StackPanel>
+                                            <TextBlock Text="{markup:Localize PomodoroAutoStopTracking}" FontWeight="Medium" />
+                                            <TextBlock Text="{markup:Localize PomodoroAutoStopTrackingDesc}"
+                                                       Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,2,0,0" />
+                                        </StackPanel>
+                                    </CheckBox>
+
+                                    <Separator Margin="0,16" />
+
+                                    <CheckBox IsChecked="{Binding PomodoroLuxaforEnabled}">
+                                        <StackPanel>
+                                            <TextBlock Text="{markup:Localize PomodoroLuxaforEnabled}" FontWeight="Medium" />
+                                            <TextBlock Text="{markup:Localize PomodoroLuxaforEnabledDesc}"
+                                                       Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,2,0,0" />
+                                        </StackPanel>
+                                    </CheckBox>
+                                </StackPanel>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+
                     <!-- ===== Plugins ===== -->
                     <TabItem Header="{markup:Localize Plugins}">
                         <ScrollViewer VerticalScrollBarVisibility="Auto"

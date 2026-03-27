@@ -179,6 +179,67 @@
                         </StackPanel>
                     </Border>
 
+                    <!-- Pomodoro Timer -->
+                    <Border Classes="card" Padding="12,10"
+                            IsVisible="{Binding IsPomodoroEnabled}">
+                        <StackPanel Spacing="8">
+                            <Grid ColumnDefinitions="Auto,*">
+                                <material:MaterialIcon Grid.Column="0"
+                                                      Kind="TimerSandComplete" Width="16" Height="16"
+                                                      Foreground="{DynamicResource TextMuted}"
+                                                      VerticalAlignment="Center" Margin="0,0,8,0" />
+                                <TextBlock Grid.Column="1" Text="{markup:Localize Pomodoro}"
+                                           FontSize="13" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextBright}"
+                                           VerticalAlignment="Center" />
+                            </Grid>
+
+                            <!-- Running state -->
+                            <StackPanel IsVisible="{Binding IsPomodoroRunning}" Spacing="6">
+                                <TextBlock Text="{Binding PomodoroTimeRemaining}"
+                                           FontSize="28" FontWeight="Bold"
+                                           FontFamily="JetBrains Mono,Consolas,monospace"
+                                           HorizontalAlignment="Center"
+                                           Foreground="{DynamicResource TextBright}" />
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="6">
+                                    <TextBlock Text="{Binding PomodoroPhaseDisplay}"
+                                               FontSize="12" FontWeight="Medium"
+                                               Foreground="{DynamicResource TextSecondary}" />
+                                    <TextBlock Text="·" FontSize="12"
+                                               Foreground="{DynamicResource TextMuted}" />
+                                    <TextBlock Text="{Binding PomodoroCount}"
+                                               FontSize="12"
+                                               Foreground="{DynamicResource TextMuted}" />
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="4">
+                                    <Button Command="{Binding SkipPomodoroPhaseCommand}"
+                                            ToolTip.Tip="{markup:Localize PomodoroSkip}"
+                                            Background="Transparent" Padding="6">
+                                        <material:MaterialIcon Kind="SkipNext" Width="18" Height="18"
+                                                              Foreground="{DynamicResource TextSecondary}" />
+                                    </Button>
+                                    <Button Command="{Binding StopPomodoroCommand}"
+                                            ToolTip.Tip="{markup:Localize PomodoroStop}"
+                                            Background="Transparent" Padding="6">
+                                        <material:MaterialIcon Kind="Stop" Width="18" Height="18"
+                                                              Foreground="{DynamicResource ErrorColor}" />
+                                    </Button>
+                                </StackPanel>
+                            </StackPanel>
+
+                            <!-- Idle state -->
+                            <Button Command="{Binding StartPomodoroCommand}"
+                                    IsVisible="{Binding !IsPomodoroRunning}"
+                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                    Padding="8,6"
+                                    Background="Transparent">
+                                <TextBlock Text="{markup:Localize PomodoroStart}"
+                                           FontSize="12"
+                                           Foreground="{DynamicResource TextSecondary}" />
+                            </Button>
+                        </StackPanel>
+                    </Border>
+
                     <!-- Today total -->
                     <Border Classes="card" Padding="12,10">
                         <Grid ColumnDefinitions="Auto,*,Auto">

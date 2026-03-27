@@ -571,4 +571,72 @@ Popis: {1}
     <value>„Vesmír nemá žádnou povinnost dávat vám smysl." — Neil deGrasse Tyson
 Váš výkaz práce také ne.</value>
   </data>
+
+  <!-- Pomodoro -->
+  <data name="Pomodoro" xml:space="preserve">
+    <value>Pomodoro</value>
+  </data>
+  <data name="PomodoroEnabled" xml:space="preserve">
+    <value>Povolit Pomodoro časovač</value>
+  </data>
+  <data name="PomodoroEnabledDesc" xml:space="preserve">
+    <value>Zobrazí panel Pomodoro časovače v hlavním okně</value>
+  </data>
+  <data name="PomodoroWork" xml:space="preserve">
+    <value>Práce</value>
+  </data>
+  <data name="PomodoroShortBreak" xml:space="preserve">
+    <value>Krátká pauza</value>
+  </data>
+  <data name="PomodoroLongBreak" xml:space="preserve">
+    <value>Dlouhá pauza</value>
+  </data>
+  <data name="PomodoroStart" xml:space="preserve">
+    <value>Spustit Pomodoro</value>
+  </data>
+  <data name="PomodoroStop" xml:space="preserve">
+    <value>Zastavit</value>
+  </data>
+  <data name="PomodoroSkip" xml:space="preserve">
+    <value>Přeskočit</value>
+  </data>
+  <data name="PomodoroCompleted" xml:space="preserve">
+    <value>Pomodoro dokončeno! Čas na pauzu.</value>
+  </data>
+  <data name="PomodoroBreakOver" xml:space="preserve">
+    <value>Pauza skončila! Čas na práci.</value>
+  </data>
+  <data name="PomodoroWorkMinutes" xml:space="preserve">
+    <value>Délka práce (min)</value>
+  </data>
+  <data name="PomodoroShortBreakMinutes" xml:space="preserve">
+    <value>Krátká pauza (min)</value>
+  </data>
+  <data name="PomodoroLongBreakMinutes" xml:space="preserve">
+    <value>Dlouhá pauza (min)</value>
+  </data>
+  <data name="PomodorosBeforeLongBreak" xml:space="preserve">
+    <value>Pomodor před dlouhou pauzou</value>
+  </data>
+  <data name="PomodoroAutoStartTracking" xml:space="preserve">
+    <value>Auto-start sledování práce</value>
+  </data>
+  <data name="PomodoroAutoStartTrackingDesc" xml:space="preserve">
+    <value>Automaticky obnoví sledování práce při zahájení pracovní fáze</value>
+  </data>
+  <data name="PomodoroAutoStopTracking" xml:space="preserve">
+    <value>Auto-stop sledování při pauze</value>
+  </data>
+  <data name="PomodoroAutoStopTrackingDesc" xml:space="preserve">
+    <value>Automaticky zastaví sledování práce při zahájení pauzy</value>
+  </data>
+  <data name="PomodoroLuxaforEnabled" xml:space="preserve">
+    <value>Povolit Luxafor LED indikátor</value>
+  </data>
+  <data name="PomodoroLuxaforEnabledDesc" xml:space="preserve">
+    <value>Zobrazí aktuální fázi na Luxafor Bluetooth Pro (červená = práce, zelená = pauza)</value>
+  </data>
+  <data name="PomodoroLuxaforNotFound" xml:space="preserve">
+    <value>Luxafor zařízení nenalezeno</value>
+  </data>
 </root>

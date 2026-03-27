@@ -41,4 +41,9 @@ public class ApplicationSettings
 	/// Application theme (e.g. "Dark", "Light", "Midnight", "Purple", "Modern Blue").
 	/// </summary>
 	public string Theme { get; set; } = DefaultTheme;
+
+	/// <summary>
+	/// Pomodoro timer settings
+	/// </summary>
+	public PomodoroSettings Pomodoro { get; set; } = new();
 }
