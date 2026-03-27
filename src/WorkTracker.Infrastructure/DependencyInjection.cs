@@ -42,7 +42,12 @@ public static class DependencyInjection
 			var pluginManager = new PluginManager(logger);
 
 			// Add default plugin directory (plugins/ subfolder next to the application executable)
-			pluginManager.AddPluginDirectory(WorkTrackerPaths.DefaultPluginsPath);
+			var defaultPluginsPath = WorkTrackerPaths.DefaultPluginsPath;
+			if (!Directory.Exists(defaultPluginsPath))
+			{
+				Directory.CreateDirectory(defaultPluginsPath);
+			}
+			pluginManager.AddPluginDirectory(defaultPluginsPath);
 
 			return pluginManager;
 		});
