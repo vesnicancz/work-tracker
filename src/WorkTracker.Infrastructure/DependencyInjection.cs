@@ -7,9 +7,6 @@ using WorkTracker.Application.Plugins;
 using WorkTracker.Domain.Interfaces;
 using WorkTracker.Infrastructure.Data;
 using WorkTracker.Infrastructure.Repositories;
-using WorkTracker.Plugin.Luxafor;
-using WorkTracker.Plugin.Tempo;
-
 namespace WorkTracker.Infrastructure;
 
 public static class DependencyInjection
@@ -44,17 +41,8 @@ public static class DependencyInjection
 			var logger = serviceProvider.GetRequiredService<ILogger<PluginManager>>();
 			var pluginManager = new PluginManager(logger);
 
-			// Add default plugin directory
-			var pluginsPath = Path.Combine(
-				Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-				"WorkTracker",
-				"Plugins"
-			);
-			if (!Directory.Exists(pluginsPath))
-			{
-				Directory.CreateDirectory(pluginsPath);
-			}
-			pluginManager.AddPluginDirectory(pluginsPath);
+			// Add default plugin directory (plugins/ subfolder next to the application executable)
+			pluginManager.AddPluginDirectory(WorkTrackerPaths.DefaultPluginsPath);
 
 			return pluginManager;
 		});
@@ -82,11 +70,7 @@ public static class DependencyInjection
 	{
 		var pluginManager = serviceProvider.GetRequiredService<PluginManager>();
 
-		// Load embedded plugins
-		pluginManager.LoadEmbeddedPlugin<TempoWorklogPlugin>();
-		pluginManager.LoadEmbeddedPlugin<LuxaforStatusIndicatorPlugin>();
-
-		// Discover and load external plugins from plugin directory
+		// Discover and load plugins from plugin directory
 		pluginManager.DiscoverAndLoadPlugins();
 
 		// Set enabled plugins if provided, otherwise enable all plugins by default

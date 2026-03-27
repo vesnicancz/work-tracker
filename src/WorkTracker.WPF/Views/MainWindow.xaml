@@ -268,8 +268,25 @@
 							</materialDesign:Card>
 
 							<!-- Pomodoro Timer -->
-							<materialDesign:Card Style="{StaticResource CardStyle}"
-										   Visibility="{Binding IsPomodoroEnabled, Converter={StaticResource BoolToVisibilityConverter}}">
+							<materialDesign:Card Visibility="{Binding IsPomodoroEnabled, Converter={StaticResource BoolToVisibilityConverter}}">
+								<materialDesign:Card.Style>
+									<Style TargetType="materialDesign:Card" BasedOn="{StaticResource CardStyle}">
+										<Style.Triggers>
+											<DataTrigger Binding="{Binding IsPomodoroWork}" Value="True">
+												<Setter Property="Background" Value="{StaticResource PomodoroWorkBgBrush}" />
+												<Setter Property="BorderBrush" Value="{StaticResource PomodoroWorkBorderBrush}" />
+											</DataTrigger>
+											<DataTrigger Binding="{Binding IsPomodoroShortBreak}" Value="True">
+												<Setter Property="Background" Value="{StaticResource PomodoroBreakBgBrush}" />
+												<Setter Property="BorderBrush" Value="{StaticResource PomodoroBreakBorderBrush}" />
+											</DataTrigger>
+											<DataTrigger Binding="{Binding IsPomodoroLongBreak}" Value="True">
+												<Setter Property="Background" Value="{StaticResource PomodoroLongBreakBgBrush}" />
+												<Setter Property="BorderBrush" Value="{StaticResource PomodoroLongBreakBorderBrush}" />
+											</DataTrigger>
+										</Style.Triggers>
+									</Style>
+								</materialDesign:Card.Style>
 								<StackPanel>
 									<StackPanel Orientation="Horizontal" Margin="0,0,0,12">
 										<materialDesign:PackIcon Kind="Timer"

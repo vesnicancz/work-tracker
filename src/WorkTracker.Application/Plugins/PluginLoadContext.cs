@@ -18,6 +18,17 @@ internal class PluginLoadContext : AssemblyLoadContext
 
 	protected override Assembly? Load(AssemblyName assemblyName)
 	{
+		// If the assembly is already loaded in the default context (shared host assemblies),
+		// return null to fall back to it. This prevents duplicate type identities for shared
+		// interfaces like IPlugin, which would cause IsAssignableFrom checks to fail.
+		foreach (var assembly in Default.Assemblies)
+		{
+			if (AssemblyName.ReferenceMatchesDefinition(assemblyName, assembly.GetName()))
+			{
+				return null;
+			}
+		}
+
 		var assemblyPath = _resolver.ResolveAssemblyToPath(assemblyName);
 		if (assemblyPath != null)
 		{

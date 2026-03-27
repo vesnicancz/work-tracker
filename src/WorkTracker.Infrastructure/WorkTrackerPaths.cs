@@ -9,4 +9,8 @@ public static class WorkTrackerPaths
 		Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
 		"WorkTracker",
 		"worktracker.db");
+
+	public static string DefaultPluginsPath => Path.Combine(
+		AppContext.BaseDirectory,
+		"plugins");
 }

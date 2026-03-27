@@ -339,76 +339,88 @@
 
                     <!-- ===== Plugins ===== -->
                     <TabItem Header="{markup:Localize Plugins}">
-                        <ScrollViewer VerticalScrollBarVisibility="Auto"
-                                      HorizontalScrollBarVisibility="Disabled">
-                            <StackPanel Margin="20,12" Spacing="10">
+                        <Panel>
+                            <!-- No plugins message -->
+                            <TextBlock Text="{markup:Localize NoPluginsAvailable}"
+                                       Foreground="{DynamicResource TextMuted}"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       FontSize="13"
+                                       IsVisible="{Binding !HasPlugins}" />
 
-                                <ComboBox ItemsSource="{Binding Plugins}"
-                                          SelectedItem="{Binding SelectedPlugin}"
-                                          DisplayMemberBinding="{ReflectionBinding Name}"
-                                          HorizontalAlignment="Stretch"
-                                          PlaceholderText="{markup:Localize SelectPlugin}" />
+                            <!-- Plugin settings -->
+                            <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                          HorizontalScrollBarVisibility="Disabled"
+                                          IsVisible="{Binding HasPlugins}">
+                                <StackPanel Margin="20,12" Spacing="10">
 
-                                <Border Background="{DynamicResource SidebarBackground}"
-                                        BorderBrush="{DynamicResource CardBorder}"
-                                        BorderThickness="1" CornerRadius="4" Padding="14">
-                                    <StackPanel Spacing="10">
+                                    <ComboBox ItemsSource="{Binding Plugins}"
+                                              SelectedItem="{Binding SelectedPlugin}"
+                                              DisplayMemberBinding="{ReflectionBinding Name}"
+                                              HorizontalAlignment="Stretch"
+                                              PlaceholderText="{markup:Localize SelectPlugin}" />
 
-                                        <CheckBox IsChecked="{Binding SelectedPlugin.IsEnabled}"
-                                                  Content="{markup:Localize EnablePlugin}" />
+                                    <Border Background="{DynamicResource SidebarBackground}"
+                                            BorderBrush="{DynamicResource CardBorder}"
+                                            BorderThickness="1" CornerRadius="4" Padding="14">
+                                        <StackPanel Spacing="10">
 
-                                        <Separator />
+                                            <CheckBox IsChecked="{Binding SelectedPlugin.IsEnabled}"
+                                                      Content="{markup:Localize EnablePlugin}" />
 
-                                        <!-- Metadata -->
-                                        <Grid ColumnDefinitions="80,*" RowDefinitions="Auto,Auto,Auto"
-                                              Margin="0,0,0,4">
-                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="{markup:Localize PluginVersion}" Foreground="{DynamicResource TextMuted}" FontSize="12" Margin="0,0,0,4" />
-                                            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding SelectedPlugin.Version}" FontSize="12" Margin="0,0,0,4" />
-                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="{markup:Localize PluginAuthor}" Foreground="{DynamicResource TextMuted}" FontSize="12" Margin="0,0,0,4" />
-                                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SelectedPlugin.Author}" FontSize="12" Margin="0,0,0,4" />
-                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="{markup:Localize PluginDescription}" Foreground="{DynamicResource TextMuted}" FontSize="12" VerticalAlignment="Top" />
-                                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SelectedPlugin.Description}" FontSize="12" TextWrapping="Wrap" />
-                                        </Grid>
+                                            <Separator />
 
-                                        <Separator />
+                                            <!-- Metadata -->
+                                            <Grid ColumnDefinitions="80,*" RowDefinitions="Auto,Auto,Auto"
+                                                  Margin="0,0,0,4">
+                                                <TextBlock Grid.Row="0" Grid.Column="0" Text="{markup:Localize PluginVersion}" Foreground="{DynamicResource TextMuted}" FontSize="12" Margin="0,0,0,4" />
+                                                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding SelectedPlugin.Version}" FontSize="12" Margin="0,0,0,4" />
+                                                <TextBlock Grid.Row="1" Grid.Column="0" Text="{markup:Localize PluginAuthor}" Foreground="{DynamicResource TextMuted}" FontSize="12" Margin="0,0,0,4" />
+                                                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SelectedPlugin.Author}" FontSize="12" Margin="0,0,0,4" />
+                                                <TextBlock Grid.Row="2" Grid.Column="0" Text="{markup:Localize PluginDescription}" Foreground="{DynamicResource TextMuted}" FontSize="12" VerticalAlignment="Top" />
+                                                <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SelectedPlugin.Description}" FontSize="12" TextWrapping="Wrap" />
+                                            </Grid>
 
-                                        <TextBlock Text="{markup:Localize Configuration}" FontSize="12" Foreground="{DynamicResource TextMuted}" />
+                                            <Separator />
 
-                                        <!-- Config fields -->
-                                        <ItemsControl ItemsSource="{Binding SelectedPlugin.ConfigurationFields}">
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate x:DataType="shared:ConfigurationFieldViewModel">
-                                                    <StackPanel Margin="0,0,0,8" Spacing="3">
-                                                        <TextBlock Text="{Binding Label}" FontSize="12" FontWeight="Medium" />
-                                                        <TextBox Text="{Binding Value, Mode=TwoWay}"
-                                                                 Watermark="{Binding Placeholder}"
-                                                                 FontSize="12" />
-                                                    </StackPanel>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
+                                            <TextBlock Text="{markup:Localize Configuration}" FontSize="12" Foreground="{DynamicResource TextMuted}" />
 
-                                        <!-- Test Connection -->
-                                        <Button IsVisible="{Binding SelectedPlugin.SupportsTestConnection}"
-                                                Command="{Binding TestConnectionCommand}"
-                                                Background="Transparent" Padding="10,6"
-                                                BorderBrush="{DynamicResource CardBorder}" BorderThickness="1">
-                                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                                <material:MaterialIcon Kind="LanConnect" Width="16" Height="16"
-                                                                      Foreground="{DynamicResource TextMuted}" />
-                                                <TextBlock Text="{markup:Localize TestConnection}" FontSize="12"
-                                                           Foreground="{DynamicResource TextSecondary}" />
-                                            </StackPanel>
-                                        </Button>
+                                            <!-- Config fields -->
+                                            <ItemsControl ItemsSource="{Binding SelectedPlugin.ConfigurationFields}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate x:DataType="shared:ConfigurationFieldViewModel">
+                                                        <StackPanel Margin="0,0,0,8" Spacing="3">
+                                                            <TextBlock Text="{Binding Label}" FontSize="12" FontWeight="Medium" />
+                                                            <TextBox Text="{Binding Value, Mode=TwoWay}"
+                                                                     Watermark="{Binding Placeholder}"
+                                                                     FontSize="12" />
+                                                        </StackPanel>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
 
-                                        <TextBlock Text="{Binding TestConnectionResult}"
-                                                   FontSize="12" TextWrapping="Wrap" />
+                                            <!-- Test Connection -->
+                                            <Button IsVisible="{Binding SelectedPlugin.SupportsTestConnection}"
+                                                    Command="{Binding TestConnectionCommand}"
+                                                    Background="Transparent" Padding="10,6"
+                                                    BorderBrush="{DynamicResource CardBorder}" BorderThickness="1">
+                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                    <material:MaterialIcon Kind="LanConnect" Width="16" Height="16"
+                                                                          Foreground="{DynamicResource TextMuted}" />
+                                                    <TextBlock Text="{markup:Localize TestConnection}" FontSize="12"
+                                                               Foreground="{DynamicResource TextSecondary}" />
+                                                </StackPanel>
+                                            </Button>
 
-                                    </StackPanel>
-                                </Border>
+                                            <TextBlock Text="{Binding TestConnectionResult}"
+                                                       FontSize="12" TextWrapping="Wrap" />
 
-                            </StackPanel>
-                        </ScrollViewer>
+                                        </StackPanel>
+                                    </Border>
+
+                                </StackPanel>
+                            </ScrollViewer>
+                        </Panel>
                     </TabItem>
 
                     <!-- ===== About ===== -->
