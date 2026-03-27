@@ -38,7 +38,7 @@ device.Strobe(LuxaforColor.Blue, speed: 10, repeat: 5);
 device.Wave(WaveType.Smooth, LuxaforColor.Cyan, speed: 10, repeat: 3);
 
 // Built-in pattern
-device.Pattern(BuiltInPattern.Rainbow, repeat: 3);
+device.PlayPattern(BuiltInPattern.Rainbow, repeat: 3);
 
 // Per-LED control
 device.SetColor(Led.TopSide, LuxaforColor.Red);
@@ -108,7 +108,7 @@ device.StartMonitoring();
 | `FadeTo(...)` | Smoothly transitions LED(s) to a color |
 | `Strobe(...)` | Flashes LED(s) with a color |
 | `Wave(...)` | Plays a wave animation |
-| `Pattern(...)` | Plays a built-in hardware pattern |
+| `PlayPattern(...)` | Plays a built-in hardware pattern |
 | `TurnOff()` | Turns off all LEDs |
 | `StartMonitoring()` | Starts background input report reading |
 | `StopMonitoring()` | Stops input report reading |

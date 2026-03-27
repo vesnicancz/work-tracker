@@ -9,7 +9,8 @@ public sealed class SystemNotificationService : ISystemNotificationService, IDis
 {
 	private readonly ILogger<SystemNotificationService> _logger;
 	private readonly WindowsNotificationManager _manager;
-	private bool _initialized;
+	private readonly SemaphoreSlim _initLock = new(1, 1);
+	private volatile bool _initialized;
 
 	public SystemNotificationService(ILogger<SystemNotificationService> logger)
 	{
@@ -22,11 +23,7 @@ public sealed class SystemNotificationService : ISystemNotificationService, IDis
 	{
 		try
 		{
-			if (!_initialized)
-			{
-				await _manager.Initialize();
-				_initialized = true;
-			}
+			await EnsureInitializedAsync();
 
 			await _manager.ShowNotification(new Notification
 			{
@@ -42,6 +39,29 @@ public sealed class SystemNotificationService : ISystemNotificationService, IDis
 
 	public void Dispose()
 	{
+		_initLock.Dispose();
 		_manager.Dispose();
+	}
+
+	private async Task EnsureInitializedAsync()
+	{
+		if (_initialized)
+		{
+			return;
+		}
+
+		await _initLock.WaitAsync();
+		try
+		{
+			if (!_initialized)
+			{
+				await _manager.Initialize();
+				_initialized = true;
+			}
+		}
+		finally
+		{
+			_initLock.Release();
+		}
 	}
 }

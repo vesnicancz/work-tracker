@@ -267,4 +267,78 @@ public class PomodoroServiceTests : IDisposable
 		_sut.PomodorosBeforeLongBreak.Should().Be(2);
 		_sut.TimeRemaining.Should().Be(TimeSpan.FromMinutes(1));
 	}
+
+	[Fact]
+	public void Skip_FromWork_ShowsSystemNotification()
+	{
+		_sut.Start();
+
+		_sut.Skip(); // Work -> ShortBreak
+
+		_systemNotification.Verify(
+			n => n.ShowNotificationAsync("Pomodoro", "PomodoroBreakStarted"),
+			Times.Once);
+	}
+
+	[Fact]
+	public void Skip_FromBreakToWork_ShowsSystemNotification()
+	{
+		_sut.Start();
+		_sut.Skip(); // Work -> ShortBreak
+
+		_sut.Skip(); // ShortBreak -> Work
+
+		_systemNotification.Verify(
+			n => n.ShowNotificationAsync("Pomodoro", "PomodoroWorkPhaseStarted"),
+			Times.Once);
+	}
+
+	[Fact]
+	public void Skip_ToLongBreak_ShowsSystemNotification()
+	{
+		_sut.Start();
+		_sut.Skip(); // Work -> ShortBreak (completed: 1)
+		_sut.Skip(); // ShortBreak -> Work
+
+		_sut.Skip(); // Work -> LongBreak (completed: 2)
+
+		_systemNotification.Verify(
+			n => n.ShowNotificationAsync("Pomodoro", "PomodoroLongBreakStarted"),
+			Times.Once);
+	}
+
+	[Fact]
+	public void Skip_FromWorkToBreak_WithAutoStopEnabled_StopsTracking()
+	{
+		var settings = _settingsService.Object.Settings;
+		settings.Pomodoro.AutoStopWorkTracking = true;
+		_worklogStateService.Setup(s => s.IsTracking).Returns(true);
+
+		_sut.Start();
+		_sut.Skip(); // Work -> ShortBreak
+
+		_worklogStateService.Verify(
+			s => s.StopTrackingAsync(It.IsAny<CancellationToken>()),
+			Times.Once);
+	}
+
+	[Fact]
+	public void Skip_FromBreakToWork_WithAutoStartEnabled_StartsTracking()
+	{
+		var settings = _settingsService.Object.Settings;
+		settings.Pomodoro.AutoStartWorkTracking = true;
+		var activeWork = WorkTracker.Domain.Entities.WorkEntry.Create("PROJ-1", DateTime.Now, null, "Test", DateTime.Now);
+		_worklogStateService.Setup(s => s.IsTracking).Returns(true);
+		_worklogStateService.Setup(s => s.ActiveWork).Returns(activeWork);
+
+		_sut.Start(); // sets _lastTicketId/_lastDescription from ActiveWork
+		_worklogStateService.Setup(s => s.IsTracking).Returns(false);
+
+		_sut.Skip(); // Work -> ShortBreak
+		_sut.Skip(); // ShortBreak -> Work (should auto-start)
+
+		_worklogStateService.Verify(
+			s => s.StartTrackingAsync(It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()),
+			Times.AtLeastOnce);
+	}
 }

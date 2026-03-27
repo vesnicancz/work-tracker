@@ -17,7 +17,7 @@ public sealed class PomodoroService : IPomodoroService, IDisposable
 	private readonly ILogger<PomodoroService> _logger;
 
 	private readonly Lock _lock = new();
-	private Timer? _timer;
+	private ITimer? _timer;
 	private PomodoroPhase _currentPhase = PomodoroPhase.Idle;
 	private TimeSpan _timeRemaining;
 	private int _completedPomodoros;
@@ -442,7 +442,7 @@ public sealed class PomodoroService : IPomodoroService, IDisposable
 	private void StartTimer()
 	{
 		StopTimer();
-		_timer = new Timer(OnTimerTick, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+		_timer = _timeProvider.CreateTimer(OnTimerTick, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
 	}
 
 	private void StopTimer()

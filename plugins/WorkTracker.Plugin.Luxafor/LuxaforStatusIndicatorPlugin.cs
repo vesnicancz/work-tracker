@@ -13,6 +13,7 @@ public sealed class LuxaforStatusIndicatorPlugin : StatusIndicatorPluginBase, ID
 		public const string LongBreakColor = "long_break_color";
 	}
 
+	private readonly Lock _deviceLock = new();
 	private LuxaforDevice? _device;
 	private bool _disposed;
 
@@ -30,7 +31,16 @@ public sealed class LuxaforStatusIndicatorPlugin : StatusIndicatorPluginBase, ID
 		Tags = ["luxafor", "led", "status-indicator"]
 	};
 
-	public override bool IsDeviceAvailable => _device is { IsConnected: true };
+	public override bool IsDeviceAvailable
+	{
+		get
+		{
+			lock (_deviceLock)
+			{
+				return _device is { IsConnected: true };
+			}
+		}
+	}
 
 	public override IReadOnlyList<PluginConfigurationField> GetConfigurationFields()
 	{
@@ -60,34 +70,37 @@ public sealed class LuxaforStatusIndicatorPlugin : StatusIndicatorPluginBase, ID
 			return Task.CompletedTask;
 		}
 
-		try
+		lock (_deviceLock)
 		{
-			var device = GetOrOpenDevice();
-			if (device == null)
+			try
 			{
-				return Task.CompletedTask;
-			}
+				var device = GetOrOpenDevice();
+				if (device == null)
+				{
+					return Task.CompletedTask;
+				}
 
-			switch (state)
-			{
-				case StatusIndicatorState.Work:
-					device.SetColor(_workColor);
-					break;
-				case StatusIndicatorState.ShortBreak:
-					device.SetColor(_shortBreakColor);
-					break;
-				case StatusIndicatorState.LongBreak:
-					device.SetColor(_longBreakColor);
-					break;
-				default:
-					device.TurnOff();
-					break;
+				switch (state)
+				{
+					case StatusIndicatorState.Work:
+						device.SetColor(_workColor);
+						break;
+					case StatusIndicatorState.ShortBreak:
+						device.SetColor(_shortBreakColor);
+						break;
+					case StatusIndicatorState.LongBreak:
+						device.SetColor(_longBreakColor);
+						break;
+					default:
+						device.TurnOff();
+						break;
+				}
 			}
-		}
-		catch (Exception ex)
-		{
-			Logger?.LogWarning(ex, "Failed to set Luxafor state to {State}", state);
-			CloseDevice();
+			catch (Exception ex)
+			{
+				Logger?.LogWarning(ex, "Failed to set Luxafor state to {State}", state);
+				CloseDevice();
+			}
 		}
 
 		return Task.CompletedTask;
@@ -104,16 +117,20 @@ public sealed class LuxaforStatusIndicatorPlugin : StatusIndicatorPluginBase, ID
 
 	protected override Task OnShutdownAsync()
 	{
-		try
+		lock (_deviceLock)
 		{
-			_device?.TurnOff();
-		}
-		catch
-		{
-			// Best effort
+			try
+			{
+				_device?.TurnOff();
+			}
+			catch
+			{
+				// Best effort
+			}
+
+			CloseDevice();
 		}
 
-		CloseDevice();
 		return Task.CompletedTask;
 	}
 
@@ -125,7 +142,11 @@ public sealed class LuxaforStatusIndicatorPlugin : StatusIndicatorPluginBase, ID
 		}
 
 		_disposed = true;
-		CloseDevice();
+
+		lock (_deviceLock)
+		{
+			CloseDevice();
+		}
 	}
 
 	private LuxaforDevice? GetOrOpenDevice()
