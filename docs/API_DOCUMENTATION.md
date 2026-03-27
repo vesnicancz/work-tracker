@@ -517,6 +517,16 @@ Task<PluginResult<bool>> ValidateConfigurationAsync(
 
 Validate configuration without initializing.
 
+##### GetConfigurationFields
+
+```csharp
+IReadOnlyList<PluginConfigurationField> GetConfigurationFields()
+```
+
+Get configuration fields for UI (API keys, colors, URLs, etc.). Defined on `IPlugin` so all plugin types support configuration.
+
+**Returns:** List of configuration field definitions
+
 ##### ShutdownAsync
 
 ```csharp
@@ -529,19 +539,9 @@ Cleanup and shutdown plugin.
 
 **Namespace:** `WorkTracker.Plugin.Abstractions`
 
-Interface for worklog upload plugins.
+Interface for worklog upload plugins. Inherits `GetConfigurationFields()` from `IPlugin`.
 
 #### Methods
-
-##### GetConfigurationFields
-
-```csharp
-List<PluginConfigurationField> GetConfigurationFields()
-```
-
-Get required configuration fields for UI.
-
-**Returns:** List of configuration field definitions
 
 ##### TestConnectionAsync
 
@@ -667,7 +667,43 @@ protected Dictionary<string, string> Configuration { get; }
 
 Current configuration.
 
-### 3.4 Data Types
+### 3.4 IStatusIndicatorPlugin
+
+**Namespace:** `WorkTracker.Plugin.Abstractions`
+
+Interface for physical status indicator devices (e.g. Luxafor LED). The Pomodoro timer calls `SetStateAsync()` on phase transitions.
+
+#### Properties
+
+##### IsDeviceAvailable
+
+```csharp
+bool IsDeviceAvailable { get; }
+```
+
+Whether the physical device is connected and ready.
+
+#### Methods
+
+##### SetStateAsync
+
+```csharp
+Task SetStateAsync(StatusIndicatorState state, CancellationToken cancellationToken)
+```
+
+Update device to reflect the given Pomodoro phase.
+
+**Parameters:**
+- `state` - Current phase: `Idle`, `Work`, `ShortBreak`, `LongBreak`
+- `cancellationToken` - Cancellation token
+
+### 3.5 StatusIndicatorPluginBase
+
+**Namespace:** `WorkTracker.Plugin.Abstractions`
+
+Abstract base class for status indicator plugins. Provides the same configuration, validation, and logger infrastructure as `WorklogUploadPluginBase`.
+
+### 3.6 Data Types
 
 #### PluginMetadata
 

@@ -190,6 +190,8 @@ public class TestPlugin : IPlugin
 		return Task.CompletedTask;
 	}
 
+	public IReadOnlyList<PluginConfigurationField> GetConfigurationFields() => [];
+
 	public Task<PluginValidationResult> ValidateConfigurationAsync(IDictionary<string, string> configuration, CancellationToken cancellationToken)
 	{
 		return Task.FromResult(PluginValidationResult.Success());

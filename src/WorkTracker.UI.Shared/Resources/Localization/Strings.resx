@@ -571,4 +571,72 @@ Time: {2}</value>
     <value>"The universe is under no obligation to make sense to you." — Neil deGrasse Tyson
 Neither is your timesheet.</value>
   </data>
+
+  <!-- Pomodoro -->
+  <data name="Pomodoro" xml:space="preserve">
+    <value>Pomodoro</value>
+  </data>
+  <data name="PomodoroEnabled" xml:space="preserve">
+    <value>Enable Pomodoro timer</value>
+  </data>
+  <data name="PomodoroEnabledDesc" xml:space="preserve">
+    <value>Show the Pomodoro timer panel in the main window</value>
+  </data>
+  <data name="PomodoroWork" xml:space="preserve">
+    <value>Work</value>
+  </data>
+  <data name="PomodoroShortBreak" xml:space="preserve">
+    <value>Short Break</value>
+  </data>
+  <data name="PomodoroLongBreak" xml:space="preserve">
+    <value>Long Break</value>
+  </data>
+  <data name="PomodoroStart" xml:space="preserve">
+    <value>Start Pomodoro</value>
+  </data>
+  <data name="PomodoroStop" xml:space="preserve">
+    <value>Stop</value>
+  </data>
+  <data name="PomodoroSkip" xml:space="preserve">
+    <value>Skip</value>
+  </data>
+  <data name="PomodoroCompleted" xml:space="preserve">
+    <value>Pomodoro completed! Time for a break.</value>
+  </data>
+  <data name="PomodoroBreakOver" xml:space="preserve">
+    <value>Break is over! Time to work.</value>
+  </data>
+  <data name="PomodoroWorkMinutes" xml:space="preserve">
+    <value>Work duration (min)</value>
+  </data>
+  <data name="PomodoroShortBreakMinutes" xml:space="preserve">
+    <value>Short break (min)</value>
+  </data>
+  <data name="PomodoroLongBreakMinutes" xml:space="preserve">
+    <value>Long break (min)</value>
+  </data>
+  <data name="PomodorosBeforeLongBreak" xml:space="preserve">
+    <value>Pomodoros before long break</value>
+  </data>
+  <data name="PomodoroAutoStartTracking" xml:space="preserve">
+    <value>Auto-start work tracking</value>
+  </data>
+  <data name="PomodoroAutoStartTrackingDesc" xml:space="preserve">
+    <value>Automatically resume work tracking when a work phase starts</value>
+  </data>
+  <data name="PomodoroAutoStopTracking" xml:space="preserve">
+    <value>Auto-stop tracking on break</value>
+  </data>
+  <data name="PomodoroAutoStopTrackingDesc" xml:space="preserve">
+    <value>Automatically stop work tracking when a break phase starts</value>
+  </data>
+  <data name="PomodoroWorkPhaseStarted" xml:space="preserve">
+    <value>Back to work!</value>
+  </data>
+  <data name="PomodoroBreakStarted" xml:space="preserve">
+    <value>Time for a break!</value>
+  </data>
+  <data name="PomodoroLongBreakStarted" xml:space="preserve">
+    <value>Time for a long break!</value>
+  </data>
 </root>

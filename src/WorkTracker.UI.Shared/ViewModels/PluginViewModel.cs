@@ -20,20 +20,14 @@ public class PluginViewModel : ObservableObject
 		Plugin = plugin;
 
 		// Initialize configuration with default values and create field view models
-		// Only worklog upload plugins have configuration fields
-		if (plugin is IWorklogUploadPlugin worklogPlugin)
+		foreach (var field in plugin.GetConfigurationFields())
 		{
-			foreach (var field in worklogPlugin.GetConfigurationFields())
+			if (!string.IsNullOrEmpty(field.DefaultValue))
 			{
-				var value = string.Empty;
-				if (!string.IsNullOrEmpty(field.DefaultValue))
-				{
-					value = field.DefaultValue;
-					Configuration[field.Key] = value;
-				}
-
-				ConfigurationFields.Add(new ConfigurationFieldViewModel(field, this));
+				Configuration[field.Key] = field.DefaultValue;
 			}
+
+			ConfigurationFields.Add(new ConfigurationFieldViewModel(field, this));
 		}
 	}
 

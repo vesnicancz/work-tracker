@@ -228,6 +228,7 @@ public class SettingsOrchestratorTests
 			Version = new Version(1, 0),
 			Author = "Test"
 		});
+		plugin.Setup(p => p.GetConfigurationFields()).Returns(new List<PluginConfigurationField>());
 		return plugin;
 	}
 

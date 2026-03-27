@@ -11,6 +11,11 @@ public interface IPlugin
 	PluginMetadata Metadata { get; }
 
 	/// <summary>
+	/// Gets the configuration fields for this plugin (e.g. API keys, colors, URLs).
+	/// </summary>
+	IReadOnlyList<PluginConfigurationField> GetConfigurationFields();
+
+	/// <summary>
 	/// Initializes the plugin with configuration
 	/// </summary>
 	/// <param name="configuration">Plugin-specific configuration</param>

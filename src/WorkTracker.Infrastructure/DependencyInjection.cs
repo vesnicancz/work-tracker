@@ -7,6 +7,7 @@ using WorkTracker.Application.Plugins;
 using WorkTracker.Domain.Interfaces;
 using WorkTracker.Infrastructure.Data;
 using WorkTracker.Infrastructure.Repositories;
+using WorkTracker.Plugin.Luxafor;
 using WorkTracker.Plugin.Tempo;
 
 namespace WorkTracker.Infrastructure;
@@ -83,6 +84,7 @@ public static class DependencyInjection
 
 		// Load embedded plugins
 		pluginManager.LoadEmbeddedPlugin<TempoWorklogPlugin>();
+		pluginManager.LoadEmbeddedPlugin<LuxaforStatusIndicatorPlugin>();
 
 		// Discover and load external plugins from plugin directory
 		pluginManager.DiscoverAndLoadPlugins();

@@ -71,6 +71,7 @@ public partial class App : System.Windows.Application
 				services.AddSingleton<ISnackbarMessageQueue>(new SnackbarMessageQueue(TimeSpan.FromSeconds(3)));
 				services.AddSingleton<INotificationService, NotificationService>();
 				services.AddSingleton<ITrayIconService, TrayIconService>();
+				services.AddSingleton<ISystemNotificationService, SystemNotificationService>();
 				services.AddSingleton<ISettingsService, SettingsService>();
 				services.AddSingleton<IAutostartManager, AutostartManager>();
 				services.AddSingleton<IHotkeyService, HotkeyService>();

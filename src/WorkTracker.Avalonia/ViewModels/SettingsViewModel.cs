@@ -26,6 +26,15 @@ public class SettingsViewModel : ViewModelBase
 	private string? _testConnectionResult;
 	private bool _isTestingConnection;
 
+	// Pomodoro
+	private bool _pomodoroEnabled;
+	private int _pomodoroWorkMinutes;
+	private int _pomodoroShortBreakMinutes;
+	private int _pomodoroLongBreakMinutes;
+	private int _pomodorosBeforeLongBreak;
+	private bool _pomodoroAutoStartTracking;
+	private bool _pomodoroAutoStopTracking;
+
 	// Favorites
 	private FavoriteWorkItem? _selectedFavorite;
 
@@ -54,6 +63,16 @@ public class SettingsViewModel : ViewModelBase
 		_startWithWindows = _autostartManager.IsEnabled;
 		_startMinimized = _settingsService.Settings.StartMinimized;
 		_selectedTheme = _settingsService.Settings.Theme ?? "Dark";
+
+		// Load Pomodoro settings
+		var pomodoro = _settingsService.Settings.Pomodoro;
+		_pomodoroEnabled = pomodoro.Enabled;
+		_pomodoroWorkMinutes = pomodoro.WorkMinutes;
+		_pomodoroShortBreakMinutes = pomodoro.ShortBreakMinutes;
+		_pomodoroLongBreakMinutes = pomodoro.LongBreakMinutes;
+		_pomodorosBeforeLongBreak = pomodoro.PomodorosBeforeLongBreak;
+		_pomodoroAutoStartTracking = pomodoro.AutoStartWorkTracking;
+		_pomodoroAutoStopTracking = pomodoro.AutoStopWorkTracking;
 
 		// Initialize commands
 		SaveCommand = new AsyncRelayCommand(SaveAsync);
@@ -261,6 +280,49 @@ public class SettingsViewModel : ViewModelBase
 
 	public bool IsEditFormVisible => SelectedFavorite != null || IsAddingFavorite;
 
+	// Pomodoro properties
+	public bool PomodoroEnabled
+	{
+		get => _pomodoroEnabled;
+		set => SetProperty(ref _pomodoroEnabled, value);
+	}
+
+	public int PomodoroWorkMinutes
+	{
+		get => _pomodoroWorkMinutes;
+		set => SetProperty(ref _pomodoroWorkMinutes, value);
+	}
+
+	public int PomodoroShortBreakMinutes
+	{
+		get => _pomodoroShortBreakMinutes;
+		set => SetProperty(ref _pomodoroShortBreakMinutes, value);
+	}
+
+	public int PomodoroLongBreakMinutes
+	{
+		get => _pomodoroLongBreakMinutes;
+		set => SetProperty(ref _pomodoroLongBreakMinutes, value);
+	}
+
+	public int PomodorosBeforeLongBreak
+	{
+		get => _pomodorosBeforeLongBreak;
+		set => SetProperty(ref _pomodorosBeforeLongBreak, value);
+	}
+
+	public bool PomodoroAutoStartTracking
+	{
+		get => _pomodoroAutoStartTracking;
+		set => SetProperty(ref _pomodoroAutoStartTracking, value);
+	}
+
+	public bool PomodoroAutoStopTracking
+	{
+		get => _pomodoroAutoStopTracking;
+		set => SetProperty(ref _pomodoroAutoStopTracking, value);
+	}
+
 	#endregion Properties
 
 	#region Commands
@@ -291,7 +353,17 @@ public class SettingsViewModel : ViewModelBase
 				StartMinimized = StartMinimized,
 				Theme = SelectedTheme,
 				FavoriteWorkItems = FavoriteWorkItems.ToList(),
-				Plugins = Plugins.ToList()
+				Plugins = Plugins.ToList(),
+				Pomodoro = new PomodoroSettings
+				{
+					Enabled = PomodoroEnabled,
+					WorkMinutes = PomodoroWorkMinutes,
+					ShortBreakMinutes = PomodoroShortBreakMinutes,
+					LongBreakMinutes = PomodoroLongBreakMinutes,
+					PomodorosBeforeLongBreak = PomodorosBeforeLongBreak,
+					AutoStartWorkTracking = PomodoroAutoStartTracking,
+					AutoStopWorkTracking = PomodoroAutoStopTracking
+				}
 			};
 
 			await _orchestrator.SaveSettingsAsync(request, CancellationToken.None);

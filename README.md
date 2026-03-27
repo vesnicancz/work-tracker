@@ -22,6 +22,7 @@ WorkTracker je desktopová aplikace pro sledování pracovní doby postavená na
 - Sledování času na projektech a úkolech (start/stop/edit/delete)
 - Automatická detekce Jira ticket ID
 - Export worklogs do Jira Tempo
+- Pomodoro timer s OS notifikacemi a Luxafor LED indikací
 - Detekce překrývajících se časových intervalů
 - Denní a týdenní přehledy
 - System tray notifikace a toggle okna klikem na ikonu (WPF, Avalonia)
@@ -206,11 +207,19 @@ Přidejte do `appsettings.json`:
 
 ## Plugin systém
 
-WorkTracker podporuje pluginy pro integraci s externími systémy. Pluginy se načítají v izolovaném `AssemblyLoadContext`.
+WorkTracker podporuje pluginy pro rozšíření funkcionality. Pluginy se načítají v izolovaném `AssemblyLoadContext`.
 
-### Vestavěný plugin: Tempo
+### Typy pluginů
 
-Automatické nahrávání worklogs do Jira Tempo - překlad issue key na ID, detekce account ID, validace duplicit.
+| Typ | Popis | Příklad |
+|-----|-------|---------|
+| **Worklog Upload** | Odesílání worklogs do externích systémů | Tempo/Jira |
+| **Status Indicator** | Ovládání fyzických indikátorů stavu (LED) | Luxafor |
+
+### Vestavěné pluginy
+
+- **Tempo** — Automatické nahrávání worklogs do Jira Tempo (překlad issue key na ID, detekce account ID, validace duplicit)
+- **Luxafor LED** — Zobrazení aktuální Pomodoro fáze na Luxafor Bluetooth Pro (konfigurovatelné barvy per fáze)
 
 ### Vlastní plugin
 
@@ -269,6 +278,8 @@ Domain (WorkEntry, Business Rules)
 | `WorkTracker.Avalonia` | Desktop GUI - cross-platform (Avalonia 11.3, Fluent theme, MVVM) | net10.0 |
 | `WorkTracker.Plugin.Abstractions` | Plugin API | net10.0 |
 | `WorkTracker.Plugin.Tempo` | Tempo/Jira integrace | net10.0 |
+| `WorkTracker.Plugin.Luxafor` | Luxafor LED status indikátor | net10.0 |
+| `Luxafor.HidSharp` | Luxafor HID knihovna (standalone) | netstandard2.0, net8.0 |
 
 ### Struktura repozitáře
 
@@ -282,8 +293,10 @@ work-tracker/
 │   ├── WorkTracker.CLI/                 # Console app
 │   ├── WorkTracker.WPF/                 # Desktop GUI (Windows)
 │   ├── WorkTracker.Avalonia/            # Desktop GUI (cross-platform)
-│   └── WorkTracker.Plugin.Abstractions/ # Plugin API
+│   ├── WorkTracker.Plugin.Abstractions/ # Plugin API
+│   └── Luxafor.HidSharp/               # Luxafor HID library
 ├── plugins/
+│   ├── WorkTracker.Plugin.Luxafor/      # Luxafor LED plugin
 │   └── WorkTracker.Plugin.Tempo/        # Tempo plugin
 ├── tests/
 │   ├── WorkTracker.Domain.Tests/
@@ -300,6 +313,8 @@ work-tracker/
 - **Spectre.Console** (CLI)
 - **WPF** + MaterialDesignThemes 5.3 + CommunityToolkit.Mvvm (GUI, Windows)
 - **Avalonia 11.3** + Fluent theme + Material.Icons.Avalonia 3.0 + CommunityToolkit.Mvvm (GUI, cross-platform)
+- **HidSharp** (Luxafor HID komunikace)
+- **Avalonia.Labs.Notifications** / **DesktopNotifications** (OS toast notifikace)
 - **xUnit** + Moq + FluentAssertions (testy)
 
 ### Design Patterns

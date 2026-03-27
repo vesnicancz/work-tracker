@@ -17,6 +17,8 @@ public class MainViewModel : ViewModelBase, IDisposable
 	private readonly IDialogService _dialogService;
 	private readonly INotificationService _notificationService;
 	private readonly IWorklogStateService _worklogStateService;
+	private readonly IPomodoroService _pomodoroService;
+	private readonly ISettingsService _settingsService;
 	private readonly TimeProvider _timeProvider;
 	private readonly ILocalizationService _localization;
 	private readonly ILogger<MainViewModel> _logger;
@@ -26,6 +28,12 @@ public class MainViewModel : ViewModelBase, IDisposable
 	private bool _timerPaused;
 
 	private string _elapsedTime = "00:00:00";
+
+	// Pomodoro
+	private string _pomodoroTimeRemaining = "00:00";
+	private string _pomodoroPhaseDisplay = string.Empty;
+	private bool _isPomodoroRunning;
+	private string _pomodoroCount = "0/4";
 	private string _workInput = string.Empty;
 	private string? _detectedTicketId;
 	private string? _detectedDescription;
@@ -39,6 +47,8 @@ public class MainViewModel : ViewModelBase, IDisposable
 		IDialogService dialogService,
 		INotificationService notificationService,
 		IWorklogStateService worklogStateService,
+		IPomodoroService pomodoroService,
+		ISettingsService settingsService,
 		ILocalizationService localization,
 		TimeProvider timeProvider,
 		ILogger<MainViewModel> logger)
@@ -47,6 +57,8 @@ public class MainViewModel : ViewModelBase, IDisposable
 		_dialogService = dialogService;
 		_notificationService = notificationService;
 		_worklogStateService = worklogStateService;
+		_pomodoroService = pomodoroService;
+		_settingsService = settingsService;
 		_localization = localization;
 		_timeProvider = timeProvider;
 		_logger = logger;
@@ -55,6 +67,9 @@ public class MainViewModel : ViewModelBase, IDisposable
 		_worklogStateService.ActiveWorkChanged += OnActiveWorkChanged;
 		_worklogStateService.IsTrackingChanged += OnIsTrackingChanged;
 		_worklogStateService.WorkEntriesModified += OnWorkEntriesModified;
+
+		_pomodoroService.PhaseChanged += OnPomodoroPhaseChanged;
+		_pomodoroService.Tick += OnPomodoroTick;
 
 		_timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
 		_timer.Tick += OnTimerTick;
@@ -71,6 +86,9 @@ public class MainViewModel : ViewModelBase, IDisposable
 		PreviousDayCommand = new RelayCommand(PreviousDay);
 		NextDayCommand = new RelayCommand(NextDay);
 		GoToTodayCommand = new RelayCommand(GoToToday);
+		StartPomodoroCommand = new RelayCommand(StartPomodoro);
+		StopPomodoroCommand = new RelayCommand(StopPomodoro);
+		SkipPomodoroPhaseCommand = new RelayCommand(SkipPomodoroPhase);
 
 		_ = InitializeAsync().ContinueWith(t =>
 		{
@@ -151,6 +169,33 @@ public class MainViewModel : ViewModelBase, IDisposable
 		set => SetProperty(ref _totalDayDuration, value);
 	}
 
+	// Pomodoro properties
+	public bool IsPomodoroEnabled => _settingsService.Settings.Pomodoro.Enabled;
+
+	public string PomodoroTimeRemaining
+	{
+		get => _pomodoroTimeRemaining;
+		set => SetProperty(ref _pomodoroTimeRemaining, value);
+	}
+
+	public string PomodoroPhaseDisplay
+	{
+		get => _pomodoroPhaseDisplay;
+		set => SetProperty(ref _pomodoroPhaseDisplay, value);
+	}
+
+	public bool IsPomodoroRunning
+	{
+		get => _isPomodoroRunning;
+		set => SetProperty(ref _isPomodoroRunning, value);
+	}
+
+	public string PomodoroCount
+	{
+		get => _pomodoroCount;
+		set => SetProperty(ref _pomodoroCount, value);
+	}
+
 	#endregion Properties
 
 	#region Commands
@@ -167,6 +212,9 @@ public class MainViewModel : ViewModelBase, IDisposable
 	public ICommand PreviousDayCommand { get; }
 	public ICommand NextDayCommand { get; }
 	public ICommand GoToTodayCommand { get; }
+	public ICommand StartPomodoroCommand { get; }
+	public ICommand StopPomodoroCommand { get; }
+	public ICommand SkipPomodoroPhaseCommand { get; }
 
 	#endregion Commands
 
@@ -359,7 +407,11 @@ public class MainViewModel : ViewModelBase, IDisposable
 
 	private async Task OpenSettingsAsync()
 	{
-		try { await _dialogService.ShowSettingsDialogAsync(); }
+		try
+		{
+			await _dialogService.ShowSettingsDialogAsync();
+			OnPropertyChanged(nameof(IsPomodoroEnabled));
+		}
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Failed to open settings");
@@ -409,6 +461,44 @@ public class MainViewModel : ViewModelBase, IDisposable
 	private void NextDay() => SelectedDate = SelectedDate.AddDays(1);
 
 	private void GoToToday() => SelectedDate = _timeProvider.GetLocalNow().Date;
+
+	#region Pomodoro
+
+	private void StartPomodoro() => _pomodoroService.Start();
+	private void StopPomodoro() => _pomodoroService.Stop();
+	private void SkipPomodoroPhase() => _pomodoroService.Skip();
+
+	private void UpdatePomodoroDisplay()
+	{
+		var remaining = _pomodoroService.TimeRemaining;
+		PomodoroTimeRemaining = $"{(int)remaining.TotalMinutes:D2}:{remaining.Seconds:D2}";
+	}
+
+	private string GetPhaseDisplayText(PomodoroPhase phase) => phase switch
+	{
+		PomodoroPhase.Work => _localization["PomodoroWork"],
+		PomodoroPhase.ShortBreak => _localization["PomodoroShortBreak"],
+		PomodoroPhase.LongBreak => _localization["PomodoroLongBreak"],
+		_ => string.Empty
+	};
+
+	private void OnPomodoroPhaseChanged(object? sender, PomodoroPhase phase)
+	{
+		Dispatcher.UIThread.Post(() =>
+		{
+			IsPomodoroRunning = _pomodoroService.IsRunning;
+			PomodoroPhaseDisplay = GetPhaseDisplayText(phase);
+			PomodoroCount = $"{_pomodoroService.CompletedPomodoros}/{_pomodoroService.PomodorosBeforeLongBreak}";
+			UpdatePomodoroDisplay();
+		});
+	}
+
+	private void OnPomodoroTick(object? sender, EventArgs e)
+	{
+		Dispatcher.UIThread.Post(UpdatePomodoroDisplay);
+	}
+
+	#endregion Pomodoro
 
 	private void OnTimerTick(object? sender, EventArgs e)
 	{
@@ -486,5 +576,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 		_worklogStateService.ActiveWorkChanged -= OnActiveWorkChanged;
 		_worklogStateService.IsTrackingChanged -= OnIsTrackingChanged;
 		_worklogStateService.WorkEntriesModified -= OnWorkEntriesModified;
+		_pomodoroService.PhaseChanged -= OnPomodoroPhaseChanged;
+		_pomodoroService.Tick -= OnPomodoroTick;
 	}
 }

@@ -91,7 +91,8 @@ public class SettingsOrchestrator : ISettingsOrchestrator
 			Theme = request.Theme ?? _settingsService.Settings.Theme,
 			PluginConfigurations = new Dictionary<string, Dictionary<string, string>>(),
 			EnabledPlugins = new Dictionary<string, bool>(),
-			FavoriteWorkItems = request.FavoriteWorkItems
+			FavoriteWorkItems = request.FavoriteWorkItems,
+			Pomodoro = request.Pomodoro
 		};
 
 		// Save plugin configurations and enabled state
