@@ -1,6 +1,6 @@
 # Luxafor.HidSharp
 
-.NET library for controlling [Luxafor](https://luxafor.com/) LED devices via HID using [HidSharp](https://github.com/IntergatedCircuits/HidSharp).
+.NET library for controlling [Luxafor](https://luxafor.com/) LED devices via HID using [HidSharp](https://github.com/IntegratedCircuits/HidSharp).
 
 Supports **Luxafor Flag**, **Bluetooth Pro** (via USB dongle), **Mute Button**, **Smart Button**, and **Colorblind** devices.
 

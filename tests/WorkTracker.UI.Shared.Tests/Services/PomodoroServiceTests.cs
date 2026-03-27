@@ -36,6 +36,7 @@ public class PomodoroServiceTests : IDisposable
 		_worklogStateService.Setup(s => s.IsTracking).Returns(false);
 		_localization.Setup(l => l[It.IsAny<string>()]).Returns((string key) => key);
 		_pluginManager.Setup(p => p.StatusIndicatorPlugins).Returns(new List<IStatusIndicatorPlugin> { _statusIndicatorPlugin.Object });
+		_statusIndicatorPlugin.Setup(p => p.SetStateAsync(It.IsAny<StatusIndicatorState>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
 		_sut = new PomodoroService(
 			_settingsService.Object,
