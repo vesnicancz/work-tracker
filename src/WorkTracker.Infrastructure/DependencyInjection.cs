@@ -43,9 +43,16 @@ public static class DependencyInjection
 
 			// Add default plugin directory (plugins/ subfolder next to the application executable)
 			var defaultPluginsPath = WorkTrackerPaths.DefaultPluginsPath;
-			if (!Directory.Exists(defaultPluginsPath))
+			try
 			{
-				Directory.CreateDirectory(defaultPluginsPath);
+				if (!Directory.Exists(defaultPluginsPath))
+				{
+					Directory.CreateDirectory(defaultPluginsPath);
+				}
+			}
+			catch (Exception ex)
+			{
+				logger.LogWarning(ex, "Could not create plugins directory at {Path}", defaultPluginsPath);
 			}
 			pluginManager.AddPluginDirectory(defaultPluginsPath);
 
