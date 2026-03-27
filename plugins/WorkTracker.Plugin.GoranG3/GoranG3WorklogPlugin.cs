@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net.Http.Headers;
 using Microsoft.Extensions.Logging;
 using Microsoft.Identity.Client;
@@ -283,9 +284,9 @@ public sealed class GoranG3WorklogPlugin : WorklogUploadPluginBase, IDisposable
 		var queryParams = new List<string>
 		{
 			$"projectCode={Uri.EscapeDataString(_projectCode!)}",
-			$"date={worklog.StartTime:yyyy-MM-dd}",
+			$"date={worklog.StartTime.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}",
 			$"durationMinutes={worklog.DurationMinutes}",
-			$"startTime={worklog.StartTime:HH:mm}",
+			$"startTime={worklog.StartTime.ToString("HH:mm", CultureInfo.InvariantCulture)}",
 			$"responseMode=plain"
 		};
 
