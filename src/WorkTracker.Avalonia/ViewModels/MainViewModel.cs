@@ -472,7 +472,6 @@ public class MainViewModel : ViewModelBase, IDisposable
 	{
 		var remaining = _pomodoroService.TimeRemaining;
 		PomodoroTimeRemaining = $"{(int)remaining.TotalMinutes:D2}:{remaining.Seconds:D2}";
-		PomodoroCount = $"{_pomodoroService.CompletedPomodoros}/{_pomodoroService.PomodorosBeforeLongBreak}";
 	}
 
 	private string GetPhaseDisplayText(PomodoroPhase phase) => phase switch
@@ -489,6 +488,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 		{
 			IsPomodoroRunning = _pomodoroService.IsRunning;
 			PomodoroPhaseDisplay = GetPhaseDisplayText(phase);
+			PomodoroCount = $"{_pomodoroService.CompletedPomodoros}/{_pomodoroService.PomodorosBeforeLongBreak}";
 			UpdatePomodoroDisplay();
 		});
 	}

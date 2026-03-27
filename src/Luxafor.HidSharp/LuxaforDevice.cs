@@ -168,22 +168,22 @@ public sealed class LuxaforDevice : IDisposable
 	{
 		ThrowIfDisposed();
 
-		if (_monitoring)
-		{
-			throw new InvalidOperationException("Monitoring is already active.");
-		}
-
 		lock (_streamLock)
 		{
+			if (_monitoring)
+			{
+				throw new InvalidOperationException("Monitoring is already active.");
+			}
+
 			if (_stream == null)
 			{
 				throw new InvalidOperationException("Device is not connected.");
 			}
 
 			_stream.ReadTimeout = MonitoringReadTimeoutMs;
+			_monitoring = true;
 		}
 
-		_monitoring = true;
 		_readThread = new Thread(ReadLoop)
 		{
 			IsBackground = true,

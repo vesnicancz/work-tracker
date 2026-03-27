@@ -297,7 +297,7 @@ public sealed class PomodoroService : IPomodoroService, IDisposable
 		// System (OS) notifications
 		ShowSystemNotificationForPhase(newPhase);
 
-		// Luxafor
+		// Status indicators (LED devices etc.)
 		SetStatusIndicatorsForPhase(newPhase);
 
 		// Auto-tracking

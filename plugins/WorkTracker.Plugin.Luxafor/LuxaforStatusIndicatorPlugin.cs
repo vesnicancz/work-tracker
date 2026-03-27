@@ -36,38 +36,22 @@ public sealed class LuxaforStatusIndicatorPlugin : StatusIndicatorPluginBase, ID
 	{
 		return
 		[
-			new()
-			{
-				Key = ConfigKeys.WorkColor,
-				Label = "Work color",
-				Description = "Hex color for work phase (e.g. #FF0000)",
-				DefaultValue = "#FF0000",
-				Placeholder = "#FF0000",
-				ValidationPattern = @"^#[0-9A-Fa-f]{6}$",
-				ValidationMessage = "Must be a hex color (e.g. #FF0000)"
-			},
-			new()
-			{
-				Key = ConfigKeys.ShortBreakColor,
-				Label = "Short break color",
-				Description = "Hex color for short break phase (e.g. #00FF00)",
-				DefaultValue = "#00FF00",
-				Placeholder = "#00FF00",
-				ValidationPattern = @"^#[0-9A-Fa-f]{6}$",
-				ValidationMessage = "Must be a hex color (e.g. #00FF00)"
-			},
-			new()
-			{
-				Key = ConfigKeys.LongBreakColor,
-				Label = "Long break color",
-				Description = "Hex color for long break phase (e.g. #0000FF)",
-				DefaultValue = "#0000FF",
-				Placeholder = "#0000FF",
-				ValidationPattern = @"^#[0-9A-Fa-f]{6}$",
-				ValidationMessage = "Must be a hex color (e.g. #0000FF)"
-			}
+			HexColorField(ConfigKeys.WorkColor, "Work color", "#FF0000"),
+			HexColorField(ConfigKeys.ShortBreakColor, "Short break color", "#00FF00"),
+			HexColorField(ConfigKeys.LongBreakColor, "Long break color", "#0000FF")
 		];
 	}
+
+	private static PluginConfigurationField HexColorField(string key, string label, string defaultHex) => new()
+	{
+		Key = key,
+		Label = label,
+		Description = $"Hex color for {label.ToLowerInvariant()} (e.g. {defaultHex})",
+		DefaultValue = defaultHex,
+		Placeholder = defaultHex,
+		ValidationPattern = @"^#[0-9A-Fa-f]{6}$",
+		ValidationMessage = "Must be a hex color (e.g. #FF0000)"
+	};
 
 	public override Task SetStateAsync(StatusIndicatorState state, CancellationToken cancellationToken)
 	{

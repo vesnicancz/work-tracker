@@ -541,7 +541,6 @@ public class MainViewModel : ViewModelBase, IDisposable
 	{
 		var remaining = _pomodoroService.TimeRemaining;
 		PomodoroTimeRemaining = $"{(int)remaining.TotalMinutes:D2}:{remaining.Seconds:D2}";
-		PomodoroCount = $"{_pomodoroService.CompletedPomodoros}/{_pomodoroService.PomodorosBeforeLongBreak}";
 	}
 
 	private string GetPhaseDisplayText(PomodoroPhase phase) => phase switch
@@ -554,17 +553,18 @@ public class MainViewModel : ViewModelBase, IDisposable
 
 	private void OnPomodoroPhaseChanged(object? sender, PomodoroPhase phase)
 	{
-		System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+		System.Windows.Application.Current?.Dispatcher.BeginInvoke(() =>
 		{
 			IsPomodoroRunning = _pomodoroService.IsRunning;
 			PomodoroPhaseDisplay = GetPhaseDisplayText(phase);
+			PomodoroCount = $"{_pomodoroService.CompletedPomodoros}/{_pomodoroService.PomodorosBeforeLongBreak}";
 			UpdatePomodoroDisplay();
 		});
 	}
 
 	private void OnPomodoroTick(object? sender, EventArgs e)
 	{
-		System.Windows.Application.Current?.Dispatcher.Invoke(UpdatePomodoroDisplay);
+		System.Windows.Application.Current?.Dispatcher.BeginInvoke(UpdatePomodoroDisplay);
 	}
 
 	#endregion Pomodoro

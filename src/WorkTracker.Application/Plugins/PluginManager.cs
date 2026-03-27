@@ -42,62 +42,24 @@ public sealed class PluginManager : IPluginManager
 	/// <summary>
 	/// Gets all loaded worklog upload plugins (unfiltered - includes disabled plugins)
 	/// </summary>
-	public IEnumerable<IWorklogUploadPlugin> AllWorklogUploadPlugins
-	{
-		get
-		{
-			lock (_lock)
-			{
-				return _loadedPlugins.Values.OfType<IWorklogUploadPlugin>().ToList();
-			}
-		}
-	}
+	public IEnumerable<IWorklogUploadPlugin> AllWorklogUploadPlugins => GetPlugins<IWorklogUploadPlugin>(enabledOnly: false);
 
-	/// <summary>
-	/// Gets all enabled worklog upload plugins (filtered by enabled state)
-	/// </summary>
-	public IEnumerable<IWorklogUploadPlugin> WorklogUploadPlugins
-	{
-		get
-		{
-			lock (_lock)
-			{
-				return _loadedPlugins.Values
-					.OfType<IWorklogUploadPlugin>()
-					.Where(p => _enabledPluginIds.Contains(p.Metadata.Id))
-					.ToList();
-			}
-		}
-	}
+	public IEnumerable<IWorklogUploadPlugin> WorklogUploadPlugins => GetPlugins<IWorklogUploadPlugin>(enabledOnly: true);
 
-	/// <summary>
-	/// Gets all loaded status indicator plugins (unfiltered - includes disabled plugins)
-	/// </summary>
-	public IEnumerable<IStatusIndicatorPlugin> AllStatusIndicatorPlugins
-	{
-		get
-		{
-			lock (_lock)
-			{
-				return _loadedPlugins.Values.OfType<IStatusIndicatorPlugin>().ToList();
-			}
-		}
-	}
+	public IEnumerable<IStatusIndicatorPlugin> AllStatusIndicatorPlugins => GetPlugins<IStatusIndicatorPlugin>(enabledOnly: false);
 
-	/// <summary>
-	/// Gets all enabled status indicator plugins (filtered by enabled state)
-	/// </summary>
-	public IEnumerable<IStatusIndicatorPlugin> StatusIndicatorPlugins
+	public IEnumerable<IStatusIndicatorPlugin> StatusIndicatorPlugins => GetPlugins<IStatusIndicatorPlugin>(enabledOnly: true);
+
+	private List<T> GetPlugins<T>(bool enabledOnly) where T : IPlugin
 	{
-		get
+		lock (_lock)
 		{
-			lock (_lock)
+			var plugins = _loadedPlugins.Values.OfType<T>();
+			if (enabledOnly)
 			{
-				return _loadedPlugins.Values
-					.OfType<IStatusIndicatorPlugin>()
-					.Where(p => _enabledPluginIds.Contains(p.Metadata.Id))
-					.ToList();
+				plugins = plugins.Where(p => _enabledPluginIds.Contains(p.Metadata.Id));
 			}
+			return plugins.ToList();
 		}
 	}
 
@@ -269,13 +231,9 @@ public sealed class PluginManager : IPluginManager
 			var pluginId = plugin.Metadata.Id;
 
 			// Set logger for plugins that support it
-			if (plugin is WorklogUploadPluginBase worklogPlugin)
+			if (plugin is PluginBase pluginBase)
 			{
-				worklogPlugin.SetLogger(_logger);
-			}
-			else if (plugin is StatusIndicatorPluginBase statusPlugin)
-			{
-				statusPlugin.SetLogger(_logger);
+				pluginBase.SetLogger(_logger);
 			}
 
 			lock (_lock)
