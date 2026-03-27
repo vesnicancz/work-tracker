@@ -156,7 +156,7 @@ public class DependencyInjectionTests : IAsyncDisposable
 		service.Should().BeOfType<PluginBasedWorklogSubmissionService>();
 	}
 
-	#endregion
+	#endregion Service Registration Tests
 
 	#region Service Lifetime Tests
 
@@ -251,7 +251,7 @@ public class DependencyInjectionTests : IAsyncDisposable
 		service1.Should().NotBeSameAs(service2);
 	}
 
-	#endregion
+	#endregion Service Lifetime Tests
 
 	#region Configuration Tests
 
@@ -304,7 +304,7 @@ public class DependencyInjectionTests : IAsyncDisposable
 		dbContext.Database.GetConnectionString().Should().Contain("worktracker.db");
 	}
 
-	#endregion
+	#endregion Configuration Tests
 
 	#region Service Resolution Tests
 
@@ -356,7 +356,7 @@ public class DependencyInjectionTests : IAsyncDisposable
 		repository.Should().BeOfType<WorkEntryRepository>();
 	}
 
-	#endregion
+	#endregion Service Resolution Tests
 
 	#region InitializeDatabaseAsync Tests
 
@@ -391,7 +391,104 @@ public class DependencyInjectionTests : IAsyncDisposable
 		canConnect.Should().BeTrue();
 	}
 
-	#endregion
+	#endregion InitializeDatabaseAsync Tests
+
+	#region Plugin Directory Configuration Tests
+
+	[Fact]
+	public void AddInfrastructure_WithConfiguredPluginDirectories_ShouldResolvePluginManager()
+	{
+		// Arrange
+		var tempDir = Path.Combine(Path.GetTempPath(), $"plugins_test_{Guid.NewGuid()}");
+		var configData = new Dictionary<string, string?>
+		{
+			["Database:Path"] = _testDbPath,
+			["Plugins:Directories:0"] = tempDir
+		};
+		var config = new ConfigurationBuilder()
+			.AddInMemoryCollection(configData)
+			.Build();
+
+		try
+		{
+			// Act
+			_services.AddInfrastructure(config);
+			_serviceProvider = _services.BuildServiceProvider();
+			var pluginManager = _serviceProvider.GetRequiredService<PluginManager>();
+
+			// Assert
+			pluginManager.Should().NotBeNull();
+			Directory.Exists(tempDir).Should().BeTrue("configured plugin directory should be created");
+		}
+		finally
+		{
+			if (Directory.Exists(tempDir))
+			{
+				Directory.Delete(tempDir, true);
+			}
+		}
+	}
+
+	[Fact]
+	public void AddInfrastructure_WithEmptyPluginDirectories_ShouldFallbackToDefault()
+	{
+		// Arrange
+		var configData = new Dictionary<string, string?>
+		{
+			["Database:Path"] = _testDbPath,
+			["Plugins:Directories:0"] = "  ",
+			["Plugins:Directories:1"] = ""
+		};
+		var config = new ConfigurationBuilder()
+			.AddInMemoryCollection(configData)
+			.Build();
+
+		// Act
+		_services.AddInfrastructure(config);
+		_serviceProvider = _services.BuildServiceProvider();
+		var pluginManager = _serviceProvider.GetRequiredService<PluginManager>();
+
+		// Assert — should not throw, falls back to default
+		pluginManager.Should().NotBeNull();
+	}
+
+	[Fact]
+	public void AddInfrastructure_WithRelativePluginDirectory_ShouldResolveAgainstBaseDirectory()
+	{
+		// Arrange
+		var relativeName = $"plugins_rel_{Guid.NewGuid()}";
+		var configData = new Dictionary<string, string?>
+		{
+			["Database:Path"] = _testDbPath,
+			["Plugins:Directories:0"] = relativeName
+		};
+		var config = new ConfigurationBuilder()
+			.AddInMemoryCollection(configData)
+			.Build();
+
+		var expectedDir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, relativeName));
+
+		try
+		{
+			// Act
+			_services.AddInfrastructure(config);
+			_serviceProvider = _services.BuildServiceProvider();
+			var pluginManager = _serviceProvider.GetRequiredService<PluginManager>();
+
+			// Assert
+			pluginManager.Should().NotBeNull();
+			Directory.Exists(expectedDir).Should().BeTrue("relative plugin directory should be resolved and created");
+		}
+		finally
+		{
+			if (Directory.Exists(expectedDir))
+			{
+				Directory.Delete(expectedDir, true);
+			}
+		}
+	}
+
+	#endregion Plugin Directory Configuration Tests
 
 	#region InitializePluginsAsync Tests
 
@@ -441,7 +538,7 @@ public class DependencyInjectionTests : IAsyncDisposable
 		await act.Should().NotThrowAsync();
 	}
 
-	#endregion
+	#endregion InitializePluginsAsync Tests
 
 	#region Factory Pattern Tests
 
@@ -489,5 +586,5 @@ public class DependencyInjectionTests : IAsyncDisposable
 		result3.Should().HaveCount(1);
 	}
 
-	#endregion
+	#endregion Factory Pattern Tests
 }

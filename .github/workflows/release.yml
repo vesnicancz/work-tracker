@@ -188,6 +188,9 @@ jobs:
           - plugin: Luxafor
             project: plugins/WorkTracker.Plugin.Luxafor/WorkTracker.Plugin.Luxafor.csproj
             artifact: WorkTracker-Plugin-Luxafor
+          - plugin: GoranG3
+            project: plugins/WorkTracker.Plugin.GoranG3/WorkTracker.Plugin.GoranG3.csproj
+            artifact: WorkTracker-Plugin-GoranG3
     steps:
       - uses: actions/checkout@v4
         with:
