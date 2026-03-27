@@ -456,16 +456,17 @@ public class DependencyInjectionTests : IAsyncDisposable
 	public void AddInfrastructure_WithRelativePluginDirectory_ShouldResolveAgainstBaseDirectory()
 	{
 		// Arrange
+		var relativeName = $"plugins_rel_{Guid.NewGuid()}";
 		var configData = new Dictionary<string, string?>
 		{
 			["Database:Path"] = _testDbPath,
-			["Plugins:Directories:0"] = "my-plugins"
+			["Plugins:Directories:0"] = relativeName
 		};
 		var config = new ConfigurationBuilder()
 			.AddInMemoryCollection(configData)
 			.Build();
 
-		var expectedDir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "my-plugins"));
+		var expectedDir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, relativeName));
 
 		try
 		{
