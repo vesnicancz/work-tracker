@@ -19,4 +19,9 @@
   <PropertyGroup>
     <MinVerTagPrefix>v</MinVerTagPrefix>
   </PropertyGroup>
+
+  <!-- Create an empty plugins/ directory in the publish output for executable projects -->
+  <Target Name="CreatePluginsDir" AfterTargets="Publish" Condition="'$(OutputType)' == 'Exe' Or '$(OutputType)' == 'WinExe'">
+    <MakeDir Directories="$(PublishDir)plugins" />
+  </Target>
 </Project>

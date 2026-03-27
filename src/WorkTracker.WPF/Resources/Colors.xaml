@@ -43,6 +43,21 @@
     <SolidColorBrush x:Key="ActiveWorkBrush" Color="{StaticResource ActiveWorkColor}" />
     <SolidColorBrush x:Key="CompletedWorkBrush" Color="{StaticResource CompletedWorkColor}" />
 
+    <!-- Pomodoro Phase Colors -->
+    <Color x:Key="PomodoroWorkBgColor">#2a1e1e</Color>
+    <Color x:Key="PomodoroWorkBorderColor">#5c3d3d</Color>
+    <Color x:Key="PomodoroBreakBgColor">#1e2a1e</Color>
+    <Color x:Key="PomodoroBreakBorderColor">#3d5c3d</Color>
+    <Color x:Key="PomodoroLongBreakBgColor">#1e222a</Color>
+    <Color x:Key="PomodoroLongBreakBorderColor">#3d4a5c</Color>
+
+    <SolidColorBrush x:Key="PomodoroWorkBgBrush" Color="{StaticResource PomodoroWorkBgColor}" />
+    <SolidColorBrush x:Key="PomodoroWorkBorderBrush" Color="{StaticResource PomodoroWorkBorderColor}" />
+    <SolidColorBrush x:Key="PomodoroBreakBgBrush" Color="{StaticResource PomodoroBreakBgColor}" />
+    <SolidColorBrush x:Key="PomodoroBreakBorderBrush" Color="{StaticResource PomodoroBreakBorderColor}" />
+    <SolidColorBrush x:Key="PomodoroLongBreakBgBrush" Color="{StaticResource PomodoroLongBreakBgColor}" />
+    <SolidColorBrush x:Key="PomodoroLongBreakBorderBrush" Color="{StaticResource PomodoroLongBreakBorderColor}" />
+
     <!-- Gradient Brushes -->
     <LinearGradientBrush x:Key="TitleBarGradientBrush" StartPoint="0,0" EndPoint="1,0">
         <GradientStop Color="{StaticResource TitleBarGradientStartColor}" Offset="0" />

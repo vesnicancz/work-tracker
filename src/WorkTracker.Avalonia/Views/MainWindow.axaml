@@ -181,12 +181,14 @@
 
                     <!-- Pomodoro Timer -->
                     <Border Classes="card" Padding="12,10"
-                            IsVisible="{Binding IsPomodoroEnabled}">
+                            IsVisible="{Binding IsPomodoroEnabled}"
+                            Background="{Binding PomodoroCardBackground}"
+                            BorderBrush="{Binding PomodoroCardBorder}">
                         <StackPanel Spacing="8">
                             <Grid ColumnDefinitions="Auto,*">
                                 <material:MaterialIcon Grid.Column="0"
                                                       Kind="TimerSandComplete" Width="16" Height="16"
-                                                      Foreground="{DynamicResource TextMuted}"
+                                                      Foreground="{Binding PomodoroTimerForeground, FallbackValue={DynamicResource TextMuted}}"
                                                       VerticalAlignment="Center" Margin="0,0,8,0" />
                                 <TextBlock Grid.Column="1" Text="{markup:Localize Pomodoro}"
                                            FontSize="13" FontWeight="SemiBold"
@@ -200,7 +202,7 @@
                                            FontSize="28" FontWeight="Bold"
                                            FontFamily="JetBrains Mono,Consolas,monospace"
                                            HorizontalAlignment="Center"
-                                           Foreground="{DynamicResource TextBright}" />
+                                           Foreground="{Binding PomodoroTimerForeground, FallbackValue={DynamicResource TextBright}}" />
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="6">
                                     <TextBlock Text="{Binding PomodoroPhaseDisplay}"
                                                FontSize="12" FontWeight="Medium"

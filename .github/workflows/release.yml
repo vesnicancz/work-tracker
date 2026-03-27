@@ -175,9 +175,50 @@ jobs:
           name: ${{ matrix.artifact }}
           path: publish/${{ matrix.artifact }}.zip
 
+  publish-plugins:
+    name: Publish Plugin (${{ matrix.plugin }})
+    needs: test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - plugin: Tempo
+            project: plugins/WorkTracker.Plugin.Tempo/WorkTracker.Plugin.Tempo.csproj
+            artifact: WorkTracker-Plugin-Tempo
+          - plugin: Luxafor
+            project: plugins/WorkTracker.Plugin.Luxafor/WorkTracker.Plugin.Luxafor.csproj
+            artifact: WorkTracker-Plugin-Luxafor
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Publish
+        run: >
+          dotnet publish ${{ matrix.project }}
+          -c ${{ env.CONFIGURATION }}
+          -p:DebugType=none
+          -o publish/${{ matrix.artifact }}
+
+      - name: Archive
+        run: |
+          cd publish
+          zip -r ${{ matrix.artifact }}.zip ${{ matrix.artifact }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: publish/${{ matrix.artifact }}.zip
+
   release:
     name: Create GitHub Release
-    needs: [publish-cli, publish-wpf, publish-avalonia]
+    needs: [publish-cli, publish-wpf, publish-avalonia, publish-plugins]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

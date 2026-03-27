@@ -37,6 +37,9 @@ public class MainViewModel : ViewModelBase, IDisposable
 	private string _pomodoroPhaseDisplay = string.Empty;
 	private bool _isPomodoroRunning;
 	private string _pomodoroCount = "0/4";
+	private bool _isPomodoroWork;
+	private bool _isPomodoroShortBreak;
+	private bool _isPomodoroLongBreak;
 
 	// Input fields
 	private string _workInput = string.Empty;
@@ -207,6 +210,24 @@ public class MainViewModel : ViewModelBase, IDisposable
 	{
 		get => _pomodoroCount;
 		set => SetProperty(ref _pomodoroCount, value);
+	}
+
+	public bool IsPomodoroWork
+	{
+		get => _isPomodoroWork;
+		set => SetProperty(ref _isPomodoroWork, value);
+	}
+
+	public bool IsPomodoroShortBreak
+	{
+		get => _isPomodoroShortBreak;
+		set => SetProperty(ref _isPomodoroShortBreak, value);
+	}
+
+	public bool IsPomodoroLongBreak
+	{
+		get => _isPomodoroLongBreak;
+		set => SetProperty(ref _isPomodoroLongBreak, value);
 	}
 
 	#endregion Properties
@@ -558,6 +579,9 @@ public class MainViewModel : ViewModelBase, IDisposable
 			IsPomodoroRunning = _pomodoroService.IsRunning;
 			PomodoroPhaseDisplay = GetPhaseDisplayText(phase);
 			PomodoroCount = $"{_pomodoroService.CompletedPomodoros}/{_pomodoroService.PomodorosBeforeLongBreak}";
+			IsPomodoroWork = phase == PomodoroPhase.Work;
+			IsPomodoroShortBreak = phase == PomodoroPhase.ShortBreak;
+			IsPomodoroLongBreak = phase == PomodoroPhase.LongBreak;
 			UpdatePomodoroDisplay();
 		});
 	}

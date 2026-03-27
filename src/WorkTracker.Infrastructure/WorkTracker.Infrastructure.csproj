@@ -6,8 +6,6 @@
   <ItemGroup>
     <ProjectReference Include="..\WorkTracker.Application\WorkTracker.Application.csproj" />
     <ProjectReference Include="..\WorkTracker.Domain\WorkTracker.Domain.csproj" />
-    <ProjectReference Include="..\..\plugins\WorkTracker.Plugin.Luxafor\WorkTracker.Plugin.Luxafor.csproj" />
-    <ProjectReference Include="..\..\plugins\WorkTracker.Plugin.Tempo\WorkTracker.Plugin.Tempo.csproj" />
   </ItemGroup>
 
   <ItemGroup>

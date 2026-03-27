@@ -1,5 +1,8 @@
 using System.Collections.ObjectModel;
 using System.Windows.Input;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Media;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
@@ -34,6 +37,9 @@ public class MainViewModel : ViewModelBase, IDisposable
 	private string _pomodoroPhaseDisplay = string.Empty;
 	private bool _isPomodoroRunning;
 	private string _pomodoroCount = "0/4";
+	private IBrush? _pomodoroCardBackground;
+	private IBrush? _pomodoroCardBorder;
+	private IBrush? _pomodoroTimerForeground;
 	private string _workInput = string.Empty;
 	private string? _detectedTicketId;
 	private string? _detectedDescription;
@@ -70,6 +76,8 @@ public class MainViewModel : ViewModelBase, IDisposable
 
 		_pomodoroService.PhaseChanged += OnPomodoroPhaseChanged;
 		_pomodoroService.Tick += OnPomodoroTick;
+		App.ThemeChanged += OnThemeChanged;
+		UpdatePomodoroBrushes(PomodoroPhase.Idle);
 
 		_timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
 		_timer.Tick += OnTimerTick;
@@ -194,6 +202,24 @@ public class MainViewModel : ViewModelBase, IDisposable
 	{
 		get => _pomodoroCount;
 		set => SetProperty(ref _pomodoroCount, value);
+	}
+
+	public IBrush? PomodoroCardBackground
+	{
+		get => _pomodoroCardBackground;
+		set => SetProperty(ref _pomodoroCardBackground, value);
+	}
+
+	public IBrush? PomodoroCardBorder
+	{
+		get => _pomodoroCardBorder;
+		set => SetProperty(ref _pomodoroCardBorder, value);
+	}
+
+	public IBrush? PomodoroTimerForeground
+	{
+		get => _pomodoroTimerForeground;
+		set => SetProperty(ref _pomodoroTimerForeground, value);
 	}
 
 	#endregion Properties
@@ -482,6 +508,31 @@ public class MainViewModel : ViewModelBase, IDisposable
 		_ => string.Empty
 	};
 
+	private void OnThemeChanged(object? sender, EventArgs e)
+	{
+		Dispatcher.UIThread.Post(() => UpdatePomodoroBrushes(_pomodoroService.CurrentPhase));
+	}
+
+	private void UpdatePomodoroBrushes(PomodoroPhase phase)
+	{
+		var (bgKey, borderKey, fgKey) = phase switch
+		{
+			PomodoroPhase.Work => ("PomodoroWorkCardBackground", "PomodoroWorkCardBorder", "DangerRed"),
+			PomodoroPhase.ShortBreak => ("PomodoroBreakCardBackground", "PomodoroBreakCardBorder", "SuccessGreen"),
+			PomodoroPhase.LongBreak => ("PomodoroLongBreakCardBackground", "PomodoroLongBreakCardBorder", "InfoBlue"),
+			_ => ("CardBackground", "CardBorder", "TextBright")
+		};
+
+		var app = global::Avalonia.Application.Current;
+		if (app == null) return;
+		app.TryFindResource(bgKey, app.ActualThemeVariant, out var bg);
+		app.TryFindResource(borderKey, app.ActualThemeVariant, out var border);
+		app.TryFindResource(fgKey, app.ActualThemeVariant, out var fg);
+		PomodoroCardBackground = bg as IBrush;
+		PomodoroCardBorder = border as IBrush;
+		PomodoroTimerForeground = fg as IBrush;
+	}
+
 	private void OnPomodoroPhaseChanged(object? sender, PomodoroPhase phase)
 	{
 		Dispatcher.UIThread.Post(() =>
@@ -489,6 +540,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 			IsPomodoroRunning = _pomodoroService.IsRunning;
 			PomodoroPhaseDisplay = GetPhaseDisplayText(phase);
 			PomodoroCount = $"{_pomodoroService.CompletedPomodoros}/{_pomodoroService.PomodorosBeforeLongBreak}";
+			UpdatePomodoroBrushes(phase);
 			UpdatePomodoroDisplay();
 		});
 	}
@@ -578,5 +630,6 @@ public class MainViewModel : ViewModelBase, IDisposable
 		_worklogStateService.WorkEntriesModified -= OnWorkEntriesModified;
 		_pomodoroService.PhaseChanged -= OnPomodoroPhaseChanged;
 		_pomodoroService.Tick -= OnPomodoroTick;
+		App.ThemeChanged -= OnThemeChanged;
 	}
 }

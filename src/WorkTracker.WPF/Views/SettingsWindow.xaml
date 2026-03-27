@@ -465,8 +465,19 @@
 
 				<!-- Plugins Tab -->
 				<TabItem Header="{markup:Localize Plugins}">
-					<ScrollViewer VerticalScrollBarVisibility="Auto"
-								 Padding="24,16,24,0">
+					<Grid>
+						<!-- No plugins message -->
+						<TextBlock Text="{markup:Localize NoPluginsAvailable}"
+								  Foreground="{DynamicResource MaterialDesign.Brush.Foreground.Light}"
+								  HorizontalAlignment="Center"
+								  VerticalAlignment="Center"
+								  FontSize="14"
+								  Visibility="{Binding HasPlugins, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}" />
+
+						<!-- Plugin settings -->
+						<ScrollViewer VerticalScrollBarVisibility="Auto"
+								 Padding="24,16,24,0"
+								 Visibility="{Binding HasPlugins, Converter={StaticResource BoolToVisibilityConverter}}">
 						<StackPanel Margin="8,0,8,0">
 							<!-- Plugins Section -->
 							<TextBlock Text="{markup:Localize Plugins}"
@@ -610,6 +621,7 @@
 							</Border>
 						</StackPanel>
 					</ScrollViewer>
+					</Grid>
 				</TabItem>
 				<!-- About Tab -->
 				<TabItem Header="{markup:Localize About}">

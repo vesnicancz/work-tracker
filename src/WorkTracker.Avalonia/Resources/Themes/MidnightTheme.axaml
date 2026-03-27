@@ -40,6 +40,14 @@
     <SolidColorBrush x:Key="ActiveCardBackground" Color="#0C1F1A" />
     <SolidColorBrush x:Key="ActiveCardBorder"     Color="#115E59" />
 
+    <!-- Pomodoro phase cards -->
+    <SolidColorBrush x:Key="PomodoroWorkCardBackground"      Color="#1F0C0C" />
+    <SolidColorBrush x:Key="PomodoroWorkCardBorder"           Color="#5E1115" />
+    <SolidColorBrush x:Key="PomodoroBreakCardBackground"      Color="#0C1F1A" />
+    <SolidColorBrush x:Key="PomodoroBreakCardBorder"          Color="#115E59" />
+    <SolidColorBrush x:Key="PomodoroLongBreakCardBackground"  Color="#0C141F" />
+    <SolidColorBrush x:Key="PomodoroLongBreakCardBorder"      Color="#11405E" />
+
     <!-- Button -->
     <SolidColorBrush x:Key="ButtonSecondaryBg"   Color="#1E293B" />
     <SolidColorBrush x:Key="ButtonSecondaryFg"   Color="#CBD5E1" />

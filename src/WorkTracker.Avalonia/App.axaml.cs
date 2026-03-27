@@ -301,5 +301,9 @@ public partial class App : global::Avalonia.Application
 		app.RequestedThemeVariant = (themeName is "Light" or ApplicationSettings.DefaultTheme)
 			? global::Avalonia.Styling.ThemeVariant.Light
 			: global::Avalonia.Styling.ThemeVariant.Dark;
+
+		ThemeChanged?.Invoke(app, EventArgs.Empty);
 	}
+
+	public static event EventHandler? ThemeChanged;
 }

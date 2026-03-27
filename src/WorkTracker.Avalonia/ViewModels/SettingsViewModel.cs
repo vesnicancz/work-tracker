@@ -103,6 +103,8 @@ public class SettingsViewModel : ViewModelBase
 			{
 				SelectedPlugin = Plugins.First();
 			}
+
+			OnPropertyChanged(nameof(HasPlugins));
 		}
 		catch (Exception ex)
 		{
@@ -176,6 +178,8 @@ public class SettingsViewModel : ViewModelBase
 	public bool DialogResult { get; set; }
 
 	public ObservableCollection<PluginViewModel> Plugins { get; } = new();
+
+	public bool HasPlugins => Plugins.Count > 0;
 
 	public PluginViewModel? SelectedPlugin
 	{
