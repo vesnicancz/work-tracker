@@ -21,7 +21,6 @@ public sealed class PomodoroService : IPomodoroService, IDisposable
 	private PomodoroPhase _currentPhase = PomodoroPhase.Idle;
 	private TimeSpan _timeRemaining;
 	private int _completedPomodoros;
-	private int _pomodorosBeforeLongBreak = 4;
 	private bool _isRunning;
 	private bool _disposed;
 
@@ -83,7 +82,7 @@ public sealed class PomodoroService : IPomodoroService, IDisposable
 	{
 		get { lock (_lock)
 			{
-				return _pomodorosBeforeLongBreak;
+				return _activeSettings.PomodorosBeforeLongBreak;
 			}
 		}
 	}
@@ -118,7 +117,6 @@ public sealed class PomodoroService : IPomodoroService, IDisposable
 			}
 
 			_activeSettings = _settingsService.Settings.Pomodoro;
-			_pomodorosBeforeLongBreak = _activeSettings.PomodorosBeforeLongBreak;
 			_completedPomodoros = 0;
 
 			_isRunning = true;
@@ -325,14 +323,19 @@ public sealed class PomodoroService : IPomodoroService, IDisposable
 
 		foreach (var plugin in _pluginManager.StatusIndicatorPlugins)
 		{
-			try
-			{
-				_ = plugin.SetStateAsync(state, CancellationToken.None);
-			}
-			catch (Exception ex)
-			{
-				_logger.LogWarning(ex, "Failed to set status indicator for phase {Phase} on plugin {Plugin}", phase, plugin.Metadata.Name);
-			}
+			_ = SetPluginStateSafe(plugin, state, phase);
+		}
+	}
+
+	private async Task SetPluginStateSafe(IStatusIndicatorPlugin plugin, StatusIndicatorState state, PomodoroPhase phase)
+	{
+		try
+		{
+			await plugin.SetStateAsync(state, CancellationToken.None);
+		}
+		catch (Exception ex)
+		{
+			_logger.LogWarning(ex, "Failed to set status indicator for phase {Phase} on plugin {Plugin}", phase, plugin.Metadata.Name);
 		}
 	}
 
@@ -386,17 +389,7 @@ public sealed class PomodoroService : IPomodoroService, IDisposable
 			return;
 		}
 
-		_ = Task.Run(async () =>
-		{
-			try
-			{
-				await _worklogStateService.StartTrackingAsync(_lastTicketId, _lastDescription, CancellationToken.None);
-			}
-			catch (Exception ex)
-			{
-				_logger.LogWarning(ex, "Failed to auto-start work tracking");
-			}
-		});
+		_ = AutoStartTrackingSafe();
 	}
 
 	private void AutoStopTracking()
@@ -419,17 +412,31 @@ public sealed class PomodoroService : IPomodoroService, IDisposable
 		// Remember before stopping
 		RememberCurrentTracking();
 
-		_ = Task.Run(async () =>
+		_ = AutoStopTrackingSafe();
+	}
+
+	private async Task AutoStartTrackingSafe()
+	{
+		try
 		{
-			try
-			{
-				await _worklogStateService.StopTrackingAsync(CancellationToken.None);
-			}
-			catch (Exception ex)
-			{
-				_logger.LogWarning(ex, "Failed to auto-stop work tracking");
-			}
-		});
+			await _worklogStateService.StartTrackingAsync(_lastTicketId, _lastDescription, CancellationToken.None);
+		}
+		catch (Exception ex)
+		{
+			_logger.LogWarning(ex, "Failed to auto-start work tracking");
+		}
+	}
+
+	private async Task AutoStopTrackingSafe()
+	{
+		try
+		{
+			await _worklogStateService.StopTrackingAsync(CancellationToken.None);
+		}
+		catch (Exception ex)
+		{
+			_logger.LogWarning(ex, "Failed to auto-stop work tracking");
+		}
 	}
 
 	private void StartTimer()

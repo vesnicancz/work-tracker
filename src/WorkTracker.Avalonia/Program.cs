@@ -13,6 +13,7 @@ class Program
 		=> AppBuilder.Configure<App>()
 			.UsePlatformDetect()
 			.WithInterFont()
+			// AppNotificationOptions must be provided — passing null causes NRE in Avalonia.Labs.Notifications v11.3.1
 			.WithAppNotifications(new AppNotificationOptions
 			{
 				AppName = "WorkTracker",
