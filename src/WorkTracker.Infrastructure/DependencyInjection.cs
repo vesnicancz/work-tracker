@@ -47,6 +47,11 @@ public static class DependencyInjection
 			var pluginDirs = configuration.GetSection("Plugins:Directories").Get<string[]>()
 				?? [WorkTrackerPaths.DefaultPluginsPath];
 
+			if (pluginDirs.All(string.IsNullOrWhiteSpace))
+			{
+				pluginDirs = [WorkTrackerPaths.DefaultPluginsPath];
+			}
+
 			foreach (var dir in pluginDirs)
 			{
 				if (string.IsNullOrWhiteSpace(dir))
@@ -54,9 +59,10 @@ public static class DependencyInjection
 					continue;
 				}
 
-				var resolvedDir = Path.IsPathRooted(dir)
-					? dir
-					: Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, dir));
+				var trimmedDir = dir.Trim();
+				var resolvedDir = Path.IsPathRooted(trimmedDir)
+					? trimmedDir
+					: Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, trimmedDir));
 
 				try
 				{

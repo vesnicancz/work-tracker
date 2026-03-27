@@ -129,6 +129,12 @@ public sealed class GoranG3WorklogPlugin : WorklogUploadPluginBase, IDisposable
 			var scopesRaw = GetRequiredConfigValue(ConfigKeys.EntraScopes);
 			_scopes = scopesRaw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
+			if (_scopes.Length == 0)
+			{
+				Logger?.LogError("EntraScopes configuration is empty or contains only whitespace/commas");
+				return Task.FromResult(false);
+			}
+
 			_msalApp = PublicClientApplicationBuilder
 				.Create(clientId)
 				.WithAuthority(AzureCloudInstance.AzurePublic, tenantId)
@@ -214,9 +220,10 @@ public sealed class GoranG3WorklogPlugin : WorklogUploadPluginBase, IDisposable
 				if (response.IsSuccessStatusCode)
 				{
 					var responseText = await response.Content.ReadAsStringAsync(cancellationToken);
+					var truncatedResponse = responseText.Length > 500 ? responseText[..500] + "..." : responseText;
 					Logger?.LogInformation(
 						"Successfully uploaded worklog: {ProjectCode}, {Duration} minutes on {Date}. Response: {Response}",
-						_projectCode, worklog.DurationMinutes, worklog.StartTime.Date.ToString("yyyy-MM-dd"), responseText);
+						_projectCode, worklog.DurationMinutes, worklog.StartTime.Date.ToString("yyyy-MM-dd"), truncatedResponse);
 					return PluginResult<bool>.Success(true);
 				}
 
