@@ -354,7 +354,7 @@ public sealed class PomodoroService : IPomodoroService, IDisposable
 			return;
 		}
 
-		_ = _systemNotification.ShowNotificationAsync("Pomodoro", message);
+		_ = _systemNotification.ShowNotificationAsync(_localization["Pomodoro"], message);
 	}
 
 	private void RememberCurrentTracking()
