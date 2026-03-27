@@ -630,4 +630,13 @@ Váš výkaz práce také ne.</value>
   <data name="PomodoroAutoStopTrackingDesc" xml:space="preserve">
     <value>Automaticky zastaví sledování práce při zahájení pauzy</value>
   </data>
+  <data name="PomodoroWorkPhaseStarted" xml:space="preserve">
+    <value>Zpět do práce!</value>
+  </data>
+  <data name="PomodoroBreakStarted" xml:space="preserve">
+    <value>Čas na pauzu!</value>
+  </data>
+  <data name="PomodoroLongBreakStarted" xml:space="preserve">
+    <value>Čas na dlouhou pauzu!</value>
+  </data>
 </root>

@@ -13,11 +13,6 @@ public interface IStatusIndicatorPlugin : IPlugin
 	bool IsDeviceAvailable { get; }
 
 	/// <summary>
-	/// Gets the configuration fields for this plugin (e.g. colors per phase).
-	/// </summary>
-	IReadOnlyList<PluginConfigurationField> GetConfigurationFields();
-
-	/// <summary>
 	/// Updates the device to reflect the given Pomodoro phase.
 	/// Called by the Pomodoro timer on every phase transition and on stop/reset.
 	/// </summary>

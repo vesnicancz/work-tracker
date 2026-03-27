@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Labs.Notifications;
 
 namespace WorkTracker.Avalonia;
 
@@ -12,5 +13,10 @@ class Program
 		=> AppBuilder.Configure<App>()
 			.UsePlatformDetect()
 			.WithInterFont()
+			.WithAppNotifications(new AppNotificationOptions
+			{
+				AppName = "WorkTracker",
+				AppUserModelId = "Vesnicancz.WorkTracker"
+			})
 			.LogToTrace();
 }

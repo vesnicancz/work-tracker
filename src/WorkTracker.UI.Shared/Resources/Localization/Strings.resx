@@ -630,4 +630,13 @@ Neither is your timesheet.</value>
   <data name="PomodoroAutoStopTrackingDesc" xml:space="preserve">
     <value>Automatically stop work tracking when a break phase starts</value>
   </data>
+  <data name="PomodoroWorkPhaseStarted" xml:space="preserve">
+    <value>Back to work!</value>
+  </data>
+  <data name="PomodoroBreakStarted" xml:space="preserve">
+    <value>Time for a break!</value>
+  </data>
+  <data name="PomodoroLongBreakStarted" xml:space="preserve">
+    <value>Time for a long break!</value>
+  </data>
 </root>

@@ -15,6 +15,7 @@ public class PomodoroServiceTests : IDisposable
 	private readonly Mock<IWorklogStateService> _worklogStateService = new();
 	private readonly Mock<IPluginManager> _pluginManager = new();
 	private readonly Mock<IStatusIndicatorPlugin> _statusIndicatorPlugin = new();
+	private readonly Mock<ISystemNotificationService> _systemNotification = new();
 	private readonly Mock<ILocalizationService> _localization = new();
 	private readonly PomodoroService _sut;
 
@@ -39,6 +40,7 @@ public class PomodoroServiceTests : IDisposable
 		_sut = new PomodoroService(
 			_settingsService.Object,
 			_notificationService.Object,
+			_systemNotification.Object,
 			_worklogStateService.Object,
 			_pluginManager.Object,
 			_localization.Object,

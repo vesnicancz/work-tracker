@@ -6,12 +6,6 @@ namespace WorkTracker.Plugin.Abstractions;
 public interface IWorklogUploadPlugin : IPlugin
 {
 	/// <summary>
-	/// Gets the configuration fields required by this plugin
-	/// </summary>
-	/// <returns>List of configuration field definitions</returns>
-	IReadOnlyList<PluginConfigurationField> GetConfigurationFields();
-
-	/// <summary>
 	/// Tests the connection with the current configuration
 	/// </summary>
 	/// <param name="cancellationToken">Cancellation token</param>

@@ -91,6 +91,7 @@ public partial class App : global::Avalonia.Application
 						services.AddSingleton<IDialogService, DialogService>();
 						services.AddSingleton<INotificationService, NotificationService>();
 						services.AddSingleton<ITrayIconService, TrayIconService>();
+						services.AddSingleton<ISystemNotificationService, SystemNotificationService>();
 						services.AddSingleton<IAutostartManager, AutostartManager>();
 						services.AddSingleton<IHotkeyService, HotkeyService>();
 

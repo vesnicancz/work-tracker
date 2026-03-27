@@ -9,6 +9,7 @@ public sealed class PomodoroService : IPomodoroService, IDisposable
 {
 	private readonly ISettingsService _settingsService;
 	private readonly INotificationService _notificationService;
+	private readonly ISystemNotificationService _systemNotification;
 	private readonly IWorklogStateService _worklogStateService;
 	private readonly IPluginManager _pluginManager;
 	private readonly ILocalizationService _localization;
@@ -34,6 +35,7 @@ public sealed class PomodoroService : IPomodoroService, IDisposable
 	public PomodoroService(
 		ISettingsService settingsService,
 		INotificationService notificationService,
+		ISystemNotificationService systemNotification,
 		IWorklogStateService worklogStateService,
 		IPluginManager pluginManager,
 		ILocalizationService localization,
@@ -42,6 +44,7 @@ public sealed class PomodoroService : IPomodoroService, IDisposable
 	{
 		_settingsService = settingsService;
 		_notificationService = notificationService;
+		_systemNotification = systemNotification;
 		_worklogStateService = worklogStateService;
 		_pluginManager = pluginManager;
 		_localization = localization;
@@ -291,6 +294,9 @@ public sealed class PomodoroService : IPomodoroService, IDisposable
 			_notificationService.ShowInformation(_localization["PomodoroBreakOver"]);
 		}
 
+		// System (OS) notifications
+		ShowSystemNotificationForPhase(newPhase);
+
 		// Luxafor
 		SetStatusIndicatorsForPhase(newPhase);
 
@@ -328,6 +334,24 @@ public sealed class PomodoroService : IPomodoroService, IDisposable
 				_logger.LogWarning(ex, "Failed to set status indicator for phase {Phase} on plugin {Plugin}", phase, plugin.Metadata.Name);
 			}
 		}
+	}
+
+	private void ShowSystemNotificationForPhase(PomodoroPhase phase)
+	{
+		var message = phase switch
+		{
+			PomodoroPhase.Work => _localization["PomodoroWorkPhaseStarted"],
+			PomodoroPhase.ShortBreak => _localization["PomodoroBreakStarted"],
+			PomodoroPhase.LongBreak => _localization["PomodoroLongBreakStarted"],
+			_ => null
+		};
+
+		if (message == null)
+		{
+			return;
+		}
+
+		_ = _systemNotification.ShowNotificationAsync("Pomodoro", message);
 	}
 
 	private void RememberCurrentTracking()
