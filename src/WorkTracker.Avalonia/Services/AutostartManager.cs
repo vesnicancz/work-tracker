@@ -133,6 +133,7 @@ public sealed class AutostartManager : IAutostartManager
 				var processPath = Environment.ProcessPath;
 				if (string.IsNullOrEmpty(processPath))
 				{
+					_logger.LogWarning("Unable to enable Linux autostart: Environment.ProcessPath is null or empty");
 					return;
 				}
 
@@ -192,6 +193,7 @@ X-GNOME-Autostart-enabled=true
 				var processPath = Environment.ProcessPath;
 				if (string.IsNullOrEmpty(processPath))
 				{
+					_logger.LogWarning("Unable to enable macOS autostart: Environment.ProcessPath is null or empty");
 					return;
 				}
 

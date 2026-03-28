@@ -73,7 +73,11 @@ public class MainViewModel : ViewModelBase, IDisposable
 		Pomodoro.TickOnService += (_, _) =>
 			Dispatcher.UIThread.Post(() => Pomodoro.UpdateTimeDisplay());
 		App.ThemeChanged += OnThemeChanged;
-		UpdatePomodoroBrushes(PomodoroPhase.Idle);
+
+		// Initial sync with current service state (may already be running)
+		var initialPhase = pomodoroService.CurrentPhase;
+		Pomodoro.UpdatePhase(initialPhase);
+		UpdatePomodoroBrushes(initialPhase);
 
 		_worklogStateService.ActiveWorkChanged += OnActiveWorkChanged;
 		_worklogStateService.IsTrackingChanged += OnIsTrackingChanged;

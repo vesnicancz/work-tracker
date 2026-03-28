@@ -73,6 +73,9 @@ public class MainViewModel : ViewModelBase, IDisposable
 		Pomodoro.TickOnService += (_, _) =>
 			System.Windows.Application.Current?.Dispatcher.BeginInvoke(() => Pomodoro.UpdateTimeDisplay());
 
+		// Initial sync with current service state (may already be running)
+		Pomodoro.UpdatePhase(pomodoroService.CurrentPhase);
+
 		// Subscribe to state change events
 		_worklogStateService.ActiveWorkChanged += OnActiveWorkChanged;
 		_worklogStateService.IsTrackingChanged += OnIsTrackingChanged;
