@@ -156,6 +156,18 @@ public class PluginManagerTests : IDisposable
 		_pluginManager.LoadedPlugins.Should().BeEmpty();
 	}
 
+	[Fact]
+	public void LoadEmbeddedPlugin_WithPluginBaseDerived_ShouldSetPluginSpecificLogger()
+	{
+		// Act
+		_pluginManager.LoadEmbeddedPlugin<TestPluginBaseDerived>();
+
+		// Assert
+		_mockLoggerFactory.Verify(
+			f => f.CreateLogger("WorkTracker.Plugin.test.pluginbase"),
+			Times.Once);
+	}
+
 	public async void Dispose()
 	{
 		if (_pluginManager != null)
@@ -260,4 +272,22 @@ public class TestWorklogPlugin : IWorklogUploadPlugin
 	{
 		return Task.FromResult(PluginResult<bool>.Success(false));
 	}
+}
+
+public class TestPluginBaseDerived : PluginBase
+{
+	public override PluginMetadata Metadata => new()
+	{
+		Id = "test.pluginbase",
+		Name = "Test PluginBase Plugin",
+		Version = new Version(1, 0, 0),
+		Author = "Test Author"
+	};
+
+	public override IReadOnlyList<PluginConfigurationField> GetConfigurationFields() => [];
+
+	protected override Task<bool> OnInitializeAsync(IDictionary<string, string> configuration, CancellationToken cancellationToken)
+		=> Task.FromResult(true);
+
+	protected override Task OnShutdownAsync() => Task.CompletedTask;
 }
