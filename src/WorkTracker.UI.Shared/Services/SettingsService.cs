@@ -140,6 +140,7 @@ public sealed class SettingsService : ISettingsService
 			var json = JsonSerializer.Serialize(settings, WriteOptions);
 			File.WriteAllText(_settingsFilePath, json);
 
+			UnprotectPluginConfigurations(settings);
 			_settings = settings;
 			_logger.LogInformation("Settings saved successfully");
 		}
@@ -157,6 +158,7 @@ public sealed class SettingsService : ISettingsService
 			var json = JsonSerializer.Serialize(settings, WriteOptions);
 			await File.WriteAllTextAsync(_settingsFilePath, json, cancellationToken);
 
+			UnprotectPluginConfigurations(settings);
 			_settings = settings;
 			_logger.LogInformation("Settings saved successfully");
 		}
