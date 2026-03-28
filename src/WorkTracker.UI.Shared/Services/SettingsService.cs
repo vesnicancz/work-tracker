@@ -114,8 +114,18 @@ public sealed class SettingsService : ISettingsService
 	/// </summary>
 	private void UnprotectPluginConfigurations(ApplicationSettings settings)
 	{
+		if (settings.PluginConfigurations is null)
+		{
+			return;
+		}
+
 		foreach (var pluginConfig in settings.PluginConfigurations.Values)
 		{
+			if (pluginConfig is null)
+			{
+				continue;
+			}
+
 			foreach (var key in pluginConfig.Keys.ToList())
 			{
 				pluginConfig[key] = _secureStorage.Unprotect(pluginConfig[key]);

@@ -28,6 +28,11 @@ public sealed class CredentialStoreSecureStorage : ISecureStorage
 			return plainText;
 		}
 
+		if (plainText.StartsWith(Prefix, StringComparison.Ordinal))
+		{
+			return plainText;
+		}
+
 		var target = BuildTarget(pluginId, fieldKey);
 
 		try
