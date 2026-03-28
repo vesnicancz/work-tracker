@@ -76,9 +76,9 @@ public abstract class PluginBase : IPlugin
 						errors.Add(field.ValidationMessage ?? $"Field '{field.Label}' has invalid format");
 					}
 				}
-				catch (System.Text.RegularExpressions.RegexMatchTimeoutException)
+				catch (System.Text.RegularExpressions.RegexMatchTimeoutException ex)
 				{
-					Logger?.LogError("Regex validation for field '{FieldKey}' in plugin {PluginName} timed out.",
+					Logger?.LogError(ex, "Regex validation for field '{FieldKey}' in plugin {PluginName} timed out.",
 						field.Key, Metadata.Name);
 					errors.Add($"Field '{field.Label}' validation timed out; the validation pattern may be too complex or the input too long.");
 				}
