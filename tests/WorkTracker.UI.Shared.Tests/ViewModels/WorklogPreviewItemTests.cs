@@ -72,9 +72,11 @@ public class WorklogPreviewItemTests
 			StartTime = date.AddHours(9),
 			EndTime = date.AddHours(11)
 		};
+		item.Duration.Should().Be(7200); // 2h initial
 
-		// Duration should be 2 hours = 7200 seconds
-		item.Duration.Should().Be(7200);
+		item.StartTime = date.AddHours(10);
+
+		item.Duration.Should().Be(3600); // Now 1h
 	}
 
 	[Fact]
@@ -87,9 +89,11 @@ public class WorklogPreviewItemTests
 			StartTime = date.AddHours(9),
 			EndTime = date.AddHours(9).AddMinutes(30)
 		};
+		item.Duration.Should().Be(1800); // 30m initial
 
-		// 30 minutes = 1800 seconds
-		item.Duration.Should().Be(1800);
+		item.EndTime = date.AddHours(10);
+
+		item.Duration.Should().Be(3600); // Now 1h
 	}
 
 	[Fact]
