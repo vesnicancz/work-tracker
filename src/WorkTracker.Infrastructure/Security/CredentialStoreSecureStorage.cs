@@ -75,12 +75,12 @@ public sealed class CredentialStoreSecureStorage : ISecureStorage
 			}
 
 			_logger.LogWarning("Credential not found for {PluginId}:{FieldKey}", pluginId, fieldKey);
-			return string.Empty;
+			return protectedText;
 		}
 		catch (Exception ex)
 		{
 			_logger.LogWarning(ex, "Failed to retrieve credential for {PluginId}:{FieldKey}", pluginId, fieldKey);
-			return string.Empty;
+			return protectedText;
 		}
 	}
 

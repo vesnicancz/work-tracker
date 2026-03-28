@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Security;
 using Microsoft.Extensions.Logging;
 using WorkTracker.UI.Shared.Services;
 
@@ -206,7 +207,7 @@ $"""
 	<string>com.worktracker</string>
 	<key>ProgramArguments</key>
 	<array>
-		<string>{processPath}</string>
+		<string>{SecurityElement.Escape(processPath)}</string>
 	</array>
 	<key>RunAtLoad</key>
 	<true/>
