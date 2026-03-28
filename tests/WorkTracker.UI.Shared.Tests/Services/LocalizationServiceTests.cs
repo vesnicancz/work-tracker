@@ -15,10 +15,7 @@ public class LocalizationServiceTests : IDisposable
 	{
 		CultureInfo.CurrentCulture = _originalCulture;
 		CultureInfo.CurrentUICulture = _originalUICulture;
-		if (_originalInstance != null)
-		{
-			LocalizationService.SetInstance(_originalInstance);
-		}
+		LocalizationService.SetInstance(_originalInstance ?? new LocalizationService());
 	}
 
 	#region GetString

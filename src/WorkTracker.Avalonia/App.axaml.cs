@@ -241,15 +241,7 @@ public partial class App : global::Avalonia.Application
 		}
 		catch (Exception ex)
 		{
-			var logger = _host?.Services.GetService<ILogger<App>>();
-			if (logger != null)
-			{
-				logger.LogError(ex, "Failed to open work entry dialog");
-			}
-			else
-			{
-				Console.Error.WriteLine($"Failed to open work entry dialog: {ex}");
-			}
+			LogErrorSafe(ex, "Failed to open work entry dialog");
 		}
 	}
 
@@ -270,16 +262,27 @@ public partial class App : global::Avalonia.Application
 		}
 		catch (Exception ex)
 		{
+			LogErrorSafe(ex, "Failed to shut down host");
+		}
+	}
+
+	private void LogErrorSafe(Exception ex, string message)
+	{
+		try
+		{
 			var logger = _host?.Services.GetService<ILogger<App>>();
 			if (logger != null)
 			{
-				logger.LogError(ex, "Failed to shut down host");
-			}
-			else
-			{
-				Console.Error.WriteLine($"Failed to shut down host: {ex}");
+				logger.LogError(ex, message);
+				return;
 			}
 		}
+		catch
+		{
+			// Logger resolution failed (host disposed/unavailable) — fall through to Console.Error.
+		}
+
+		Console.Error.WriteLine($"{message}: {ex}");
 	}
 
 	/// <summary>

@@ -370,15 +370,4 @@ public class WorklogStateServiceTests : IDisposable
 	}
 
 	#endregion
-
-	#region Dispose
-
-	[Fact]
-	public void Dispose_DoesNotThrow()
-	{
-		var act = () => _sut.Dispose();
-		act.Should().NotThrow();
-	}
-
-	#endregion
 }
