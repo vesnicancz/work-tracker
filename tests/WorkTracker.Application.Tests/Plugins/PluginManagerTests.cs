@@ -160,9 +160,10 @@ public class PluginManagerTests : IDisposable
 	public void LoadEmbeddedPlugin_WithPluginBaseDerived_ShouldSetPluginSpecificLogger()
 	{
 		// Act
-		_pluginManager.LoadEmbeddedPlugin<TestPluginBaseDerived>();
+		var result = _pluginManager.LoadEmbeddedPlugin<TestPluginBaseDerived>();
 
 		// Assert
+		result.Should().BeTrue();
 		_mockLoggerFactory.Verify(
 			f => f.CreateLogger("WorkTracker.Plugin.test.pluginbase"),
 			Times.Once);
