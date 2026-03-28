@@ -88,10 +88,20 @@ public partial class MainWindow : Window
 		}
 		else
 		{
-			_worklogStateService.IsTrackingChanged -= OnIsTrackingChanged;
-			// Cleanup tray icon before exit
-			_trayIconService.Dispose();
+			Cleanup();
 		}
+	}
+
+	/// <summary>
+	/// Unsubscribes events and disposes resources. Called on actual window close
+	/// and from App.OnExit to ensure cleanup even when using MinimizeToTray.
+	/// </summary>
+	public void Cleanup()
+	{
+		_worklogStateService.IsTrackingChanged -= OnIsTrackingChanged;
+		StateChanged -= OnStateChanged;
+		Closing -= OnClosing;
+		_trayIconService.Dispose();
 	}
 
 	private void OnIsTrackingChanged(object? sender, bool isTracking)

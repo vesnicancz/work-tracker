@@ -359,11 +359,11 @@ public sealed class PomodoroService : IPomodoroService, IDisposable
 
 	private void RememberCurrentTracking()
 	{
-		if (_worklogStateService.IsInitialized && _worklogStateService.IsTracking)
+		var active = _worklogStateService.IsInitialized ? _worklogStateService.ActiveWork : null;
+		if (active != null)
 		{
-			var active = _worklogStateService.ActiveWork;
-			_lastTicketId = active?.TicketId;
-			_lastDescription = active?.Description;
+			_lastTicketId = active.TicketId;
+			_lastDescription = active.Description;
 		}
 	}
 

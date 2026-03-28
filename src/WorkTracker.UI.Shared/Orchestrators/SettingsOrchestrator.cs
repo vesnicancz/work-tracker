@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using WorkTracker.Application.Plugins;
+using WorkTracker.Application.Services;
 using WorkTracker.Plugin.Abstractions;
 using WorkTracker.UI.Shared.Models;
 using WorkTracker.UI.Shared.Services;
@@ -12,6 +13,7 @@ public class SettingsOrchestrator : ISettingsOrchestrator
 {
 	private readonly ISettingsService _settingsService;
 	private readonly IPluginManager _pluginManager;
+	private readonly ISecureStorage _secureStorage;
 	private readonly IConfiguration _configuration;
 	private readonly IAutostartManager _autostartManager;
 	private readonly ITrayIconService _trayIconService;
@@ -20,6 +22,7 @@ public class SettingsOrchestrator : ISettingsOrchestrator
 	public SettingsOrchestrator(
 		ISettingsService settingsService,
 		IPluginManager pluginManager,
+		ISecureStorage secureStorage,
 		IConfiguration configuration,
 		IAutostartManager autostartManager,
 		ITrayIconService trayIconService,
@@ -27,6 +30,7 @@ public class SettingsOrchestrator : ISettingsOrchestrator
 	{
 		_settingsService = settingsService;
 		_pluginManager = pluginManager;
+		_secureStorage = secureStorage;
 		_configuration = configuration;
 		_autostartManager = autostartManager;
 		_trayIconService = trayIconService;
@@ -95,11 +99,12 @@ public class SettingsOrchestrator : ISettingsOrchestrator
 			Pomodoro = request.Pomodoro
 		};
 
-		// Save plugin configurations and enabled state
+		// Save plugin configurations and enabled state, encrypting sensitive values
 		foreach (var pluginVm in request.Plugins)
 		{
-			settings.PluginConfigurations[pluginVm.Plugin.Metadata.Id] =
-				new Dictionary<string, string>(pluginVm.Configuration);
+			var config = new Dictionary<string, string>(pluginVm.Configuration);
+			ProtectSensitiveFields(pluginVm.Plugin, config);
+			settings.PluginConfigurations[pluginVm.Plugin.Metadata.Id] = config;
 			settings.EnabledPlugins[pluginVm.Plugin.Metadata.Id] = pluginVm.IsEnabled;
 		}
 
@@ -151,5 +156,26 @@ public class SettingsOrchestrator : ISettingsOrchestrator
 		_logger.LogWarning("Connection test failed for {PluginId}: {Error}",
 			plugin.Plugin.Metadata.Id, result.Error);
 		return $"✗ Connection failed: {result.Error}";
+	}
+
+	private void ProtectSensitiveFields(IPlugin plugin, Dictionary<string, string> config)
+	{
+		var pluginId = plugin.Metadata.Id;
+		var passwordKeys = plugin.GetConfigurationFields()
+			.Where(f => f.Type == PluginConfigurationFieldType.Password)
+			.Select(f => f.Key)
+			.ToHashSet();
+
+		foreach (var key in passwordKeys)
+		{
+			if (config.TryGetValue(key, out var value) && !string.IsNullOrEmpty(value))
+			{
+				config[key] = _secureStorage.Protect(value, pluginId, key);
+			}
+			else
+			{
+				_secureStorage.Remove(pluginId, key);
+			}
+		}
 	}
 }

@@ -21,7 +21,14 @@ public sealed class AutostartManager : IAutostartManager
 			{
 				return GetWindowsAutostart();
 			}
-			// TODO: Linux/macOS support
+			if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+			{
+				return GetLinuxAutostart();
+			}
+			if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+			{
+				return GetMacOSAutostart();
+			}
 			return false;
 		}
 	}
@@ -32,7 +39,14 @@ public sealed class AutostartManager : IAutostartManager
 		{
 			SetWindowsAutostart(enable);
 		}
-		// TODO: Linux/macOS support
+		else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+		{
+			SetLinuxAutostart(enable);
+		}
+		else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+		{
+			SetMacOSAutostart(enable);
+		}
 	}
 
 	private bool GetWindowsAutostart()
@@ -90,4 +104,131 @@ public sealed class AutostartManager : IAutostartManager
 			_logger.LogError(ex, "Failed to set autostart to {Enable}", enable);
 		}
 	}
+
+	#region Linux
+
+	private static string LinuxDesktopFilePath =>
+		Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".config", "autostart", "WorkTracker.desktop");
+
+	private bool GetLinuxAutostart()
+	{
+		try
+		{
+			return File.Exists(LinuxDesktopFilePath);
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Failed to check Linux autostart status");
+			return false;
+		}
+	}
+
+	private void SetLinuxAutostart(bool enable)
+	{
+		try
+		{
+			if (enable)
+			{
+				var processPath = Environment.ProcessPath;
+				if (string.IsNullOrEmpty(processPath))
+				{
+					return;
+				}
+
+				var dir = Path.GetDirectoryName(LinuxDesktopFilePath)!;
+				Directory.CreateDirectory(dir);
+				File.WriteAllText(LinuxDesktopFilePath,
+$"""
+[Desktop Entry]
+Type=Application
+Name=WorkTracker
+Exec="{processPath}"
+X-GNOME-Autostart-enabled=true
+""");
+				_logger.LogInformation("Linux autostart enabled: {Path}", processPath);
+			}
+			else
+			{
+				if (File.Exists(LinuxDesktopFilePath))
+				{
+					File.Delete(LinuxDesktopFilePath);
+				}
+				_logger.LogInformation("Linux autostart disabled");
+			}
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Failed to set Linux autostart to {Enable}", enable);
+		}
+	}
+
+	#endregion Linux
+
+	#region macOS
+
+	private static string MacOSPlistFilePath =>
+		Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Library", "LaunchAgents", "com.worktracker.plist");
+
+	private bool GetMacOSAutostart()
+	{
+		try
+		{
+			return File.Exists(MacOSPlistFilePath);
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Failed to check macOS autostart status");
+			return false;
+		}
+	}
+
+	private void SetMacOSAutostart(bool enable)
+	{
+		try
+		{
+			if (enable)
+			{
+				var processPath = Environment.ProcessPath;
+				if (string.IsNullOrEmpty(processPath))
+				{
+					return;
+				}
+
+				var dir = Path.GetDirectoryName(MacOSPlistFilePath)!;
+				Directory.CreateDirectory(dir);
+				File.WriteAllText(MacOSPlistFilePath,
+$"""
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.worktracker</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>{processPath}</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+</dict>
+</plist>
+""");
+				_logger.LogInformation("macOS autostart enabled: {Path}", processPath);
+			}
+			else
+			{
+				if (File.Exists(MacOSPlistFilePath))
+				{
+					File.Delete(MacOSPlistFilePath);
+				}
+				_logger.LogInformation("macOS autostart disabled");
+			}
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Failed to set macOS autostart to {Enable}", enable);
+		}
+	}
+
+	#endregion macOS
 }

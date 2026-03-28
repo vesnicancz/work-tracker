@@ -8,6 +8,7 @@ using WorkTracker.Application.Services;
 using WorkTracker.Domain.Entities;
 using WorkTracker.UI.Shared.Orchestrators;
 using WorkTracker.UI.Shared.Services;
+using WorkTracker.UI.Shared.ViewModels;
 
 namespace WorkTracker.WPF.ViewModels;
 
@@ -21,8 +22,6 @@ public class MainViewModel : ViewModelBase, IDisposable
 	private readonly IDialogService _dialogService;
 	private readonly INotificationService _notificationService;
 	private readonly IWorklogStateService _worklogStateService;
-	private readonly IPomodoroService _pomodoroService;
-	private readonly ISettingsService _settingsService;
 	private readonly TimeProvider _timeProvider;
 	private readonly ILocalizationService _localization;
 	private readonly ILogger<MainViewModel> _logger;
@@ -31,15 +30,6 @@ public class MainViewModel : ViewModelBase, IDisposable
 	private bool _disposed;
 
 	private string _elapsedTime = "00:00:00";
-
-	// Pomodoro
-	private string _pomodoroTimeRemaining = "00:00";
-	private string _pomodoroPhaseDisplay = string.Empty;
-	private bool _isPomodoroRunning;
-	private string _pomodoroCount = "0/4";
-	private bool _isPomodoroWork;
-	private bool _isPomodoroShortBreak;
-	private bool _isPomodoroLongBreak;
 
 	// Input fields
 	private string _workInput = string.Empty;
@@ -71,21 +61,22 @@ public class MainViewModel : ViewModelBase, IDisposable
 		_dialogService = dialogService;
 		_notificationService = notificationService;
 		_worklogStateService = worklogStateService;
-		_pomodoroService = pomodoroService;
-		_settingsService = settingsService;
 		_localization = localization;
 		_timeProvider = timeProvider;
 		_logger = logger;
 		_selectedDate = _timeProvider.GetLocalNow().Date;
 
+		// Pomodoro sub-ViewModel
+		Pomodoro = new PomodoroViewModel(pomodoroService, settingsService, localization);
+		Pomodoro.PhaseChangedOnService += (_, phase) =>
+			System.Windows.Application.Current?.Dispatcher.BeginInvoke(() => Pomodoro.UpdatePhase(phase));
+		Pomodoro.TickOnService += (_, _) =>
+			System.Windows.Application.Current?.Dispatcher.BeginInvoke(() => Pomodoro.UpdateTimeDisplay());
+
 		// Subscribe to state change events
 		_worklogStateService.ActiveWorkChanged += OnActiveWorkChanged;
 		_worklogStateService.IsTrackingChanged += OnIsTrackingChanged;
 		_worklogStateService.WorkEntriesModified += OnWorkEntriesModified;
-
-		// Subscribe to Pomodoro events
-		_pomodoroService.PhaseChanged += OnPomodoroPhaseChanged;
-		_pomodoroService.Tick += OnPomodoroTick;
 
 		// Initialize timer for active work display
 		_timer = new DispatcherTimer
@@ -107,9 +98,6 @@ public class MainViewModel : ViewModelBase, IDisposable
 		PreviousDayCommand = new RelayCommand(PreviousDay);
 		NextDayCommand = new RelayCommand(NextDay);
 		GoToTodayCommand = new RelayCommand(GoToToday);
-		StartPomodoroCommand = new RelayCommand(StartPomodoro);
-		StopPomodoroCommand = new RelayCommand(StopPomodoro);
-		SkipPomodoroPhaseCommand = new RelayCommand(SkipPomodoroPhase);
 
 		// Initialize data
 		_ = InitializeAsync();
@@ -185,50 +173,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 		set => SetProperty(ref _totalDayDuration, value);
 	}
 
-	// Pomodoro properties
-	public bool IsPomodoroEnabled => _settingsService.Settings.Pomodoro.Enabled;
-
-	public string PomodoroTimeRemaining
-	{
-		get => _pomodoroTimeRemaining;
-		set => SetProperty(ref _pomodoroTimeRemaining, value);
-	}
-
-	public string PomodoroPhaseDisplay
-	{
-		get => _pomodoroPhaseDisplay;
-		set => SetProperty(ref _pomodoroPhaseDisplay, value);
-	}
-
-	public bool IsPomodoroRunning
-	{
-		get => _isPomodoroRunning;
-		set => SetProperty(ref _isPomodoroRunning, value);
-	}
-
-	public string PomodoroCount
-	{
-		get => _pomodoroCount;
-		set => SetProperty(ref _pomodoroCount, value);
-	}
-
-	public bool IsPomodoroWork
-	{
-		get => _isPomodoroWork;
-		set => SetProperty(ref _isPomodoroWork, value);
-	}
-
-	public bool IsPomodoroShortBreak
-	{
-		get => _isPomodoroShortBreak;
-		set => SetProperty(ref _isPomodoroShortBreak, value);
-	}
-
-	public bool IsPomodoroLongBreak
-	{
-		get => _isPomodoroLongBreak;
-		set => SetProperty(ref _isPomodoroLongBreak, value);
-	}
+	public PomodoroViewModel Pomodoro { get; }
 
 	#endregion Properties
 
@@ -246,9 +191,6 @@ public class MainViewModel : ViewModelBase, IDisposable
 	public ICommand PreviousDayCommand { get; }
 	public ICommand NextDayCommand { get; }
 	public ICommand GoToTodayCommand { get; }
-	public ICommand StartPomodoroCommand { get; }
-	public ICommand StopPomodoroCommand { get; }
-	public ICommand SkipPomodoroPhaseCommand { get; }
 
 	#endregion Commands
 
@@ -483,7 +425,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 		try
 		{
 			await _dialogService.ShowSettingsDialogAsync();
-			OnPropertyChanged(nameof(IsPomodoroEnabled));
+			Pomodoro.RefreshEnabled();
 		}
 		catch (Exception ex)
 		{
@@ -551,47 +493,6 @@ public class MainViewModel : ViewModelBase, IDisposable
 	}
 
 	#endregion Command Implementations
-
-	#region Pomodoro
-
-	private void StartPomodoro() => _pomodoroService.Start();
-	private void StopPomodoro() => _pomodoroService.Stop();
-	private void SkipPomodoroPhase() => _pomodoroService.Skip();
-
-	private void UpdatePomodoroDisplay()
-	{
-		var remaining = _pomodoroService.TimeRemaining;
-		PomodoroTimeRemaining = $"{(int)remaining.TotalMinutes:D2}:{remaining.Seconds:D2}";
-	}
-
-	private string GetPhaseDisplayText(PomodoroPhase phase) => phase switch
-	{
-		PomodoroPhase.Work => _localization["PomodoroWork"],
-		PomodoroPhase.ShortBreak => _localization["PomodoroShortBreak"],
-		PomodoroPhase.LongBreak => _localization["PomodoroLongBreak"],
-		_ => string.Empty
-	};
-
-	private void OnPomodoroPhaseChanged(object? sender, PomodoroPhase phase)
-	{
-		System.Windows.Application.Current?.Dispatcher.BeginInvoke(() =>
-		{
-			IsPomodoroRunning = _pomodoroService.IsRunning;
-			PomodoroPhaseDisplay = GetPhaseDisplayText(phase);
-			PomodoroCount = $"{_pomodoroService.CompletedPomodoros}/{_pomodoroService.PomodorosBeforeLongBreak}";
-			IsPomodoroWork = phase == PomodoroPhase.Work;
-			IsPomodoroShortBreak = phase == PomodoroPhase.ShortBreak;
-			IsPomodoroLongBreak = phase == PomodoroPhase.LongBreak;
-			UpdatePomodoroDisplay();
-		});
-	}
-
-	private void OnPomodoroTick(object? sender, EventArgs e)
-	{
-		System.Windows.Application.Current?.Dispatcher.BeginInvoke(UpdatePomodoroDisplay);
-	}
-
-	#endregion Pomodoro
 
 	#region Timer
 
@@ -676,11 +577,11 @@ public class MainViewModel : ViewModelBase, IDisposable
 		_cts.Cancel();
 		_cts.Dispose();
 		_timer.Stop();
+		_timer.Tick -= OnTimerTick;
 		_worklogStateService.ActiveWorkChanged -= OnActiveWorkChanged;
 		_worklogStateService.IsTrackingChanged -= OnIsTrackingChanged;
 		_worklogStateService.WorkEntriesModified -= OnWorkEntriesModified;
-		_pomodoroService.PhaseChanged -= OnPomodoroPhaseChanged;
-		_pomodoroService.Tick -= OnPomodoroTick;
+		Pomodoro.Dispose();
 	}
 
 	#endregion IDisposable

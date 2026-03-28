@@ -198,31 +198,43 @@ public partial class App : System.Windows.Application
 	/// </summary>
 	protected override async void OnExit(ExitEventArgs e)
 	{
-		try { _hotkeyService?.Unregister(); }
-		catch (Exception ex) { System.Diagnostics.Trace.WriteLine($"Error unregistering hotkey: {ex}"); }
-
 		try
 		{
-			var mainViewModel = _host.Services.GetRequiredService<MainViewModel>();
-			mainViewModel.Dispose();
-		}
-		catch (Exception ex) { System.Diagnostics.Trace.WriteLine($"Error disposing MainViewModel: {ex}"); }
+			var logger = _host.Services.GetRequiredService<ILogger<App>>();
 
-		try
-		{
-			var pluginManager = _host.Services.GetRequiredService<IPluginManager>();
-			await pluginManager.DisposeAsync();
-		}
-		catch (Exception ex) { System.Diagnostics.Trace.WriteLine($"Error disposing PluginManager: {ex}"); }
+			try { _hotkeyService?.Unregister(); }
+			catch (Exception ex) { logger.LogError(ex, "Error unregistering hotkey"); }
 
-		try
-		{
-			using (_host)
+			try { _mainWindow?.Cleanup(); }
+			catch (Exception ex) { logger.LogError(ex, "Error cleaning up MainWindow"); }
+
+			try
 			{
-				await _host.StopAsync();
+				var mainViewModel = _host.Services.GetRequiredService<MainViewModel>();
+				mainViewModel.Dispose();
 			}
+			catch (Exception ex) { logger.LogError(ex, "Error disposing MainViewModel"); }
+
+			try
+			{
+				var pluginManager = _host.Services.GetRequiredService<IPluginManager>();
+				await pluginManager.DisposeAsync();
+			}
+			catch (Exception ex) { logger.LogError(ex, "Error disposing PluginManager"); }
+
+			try
+			{
+				using (_host)
+				{
+					await _host.StopAsync();
+				}
+			}
+			catch (Exception ex) { System.Diagnostics.Trace.WriteLine($"Error stopping host: {ex}"); }
 		}
-		catch (Exception ex) { System.Diagnostics.Trace.WriteLine($"Error stopping host: {ex}"); }
+		catch (Exception ex)
+		{
+			System.Diagnostics.Trace.WriteLine($"Error during shutdown: {ex}");
+		}
 
 		base.OnExit(e);
 	}
