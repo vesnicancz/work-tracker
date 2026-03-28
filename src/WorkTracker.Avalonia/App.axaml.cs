@@ -170,8 +170,7 @@ public partial class App : global::Avalonia.Application
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Initialization failed: {ex}");
-			Console.Error.WriteLine($"Initialization failed: {ex}");
+			LogErrorSafe(ex, "Initialization failed");
 
 			// Show error dialog
 			var errorWindow = new MessageBoxWindow("Initialization Error",
@@ -241,7 +240,7 @@ public partial class App : global::Avalonia.Application
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Failed to open work entry dialog: {ex}");
+			LogErrorSafe(ex, "Failed to open work entry dialog");
 		}
 	}
 
@@ -262,8 +261,27 @@ public partial class App : global::Avalonia.Application
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Failed to shut down host: {ex}");
+			LogErrorSafe(ex, "Failed to shut down host");
 		}
+	}
+
+	private void LogErrorSafe(Exception ex, string message)
+	{
+		try
+		{
+			var logger = _host?.Services.GetService<ILogger<App>>();
+			if (logger != null)
+			{
+				logger.LogError(ex, message);
+				return;
+			}
+		}
+		catch
+		{
+			// Logger resolution failed (host disposed/unavailable) — fall through to Console.Error.
+		}
+
+		Console.Error.WriteLine($"{message}: {ex}");
 	}
 
 	/// <summary>
