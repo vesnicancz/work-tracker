@@ -108,8 +108,18 @@ public sealed class AutostartManager : IAutostartManager
 
 	#region Linux
 
-	private static string LinuxDesktopFilePath =>
-		Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".config", "autostart", "WorkTracker.desktop");
+	private static string LinuxDesktopFilePath
+	{
+		get
+		{
+			var configHome = Environment.GetEnvironmentVariable("XDG_CONFIG_HOME");
+			if (string.IsNullOrEmpty(configHome))
+			{
+				configHome = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".config");
+			}
+			return Path.Combine(configHome, "autostart", "WorkTracker.desktop");
+		}
+	}
 
 	private bool GetLinuxAutostart()
 	{
