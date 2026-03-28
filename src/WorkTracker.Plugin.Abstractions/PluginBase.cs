@@ -67,11 +67,20 @@ public abstract class PluginBase : IPlugin
 			else if (!string.IsNullOrEmpty(field.ValidationPattern))
 			{
 				var value = configuration[field.Key];
-				if (!System.Text.RegularExpressions.Regex.IsMatch(value, field.ValidationPattern,
-					System.Text.RegularExpressions.RegexOptions.None,
-					TimeSpan.FromSeconds(1)))
+				try
 				{
-					errors.Add(field.ValidationMessage ?? $"Field '{field.Label}' has invalid format");
+					if (!System.Text.RegularExpressions.Regex.IsMatch(value, field.ValidationPattern,
+						System.Text.RegularExpressions.RegexOptions.None,
+						TimeSpan.FromSeconds(1)))
+					{
+						errors.Add(field.ValidationMessage ?? $"Field '{field.Label}' has invalid format");
+					}
+				}
+				catch (System.Text.RegularExpressions.RegexMatchTimeoutException)
+				{
+					Logger?.LogError("Regex validation for field '{FieldKey}' in plugin {PluginName} timed out.",
+						field.Key, Metadata.Name);
+					errors.Add($"Field '{field.Label}' validation timed out; the validation pattern may be too complex or the input too long.");
 				}
 			}
 		}
