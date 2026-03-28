@@ -4,16 +4,28 @@ using WorkTracker.UI.Shared.Services;
 
 namespace WorkTracker.UI.Shared.Tests.Services;
 
-public class LocalizationServiceTests
+public class LocalizationServiceTests : IDisposable
 {
 	private readonly LocalizationService _sut = new();
+	private readonly CultureInfo _originalCulture = CultureInfo.CurrentCulture;
+	private readonly CultureInfo _originalUICulture = CultureInfo.CurrentUICulture;
+	private readonly LocalizationService? _originalInstance = LocalizationService.Instance;
+
+	public void Dispose()
+	{
+		CultureInfo.CurrentCulture = _originalCulture;
+		CultureInfo.CurrentUICulture = _originalUICulture;
+		if (_originalInstance != null)
+		{
+			LocalizationService.SetInstance(_originalInstance);
+		}
+	}
 
 	#region GetString
 
 	[Fact]
 	public void GetString_ExistingKey_ReturnsLocalizedValue()
 	{
-		// Use a key that we know exists in the embedded Strings.resx
 		var result = _sut.GetString("AppTitle");
 
 		result.Should().NotStartWith("[");
@@ -111,8 +123,6 @@ public class LocalizationServiceTests
 		_sut.CurrentCulture = new CultureInfo("en");
 		var english = _sut.GetString("AppTitle");
 
-		// They should be different if translations exist for both
-		// If not, at least neither should be a bracketed fallback
 		czech.Should().NotStartWith("[");
 		english.Should().NotStartWith("[");
 	}
