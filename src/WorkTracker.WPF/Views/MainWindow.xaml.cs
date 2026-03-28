@@ -17,6 +17,7 @@ public partial class MainWindow : Window
 	private readonly ITrayIconService _trayIconService;
 	private readonly ISettingsService _settingsService;
 	private readonly IWorklogStateService _worklogStateService;
+	private bool _cleanedUp;
 
 	public MainWindow(MainViewModel viewModel, ITrayIconService trayIconService, ISettingsService settingsService, ISnackbarMessageQueue messageQueue, IWorklogStateService worklogStateService)
 	{
@@ -88,10 +89,26 @@ public partial class MainWindow : Window
 		}
 		else
 		{
-			_worklogStateService.IsTrackingChanged -= OnIsTrackingChanged;
-			// Cleanup tray icon before exit
-			_trayIconService.Dispose();
+			Cleanup();
 		}
+	}
+
+	/// <summary>
+	/// Unsubscribes events and disposes resources. Called on actual window close
+	/// and from App.OnExit to ensure cleanup even when using MinimizeToTray.
+	/// </summary>
+	public void Cleanup()
+	{
+		if (_cleanedUp)
+		{
+			return;
+		}
+
+		_cleanedUp = true;
+		_worklogStateService.IsTrackingChanged -= OnIsTrackingChanged;
+		StateChanged -= OnStateChanged;
+		Closing -= OnClosing;
+		_trayIconService.Dispose();
 	}
 
 	private void OnIsTrackingChanged(object? sender, bool isTracking)

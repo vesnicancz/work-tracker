@@ -181,7 +181,7 @@
 
                     <!-- Pomodoro Timer -->
                     <Border Classes="card" Padding="12,10"
-                            IsVisible="{Binding IsPomodoroEnabled}"
+                            IsVisible="{Binding Pomodoro.IsEnabled}"
                             Background="{Binding PomodoroCardBackground}"
                             BorderBrush="{Binding PomodoroCardBorder}">
                         <StackPanel Spacing="8">
@@ -197,30 +197,30 @@
                             </Grid>
 
                             <!-- Running state -->
-                            <StackPanel IsVisible="{Binding IsPomodoroRunning}" Spacing="6">
-                                <TextBlock Text="{Binding PomodoroTimeRemaining}"
+                            <StackPanel IsVisible="{Binding Pomodoro.IsRunning}" Spacing="6">
+                                <TextBlock Text="{Binding Pomodoro.TimeRemaining}"
                                            FontSize="28" FontWeight="Bold"
                                            FontFamily="JetBrains Mono,Consolas,monospace"
                                            HorizontalAlignment="Center"
                                            Foreground="{Binding PomodoroTimerForeground, FallbackValue={DynamicResource TextBright}}" />
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="6">
-                                    <TextBlock Text="{Binding PomodoroPhaseDisplay}"
+                                    <TextBlock Text="{Binding Pomodoro.PhaseDisplay}"
                                                FontSize="12" FontWeight="Medium"
                                                Foreground="{DynamicResource TextSecondary}" />
                                     <TextBlock Text="·" FontSize="12"
                                                Foreground="{DynamicResource TextMuted}" />
-                                    <TextBlock Text="{Binding PomodoroCount}"
+                                    <TextBlock Text="{Binding Pomodoro.Count}"
                                                FontSize="12"
                                                Foreground="{DynamicResource TextMuted}" />
                                 </StackPanel>
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="4">
-                                    <Button Command="{Binding SkipPomodoroPhaseCommand}"
+                                    <Button Command="{Binding Pomodoro.SkipPhaseCommand}"
                                             ToolTip.Tip="{markup:Localize PomodoroSkip}"
                                             Background="Transparent" Padding="6">
                                         <material:MaterialIcon Kind="SkipNext" Width="18" Height="18"
                                                               Foreground="{DynamicResource TextSecondary}" />
                                     </Button>
-                                    <Button Command="{Binding StopPomodoroCommand}"
+                                    <Button Command="{Binding Pomodoro.StopCommand}"
                                             ToolTip.Tip="{markup:Localize PomodoroStop}"
                                             Background="Transparent" Padding="6">
                                         <material:MaterialIcon Kind="Stop" Width="18" Height="18"
@@ -230,8 +230,8 @@
                             </StackPanel>
 
                             <!-- Idle state -->
-                            <Button Command="{Binding StartPomodoroCommand}"
-                                    IsVisible="{Binding !IsPomodoroRunning}"
+                            <Button Command="{Binding Pomodoro.StartCommand}"
+                                    IsVisible="{Binding !Pomodoro.IsRunning}"
                                     HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                                     Padding="8,6"
                                     Background="Transparent">

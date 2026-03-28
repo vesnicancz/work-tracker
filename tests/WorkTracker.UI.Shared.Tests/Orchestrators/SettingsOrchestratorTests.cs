@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
 using WorkTracker.Application.Plugins;
+using WorkTracker.Application.Services;
 using WorkTracker.Plugin.Abstractions;
 using WorkTracker.UI.Shared.Models;
 using WorkTracker.UI.Shared.Orchestrators;
@@ -15,6 +16,7 @@ public class SettingsOrchestratorTests
 {
 	private readonly Mock<ISettingsService> _mockSettingsService;
 	private readonly Mock<IPluginManager> _mockPluginManager;
+	private readonly Mock<ISecureStorage> _mockSecureStorage;
 	private readonly Mock<IConfiguration> _mockConfiguration;
 	private readonly Mock<IAutostartManager> _mockAutostartManager;
 	private readonly Mock<ITrayIconService> _mockTrayIconService;
@@ -24,15 +26,19 @@ public class SettingsOrchestratorTests
 	{
 		_mockSettingsService = new Mock<ISettingsService>();
 		_mockPluginManager = new Mock<IPluginManager>();
+		_mockSecureStorage = new Mock<ISecureStorage>();
 		_mockConfiguration = new Mock<IConfiguration>();
 		_mockAutostartManager = new Mock<IAutostartManager>();
 		_mockTrayIconService = new Mock<ITrayIconService>();
 
 		_mockSettingsService.Setup(s => s.Settings).Returns(new ApplicationSettings());
+		_mockSecureStorage.Setup(s => s.Protect(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>())).Returns((string v, string _, string _) => v);
+		_mockSecureStorage.Setup(s => s.Unprotect(It.IsAny<string>())).Returns((string v) => v);
 
 		_orchestrator = new SettingsOrchestrator(
 			_mockSettingsService.Object,
 			_mockPluginManager.Object,
+			_mockSecureStorage.Object,
 			_mockConfiguration.Object,
 			_mockAutostartManager.Object,
 			_mockTrayIconService.Object,
@@ -173,6 +179,59 @@ public class SettingsOrchestratorTests
 			It.Is<ApplicationSettings>(a => a.Theme == "Midnight"), It.IsAny<CancellationToken>()), Times.Once);
 	}
 
+	[Fact]
+	public async Task SaveSettingsAsync_ProtectsPasswordFields()
+	{
+		var plugin = CreateMockPluginWithPasswordField("tempo", "Tempo", "ApiToken");
+		_mockPluginManager.Setup(p => p.LoadedPlugins)
+			.Returns(new Dictionary<string, IPlugin> { ["tempo"] = plugin.Object });
+
+		var pluginVm = new PluginViewModel(plugin.Object);
+		pluginVm.IsEnabled = true;
+		pluginVm.Configuration["ApiToken"] = "secret-value";
+
+		_mockSecureStorage
+			.Setup(s => s.Protect("secret-value", "tempo", "ApiToken"))
+			.Returns("CS:tempo:ApiToken");
+
+		var request = new SettingsSaveRequest
+		{
+			FavoriteWorkItems = new List<FavoriteWorkItem>(),
+			Plugins = new List<PluginViewModel> { pluginVm }
+		};
+
+		await _orchestrator.SaveSettingsAsync(request, TestContext.Current.CancellationToken);
+
+		_mockSecureStorage.Verify(s => s.Protect("secret-value", "tempo", "ApiToken"), Times.Once);
+		_mockSettingsService.Verify(s => s.SaveSettingsAsync(
+			It.Is<ApplicationSettings>(a =>
+				a.PluginConfigurations["tempo"]["ApiToken"] == "CS:tempo:ApiToken"),
+			It.IsAny<CancellationToken>()), Times.Once);
+	}
+
+	[Fact]
+	public async Task SaveSettingsAsync_RemovesCredentialWhenPasswordCleared()
+	{
+		var plugin = CreateMockPluginWithPasswordField("tempo", "Tempo", "ApiToken");
+		_mockPluginManager.Setup(p => p.LoadedPlugins)
+			.Returns(new Dictionary<string, IPlugin> { ["tempo"] = plugin.Object });
+
+		var pluginVm = new PluginViewModel(plugin.Object);
+		pluginVm.IsEnabled = true;
+		// ApiToken not set — simulates cleared password
+
+		var request = new SettingsSaveRequest
+		{
+			FavoriteWorkItems = new List<FavoriteWorkItem>(),
+			Plugins = new List<PluginViewModel> { pluginVm }
+		};
+
+		await _orchestrator.SaveSettingsAsync(request, TestContext.Current.CancellationToken);
+
+		_mockSecureStorage.Verify(s => s.Remove("tempo", "ApiToken"), Times.Once);
+		_mockSecureStorage.Verify(s => s.Protect(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+	}
+
 	#endregion SaveSettingsAsync
 
 	#region TestConnectionAsync
@@ -245,6 +304,18 @@ public class SettingsOrchestratorTests
 		plugin.Setup(p => p.GetConfigurationFields()).Returns(new List<PluginConfigurationField>
 		{
 			new() { Key = "ApiUrl", Label = "API URL", IsRequired = true }
+		});
+		plugin.Setup(p => p.InitializeAsync(It.IsAny<IDictionary<string, string>>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(true);
+		return plugin;
+	}
+
+	private static Mock<IPlugin> CreateMockPluginWithPasswordField(string id, string name, string passwordFieldKey)
+	{
+		var plugin = CreateMockPlugin(id, name);
+		plugin.Setup(p => p.GetConfigurationFields()).Returns(new List<PluginConfigurationField>
+		{
+			new() { Key = passwordFieldKey, Label = "API Token", IsRequired = true, Type = PluginConfigurationFieldType.Password }
 		});
 		plugin.Setup(p => p.InitializeAsync(It.IsAny<IDictionary<string, string>>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(true);

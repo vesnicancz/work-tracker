@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using WorkTracker.Application.Services;
 using WorkTracker.UI.Shared.Models;
 
 namespace WorkTracker.UI.Shared.Services;
@@ -11,14 +12,16 @@ namespace WorkTracker.UI.Shared.Services;
 public sealed class SettingsService : ISettingsService
 {
 	private readonly ILogger<SettingsService> _logger;
+	private readonly ISecureStorage _secureStorage;
 	private readonly string _settingsFilePath;
 	private ApplicationSettings _settings;
 
 	private static readonly JsonSerializerOptions WriteOptions = new() { WriteIndented = true };
 
-	public SettingsService(ILogger<SettingsService> logger, IHostEnvironment hostEnvironment)
+	public SettingsService(ILogger<SettingsService> logger, ISecureStorage secureStorage, IHostEnvironment hostEnvironment)
 	{
 		_logger = logger;
+		_secureStorage = secureStorage;
 
 		// Store settings in AppData/Local/WorkTracker
 		var appDataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WorkTracker");
@@ -58,6 +61,7 @@ public sealed class SettingsService : ISettingsService
 			}
 
 			_logger.LogInformation("Settings loaded successfully");
+			UnprotectPluginConfigurations(settings);
 			_settings = settings;
 			return _settings;
 		}
@@ -91,6 +95,7 @@ public sealed class SettingsService : ISettingsService
 			}
 
 			_logger.LogInformation("Settings loaded successfully");
+			UnprotectPluginConfigurations(settings);
 			_settings = settings;
 			return _settings;
 		}
@@ -103,6 +108,31 @@ public sealed class SettingsService : ISettingsService
 		}
 	}
 
+	/// <summary>
+	/// Resolves any protected values in plugin configurations via the secure storage.
+	/// Non-protected values pass through unchanged.
+	/// </summary>
+	private void UnprotectPluginConfigurations(ApplicationSettings settings)
+	{
+		if (settings.PluginConfigurations is null)
+		{
+			return;
+		}
+
+		foreach (var pluginConfig in settings.PluginConfigurations.Values)
+		{
+			if (pluginConfig is null)
+			{
+				continue;
+			}
+
+			foreach (var key in pluginConfig.Keys.ToList())
+			{
+				pluginConfig[key] = _secureStorage.Unprotect(pluginConfig[key]);
+			}
+		}
+	}
+
 	public void SaveSettings(ApplicationSettings settings)
 	{
 		try
@@ -110,6 +140,7 @@ public sealed class SettingsService : ISettingsService
 			var json = JsonSerializer.Serialize(settings, WriteOptions);
 			File.WriteAllText(_settingsFilePath, json);
 
+			UnprotectPluginConfigurations(settings);
 			_settings = settings;
 			_logger.LogInformation("Settings saved successfully");
 		}
@@ -127,6 +158,7 @@ public sealed class SettingsService : ISettingsService
 			var json = JsonSerializer.Serialize(settings, WriteOptions);
 			await File.WriteAllTextAsync(_settingsFilePath, json, cancellationToken);
 
+			UnprotectPluginConfigurations(settings);
 			_settings = settings;
 			_logger.LogInformation("Settings saved successfully");
 		}

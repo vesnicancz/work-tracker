@@ -151,6 +151,7 @@ public partial class App : global::Avalonia.Application
 			// Load plugins in the background — not needed for initial UI
 			var pluginLogger = _host.Services.GetRequiredService<ILoggerFactory>().CreateLogger<App>();
 			var configuration = _host.Services.GetRequiredService<IConfiguration>();
+			var notificationService = _host.Services.GetRequiredService<INotificationService>();
 			_ = Task.Run(async () =>
 			{
 				try
@@ -163,6 +164,7 @@ public partial class App : global::Avalonia.Application
 				catch (Exception pluginEx)
 				{
 					pluginLogger.LogError(pluginEx, "Plugin initialization failed");
+					notificationService.ShowError($"Plugin initialization failed: {pluginEx.Message}");
 				}
 			});
 		}
