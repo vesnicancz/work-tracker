@@ -404,7 +404,7 @@ static int ShowHelp()
 
 static int ShowUnknownCommand(string command)
 {
-	AnsiConsole.MarkupLine($"[red]Unknown command:[/] {command}");
+	AnsiConsole.MarkupLine($"[red]Unknown command:[/] {Markup.Escape(command)}");
 	AnsiConsole.MarkupLine("Run [cyan]worklog help[/] to see available commands");
 	return 1;
 }

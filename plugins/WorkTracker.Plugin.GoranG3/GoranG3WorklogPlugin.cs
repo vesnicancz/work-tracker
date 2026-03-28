@@ -56,8 +56,8 @@ public sealed class GoranG3WorklogPlugin : WorklogUploadPluginBase, IDisposable
 				Type = PluginConfigurationFieldType.Url,
 				IsRequired = true,
 				Placeholder = "https://moonfish-g3.goran.cz",
-				ValidationPattern = @"^https?://.*",
-				ValidationMessage = "Please enter a valid URL starting with http:// or https://"
+				ValidationPattern = @"^https://.*",
+				ValidationMessage = "Please enter a valid HTTPS URL"
 			},
 			new()
 			{

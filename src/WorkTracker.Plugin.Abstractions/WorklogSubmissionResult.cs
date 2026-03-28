@@ -11,5 +11,5 @@ public class WorklogSubmissionResult
 
 	public int FailedEntries { get; init; }
 
-	public IReadOnlyList<WorklogSubmissionError> Errors { get; init; } = Array.Empty<WorklogSubmissionError>();
+	public IReadOnlyList<WorklogSubmissionError> Errors { get; init; } = [];
 }

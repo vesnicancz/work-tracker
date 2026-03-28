@@ -9,8 +9,4 @@
     <InternalsVisibleTo Include="WorkTracker.UI.Shared.Tests" />
   </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Update="MinVer" Version="7.0.0" />
-  </ItemGroup>
-
 </Project>

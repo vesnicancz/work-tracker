@@ -113,7 +113,7 @@ public sealed class PluginManager : IPluginManager
 
 		foreach (var directory in directoriesSnapshot)
 		{
-			var pluginFiles = Directory.GetFiles(directory, "*.dll", SearchOption.AllDirectories);
+			var pluginFiles = Directory.GetFiles(directory, "WorkTracker.Plugin.*.dll", SearchOption.AllDirectories);
 			foreach (var pluginFile in pluginFiles)
 			{
 				try
@@ -193,6 +193,12 @@ public sealed class PluginManager : IPluginManager
 
 						_loadedPlugins[pluginId] = plugin;
 						_pluginContexts[pluginId] = context;
+					}
+
+					// Set logger for plugins that support it
+					if (plugin is PluginBase pluginBase)
+					{
+						pluginBase.SetLogger(_logger);
 					}
 
 					anyLoaded = true;

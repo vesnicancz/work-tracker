@@ -42,8 +42,10 @@ public sealed class CredentialStoreSecureStorage : ISecureStorage
 		}
 		catch (Exception ex)
 		{
-			_logger.LogWarning(ex, "Failed to store credential for {PluginId}:{FieldKey}, storing as plaintext", pluginId, fieldKey);
-			return plainText;
+			_logger.LogError(ex, "Failed to store credential for {PluginId}:{FieldKey}", pluginId, fieldKey);
+			throw new InvalidOperationException(
+				$"Failed to store credential for plugin '{pluginId}' in the OS credential store. " +
+				"Ensure your system's credential manager is available and working.", ex);
 		}
 	}
 
@@ -63,7 +65,7 @@ public sealed class CredentialStoreSecureStorage : ISecureStorage
 		var separatorIndex = keyPart.IndexOf(':');
 		if (separatorIndex < 0)
 		{
-			_logger.LogWarning("Invalid credential placeholder format: {Value}", protectedText);
+			_logger.LogWarning("Invalid credential placeholder format (length={Length})", protectedText.Length);
 			return protectedText;
 		}
 

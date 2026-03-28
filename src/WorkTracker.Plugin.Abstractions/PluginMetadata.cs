@@ -43,5 +43,5 @@ public class PluginMetadata
 	/// <summary>
 	/// Plugin tags/categories
 	/// </summary>
-	public IReadOnlyList<string> Tags { get; init; } = Array.Empty<string>();
+	public IReadOnlyList<string> Tags { get; init; } = [];
 }

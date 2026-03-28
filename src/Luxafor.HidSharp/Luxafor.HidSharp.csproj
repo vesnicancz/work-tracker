@@ -30,10 +30,6 @@
     <None Include="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Update="MinVer" Version="7.0.0" />
-  </ItemGroup>
-
   <PropertyGroup>
     <MinVerSkip>true</MinVerSkip>
   </PropertyGroup>

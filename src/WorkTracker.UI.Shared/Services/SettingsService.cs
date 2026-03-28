@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -139,6 +140,7 @@ public sealed class SettingsService : ISettingsService
 		{
 			var json = JsonSerializer.Serialize(settings, WriteOptions);
 			File.WriteAllText(_settingsFilePath, json);
+			SetOwnerOnlyPermissions(_settingsFilePath);
 
 			UnprotectPluginConfigurations(settings);
 			_settings = settings;
@@ -157,6 +159,7 @@ public sealed class SettingsService : ISettingsService
 		{
 			var json = JsonSerializer.Serialize(settings, WriteOptions);
 			await File.WriteAllTextAsync(_settingsFilePath, json, cancellationToken);
+			SetOwnerOnlyPermissions(_settingsFilePath);
 
 			UnprotectPluginConfigurations(settings);
 			_settings = settings;
@@ -167,6 +170,24 @@ public sealed class SettingsService : ISettingsService
 		{
 			_logger.LogError(ex, "Error saving settings");
 			throw;
+		}
+	}
+
+	private void SetOwnerOnlyPermissions(string filePath)
+	{
+		if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+		{
+			return;
+		}
+
+		try
+		{
+			File.SetUnixFileMode(filePath,
+				UnixFileMode.UserRead | UnixFileMode.UserWrite);
+		}
+		catch (Exception ex)
+		{
+			_logger.LogWarning(ex, "Failed to set file permissions on {Path}", filePath);
 		}
 	}
 }

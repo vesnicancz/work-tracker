@@ -30,7 +30,7 @@ public sealed class CommandHandler
 
 			if (result.IsFailure)
 			{
-				AnsiConsole.MarkupLine($"[red]✗ Error:[/] {result.Error}");
+				AnsiConsole.MarkupLine($"[red]✗ Error:[/] {Markup.Escape(result.Error)}");
 				return 1;
 			}
 
@@ -39,17 +39,17 @@ public sealed class CommandHandler
 			// Show info if previous work was auto-stopped
 			if (activeEntry != null)
 			{
-				AnsiConsole.MarkupLine($"[yellow]⚠[/] Auto-stopped previous work on ticket [bold]{activeEntry.TicketId ?? "N/A"}[/]");
+				AnsiConsole.MarkupLine($"[yellow]⚠[/] Auto-stopped previous work on ticket [bold]{Markup.Escape(activeEntry.TicketId ?? "N/A")}[/]");
 				AnsiConsole.MarkupLine($"  Stopped at: [dim]{entry.StartTime:HH:mm:ss}[/]");
 				AnsiConsole.WriteLine();
 			}
 
-			var ticketDisplay = string.IsNullOrWhiteSpace(ticketId) ? "[dim]no ticket[/]" : $"[bold]{ticketId}[/]";
+			var ticketDisplay = string.IsNullOrWhiteSpace(ticketId) ? "[dim]no ticket[/]" : $"[bold]{Markup.Escape(ticketId)}[/]";
 			AnsiConsole.MarkupLine($"[green]✓[/] Started work on {ticketDisplay}");
 
 			if (!string.IsNullOrWhiteSpace(description))
 			{
-				AnsiConsole.MarkupLine($"  Description: [cyan]{description}[/]");
+				AnsiConsole.MarkupLine($"  Description: [cyan]{Markup.Escape(description)}[/]");
 			}
 
 			AnsiConsole.MarkupLine($"  Start time: [yellow]{entry.StartTime:HH:mm:ss}[/]");
@@ -59,7 +59,7 @@ public sealed class CommandHandler
 		}
 		catch (Exception ex)
 		{
-			AnsiConsole.MarkupLine($"[red]✗ Error:[/] {ex.Message}");
+			AnsiConsole.MarkupLine($"[red]✗ Error:[/] {Markup.Escape(ex.Message)}");
 			return 1;
 		}
 	}
@@ -72,7 +72,7 @@ public sealed class CommandHandler
 
 			if (result.IsFailure)
 			{
-				AnsiConsole.MarkupLine($"[red]✗ Error:[/] {result.Error}");
+				AnsiConsole.MarkupLine($"[red]✗ Error:[/] {Markup.Escape(result.Error)}");
 				return 1;
 			}
 
@@ -83,7 +83,7 @@ public sealed class CommandHandler
 				? $"{(int)duration.Value.TotalHours}h {duration.Value.Minutes}m"
 				: "N/A";
 
-			var ticketDisplay = string.IsNullOrWhiteSpace(entry.TicketId) ? "[dim]no ticket[/]" : $"[bold]{entry.TicketId}[/]";
+			var ticketDisplay = string.IsNullOrWhiteSpace(entry.TicketId) ? "[dim]no ticket[/]" : $"[bold]{Markup.Escape(entry.TicketId)}[/]";
 			AnsiConsole.MarkupLine($"[green]✓[/] Stopped work on {ticketDisplay}");
 			AnsiConsole.MarkupLine($"  End time: [yellow]{entry.EndTime:HH:mm:ss}[/]");
 			AnsiConsole.MarkupLine($"  Duration: [cyan]{durationStr}[/]");
@@ -92,7 +92,7 @@ public sealed class CommandHandler
 		}
 		catch (Exception ex)
 		{
-			AnsiConsole.MarkupLine($"[red]✗ Error:[/] {ex.Message}");
+			AnsiConsole.MarkupLine($"[red]✗ Error:[/] {Markup.Escape(ex.Message)}");
 			return 1;
 		}
 	}
@@ -116,11 +116,11 @@ public sealed class CommandHandler
 			table.AddColumn("Value");
 
 			table.AddRow("Status", "[green]ACTIVE[/]");
-			table.AddRow("Ticket ID", string.IsNullOrWhiteSpace(activeEntry.TicketId) ? "[dim]N/A[/]" : $"[bold]{activeEntry.TicketId}[/]");
+			table.AddRow("Ticket ID", string.IsNullOrWhiteSpace(activeEntry.TicketId) ? "[dim]N/A[/]" : $"[bold]{Markup.Escape(activeEntry.TicketId)}[/]");
 
 			if (!string.IsNullOrWhiteSpace(activeEntry.Description))
 			{
-				table.AddRow("Description", $"[cyan]{activeEntry.Description}[/]");
+				table.AddRow("Description", $"[cyan]{Markup.Escape(activeEntry.Description)}[/]");
 			}
 
 			table.AddRow("Start Time", activeEntry.StartTime.ToString("yyyy-MM-dd HH:mm:ss"));
@@ -133,7 +133,7 @@ public sealed class CommandHandler
 		}
 		catch (Exception ex)
 		{
-			AnsiConsole.MarkupLine($"[red]✗ Error:[/] {ex.Message}");
+			AnsiConsole.MarkupLine($"[red]✗ Error:[/] {Markup.Escape(ex.Message)}");
 			return 1;
 		}
 	}
@@ -171,8 +171,8 @@ public sealed class CommandHandler
 
 				var status = entry.IsActive ? "[green]ACTIVE[/]" : "[dim]completed[/]";
 				var endTimeStr = entry.EndTime?.ToString("HH:mm") ?? "-";
-				var ticketStr = string.IsNullOrWhiteSpace(entry.TicketId) ? "[dim]N/A[/]" : entry.TicketId;
-				var descStr = string.IsNullOrWhiteSpace(entry.Description) ? "[dim]-[/]" : entry.Description;
+				var ticketStr = string.IsNullOrWhiteSpace(entry.TicketId) ? "[dim]N/A[/]" : Markup.Escape(entry.TicketId);
+				var descStr = string.IsNullOrWhiteSpace(entry.Description) ? "[dim]-[/]" : Markup.Escape(entry.Description);
 
 				table.AddRow(
 					entry.Id.ToString(),
@@ -197,7 +197,7 @@ public sealed class CommandHandler
 		}
 		catch (Exception ex)
 		{
-			AnsiConsole.MarkupLine($"[red]✗ Error:[/] {ex.Message}");
+			AnsiConsole.MarkupLine($"[red]✗ Error:[/] {Markup.Escape(ex.Message)}");
 			return 1;
 		}
 	}
@@ -211,19 +211,19 @@ public sealed class CommandHandler
 
 			if (result.IsFailure)
 			{
-				AnsiConsole.MarkupLine($"[red]✗ Error:[/] {result.Error}");
+				AnsiConsole.MarkupLine($"[red]✗ Error:[/] {Markup.Escape(result.Error)}");
 				return 1;
 			}
 
 			var entry = result.Value;
 
 			AnsiConsole.MarkupLine($"[green]✓[/] Updated work entry [bold]#{id}[/]");
-			var ticketDisplay = string.IsNullOrWhiteSpace(entry.TicketId) ? "[dim]N/A[/]" : $"[bold]{entry.TicketId}[/]";
+			var ticketDisplay = string.IsNullOrWhiteSpace(entry.TicketId) ? "[dim]N/A[/]" : $"[bold]{Markup.Escape(entry.TicketId)}[/]";
 			AnsiConsole.MarkupLine($"  Ticket: {ticketDisplay}");
 
 			if (!string.IsNullOrWhiteSpace(entry.Description))
 			{
-				AnsiConsole.MarkupLine($"  Description: [cyan]{entry.Description}[/]");
+				AnsiConsole.MarkupLine($"  Description: [cyan]{Markup.Escape(entry.Description)}[/]");
 			}
 
 			AnsiConsole.MarkupLine($"  Time: {entry.StartTime:HH:mm} - {entry.EndTime:HH:mm}");
@@ -232,7 +232,7 @@ public sealed class CommandHandler
 		}
 		catch (Exception ex)
 		{
-			AnsiConsole.MarkupLine($"[red]✗ Error:[/] {ex.Message}");
+			AnsiConsole.MarkupLine($"[red]✗ Error:[/] {Markup.Escape(ex.Message)}");
 			return 1;
 		}
 	}
@@ -245,7 +245,7 @@ public sealed class CommandHandler
 
 			if (result.IsFailure)
 			{
-				AnsiConsole.MarkupLine($"[red]✗ Error:[/] {result.Error}");
+				AnsiConsole.MarkupLine($"[red]✗ Error:[/] {Markup.Escape(result.Error)}");
 				return 1;
 			}
 
@@ -254,7 +254,7 @@ public sealed class CommandHandler
 		}
 		catch (Exception ex)
 		{
-			AnsiConsole.MarkupLine($"[red]✗ Error:[/] {ex.Message}");
+			AnsiConsole.MarkupLine($"[red]✗ Error:[/] {Markup.Escape(ex.Message)}");
 			return 1;
 		}
 	}
@@ -289,7 +289,7 @@ public sealed class CommandHandler
 			foreach (var worklog in preview.Worklogs)
 			{
 				table.AddRow(
-					worklog.TicketId ?? "[dim]N/A[/]",
+					string.IsNullOrWhiteSpace(worklog.TicketId) ? "[dim]N/A[/]" : Markup.Escape(worklog.TicketId),
 					worklog.StartTime.ToString("HH:mm"),
 					worklog.EndTime.ToString("HH:mm"),
 					$"{worklog.DurationMinutes / 60}h {worklog.DurationMinutes % 60}m"
@@ -313,13 +313,13 @@ public sealed class CommandHandler
 			}
 			else
 			{
-				AnsiConsole.MarkupLine($"[red]✗ Failed to send entries to Tempo: {result.Error}[/]");
+				AnsiConsole.MarkupLine($"[red]✗ Failed to send entries to Tempo:[/] {Markup.Escape(result.Error)}");
 				return 1;
 			}
 		}
 		catch (Exception ex)
 		{
-			AnsiConsole.MarkupLine($"[red]✗ Error:[/] {ex.Message}");
+			AnsiConsole.MarkupLine($"[red]✗ Error:[/] {Markup.Escape(ex.Message)}");
 			return 1;
 		}
 	}
@@ -365,7 +365,7 @@ public sealed class CommandHandler
 				foreach (var worklog in dayPreview.Worklogs)
 				{
 					table.AddRow(
-						worklog.TicketId ?? "[dim]N/A[/]",
+						string.IsNullOrWhiteSpace(worklog.TicketId) ? "[dim]N/A[/]" : Markup.Escape(worklog.TicketId),
 						worklog.StartTime.ToString("HH:mm"),
 						worklog.EndTime.ToString("HH:mm"),
 						$"{worklog.DurationMinutes / 60}h {worklog.DurationMinutes % 60}m"
@@ -397,7 +397,7 @@ public sealed class CommandHandler
 					AnsiConsole.MarkupLine($"[yellow]⚠[/] {submissionResult.FailedEntries} entries failed");
 					foreach (var error in submissionResult.Errors)
 					{
-						AnsiConsole.MarkupLine($"  [red]-[/] {error.Date:yyyy-MM-dd}: {error.ErrorMessage}");
+						AnsiConsole.MarkupLine($"  [red]-[/] {error.Date:yyyy-MM-dd}: {Markup.Escape(error.ErrorMessage)}");
 					}
 				}
 
@@ -405,13 +405,13 @@ public sealed class CommandHandler
 			}
 			else
 			{
-				AnsiConsole.MarkupLine($"[red]✗ Failed to send entries to Tempo: {result.Error}[/]");
+				AnsiConsole.MarkupLine($"[red]✗ Failed to send entries to Tempo:[/] {Markup.Escape(result.Error)}");
 				return 1;
 			}
 		}
 		catch (Exception ex)
 		{
-			AnsiConsole.MarkupLine($"[red]✗ Error:[/] {ex.Message}");
+			AnsiConsole.MarkupLine($"[red]✗ Error:[/] {Markup.Escape(ex.Message)}");
 			return 1;
 		}
 	}
