@@ -8,13 +8,15 @@ namespace WorkTracker.Application.Tests.Plugins;
 
 public class PluginManagerTests : IDisposable
 {
-	private readonly Mock<ILogger<PluginManager>> _mockLogger;
+	private readonly Mock<ILoggerFactory> _mockLoggerFactory;
 	private readonly PluginManager _pluginManager;
 
 	public PluginManagerTests()
 	{
-		_mockLogger = new Mock<ILogger<PluginManager>>();
-		_pluginManager = new PluginManager(_mockLogger.Object);
+		_mockLoggerFactory = new Mock<ILoggerFactory>();
+		_mockLoggerFactory.Setup(f => f.CreateLogger(It.IsAny<string>()))
+			.Returns(Mock.Of<ILogger>());
+		_pluginManager = new PluginManager(_mockLoggerFactory.Object);
 	}
 
 	[Fact]

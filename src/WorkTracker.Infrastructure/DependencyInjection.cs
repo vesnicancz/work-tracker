@@ -45,8 +45,9 @@ public static class DependencyInjection
 		// Plugin System
 		services.AddSingleton<PluginManager>(serviceProvider =>
 		{
-			var logger = serviceProvider.GetRequiredService<ILogger<PluginManager>>();
-			var pluginManager = new PluginManager(logger);
+			var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
+			var logger = loggerFactory.CreateLogger<PluginManager>();
+			var pluginManager = new PluginManager(loggerFactory);
 
 			// Load plugin directories from configuration, default to "plugins" subfolder next to executable
 			// Relative paths are resolved against AppContext.BaseDirectory (the exe location)

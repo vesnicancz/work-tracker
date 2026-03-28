@@ -18,7 +18,9 @@ public class PluginLoadContextTests : IAsyncDisposable
 	{
 		_tempDir = Path.Combine(Path.GetTempPath(), $"wt_test_{Guid.NewGuid():N}");
 		Directory.CreateDirectory(_tempDir);
-		_pluginManager = new PluginManager(new Mock<ILogger<PluginManager>>().Object);
+		var mockLoggerFactory = new Mock<ILoggerFactory>();
+		mockLoggerFactory.Setup(f => f.CreateLogger(It.IsAny<string>())).Returns(Mock.Of<ILogger>());
+		_pluginManager = new PluginManager(mockLoggerFactory.Object);
 	}
 
 	public async ValueTask DisposeAsync()

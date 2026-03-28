@@ -12,7 +12,8 @@ namespace WorkTracker.Application.Plugins;
 /// </summary>
 public sealed class PluginManager : IPluginManager
 {
-	private readonly ILogger<PluginManager> _logger;
+	private readonly ILogger _logger;
+	private readonly ILoggerFactory _loggerFactory;
 	private readonly Lock _lock = new();
 
 	private readonly Dictionary<string, IPlugin> _loadedPlugins = new();
@@ -20,9 +21,10 @@ public sealed class PluginManager : IPluginManager
 	private readonly List<string> _pluginDirectories = new();
 	private readonly HashSet<string> _enabledPluginIds = new();
 
-	public PluginManager(ILogger<PluginManager> logger)
+	public PluginManager(ILoggerFactory loggerFactory)
 	{
-		_logger = logger;
+		_loggerFactory = loggerFactory;
+		_logger = loggerFactory.CreateLogger<PluginManager>();
 	}
 
 	/// <summary>
@@ -195,10 +197,9 @@ public sealed class PluginManager : IPluginManager
 						_pluginContexts[pluginId] = context;
 					}
 
-					// Set logger for plugins that support it
 					if (plugin is PluginBase pluginBase)
 					{
-						pluginBase.SetLogger(_logger);
+						pluginBase.SetLogger(CreatePluginLogger(pluginId));
 					}
 
 					anyLoaded = true;
@@ -236,10 +237,9 @@ public sealed class PluginManager : IPluginManager
 			var plugin = new T();
 			var pluginId = plugin.Metadata.Id;
 
-			// Set logger for plugins that support it
 			if (plugin is PluginBase pluginBase)
 			{
-				pluginBase.SetLogger(_logger);
+				pluginBase.SetLogger(CreatePluginLogger(pluginId));
 			}
 
 			lock (_lock)
@@ -386,4 +386,7 @@ public sealed class PluginManager : IPluginManager
 	{
 		await UnloadAllPluginsAsync();
 	}
+
+	private ILogger CreatePluginLogger(string pluginId) =>
+		_loggerFactory.CreateLogger($"WorkTracker.Plugin.{pluginId}");
 }
