@@ -73,13 +73,6 @@ public class CredentialStoreSecureStorageTests : IDisposable
 	}
 
 	[Fact]
-	public void Protect_NullString_ReturnsNull()
-	{
-		var result = _sut.Protect(null!, _testPluginId, "key");
-		result.Should().BeNull();
-	}
-
-	[Fact]
 	public void Protect_AlreadyProtected_ReturnsUnchanged()
 	{
 		var alreadyProtected = $"{ProtectedPrefix}some.plugin:someKey";

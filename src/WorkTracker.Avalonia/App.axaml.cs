@@ -170,8 +170,7 @@ public partial class App : global::Avalonia.Application
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Initialization failed: {ex}");
-			Console.Error.WriteLine($"Initialization failed: {ex}");
+			LogErrorSafe(ex, "Initialization failed");
 
 			// Show error dialog
 			var errorWindow = new MessageBoxWindow("Initialization Error",

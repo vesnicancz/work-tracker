@@ -4,6 +4,7 @@ using WorkTracker.UI.Shared.Services;
 
 namespace WorkTracker.UI.Shared.Tests.Services;
 
+[Collection("LocalizationTests")]
 public class LocalizationServiceTests : IDisposable
 {
 	private readonly LocalizationService _sut = new();

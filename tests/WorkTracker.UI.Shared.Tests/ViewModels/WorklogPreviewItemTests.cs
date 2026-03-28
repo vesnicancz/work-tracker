@@ -145,7 +145,7 @@ public class WorklogPreviewItemTests
 	public void StartTimeDisplay_ValidTime_UpdatesStartTime()
 	{
 		var date = new DateTime(2025, 3, 15);
-		var item = new WorklogPreviewItem { Date = date, EndTime = date.AddHours(12) };
+		var item = new WorklogPreviewItem { Date = date, StartTime = date.AddHours(8), EndTime = date.AddHours(12) };
 
 		item.StartTimeDisplay = "9:30";
 
@@ -156,7 +156,7 @@ public class WorklogPreviewItemTests
 	public void StartTimeDisplay_TwoDigitFormat_UpdatesStartTime()
 	{
 		var date = new DateTime(2025, 3, 15);
-		var item = new WorklogPreviewItem { Date = date, EndTime = date.AddHours(12) };
+		var item = new WorklogPreviewItem { Date = date, StartTime = date.AddHours(8), EndTime = date.AddHours(12) };
 
 		item.StartTimeDisplay = "09:30";
 
@@ -212,7 +212,7 @@ public class WorklogPreviewItemTests
 	public void EndTimeDisplay_Getter_ReturnsFormattedTime()
 	{
 		var date = new DateTime(2025, 3, 15);
-		var item = new WorklogPreviewItem { Date = date };
+		var item = new WorklogPreviewItem { Date = date, StartTime = date.AddHours(9) };
 		item.EndTime = date.AddHours(17).AddMinutes(30);
 
 		item.EndTimeDisplay.Should().Be("17:30");
@@ -304,7 +304,7 @@ public class WorklogPreviewItemTests
 	public void StartTime_Changed_RaisesMultiplePropertyNotifications()
 	{
 		var date = new DateTime(2025, 3, 15);
-		var item = new WorklogPreviewItem { Date = date, EndTime = date.AddHours(12) };
+		var item = new WorklogPreviewItem { Date = date, StartTime = date.AddHours(8), EndTime = date.AddHours(12) };
 		var propertyNames = new List<string>();
 		item.PropertyChanged += (_, e) => propertyNames.Add(e.PropertyName!);
 
