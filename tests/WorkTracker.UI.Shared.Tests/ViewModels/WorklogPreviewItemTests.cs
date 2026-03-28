@@ -261,7 +261,10 @@ public class WorklogPreviewItemTests
 		var changed = false;
 		item.PropertyChanged += (_, e) =>
 		{
-			if (e.PropertyName == nameof(WorklogPreviewItem.HasError)) changed = true;
+			if (e.PropertyName == nameof(WorklogPreviewItem.HasError))
+			{
+				changed = true;
+			}
 		};
 
 		item.HasError = true;
@@ -277,7 +280,10 @@ public class WorklogPreviewItemTests
 		var changed = false;
 		item.PropertyChanged += (_, e) =>
 		{
-			if (e.PropertyName == nameof(WorklogPreviewItem.ErrorMessage)) changed = true;
+			if (e.PropertyName == nameof(WorklogPreviewItem.ErrorMessage))
+			{
+				changed = true;
+			}
 		};
 
 		item.ErrorMessage = "Something went wrong";
