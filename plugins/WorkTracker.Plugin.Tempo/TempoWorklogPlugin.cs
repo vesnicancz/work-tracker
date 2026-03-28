@@ -62,8 +62,8 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 				IsRequired = true,
 				DefaultValue = "https://api.eu.tempo.io/4",
 				Placeholder = "https://api.eu.tempo.io/4",
-				ValidationPattern = @"^https?://.*",
-				ValidationMessage = "Please enter a valid URL starting with http:// or https://"
+				ValidationPattern = @"^https://.*",
+				ValidationMessage = "Please enter a valid HTTPS URL"
 			},
 			new()
 			{
@@ -82,8 +82,8 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 				Type = PluginConfigurationFieldType.Url,
 				IsRequired = true,
 				Placeholder = "https://your-domain.atlassian.net",
-				ValidationPattern = @"^https?://.*",
-				ValidationMessage = "Please enter a valid URL starting with http:// or https://"
+				ValidationPattern = @"^https://.*",
+				ValidationMessage = "Please enter a valid HTTPS URL"
 			},
 			new()
 			{
@@ -129,6 +129,11 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 		_jiraEmail = GetRequiredConfigValue(ConfigKeys.JiraEmail);
 		_jiraApiToken = GetRequiredConfigValue(ConfigKeys.JiraApiToken);
 		_jiraAccountId = GetConfigValue(ConfigKeys.JiraAccountId);
+
+		// Dispose previous clients and reset disposed state for re-initialization
+		_tempoHttpClient?.Dispose();
+		_jiraHttpClient?.Dispose();
+		_disposed = false;
 
 		// Initialize Tempo HTTP client
 		_tempoHttpClient = new HttpClient
@@ -345,7 +350,7 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 						? descProp.GetString()
 						: null;
 
-					if (DateTime.TryParse($"{startDateStr} {startTimeStr}", out var startTime))
+					if (DateTime.TryParse($"{startDateStr} {startTimeStr}", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var startTime))
 					{
 						worklogs.Add(new PluginWorklogEntry
 						{

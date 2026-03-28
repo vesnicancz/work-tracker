@@ -27,8 +27,4 @@
     <ProjectReference Include="..\..\src\WorkTracker.UI.Shared\WorkTracker.UI.Shared.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Update="MinVer" Version="7.0.0" />
-  </ItemGroup>
-
 </Project>

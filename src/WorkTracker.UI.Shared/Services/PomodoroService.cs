@@ -354,7 +354,7 @@ public sealed class PomodoroService : IPomodoroService, IDisposable
 			return;
 		}
 
-		_ = _systemNotification.ShowNotificationAsync(_localization["Pomodoro"], message);
+		_ = ShowSystemNotificationSafe(message);
 	}
 
 	private void RememberCurrentTracking()
@@ -413,6 +413,18 @@ public sealed class PomodoroService : IPomodoroService, IDisposable
 		RememberCurrentTracking();
 
 		_ = AutoStopTrackingSafe();
+	}
+
+	private async Task ShowSystemNotificationSafe(string message)
+	{
+		try
+		{
+			await _systemNotification.ShowNotificationAsync(_localization["Pomodoro"], message);
+		}
+		catch (Exception ex)
+		{
+			_logger.LogWarning(ex, "Failed to show system notification");
+		}
 	}
 
 	private async Task AutoStartTrackingSafe()
