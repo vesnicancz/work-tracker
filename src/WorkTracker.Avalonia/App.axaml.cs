@@ -241,7 +241,8 @@ public partial class App : global::Avalonia.Application
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Failed to open work entry dialog: {ex}");
+			var logger = _host?.Services.GetService<ILogger<App>>();
+			logger?.LogError(ex, "Failed to open work entry dialog");
 		}
 	}
 
@@ -262,7 +263,8 @@ public partial class App : global::Avalonia.Application
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"Failed to shut down host: {ex}");
+			var logger = _host?.Services.GetService<ILogger<App>>();
+			logger?.LogError(ex, "Failed to shut down host");
 		}
 	}
 
