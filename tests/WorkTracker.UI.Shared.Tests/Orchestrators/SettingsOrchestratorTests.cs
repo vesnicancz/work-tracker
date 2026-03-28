@@ -312,14 +312,7 @@ public class SettingsOrchestratorTests
 
 	private static Mock<IPlugin> CreateMockPluginWithPasswordField(string id, string name, string passwordFieldKey)
 	{
-		var plugin = new Mock<IPlugin>();
-		plugin.Setup(p => p.Metadata).Returns(new PluginMetadata
-		{
-			Id = id,
-			Name = name,
-			Version = new Version(1, 0),
-			Author = "Test"
-		});
+		var plugin = CreateMockPlugin(id, name);
 		plugin.Setup(p => p.GetConfigurationFields()).Returns(new List<PluginConfigurationField>
 		{
 			new() { Key = passwordFieldKey, Label = "API Token", IsRequired = true, Type = PluginConfigurationFieldType.Password }
