@@ -8,13 +8,15 @@ namespace WorkTracker.Application.Tests.Plugins;
 
 public class PluginManagerTests : IDisposable
 {
-	private readonly Mock<ILogger<PluginManager>> _mockLogger;
+	private readonly Mock<ILoggerFactory> _mockLoggerFactory;
 	private readonly PluginManager _pluginManager;
 
 	public PluginManagerTests()
 	{
-		_mockLogger = new Mock<ILogger<PluginManager>>();
-		_pluginManager = new PluginManager(_mockLogger.Object);
+		_mockLoggerFactory = new Mock<ILoggerFactory>();
+		_mockLoggerFactory.Setup(f => f.CreateLogger(It.IsAny<string>()))
+			.Returns(Mock.Of<ILogger>());
+		_pluginManager = new PluginManager(_mockLoggerFactory.Object);
 	}
 
 	[Fact]
@@ -154,6 +156,19 @@ public class PluginManagerTests : IDisposable
 		_pluginManager.LoadedPlugins.Should().BeEmpty();
 	}
 
+	[Fact]
+	public void LoadEmbeddedPlugin_WithPluginBaseDerived_ShouldSetPluginSpecificLogger()
+	{
+		// Act
+		var result = _pluginManager.LoadEmbeddedPlugin<TestPluginBaseDerived>();
+
+		// Assert
+		result.Should().BeTrue();
+		_mockLoggerFactory.Verify(
+			f => f.CreateLogger("WorkTracker.Plugin.test.pluginbase"),
+			Times.Once);
+	}
+
 	public async void Dispose()
 	{
 		if (_pluginManager != null)
@@ -258,4 +273,22 @@ public class TestWorklogPlugin : IWorklogUploadPlugin
 	{
 		return Task.FromResult(PluginResult<bool>.Success(false));
 	}
+}
+
+public class TestPluginBaseDerived : PluginBase
+{
+	public override PluginMetadata Metadata => new()
+	{
+		Id = "test.pluginbase",
+		Name = "Test PluginBase Plugin",
+		Version = new Version(1, 0, 0),
+		Author = "Test Author"
+	};
+
+	public override IReadOnlyList<PluginConfigurationField> GetConfigurationFields() => [];
+
+	protected override Task<bool> OnInitializeAsync(IDictionary<string, string> configuration, CancellationToken cancellationToken)
+		=> Task.FromResult(true);
+
+	protected override Task OnShutdownAsync() => Task.CompletedTask;
 }
