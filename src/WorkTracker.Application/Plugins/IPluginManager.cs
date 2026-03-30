@@ -33,6 +33,16 @@ public interface IPluginManager : IAsyncDisposable
 	IEnumerable<IStatusIndicatorPlugin> StatusIndicatorPlugins { get; }
 
 	/// <summary>
+	/// Gets all loaded work suggestion plugins (unfiltered - includes disabled plugins)
+	/// </summary>
+	IEnumerable<IWorkSuggestionPlugin> AllWorkSuggestionPlugins { get; }
+
+	/// <summary>
+	/// Gets all enabled work suggestion plugins (filtered by enabled state)
+	/// </summary>
+	IEnumerable<IWorkSuggestionPlugin> WorkSuggestionPlugins { get; }
+
+	/// <summary>
 	/// Sets which plugins are enabled
 	/// </summary>
 	void SetEnabledPlugins(IEnumerable<string> pluginIds);

@@ -242,7 +242,7 @@ public class SettingsOrchestratorTests
 		var plugin = CreateMockPlugin("basic", "Basic");
 		var vm = new PluginViewModel(plugin.Object);
 
-		var result = await _orchestrator.TestConnectionAsync(vm, TestContext.Current.CancellationToken);
+		var result = await _orchestrator.TestConnectionAsync(vm, null, TestContext.Current.CancellationToken);
 
 		result.Should().Contain("not available");
 	}
@@ -251,12 +251,12 @@ public class SettingsOrchestratorTests
 	public async Task TestConnectionAsync_Success_ReturnsSuccessMessage()
 	{
 		var worklogPlugin = CreateMockWorklogPlugin("tempo", "Tempo");
-		worklogPlugin.Setup(p => p.TestConnectionAsync(It.IsAny<CancellationToken>()))
+		worklogPlugin.Setup(p => p.TestConnectionAsync(It.IsAny<IProgress<string>?>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(PluginResult<bool>.Success(true));
 
 		var vm = new PluginViewModel(worklogPlugin.Object);
 
-		var result = await _orchestrator.TestConnectionAsync(vm, TestContext.Current.CancellationToken);
+		var result = await _orchestrator.TestConnectionAsync(vm, null, TestContext.Current.CancellationToken);
 
 		result.Should().Contain("successful");
 	}
@@ -265,12 +265,12 @@ public class SettingsOrchestratorTests
 	public async Task TestConnectionAsync_Failure_ReturnsErrorMessage()
 	{
 		var worklogPlugin = CreateMockWorklogPlugin("tempo", "Tempo");
-		worklogPlugin.Setup(p => p.TestConnectionAsync(It.IsAny<CancellationToken>()))
+		worklogPlugin.Setup(p => p.TestConnectionAsync(It.IsAny<IProgress<string>?>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(PluginResult<bool>.Failure("Auth failed"));
 
 		var vm = new PluginViewModel(worklogPlugin.Object);
 
-		var result = await _orchestrator.TestConnectionAsync(vm, TestContext.Current.CancellationToken);
+		var result = await _orchestrator.TestConnectionAsync(vm, null, TestContext.Current.CancellationToken);
 
 		result.Should().Contain("Auth failed");
 	}

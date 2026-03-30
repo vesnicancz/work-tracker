@@ -1,4 +1,5 @@
 using WorkTracker.Domain.Entities;
+using WorkTracker.UI.Shared.ViewModels;
 
 namespace WorkTracker.UI.Shared.Services;
 
@@ -21,7 +22,7 @@ public interface IDialogService
 	/// <param name="ticketId">Ticket ID to pre-fill</param>
 	/// <param name="description">Description to pre-fill</param>
 	/// <returns>True if user confirmed, false if cancelled</returns>
-	Task<bool> ShowNewWorkEntryDialogAsync(string? ticketId = null, string? description = null, DateTime? date = null);
+	Task<bool> ShowNewWorkEntryDialogAsync(string? ticketId = null, string? description = null, DateTime? date = null, DateTime? startTime = null, DateTime? endTime = null);
 
 	/// <summary>
 	/// Shows the submit worklog dialog
@@ -58,4 +59,11 @@ public interface IDialogService
 	/// </summary>
 	/// <returns>True if settings were saved, false if cancelled</returns>
 	Task<bool> ShowSettingsDialogAsync();
+
+	/// <summary>
+	/// Shows the suggestions dialog with work suggestions grouped by plugin
+	/// </summary>
+	/// <param name="selectedDate">Date to load suggestions for</param>
+	/// <returns>The selected suggestion, or null if cancelled</returns>
+	Task<WorkSuggestionViewModel?> ShowSuggestionsDialogAsync(DateTime selectedDate);
 }

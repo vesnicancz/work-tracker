@@ -1,0 +1,121 @@
+using System.Collections.ObjectModel;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using WorkTracker.UI.Shared.Orchestrators;
+
+namespace WorkTracker.UI.Shared.ViewModels;
+
+/// <summary>
+/// ViewModel for a single suggestion group (one plugin's results)
+/// </summary>
+public class SuggestionGroupViewModel : ObservableObject, IDisposable
+{
+	private const int MinSearchLength = 3;
+
+	private readonly IWorkSuggestionOrchestrator _orchestrator;
+	private readonly string _pluginId;
+	private readonly DateTime _date;
+	private string _searchText = string.Empty;
+	private bool _isSearching;
+	private CancellationTokenSource? _searchCts;
+
+	public SuggestionGroupViewModel(IWorkSuggestionOrchestrator orchestrator, SuggestionGroup group, DateTime date)
+	{
+		_orchestrator = orchestrator;
+		_pluginId = group.PluginId;
+		_date = date;
+		Name = group.PluginName;
+		SupportsSearch = group.SupportsSearch;
+		Count = group.Items.Count;
+		Error = group.Error;
+		Items = new ObservableCollection<WorkSuggestionViewModel>(group.Items);
+		SelectCommand = new RelayCommand<WorkSuggestionViewModel>(OnSuggestionSelected);
+	}
+
+	public string Name { get; }
+	public bool SupportsSearch { get; }
+	public int Count { get; private set; }
+	public string? Error { get; }
+	public bool HasError => Error != null;
+	public ObservableCollection<WorkSuggestionViewModel> Items { get; }
+
+	public bool IsSearching
+	{
+		get => _isSearching;
+		set => SetProperty(ref _isSearching, value);
+	}
+
+	public string SearchText
+	{
+		get => _searchText;
+		set
+		{
+			if (SetProperty(ref _searchText, value))
+			{
+				_ = OnSearchTextChanged(value);
+			}
+		}
+	}
+
+	public IRelayCommand<WorkSuggestionViewModel> SelectCommand { get; }
+
+	public event Action<WorkSuggestionViewModel>? SuggestionSelected;
+
+	private async Task OnSearchTextChanged(string query)
+	{
+		_searchCts?.Cancel();
+		_searchCts?.Dispose();
+		_searchCts = new CancellationTokenSource();
+
+		var trimmed = query.Trim();
+
+		// Don't search for 1-2 characters, but do search for empty (= reset to default filter)
+		if (trimmed.Length > 0 && trimmed.Length < MinSearchLength)
+		{
+			return;
+		}
+
+		try
+		{
+			// Debounce — wait before sending API request (skip for empty = reset)
+			if (trimmed.Length > 0)
+			{
+				await Task.Delay(300, _searchCts.Token);
+			}
+
+			IsSearching = true;
+			var results = await _orchestrator.SearchPluginAsync(_pluginId, trimmed, _date, _searchCts.Token);
+			ReplaceItems(results);
+		}
+		catch (OperationCanceledException) { }
+		finally
+		{
+			IsSearching = false;
+		}
+	}
+
+	private void ReplaceItems(IReadOnlyList<WorkSuggestionViewModel> items)
+	{
+		Items.Clear();
+		foreach (var item in items)
+		{
+			Items.Add(item);
+		}
+		Count = Items.Count;
+		OnPropertyChanged(nameof(Count));
+	}
+
+	private void OnSuggestionSelected(WorkSuggestionViewModel? suggestion)
+	{
+		if (suggestion != null)
+		{
+			SuggestionSelected?.Invoke(suggestion);
+		}
+	}
+
+	public void Dispose()
+	{
+		_searchCts?.Cancel();
+		_searchCts?.Dispose();
+	}
+}

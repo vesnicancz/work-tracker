@@ -21,6 +21,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 	private readonly IDialogService _dialogService;
 	private readonly INotificationService _notificationService;
 	private readonly IWorklogStateService _worklogStateService;
+	private readonly IWorkSuggestionOrchestrator _suggestionOrchestrator;
 	private readonly IPomodoroService _pomodoroService;
 	private readonly TimeProvider _timeProvider;
 	private readonly ILocalizationService _localization;
@@ -50,6 +51,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 		IDialogService dialogService,
 		INotificationService notificationService,
 		IWorklogStateService worklogStateService,
+		IWorkSuggestionOrchestrator suggestionOrchestrator,
 		IPomodoroService pomodoroService,
 		ISettingsService settingsService,
 		ILocalizationService localization,
@@ -60,6 +62,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 		_dialogService = dialogService;
 		_notificationService = notificationService;
 		_worklogStateService = worklogStateService;
+		_suggestionOrchestrator = suggestionOrchestrator;
 		_pomodoroService = pomodoroService;
 		_localization = localization;
 		_timeProvider = timeProvider;
@@ -98,6 +101,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 		PreviousDayCommand = new RelayCommand(PreviousDay);
 		NextDayCommand = new RelayCommand(NextDay);
 		GoToTodayCommand = new RelayCommand(GoToToday);
+		OpenSuggestionsCommand = new AsyncRelayCommand(OpenSuggestionsAsync);
 
 		_ = InitializeAsync().ContinueWith(t =>
 		{
@@ -199,6 +203,8 @@ public class MainViewModel : ViewModelBase, IDisposable
 		set => SetProperty(ref _pomodoroTimerForeground, value);
 	}
 
+	public bool HasSuggestionPlugins => _suggestionOrchestrator.HasSuggestionPlugins;
+
 	#endregion Properties
 
 	#region Commands
@@ -215,6 +221,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 	public ICommand PreviousDayCommand { get; }
 	public ICommand NextDayCommand { get; }
 	public ICommand GoToTodayCommand { get; }
+	public ICommand OpenSuggestionsCommand { get; }
 
 	#endregion Commands
 
@@ -411,6 +418,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 		{
 			await _dialogService.ShowSettingsDialogAsync();
 			Pomodoro.RefreshEnabled();
+			OnPropertyChanged(nameof(HasSuggestionPlugins));
 		}
 		catch (Exception ex)
 		{
@@ -461,6 +469,33 @@ public class MainViewModel : ViewModelBase, IDisposable
 	private void NextDay() => SelectedDate = SelectedDate.AddDays(1);
 
 	private void GoToToday() => SelectedDate = _timeProvider.GetLocalNow().Date;
+
+	#region Suggestions
+
+	private async Task OpenSuggestionsAsync()
+	{
+		try
+		{
+			var selected = await _dialogService.ShowSuggestionsDialogAsync(SelectedDate);
+			if (selected == null)
+			{
+				return;
+			}
+
+			await _dialogService.ShowNewWorkEntryDialogAsync(
+				ticketId: selected.TicketId,
+				description: selected.HasTimeSlot ? selected.Title : null,
+				date: SelectedDate,
+				startTime: selected.StartTime,
+				endTime: selected.EndTime);
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Failed to open suggestions");
+		}
+	}
+
+	#endregion Suggestions
 
 	#region Pomodoro Theme Brushes (Avalonia-specific)
 
@@ -539,6 +574,14 @@ public class MainViewModel : ViewModelBase, IDisposable
 		OnPropertyChanged(nameof(IsTracking));
 		StartWorkCommand.NotifyCanExecuteChanged();
 		StopWorkCommand.NotifyCanExecuteChanged();
+	}
+
+	/// <summary>
+	/// Called after plugin initialization completes to refresh plugin-dependent UI.
+	/// </summary>
+	public void NotifyPluginsLoaded()
+	{
+		OnPropertyChanged(nameof(HasSuggestionPlugins));
 	}
 
 	public void PauseTimer()

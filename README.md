@@ -22,6 +22,7 @@ WorkTracker je desktopová aplikace pro sledování pracovní doby postavená na
 - Sledování času na projektech a úkolech (start/stop/edit/delete)
 - Automatická detekce Jira ticket ID
 - Export worklogs do Jira Tempo
+- Návrhy práce z Jira issues a kalendářových událostí
 - Pomodoro timer s OS notifikacemi a Luxafor LED indikací
 - Detekce překrývajících se časových intervalů
 - Denní a týdenní přehledy
@@ -214,11 +215,13 @@ WorkTracker podporuje pluginy pro rozšíření funkcionality. Pluginy se načí
 | Typ | Popis | Příklad |
 |-----|-------|---------|
 | **Worklog Upload** | Odesílání worklogs do externích systémů | Tempo/Jira |
+| **Work Suggestion** | Návrhy práce z externích zdrojů (issues, kalendáře) | Jira, O365 Calendar |
 | **Status Indicator** | Ovládání fyzických indikátorů stavu (LED) | Luxafor |
 
 ### Vestavěné pluginy
 
-- **Tempo** — Automatické nahrávání worklogs do Jira Tempo (překlad issue key na ID, detekce account ID, validace duplicit)
+- **Atlassian** — Automatické nahrávání worklogs do Jira Tempo (překlad issue key na ID, detekce account ID, validace duplicit) + návrhy práce z Jira issues (JQL)
+- **Office 365 Calendar** — Návrhy práce z kalendářových událostí (MSAL autentizace)
 - **Luxafor LED** — Zobrazení aktuální Pomodoro fáze na Luxafor Bluetooth Pro (konfigurovatelné barvy per fáze)
 
 ### Vlastní plugin
@@ -277,7 +280,8 @@ Domain (WorkEntry, Business Rules)
 | `WorkTracker.WPF` | Desktop GUI - Windows (Material Design, MVVM) | net10.0-windows |
 | `WorkTracker.Avalonia` | Desktop GUI - cross-platform (Avalonia 11.3, Fluent theme, MVVM) | net10.0 |
 | `WorkTracker.Plugin.Abstractions` | Plugin API | net10.0 |
-| `WorkTracker.Plugin.Tempo` | Tempo/Jira integrace | net10.0 |
+| `WorkTracker.Plugin.Atlassian` | Tempo worklog upload + Jira work suggestions | net10.0 |
+| `WorkTracker.Plugin.Office365Calendar` | Office 365 Calendar work suggestions | net10.0 |
 | `WorkTracker.Plugin.Luxafor` | Luxafor LED status indikátor | net10.0 |
 | `Luxafor.HidSharp` | Luxafor HID knihovna (standalone) | netstandard2.0, net8.0 |
 
@@ -296,12 +300,14 @@ work-tracker/
 │   ├── WorkTracker.Plugin.Abstractions/ # Plugin API
 │   └── Luxafor.HidSharp/               # Luxafor HID library
 ├── plugins/
-│   ├── WorkTracker.Plugin.Luxafor/      # Luxafor LED plugin
-│   └── WorkTracker.Plugin.Tempo/        # Tempo plugin
+│   ├── WorkTracker.Plugin.Atlassian/        # Atlassian plugin (Tempo + Jira)
+│   ├── WorkTracker.Plugin.Office365Calendar/ # Office 365 Calendar plugin
+│   └── WorkTracker.Plugin.Luxafor/          # Luxafor LED plugin
 ├── tests/
 │   ├── WorkTracker.Domain.Tests/
 │   ├── WorkTracker.Application.Tests/
 │   ├── WorkTracker.Infrastructure.Tests/
+│   ├── WorkTracker.Plugin.Atlassian.Tests/
 │   └── WorkTracker.UI.Shared.Tests/
 └── docs/                                # Dokumentace
 ```

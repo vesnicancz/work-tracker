@@ -126,17 +126,15 @@ public class SettingsOrchestrator : ISettingsOrchestrator
 		_logger.LogInformation("Settings saved successfully");
 	}
 
-	public async Task<string> TestConnectionAsync(PluginViewModel plugin, CancellationToken cancellationToken)
+	public async Task<string> TestConnectionAsync(PluginViewModel plugin, IProgress<string>? progress, CancellationToken cancellationToken)
 	{
-		// Test connection is only available for worklog upload plugins
-		if (plugin.Plugin is not IWorklogUploadPlugin worklogPlugin)
+		if (plugin.Plugin is not ITestablePlugin testablePlugin)
 		{
 			return "✗ Test connection not available for this plugin type";
 		}
 
 		_logger.LogInformation("Testing connection for plugin {PluginId}", plugin.Plugin.Metadata.Id);
 
-		// Temporarily initialize plugin with current configuration
 		var tempConfig = new Dictionary<string, string>(plugin.Configuration);
 		var initialized = await plugin.Plugin.InitializeAsync(tempConfig, cancellationToken);
 		if (!initialized)
@@ -145,7 +143,7 @@ public class SettingsOrchestrator : ISettingsOrchestrator
 			return "✗ Connection failed: Unable to initialize plugin with current configuration";
 		}
 
-		var result = await worklogPlugin.TestConnectionAsync(cancellationToken);
+		var result = await testablePlugin.TestConnectionAsync(progress, cancellationToken);
 
 		if (result.IsSuccess)
 		{

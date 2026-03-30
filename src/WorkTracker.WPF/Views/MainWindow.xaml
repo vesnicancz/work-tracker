@@ -402,13 +402,19 @@
 
 								<!-- Date Picker with Navigation -->
 								<DockPanel Grid.Row="1" Margin="0,0,0,16">
-									<Button Command="{Binding AddWorkEntryCommand}"
-										   Style="{StaticResource MaterialDesignIconButton}"
-										   ToolTip="{markup:Localize AddNewWorkEntry}"
-										   DockPanel.Dock="Right"
-										   VerticalAlignment="Center">
-										<materialDesign:PackIcon Kind="Plus" Width="24" Height="24" />
-									</Button>
+									<StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+										<Button Command="{Binding OpenSuggestionsCommand}"
+											   Style="{StaticResource MaterialDesignIconButton}"
+											   ToolTip="{markup:Localize Suggestions}"
+											   Visibility="{Binding HasSuggestionPlugins, Converter={StaticResource BoolToVisibilityConverter}}">
+											<materialDesign:PackIcon Kind="LightbulbOutline" Width="24" Height="24" />
+										</Button>
+										<Button Command="{Binding AddWorkEntryCommand}"
+											   Style="{StaticResource MaterialDesignIconButton}"
+											   ToolTip="{markup:Localize AddNewWorkEntry}">
+											<materialDesign:PackIcon Kind="Plus" Width="24" Height="24" />
+										</Button>
+									</StackPanel>
 
 									<StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
 										<Button Command="{Binding PreviousDayCommand}"

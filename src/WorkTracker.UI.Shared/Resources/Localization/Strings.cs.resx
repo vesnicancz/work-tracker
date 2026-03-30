@@ -572,6 +572,17 @@ Popis: {1}
 Váš výkaz práce také ne.</value>
   </data>
 
+  <!-- Suggestions -->
+  <data name="Suggestions" xml:space="preserve">
+    <value>Návrhy</value>
+  </data>
+  <data name="NoSuggestions" xml:space="preserve">
+    <value>Žádné návrhy</value>
+  </data>
+  <data name="SearchSuggestions" xml:space="preserve">
+    <value>Hledat...</value>
+  </data>
+
   <!-- Pomodoro -->
   <data name="Pomodoro" xml:space="preserve">
     <value>Pomodoro</value>

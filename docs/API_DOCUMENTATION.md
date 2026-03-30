@@ -2,7 +2,7 @@
 
 **Complete API reference for WorkTracker**
 
-Version: 1.1
+Version: 1.2
 Last Updated: March 2026
 
 ---
@@ -535,57 +535,88 @@ Task ShutdownAsync()
 
 Cleanup and shutdown plugin.
 
-### 3.2 IWorklogUploadPlugin
+### 3.2 ITestablePlugin
 
 **Namespace:** `WorkTracker.Plugin.Abstractions`
 
-Interface for worklog upload plugins. Inherits `GetConfigurationFields()` from `IPlugin`.
+Interface for plugins that support connection testing. Extends `IPlugin`.
 
 #### Methods
 
 ##### TestConnectionAsync
 
 ```csharp
-Task<PluginResult<bool>> TestConnectionAsync()
+Task<PluginResult<bool>> TestConnectionAsync(CancellationToken cancellationToken)
 ```
 
 Test connection to external system.
 
+**Parameters:**
+- `cancellationToken` - Cancellation token
+
 **Returns:** Success/failure result
+
+##### TestConnectionAsync (with progress)
+
+```csharp
+Task<PluginResult<bool>> TestConnectionAsync(IProgress<string>? progress, CancellationToken cancellationToken)
+```
+
+Overload s reportováním průběhu pro pluginy vyžadující interakci uživatele (např. OAuth device code flow). Průběžné zprávy se zobrazují v Settings UI.
+
+**Parameters:**
+- `progress` - Volitelný progress reporter pro průběžné stavové zprávy
+- `cancellationToken` - Cancellation token
+
+**Returns:** Success/failure result
+
+### 3.3 IWorklogUploadPlugin
+
+**Namespace:** `WorkTracker.Plugin.Abstractions`
+
+Interface for worklog upload plugins. Extends `ITestablePlugin` (inherits `TestConnectionAsync` and all `IPlugin` members).
+
+#### Methods
 
 ##### UploadWorklogAsync
 
 ```csharp
-Task<PluginResult<bool>> UploadWorklogAsync(PluginWorklogEntry worklog)
+Task<PluginResult<bool>> UploadWorklogAsync(
+    PluginWorklogEntry worklog,
+    CancellationToken cancellationToken)
 ```
 
 Upload single worklog.
 
 **Parameters:**
 - `worklog` - Worklog entry to upload
+- `cancellationToken` - Cancellation token
 
 **Returns:** Success/failure result
 
 ##### UploadWorklogsAsync
 
 ```csharp
-Task<PluginResult<List<WorklogSubmissionResult>>> UploadWorklogsAsync(
-    List<PluginWorklogEntry> worklogs)
+Task<PluginResult<WorklogSubmissionResult>> UploadWorklogsAsync(
+    IEnumerable<PluginWorklogEntry> worklogs,
+    CancellationToken cancellationToken)
 ```
 
 Upload multiple worklogs (batch).
 
 **Parameters:**
-- `worklogs` - List of worklog entries
+- `worklogs` - Worklogs to upload
+- `cancellationToken` - Cancellation token
 
-**Returns:** Results for each worklog
+**Returns:** Submission result summary
 
 ##### GetWorklogsAsync
 
 ```csharp
-Task<PluginResult<List<PluginWorklogEntry>>> GetWorklogsAsync(
+Task<PluginResult<IEnumerable<PluginWorklogEntry>>> GetWorklogsAsync(
     DateTime startDate,
-    DateTime endDate)
+    DateTime endDate,
+    CancellationToken cancellationToken)
 ```
 
 Retrieve existing worklogs from external system.
@@ -593,23 +624,27 @@ Retrieve existing worklogs from external system.
 **Parameters:**
 - `startDate` - Range start
 - `endDate` - Range end
+- `cancellationToken` - Cancellation token
 
 **Returns:** List of existing worklogs
 
 ##### WorklogExistsAsync
 
 ```csharp
-Task<PluginResult<bool>> WorklogExistsAsync(PluginWorklogEntry worklog)
+Task<PluginResult<bool>> WorklogExistsAsync(
+    PluginWorklogEntry worklog,
+    CancellationToken cancellationToken)
 ```
 
 Check if worklog already exists in external system.
 
 **Parameters:**
 - `worklog` - Worklog to check
+- `cancellationToken` - Cancellation token
 
 **Returns:** True if exists
 
-### 3.3 WorklogUploadPluginBase
+### 3.4 WorklogUploadPluginBase
 
 **Namespace:** `WorkTracker.Plugin.Abstractions`
 
@@ -667,7 +702,65 @@ protected Dictionary<string, string> Configuration { get; }
 
 Current configuration.
 
-### 3.4 IStatusIndicatorPlugin
+### 3.5 IWorkSuggestionPlugin
+
+**Namespace:** `WorkTracker.Plugin.Abstractions`
+
+Interface for work suggestion providers that fetch potential work items from external sources (calendars, issue trackers, etc.). Extends `ITestablePlugin`.
+
+#### Properties
+
+##### SupportsSearch
+
+```csharp
+bool SupportsSearch { get; }
+```
+
+Whether this plugin supports text-based search (e.g., Jira issue search). When false, only date-based `GetSuggestionsAsync` is used.
+
+#### Methods
+
+##### GetSuggestionsAsync
+
+```csharp
+Task<PluginResult<IReadOnlyList<WorkSuggestion>>> GetSuggestionsAsync(
+    DateTime date,
+    CancellationToken cancellationToken)
+```
+
+Gets work suggestions for a specific date.
+
+**Parameters:**
+- `date` - The date to get suggestions for
+- `cancellationToken` - Cancellation token
+
+**Returns:** List of work suggestions from the external source
+
+##### SearchAsync
+
+```csharp
+Task<PluginResult<IReadOnlyList<WorkSuggestion>>> SearchAsync(
+    string query,
+    CancellationToken cancellationToken)
+```
+
+Searches for suggestions matching a text query. Only called when `SupportsSearch` is true.
+
+**Parameters:**
+- `query` - Search text
+- `cancellationToken` - Cancellation token
+
+**Returns:** Matching work suggestions
+
+### 3.6 WorkSuggestionPluginBase
+
+**Namespace:** `WorkTracker.Plugin.Abstractions`
+
+Abstract base class for work suggestion plugins. Inherits configuration, validation, and lifecycle from `PluginBase`. Implements `IWorkSuggestionPlugin`.
+
+`SupportsSearch` defaults to `false`. `SearchAsync` returns a failure result by default -- override both when the plugin supports search.
+
+### 3.7 IStatusIndicatorPlugin
 
 **Namespace:** `WorkTracker.Plugin.Abstractions`
 
@@ -697,13 +790,13 @@ Update device to reflect the given Pomodoro phase.
 - `state` - Current phase: `Idle`, `Work`, `ShortBreak`, `LongBreak`
 - `cancellationToken` - Cancellation token
 
-### 3.5 StatusIndicatorPluginBase
+### 3.8 StatusIndicatorPluginBase
 
 **Namespace:** `WorkTracker.Plugin.Abstractions`
 
 Abstract base class for status indicator plugins. Provides the same configuration, validation, and logger infrastructure as `WorklogUploadPluginBase`.
 
-### 3.6 Data Types
+### 3.9 Data Types
 
 #### PluginMetadata
 
@@ -729,6 +822,23 @@ public class PluginWorklogEntry
     public TimeSpan TimeSpent { get; set; }     // Duration
     public DateTime StartTime { get; set; }     // Start timestamp
     public string? Description { get; set; }    // Optional description
+}
+```
+
+#### WorkSuggestion
+
+```csharp
+public class WorkSuggestion
+{
+    public required string Title { get; init; }    // Display title (e.g., meeting subject, issue summary)
+    public string? TicketId { get; init; }         // Ticket/Issue ID (e.g., "PROJ-123"), null for non-ticket sources
+    public string? Description { get; init; }      // Optional longer description
+    public DateTime? StartTime { get; init; }      // Suggested start time, null for sources without times
+    public DateTime? EndTime { get; init; }        // Suggested end time, null for sources without times
+    public required string Source { get; init; }   // Source plugin name (e.g., "Jira", "Office 365 Calendar")
+    public required string SourceId { get; init; } // Unique ID within the source, used for deduplication
+    public string? SourceUrl { get; init; }        // Optional URL to the source item
+    public Dictionary<string, string>? Metadata { get; init; } // Additional source metadata
 }
 ```
 
@@ -1029,4 +1139,4 @@ public class WorkflowExample
 ---
 
 **Last Updated:** March 2026
-**Version:** 1.1
+**Version:** 1.2

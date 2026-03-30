@@ -401,7 +401,8 @@ public class SettingsViewModel : ViewModelBase
 
 		try
 		{
-			TestConnectionResult = await _orchestrator.TestConnectionAsync(SelectedPlugin, CancellationToken.None);
+			var progress = new Progress<string>(message => TestConnectionResult = message);
+			TestConnectionResult = await _orchestrator.TestConnectionAsync(SelectedPlugin, progress, CancellationToken.None);
 		}
 		catch (Exception ex)
 		{

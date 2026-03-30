@@ -35,7 +35,7 @@ public class PluginViewModel : ObservableObject
 	public string Description => Plugin.Metadata.Description ?? string.Empty;
 	public string Version => Plugin.Metadata.Version.ToString();
 	public string Author => Plugin.Metadata.Author;
-	public bool SupportsTestConnection => Plugin is IWorklogUploadPlugin;
+	public bool SupportsTestConnection => Plugin is ITestablePlugin;
 
 	public bool IsEnabled
 	{

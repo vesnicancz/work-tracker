@@ -4,7 +4,9 @@ using Microsoft.Extensions.DependencyInjection;
 using WorkTracker.Avalonia.ViewModels;
 using WorkTracker.Avalonia.Views;
 using WorkTracker.Domain.Entities;
+using WorkTracker.UI.Shared.Orchestrators;
 using WorkTracker.UI.Shared.Services;
+using WorkTracker.UI.Shared.ViewModels;
 
 namespace WorkTracker.Avalonia.Services;
 
@@ -22,12 +24,12 @@ public sealed class DialogService : IDialogService
 		return ShowWorkEntryDialogCoreAsync(workEntry);
 	}
 
-	public Task<bool> ShowNewWorkEntryDialogAsync(string? ticketId = null, string? description = null, DateTime? date = null)
+	public Task<bool> ShowNewWorkEntryDialogAsync(string? ticketId = null, string? description = null, DateTime? date = null, DateTime? startTime = null, DateTime? endTime = null)
 	{
-		return ShowWorkEntryDialogCoreAsync(null, ticketId, description, date);
+		return ShowWorkEntryDialogCoreAsync(null, ticketId, description, date, startTime, endTime);
 	}
 
-	private async Task<bool> ShowWorkEntryDialogCoreAsync(WorkEntry? workEntry, string? templateTicketId = null, string? templateDescription = null, DateTime? date = null)
+	private async Task<bool> ShowWorkEntryDialogCoreAsync(WorkEntry? workEntry, string? templateTicketId = null, string? templateDescription = null, DateTime? date = null, DateTime? startTime = null, DateTime? endTime = null)
 	{
 		using var scope = _scopeFactory.CreateScope();
 		var viewModel = scope.ServiceProvider.GetRequiredService<WorkEntryEditViewModel>();
@@ -38,7 +40,7 @@ public sealed class DialogService : IDialogService
 		}
 		else
 		{
-			viewModel.InitializeForNew(templateTicketId, templateDescription, date);
+			viewModel.InitializeForNew(templateTicketId, templateDescription, date, startTime, endTime);
 		}
 
 		var dialog = new WorkEntryEditDialog { DataContext = viewModel };
@@ -119,6 +121,27 @@ public sealed class DialogService : IDialogService
 			return result == true;
 		}
 		return false;
+	}
+
+	public async Task<WorkSuggestionViewModel?> ShowSuggestionsDialogAsync(DateTime selectedDate)
+	{
+		using var scope = _scopeFactory.CreateScope();
+		var orchestrator = scope.ServiceProvider.GetRequiredService<IWorkSuggestionOrchestrator>();
+		using var viewModel = new SuggestionsViewModel(orchestrator);
+
+		var dialog = new SuggestionsWindow();
+		dialog.BindViewModel(viewModel);
+
+		// Show dialog immediately with loading indicator, load data in background
+		_ = viewModel.InitializeAsync(selectedDate);
+
+		var mainWindow = GetMainWindow();
+		if (mainWindow != null)
+		{
+			await dialog.ShowDialog(mainWindow);
+		}
+
+		return dialog.SelectedSuggestion;
 	}
 
 	private static Window? GetVisibleMainWindow()

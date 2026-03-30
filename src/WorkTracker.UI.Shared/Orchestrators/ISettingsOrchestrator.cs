@@ -8,5 +8,5 @@ public interface ISettingsOrchestrator
 
 	Task SaveSettingsAsync(SettingsSaveRequest request, CancellationToken cancellationToken);
 
-	Task<string> TestConnectionAsync(PluginViewModel plugin, CancellationToken cancellationToken);
+	Task<string> TestConnectionAsync(PluginViewModel plugin, IProgress<string>? progress, CancellationToken cancellationToken);
 }

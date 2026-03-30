@@ -2,7 +2,7 @@
 
 **Kompletní průvodce používáním WorkTracker aplikace**
 
-Verze: 1.1
+Verze: 1.2
 Datum: Březen 2026
 
 ---
@@ -14,7 +14,7 @@ Datum: Březen 2026
 3. [CLI Rozhraní](#3-cli-rozhraní)
 4. [WPF Aplikace](#4-wpf-aplikace)
 5. [Workflow a Best Practices](#5-workflow-a-best-practices)
-6. [Integrace s Tempo/Jira](#6-integrace-s-tempojira)
+6. [Integrace s Atlassian (Tempo/Jira)](#6-integrace-s-atlassian-tempojira)
 7. [Často Kladené Otázky](#7-často-kladené-otázky)
 8. [Troubleshooting](#8-troubleshooting)
 
@@ -28,6 +28,7 @@ WorkTracker je aplikace pro **sledování pracovní doby** určená pro vývojá
 - 📊 Přesně zaznamenávat čas strávený na úkolech
 - 🎫 Propojit práci s Jira tickety
 - 📤 Automaticky odesílat worklogs do Tempo
+- 💡 Získat návrhy práce z Jira a Office 365 kalendáře
 - 📈 Sledovat svou produktivitu
 - ⚡ Rychle a jednoduše spravovat své pracovní záznamy
 
@@ -43,6 +44,7 @@ WorkTracker je aplikace pro **sledování pracovní doby** určená pro vývojá
 | **Go to Today** | Rychlá navigace na dnešní datum |
 | **Failed Worklog Resubmission** | Opakované odeslání neúspěšných worklogů |
 | **Validation** | Detekce překrývajících se časů, kontrola validních dat |
+| **Work Suggestions** | Návrhy práce z Jira (JQL) a Office 365 kalendáře |
 | **Offline First** | Práce bez připojení, sync když je potřeba |
 
 ### 1.3 Požadavky
@@ -123,7 +125,7 @@ Vytvořte/upravte `appsettings.json` vedle spustitelného souboru:
     "Path": "%LocalAppData%\\WorkTracker\\worktracker.db"
   },
   "Plugins": {
-    "tempo": {
+    "atlassian": {
       "TempoBaseUrl": "https://api.tempo.io/core/3",
       "TempoApiToken": "",
       "JiraBaseUrl": "https://your-company.atlassian.net",
@@ -481,6 +483,37 @@ Tlačítko **"Go to today"** rychle přepne zobrazení na dnešní datum, pokud 
 3. Takto označené položky se zobrazí v panelu šablon v hlavním okně
 4. Kliknutím na šablonu začnete sledovat práci s předvyplněnými údaji, které můžete před spuštěním upravit
 
+#### Návrhy práce (Suggestions)
+
+V nástrojové liště nad seznamem pracovních záznamů (vedle tlačítka **+** pro ruční přidání) najdete tlačítko **💡 Suggestions**, které otevře dialog s návrhy práce z nakonfigurovaných pluginů:
+
+```
+┌────────────────────────────────────────┐
+│  Work Suggestions                      │
+├────────────────────────────────────────┤
+│  Search: [___________________] 🔍      │
+│                                        │
+│  ▼ Jira Suggestions (3)               │
+│  ┌──────────────────────────────────┐ │
+│  │ PROJ-123  Fix login timeout      │ │
+│  │ PROJ-456  Update API docs        │ │
+│  │ PROJ-789  Refactor auth module   │ │
+│  └──────────────────────────────────┘ │
+│                                        │
+│  ▼ Office 365 Calendar (2)            │
+│  ┌──────────────────────────────────┐ │
+│  │ 09:00  Sprint planning           │ │
+│  │ 14:00  1:1 with manager          │ │
+│  └──────────────────────────────────┘ │
+│                                        │
+│  [Create Work Entry]  [Close]          │
+└────────────────────────────────────────┘
+```
+
+- Návrhy jsou **seskupeny podle pluginu** (Jira, O365 Calendar apod.)
+- U Jira pluginu můžete **vyhledávat** pomocí textového pole (vyhledávání přes JQL)
+- Kliknutím na návrh a tlačítkem **"Create Work Entry"** vytvoříte nový pracovní záznam s předvyplněnými údaji
+
 #### Start Work Panel
 
 1. **Zadejte Ticket ID** (volitelné)
@@ -620,20 +653,31 @@ Tlačítko **"Go to today"** rychle přepne zobrazení na dnešní datum, pokud 
 │  ☑ Show notifications                 │
 │  ☐ Auto-submit at end of day          │
 │                                        │
-│  Tempo Integration                     │
-│  Base URL: [___________________]       │
-│  API Token: [*********************]    │
-│  [Test Connection]                     │
-│                                        │
-│  Jira Integration                      │
-│  Base URL: [___________________]       │
-│  Email: [___________________]          │
-│  API Token: [*********************]    │
-│  [Test Connection]                     │
+│  Plugins                               │
+│  ┌──────────────────────────────────┐ │
+│  │ Atlassian (Tempo/Jira)           │ │
+│  │  Tempo Base URL: [__________]    │ │
+│  │  Tempo API Token: [*********]    │ │
+│  │  Jira Base URL: [___________]    │ │
+│  │  Jira Email: [______________]    │ │
+│  │  Jira API Token: [**********]    │ │
+│  │  [Test Connection]               │ │
+│  ├──────────────────────────────────┤ │
+│  │ Jira Suggestions                 │ │
+│  │  JQL Query: [_______________]    │ │
+│  │  [Test Connection]               │ │
+│  ├──────────────────────────────────┤ │
+│  │ Office 365 Calendar              │ │
+│  │  Tenant ID: [_______________]    │ │
+│  │  Client ID: [_______________]    │ │
+│  │  [Test Connection]               │ │
+│  └──────────────────────────────────┘ │
 │                                        │
 │  [Save]  [Cancel]                      │
 └────────────────────────────────────────┘
 ```
+
+> **Office 365 Calendar — přihlášení:** Klikněte na **Test Connection**. Aplikace otevře prohlížeč na přihlašovací stránce Microsoftu a v nastavení zobrazí kód pro přihlášení. Zadejte kód v prohlížeči a přihlaste se. Token se uloží na disk a přežije restart aplikace.
 
 ---
 
@@ -838,7 +882,7 @@ worktracker start PROJ-999 --start 10:00 --end 11:30
 
 ---
 
-## 6. Integrace s Tempo/Jira
+## 6. Integrace s Atlassian (Tempo/Jira)
 
 ### 6.1 Získání API Credentials
 
@@ -864,8 +908,8 @@ worktracker start PROJ-999 --start 10:00 --end 11:30
 ```bash
 cd src/WorkTracker.CLI
 dotnet user-secrets init
-dotnet user-secrets set "Plugins:tempo:TempoApiToken" "your-tempo-token"
-dotnet user-secrets set "Plugins:tempo:JiraApiToken" "your-jira-token"
+dotnet user-secrets set "Plugins:atlassian:TempoApiToken" "your-tempo-token"
+dotnet user-secrets set "Plugins:atlassian:JiraApiToken" "your-jira-token"
 ```
 
 **Metoda 2: Environment Variables**
@@ -885,7 +929,7 @@ export WORKTRACKER_JIRA_TOKEN="your-jira-token"
 ```json
 {
   "Plugins": {
-    "tempo": {
+    "atlassian": {
       "TempoBaseUrl": "https://api.tempo.io/core/3",
       "TempoApiToken": "your-tempo-token-here",
       "JiraBaseUrl": "https://your-company.atlassian.net",
@@ -1051,8 +1095,11 @@ A: Použijte start s --start a --end:
 
 **Q: Podporuje WorkTracker jiné systémy než Tempo?**
 ```
-A: Ne out-of-the-box, ale můžete vytvořit vlastní plugin.
-   Viz PLUGIN_DEVELOPMENT.md
+A: Ano, WorkTracker má plugin systém. Vestavěné pluginy zahrnují:
+   - Atlassian (Tempo/Jira) - export worklogů
+   - Jira Suggestions - návrhy práce z Jira (JQL)
+   - Office 365 Calendar - návrhy práce z kalendáře
+   Můžete také vytvořit vlastní plugin. Viz PLUGIN_DEVELOPMENT.md
 ```
 
 **Q: Musím mít Jira/Tempo účet?**
@@ -1171,4 +1218,4 @@ Viz sekce [6.5 Troubleshooting Tempo/Jira](#65-troubleshooting-tempojira)
 ---
 
 **Poslední aktualizace**: Březen 2026
-**Verze dokumentu**: 1.1
+**Verze dokumentu**: 1.2

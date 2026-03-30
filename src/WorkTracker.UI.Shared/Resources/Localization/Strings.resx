@@ -572,6 +572,17 @@ Time: {2}</value>
 Neither is your timesheet.</value>
   </data>
 
+  <!-- Suggestions -->
+  <data name="Suggestions" xml:space="preserve">
+    <value>Suggestions</value>
+  </data>
+  <data name="NoSuggestions" xml:space="preserve">
+    <value>No suggestions available</value>
+  </data>
+  <data name="SearchSuggestions" xml:space="preserve">
+    <value>Search...</value>
+  </data>
+
   <!-- Pomodoro -->
   <data name="Pomodoro" xml:space="preserve">
     <value>Pomodoro</value>
