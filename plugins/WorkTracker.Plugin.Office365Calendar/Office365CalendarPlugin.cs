@@ -106,6 +106,7 @@ public sealed class Office365CalendarPlugin : WorkSuggestionPluginBase, IDisposa
 		});
 
 		_httpClient?.Dispose();
+		_disposed = false;
 		_httpClient = new HttpClient { Timeout = HttpTimeout };
 
 		return Task.FromResult(true);

@@ -45,9 +45,4 @@ public class WorkSuggestion
 	/// Optional URL to the source item (e.g., Jira issue link, calendar event link)
 	/// </summary>
 	public string? SourceUrl { get; init; }
-
-	/// <summary>
-	/// Additional metadata from the source
-	/// </summary>
-	public Dictionary<string, string>? Metadata { get; init; }
 }
