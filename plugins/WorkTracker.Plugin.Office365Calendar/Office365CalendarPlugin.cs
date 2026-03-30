@@ -156,7 +156,7 @@ public sealed class Office365CalendarPlugin : WorkSuggestionPluginBase, IDisposa
 				return PluginResult<bool>.Failure("Authentication failed — could not acquire token.");
 			}
 
-			var response = await SendAuthenticatedAsync(HttpMethod.Get, "https://graph.microsoft.com/v1.0/me", token, cancellationToken);
+			using var response = await SendAuthenticatedAsync(HttpMethod.Get, "https://graph.microsoft.com/v1.0/me", token, cancellationToken);
 
 			if (response.IsSuccessStatusCode)
 			{
@@ -198,7 +198,7 @@ public sealed class Office365CalendarPlugin : WorkSuggestionPluginBase, IDisposa
 				$"&$select=subject,start,end,webLink,id,isAllDay" +
 				$"&$orderby=start/dateTime";
 
-			var response = await SendAuthenticatedAsync(HttpMethod.Get, url, token, cancellationToken);
+			using var response = await SendAuthenticatedAsync(HttpMethod.Get, url, token, cancellationToken);
 
 			if (!response.IsSuccessStatusCode)
 			{

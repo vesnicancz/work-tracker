@@ -141,7 +141,7 @@ public sealed class JiraSuggestionsPlugin : WorkSuggestionPluginBase, IDisposabl
 			var encodedJql = Uri.EscapeDataString(jql);
 			var url = $"/rest/api/3/search/jql?jql={encodedJql}&maxResults={maxResults}&fields=summary,status,issuetype,priority";
 
-			var response = await _jiraClient!.GetAsync(url, cancellationToken);
+			using var response = await _jiraClient!.GetAsync(url, cancellationToken);
 
 			if (!response.IsSuccessStatusCode)
 			{

@@ -36,7 +36,7 @@ internal sealed class JiraClient : IDisposable
 
 	public async Task<JsonElement> GetJsonAsync(string relativeUrl, CancellationToken cancellationToken)
 	{
-		var response = await GetAsync(relativeUrl, cancellationToken);
+		using var response = await GetAsync(relativeUrl, cancellationToken);
 		response.EnsureSuccessStatusCode();
 		return await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken);
 	}
@@ -45,7 +45,7 @@ internal sealed class JiraClient : IDisposable
 	{
 		try
 		{
-			var response = await GetAsync("/rest/api/3/myself", cancellationToken);
+			using var response = await GetAsync("/rest/api/3/myself", cancellationToken);
 			if (response.IsSuccessStatusCode)
 			{
 				return (true, null);
