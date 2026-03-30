@@ -65,17 +65,21 @@ public sealed class UpdateCheckService : IUpdateCheckService
 				await response.Content.ReadAsStreamAsync(cancellationToken), cancellationToken: cancellationToken);
 
 			var root = json.RootElement;
-			var tagName = root.GetProperty("tag_name").GetString();
+
+			if (!root.TryGetProperty("tag_name", out var tagProp)
+				|| tagProp.ValueKind != JsonValueKind.String
+				|| string.IsNullOrWhiteSpace(tagProp.GetString()))
+			{
+				_logger.LogDebug("GitHub API response missing or invalid 'tag_name' property");
+				return;
+			}
+
+			var tagName = tagProp.GetString()!;
 			var htmlUrl = root.TryGetProperty("html_url", out var urlProp)
 				&& urlProp.ValueKind == JsonValueKind.String
 				&& !string.IsNullOrWhiteSpace(urlProp.GetString())
 				? urlProp.GetString()!
 				: ReleasesFallbackUrl;
-
-			if (string.IsNullOrEmpty(tagName))
-			{
-				return;
-			}
 
 			var remoteVersion = ParseVersion(tagName);
 			if (remoteVersion == null)
