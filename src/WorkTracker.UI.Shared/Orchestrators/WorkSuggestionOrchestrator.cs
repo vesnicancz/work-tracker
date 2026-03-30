@@ -43,7 +43,8 @@ public class WorkSuggestionOrchestrator : IWorkSuggestionOrchestrator
 						PluginName = plugin.Metadata.Name,
 						SupportsSearch = plugin.SupportsSearch,
 						Items = [],
-						Error = result.Error
+						Error = result.Error,
+						IconHint = plugin.Metadata.IconName ?? "LightbulbOutline"
 					};
 				}
 
@@ -58,7 +59,8 @@ public class WorkSuggestionOrchestrator : IWorkSuggestionOrchestrator
 					PluginId = plugin.Metadata.Id,
 					PluginName = plugin.Metadata.Name,
 					SupportsSearch = plugin.SupportsSearch,
-					Items = items
+					Items = items,
+					IconHint = plugin.Metadata.IconName ?? "LightbulbOutline"
 				};
 			}
 			catch (OperationCanceledException) { throw; }
@@ -71,7 +73,8 @@ public class WorkSuggestionOrchestrator : IWorkSuggestionOrchestrator
 					PluginName = plugin.Metadata.Name,
 					SupportsSearch = plugin.SupportsSearch,
 					Items = [],
-					Error = ex.Message
+					Error = ex.Message,
+					IconHint = plugin.Metadata.IconName ?? "LightbulbOutline"
 				};
 			}
 		});
@@ -126,4 +129,5 @@ public class WorkSuggestionOrchestrator : IWorkSuggestionOrchestrator
 		SourceId = s.SourceId,
 		SourceUrl = s.SourceUrl
 	};
+
 }

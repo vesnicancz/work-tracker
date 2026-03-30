@@ -35,6 +35,7 @@ public sealed class Office365CalendarPlugin : WorkSuggestionPluginBase, IDisposa
 		Author = "WorkTracker Team",
 		Description = "Suggests work items based on Office 365 calendar events via Microsoft Graph API",
 		Website = "https://learn.microsoft.com/en-us/graph/api/calendar-list-calendarview",
+		IconName = "CalendarMonth",
 		Tags = ["office365", "calendar", "suggestions", "microsoft", "graph"]
 	};
 

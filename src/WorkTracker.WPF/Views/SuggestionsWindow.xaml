@@ -32,6 +32,7 @@
 
 	<Window.Resources>
 		<converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+		<converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter" />
 	</Window.Resources>
 
 	<Border BorderBrush="{DynamicResource MaterialDesign.Brush.Border}"
@@ -97,65 +98,130 @@
 							 Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibilityConverter}}" />
 
 				<!-- Groups -->
-				<ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16">
-					<ItemsControl ItemsSource="{Binding Groups}">
+				<ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+					<ItemsControl ItemsSource="{Binding Groups}" Margin="16">
 						<ItemsControl.ItemTemplate>
 							<DataTemplate>
-								<StackPanel Margin="0,0,0,16">
-									<!-- Group header -->
-									<TextBlock FontSize="14" FontWeight="Medium" Margin="0,0,0,8">
-										<Run Text="{Binding Name, Mode=OneWay}" />
-										<Run Text=" (" /><Run Text="{Binding Count, Mode=OneWay}" /><Run Text=")" />
-									</TextBlock>
+								<materialDesign:Card Style="{StaticResource CardStyle}" Margin="0,0,0,6">
+									<StackPanel>
+										<!-- Clickable accordion header -->
+										<Button Command="{Binding DataContext.ToggleGroupCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+												CommandParameter="{Binding}"
+												Style="{StaticResource MaterialDesignFlatButton}"
+												HorizontalContentAlignment="Stretch"
+												Padding="0" Margin="0" Height="Auto">
+											<StackPanel Orientation="Horizontal">
+												<materialDesign:PackIcon Width="16" Height="16"
+																	VerticalAlignment="Center"
+																	Margin="0,0,6,0"
+																	Foreground="{DynamicResource MaterialDesign.Brush.Foreground.Light}">
+													<materialDesign:PackIcon.Style>
+														<Style TargetType="materialDesign:PackIcon">
+															<Setter Property="Kind" Value="ChevronRight" />
+															<Style.Triggers>
+																<DataTrigger Binding="{Binding IsExpanded}" Value="True">
+																	<Setter Property="Kind" Value="ChevronDown" />
+																</DataTrigger>
+															</Style.Triggers>
+														</Style>
+													</materialDesign:PackIcon.Style>
+												</materialDesign:PackIcon>
+												<materialDesign:PackIcon Kind="{Binding IconHint, FallbackValue=LightbulbOutline, TargetNullValue=LightbulbOutline}"
+																	Width="20" Height="20"
+																	Foreground="{DynamicResource MaterialDesign.Brush.Primary}"
+																	VerticalAlignment="Center"
+																	Margin="0,0,8,0" />
+												<TextBlock FontSize="14" FontWeight="Medium"
+														   VerticalAlignment="Center">
+													<Run Text="{Binding Name, Mode=OneWay}" />
+												</TextBlock>
+												<Border Background="{DynamicResource MaterialDesign.Brush.Card.Background}"
+														CornerRadius="8" Padding="6,2"
+														VerticalAlignment="Center" Margin="8,0,0,0">
+													<TextBlock Text="{Binding Count, Mode=OneWay}"
+															   FontSize="11" FontWeight="SemiBold"
+															   Foreground="{DynamicResource MaterialDesign.Brush.Foreground.Light}" />
+												</Border>
+											</StackPanel>
+										</Button>
 
-									<!-- Search box -->
-									<TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-											 materialDesign:HintAssist.Hint="{markup:Localize SearchSuggestions}"
-											 materialDesign:HintAssist.IsFloating="False"
-											 Margin="0,0,0,8"
-											 Visibility="{Binding SupportsSearch, Converter={StaticResource BoolToVisibilityConverter}}" />
+										<!-- Expandable content -->
+									<StackPanel Margin="0,8,0,0"
+												Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVisibilityConverter}}">
 
-									<!-- Error -->
-									<TextBlock Text="{Binding Error}"
-											   Foreground="{StaticResource ErrorBrush}"
-											   FontSize="12" TextWrapping="Wrap"
-											   Margin="0,0,0,8"
-											   Visibility="{Binding HasError, Converter={StaticResource BoolToVisibilityConverter}}" />
+										<!-- Error -->
+										<Border Background="#20FF4444" CornerRadius="4" Padding="8,6"
+												Margin="0,0,0,8"
+												Visibility="{Binding HasError, Converter={StaticResource BoolToVisibilityConverter}}">
+											<TextBlock Text="{Binding Error}"
+													   Foreground="{StaticResource ErrorBrush}"
+													   FontSize="12" TextWrapping="Wrap" />
+										</Border>
 
-									<!-- Items -->
-									<ItemsControl ItemsSource="{Binding Items}">
-										<ItemsControl.ItemTemplate>
-											<DataTemplate>
-												<Button Command="{Binding DataContext.SelectCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-														CommandParameter="{Binding}"
-														Style="{StaticResource MaterialDesignFlatButton}"
-														HorizontalContentAlignment="Stretch"
-														Padding="8,6" Margin="0,1" Height="Auto">
-													<Grid>
-														<Grid.RowDefinitions>
-															<RowDefinition Height="Auto" />
-															<RowDefinition Height="Auto" />
-														</Grid.RowDefinitions>
-														<DockPanel Grid.Row="0">
-															<TextBlock DockPanel.Dock="Right"
-																	   Text="{Binding Source}"
-																	   FontSize="10" Opacity="0.5"
+										<!-- Search box with icon -->
+										<DockPanel Margin="0,0,0,8"
+												   Visibility="{Binding SupportsSearch, Converter={StaticResource BoolToVisibilityConverter}}">
+											<materialDesign:PackIcon Kind="Magnify" DockPanel.Dock="Left"
+																Width="18" Height="18"
+																Foreground="{DynamicResource MaterialDesign.Brush.Foreground.Light}"
+																VerticalAlignment="Center"
+																Margin="0,0,8,0" />
+											<TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+													 materialDesign:HintAssist.Hint="{markup:Localize SearchSuggestions}"
+													 materialDesign:HintAssist.IsFloating="False" />
+										</DockPanel>
+
+										<!-- Empty state -->
+										<TextBlock Text="{markup:Localize NoSuggestions}"
+												   FontSize="12" Opacity="0.5"
+												   HorizontalAlignment="Center" Margin="0,8"
+												   Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibilityConverter}}" />
+
+										<!-- Items -->
+										<ItemsControl ItemsSource="{Binding Items}">
+											<ItemsControl.ItemTemplate>
+												<DataTemplate>
+													<Button Command="{Binding DataContext.SelectCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+															CommandParameter="{Binding}"
+															Style="{StaticResource MaterialDesignFlatButton}"
+															HorizontalContentAlignment="Stretch"
+															Padding="8,6" Margin="0,1" Height="Auto">
+														<Grid>
+															<Grid.ColumnDefinitions>
+																<ColumnDefinition Width="Auto" />
+																<ColumnDefinition Width="*" />
+															</Grid.ColumnDefinitions>
+															<!-- Time badge (calendar events) -->
+															<TextBlock Grid.Column="0"
+																	   Text="{Binding BadgeText}"
+																	   FontSize="12"
+																	   FontFamily="Consolas"
+																	   Foreground="{DynamicResource MaterialDesign.Brush.Foreground.Light}"
 																	   VerticalAlignment="Center"
-																	   Margin="8,0,0,0" />
-															<TextBlock Text="{Binding DisplayText}"
-																	   FontWeight="Medium"
-																	   TextTrimming="CharacterEllipsis" />
-														</DockPanel>
-														<TextBlock Grid.Row="1"
-																   Text="{Binding TimeDisplay}"
-																   FontSize="11" Opacity="0.6"
-																   Visibility="{Binding HasTimeSlot, Converter={StaticResource BoolToVisibilityConverter}}" />
-													</Grid>
-												</Button>
-											</DataTemplate>
-										</ItemsControl.ItemTemplate>
-									</ItemsControl>
+																	   Margin="0,0,10,0"
+																	   Visibility="{Binding HasTimeSlot, Converter={StaticResource BoolToVisibilityConverter}}" />
+															<!-- Ticket ID badge (Jira issues) -->
+															<TextBlock Grid.Column="0"
+																	   Text="{Binding BadgeText}"
+																	   FontSize="12"
+																	   FontWeight="SemiBold"
+																	   Foreground="{DynamicResource MaterialDesign.Brush.Primary}"
+																	   VerticalAlignment="Center"
+																	   Margin="0,0,10,0"
+																	   Visibility="{Binding IsBadgeAccent, Converter={StaticResource BoolToVisibilityConverter}}" />
+															<!-- Title -->
+															<TextBlock Grid.Column="1"
+																	   Text="{Binding Title}"
+																	   TextTrimming="CharacterEllipsis"
+																	   VerticalAlignment="Center" />
+														</Grid>
+													</Button>
+												</DataTemplate>
+											</ItemsControl.ItemTemplate>
+										</ItemsControl>
+									</StackPanel>
 								</StackPanel>
+								</materialDesign:Card>
 							</DataTemplate>
 						</ItemsControl.ItemTemplate>
 					</ItemsControl>

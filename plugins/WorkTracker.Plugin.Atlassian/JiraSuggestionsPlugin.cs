@@ -29,6 +29,7 @@ public sealed class JiraSuggestionsPlugin : WorkSuggestionPluginBase, IDisposabl
 		Author = "WorkTracker Team",
 		Description = "Suggests work items based on Jira issues matching a JQL filter",
 		Website = "https://www.atlassian.com/software/jira",
+		IconName = "Jira",
 		Tags = ["jira", "suggestions", "issues"]
 	};
 

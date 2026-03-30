@@ -10,4 +10,9 @@ public class SuggestionGroup
 	public bool SupportsSearch { get; init; }
 	public required IReadOnlyList<WorkSuggestionViewModel> Items { get; init; }
 	public string? Error { get; init; }
+
+	/// <summary>
+	/// Icon name from plugin metadata (maps to MaterialIcon Kind).
+	/// </summary>
+	public string? IconHint { get; init; }
 }

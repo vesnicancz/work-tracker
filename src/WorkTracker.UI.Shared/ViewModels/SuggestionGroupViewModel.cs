@@ -17,6 +17,7 @@ public class SuggestionGroupViewModel : ObservableObject, IDisposable
 	private readonly DateTime _date;
 	private string _searchText = string.Empty;
 	private bool _isSearching;
+	private bool _isExpanded;
 	private CancellationTokenSource? _searchCts;
 
 	public SuggestionGroupViewModel(IWorkSuggestionOrchestrator orchestrator, SuggestionGroup group, DateTime date)
@@ -25,6 +26,7 @@ public class SuggestionGroupViewModel : ObservableObject, IDisposable
 		_pluginId = group.PluginId;
 		_date = date;
 		Name = group.PluginName;
+		IconHint = group.IconHint;
 		SupportsSearch = group.SupportsSearch;
 		Count = group.Items.Count;
 		Error = group.Error;
@@ -33,11 +35,19 @@ public class SuggestionGroupViewModel : ObservableObject, IDisposable
 	}
 
 	public string Name { get; }
+	public string? IconHint { get; }
 	public bool SupportsSearch { get; }
 	public int Count { get; private set; }
 	public string? Error { get; }
 	public bool HasError => Error != null;
+	public bool IsEmpty => !HasError && Count == 0;
 	public ObservableCollection<WorkSuggestionViewModel> Items { get; }
+
+	public bool IsExpanded
+	{
+		get => _isExpanded;
+		set => SetProperty(ref _isExpanded, value);
+	}
 
 	public bool IsSearching
 	{
@@ -103,6 +113,7 @@ public class SuggestionGroupViewModel : ObservableObject, IDisposable
 		}
 		Count = Items.Count;
 		OnPropertyChanged(nameof(Count));
+		OnPropertyChanged(nameof(IsEmpty));
 	}
 
 	private void OnSuggestionSelected(WorkSuggestionViewModel? suggestion)

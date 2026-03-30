@@ -41,6 +41,12 @@ public class PluginMetadata
 	public Version? MinimumAppVersion { get; init; }
 
 	/// <summary>
+	/// Icon name hint for UI display (e.g., "CalendarMonth", "Jira", "LightbulbOutline").
+	/// Maps to MaterialIcon Kind in Avalonia/WPF.
+	/// </summary>
+	public string? IconName { get; init; }
+
+	/// <summary>
 	/// Plugin tags/categories
 	/// </summary>
 	public IReadOnlyList<string> Tags { get; init; } = [];

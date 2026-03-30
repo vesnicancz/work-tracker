@@ -20,6 +20,7 @@ public class SuggestionsViewModel : ObservableObject, IDisposable
 	{
 		_orchestrator = orchestrator;
 		RefreshCommand = new AsyncRelayCommand(LoadAsync);
+		ToggleGroupCommand = new RelayCommand<SuggestionGroupViewModel>(ToggleGroup);
 	}
 
 	public ObservableCollection<SuggestionGroupViewModel> Groups { get; } = new();
@@ -31,6 +32,7 @@ public class SuggestionsViewModel : ObservableObject, IDisposable
 	}
 
 	public IAsyncRelayCommand RefreshCommand { get; }
+	public IRelayCommand<SuggestionGroupViewModel> ToggleGroupCommand { get; }
 
 	/// <summary>
 	/// Raised when a suggestion is selected by the user
@@ -55,17 +57,39 @@ public class SuggestionsViewModel : ObservableObject, IDisposable
 				old.Dispose();
 			}
 			Groups.Clear();
+			var isFirst = true;
 			foreach (var group in groups)
 			{
 				var groupVm = new SuggestionGroupViewModel(_orchestrator, group, _selectedDate);
+				groupVm.IsExpanded = isFirst;
 				groupVm.SuggestionSelected += suggestion => SuggestionSelected?.Invoke(suggestion);
 				Groups.Add(groupVm);
+				isFirst = false;
 			}
 		}
 		catch (OperationCanceledException) { }
 		finally
 		{
 			IsLoading = false;
+		}
+	}
+
+	private void ToggleGroup(SuggestionGroupViewModel? target)
+	{
+		if (target == null)
+		{
+			return;
+		}
+
+		var expanding = !target.IsExpanded;
+		foreach (var group in Groups)
+		{
+			group.IsExpanded = false;
+		}
+
+		if (expanding)
+		{
+			target.IsExpanded = true;
 		}
 	}
 

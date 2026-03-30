@@ -20,7 +20,13 @@ public class WorkSuggestionViewModel
 		? $"{StartTime:HH:mm} – {EndTime:HH:mm}"
 		: string.Empty;
 
-	public string DisplayText => TicketId != null
-		? $"{TicketId}: {Title}"
-		: Title;
+	/// <summary>
+	/// Left badge: time range for calendar events, ticket ID for issues.
+	/// </summary>
+	public string? BadgeText => HasTimeSlot ? TimeDisplay : TicketId;
+
+	/// <summary>
+	/// Whether badge should use accent color (ticket ID) vs muted (time).
+	/// </summary>
+	public bool IsBadgeAccent => TicketId != null && !HasTimeSlot;
 }
