@@ -511,8 +511,9 @@ Initialize plugin with configuration.
 ##### ValidateConfigurationAsync
 
 ```csharp
-Task<PluginResult<bool>> ValidateConfigurationAsync(
-    Dictionary<string, string> configuration)
+Task<PluginValidationResult> ValidateConfigurationAsync(
+    IDictionary<string, string> configuration,
+    CancellationToken cancellationToken = default)
 ```
 
 Validate configuration without initializing.
@@ -1130,7 +1131,7 @@ public class WorkflowExample
 
 ## Resources
 
-- [GitHub Repository](https://github.com/vesnicancz/WorkTracker)
+- [GitHub Repository](https://github.com/vesnicancz/work-tracker)
 - [User Guide](USER_GUIDE.md)
 - [Developer Guide](DEVELOPER_GUIDE.md)
 - [Plugin Development Guide](PLUGIN_DEVELOPMENT.md)

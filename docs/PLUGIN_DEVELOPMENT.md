@@ -112,16 +112,30 @@ Plugins are loaded in **isolated AssemblyLoadContexts**, which means:
 
 ### 2.3 Plugin Discovery
 
-All plugins are standalone projects discovered via **directory scanning** using `DiscoverAndLoadPlugins()`:
+All plugins are standalone projects discovered via **directory scanning** using `DiscoverAndLoadPlugins()`.
+
+The default plugin directory is relative to the application executable:
 
 ```
-%AppData%\WorkTracker\Plugins\
+<AppContext.BaseDirectory>/plugins/
 ├── WorkTracker.Plugin.Atlassian.dll
 ├── WorkTracker.Plugin.Office365Calendar.dll
 ├── WorkTracker.Plugin.Luxafor.dll
 ├── WorkTracker.Plugin.GoranG3.dll
 └── MyPlugin.dll
 ```
+
+Additional plugin directories can be configured via `Plugins:Directories` in `appsettings.json`:
+
+```json
+{
+  "Plugins": {
+    "Directories": [ "plugins", "C:\\MyCustomPlugins" ]
+  }
+}
+```
+
+Relative paths are resolved against `AppContext.BaseDirectory`. See `WorkTrackerPaths.DefaultPluginsPath` for the default.
 
 Plugin DLLs are placed in the plugins scan directory during build. All plugins are loaded the same way via directory scan — there is no distinction between shipped and third-party plugins at runtime.
 
@@ -1594,7 +1608,7 @@ public class MockPlugin : WorklogUploadPluginBase
 
 ---
 
-**Questions?** Open an issue on [GitHub](https://github.com/vesnicancz/WorkTracker/issues)
+**Questions?** Open an issue on [GitHub](https://github.com/vesnicancz/work-tracker/issues)
 
 **Last Updated:** March 2026
 **Version:** 1.2

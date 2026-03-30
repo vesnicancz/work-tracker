@@ -41,7 +41,7 @@ Last Updated: March 2026
 ```bash
 # Clone repository
 git clone https://github.com/vesnicancz/work-tracker.git
-cd WorkTracker
+cd work-tracker
 
 # Restore dependencies
 dotnet restore
@@ -495,6 +495,8 @@ public class WorkEntryRepository : IWorkEntryRepository
 ```
 
 **Dependency Injection:**
+
+> **Note:** This is a simplified example. See `src/WorkTracker.Infrastructure/DependencyInjection.cs` for the actual implementation which uses `AddDbContextFactory`, `AddApplication()` extension method, and configuration-based plugin directories.
 
 ```csharp
 namespace WorkTracker.Infrastructure;

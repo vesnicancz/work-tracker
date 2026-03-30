@@ -65,7 +65,7 @@ WorkTracker je aplikace pro **sledování pracovní doby** určená pro vývojá
 
 #### Varianta A: Stažení Release
 
-1. Stáhněte nejnovější release z [GitHub Releases](https://github.com/vesnicancz/WorkTracker/releases)
+1. Stáhněte nejnovější release z [GitHub Releases](https://github.com/vesnicancz/work-tracker/releases)
 2. Rozbalte ZIP soubor
 3. Spusťte:
    - **CLI**: `WorkTracker.CLI.exe`
@@ -76,8 +76,8 @@ WorkTracker je aplikace pro **sledování pracovní doby** určená pro vývojá
 
 ```bash
 # Klonování repository
-git clone https://github.com/vesnicancz/WorkTracker.git
-cd WorkTracker
+git clone https://github.com/vesnicancz/work-tracker.git
+cd work-tracker
 
 # Build
 dotnet build -c Release
@@ -1223,9 +1223,9 @@ Viz sekce [6.5 Troubleshooting Tempo/Jira](#65-troubleshooting-tempojira)
 
 ## Podpora
 
-- 🐛 **Issues**: [GitHub Issues](https://github.com/vesnicancz/WorkTracker/issues)
-- 💬 **Diskuze**: [GitHub Discussions](https://github.com/vesnicancz/WorkTracker/discussions)
-- 📖 **Docs**: [Documentation](https://github.com/vesnicancz/WorkTracker/docs)
+- 🐛 **Issues**: [GitHub Issues](https://github.com/vesnicancz/work-tracker/issues)
+- 💬 **Diskuze**: [GitHub Discussions](https://github.com/vesnicancz/work-tracker/discussions)
+- 📖 **Docs**: [Documentation](https://github.com/vesnicancz/work-tracker/tree/master/docs)
 
 ---
 
