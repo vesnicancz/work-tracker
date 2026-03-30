@@ -70,7 +70,7 @@ public interface IPluginManager : IAsyncDisposable
 	/// <summary>
 	/// Initializes all loaded plugins with their configurations
 	/// </summary>
-	Task InitializePluginsAsync(Dictionary<string, Dictionary<string, string>>? configurations = null, CancellationToken cancellationToken = default);
+	Task InitializePluginsAsync(Dictionary<string, Dictionary<string, string>>? configurations, CancellationToken cancellationToken);
 
 	/// <summary>
 	/// Gets a plugin by its ID

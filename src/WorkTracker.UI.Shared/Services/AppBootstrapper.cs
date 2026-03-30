@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace WorkTracker.UI.Shared.Services;
 
@@ -40,7 +41,9 @@ public static class AppBootstrapper
 		var updateCheckService = services.GetService<IUpdateCheckService>();
 		if (updateCheckService != null)
 		{
-			_ = updateCheckService.CheckForUpdateAsync(cancellationToken);
+			var logger = services.GetRequiredService<ILoggerFactory>().CreateLogger(nameof(AppBootstrapper));
+			_ = updateCheckService.CheckForUpdateAsync(cancellationToken)
+				.SafeFireAndForgetAsync(ex => logger.LogWarning(ex, "Update check failed"));
 		}
 	}
 }

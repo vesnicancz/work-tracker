@@ -3,9 +3,10 @@ using System.Reflection;
 using System.Runtime.Loader;
 using System.Threading;
 using Microsoft.Extensions.Logging;
+using WorkTracker.Application.Plugins;
 using WorkTracker.Plugin.Abstractions;
 
-namespace WorkTracker.Application.Plugins;
+namespace WorkTracker.Infrastructure.Plugins;
 
 /// <summary>
 /// Manages plugin discovery, loading, and lifecycle
@@ -271,7 +272,7 @@ public sealed class PluginManager : IPluginManager
 	/// <summary>
 	/// Initializes all loaded plugins with their configurations
 	/// </summary>
-	public async Task InitializePluginsAsync(Dictionary<string, Dictionary<string, string>>? configurations = null, CancellationToken cancellationToken = default)
+	public async Task InitializePluginsAsync(Dictionary<string, Dictionary<string, string>>? configurations, CancellationToken cancellationToken)
 	{
 		List<KeyValuePair<string, IPlugin>> pluginsSnapshot;
 		lock (_lock)

@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using WorkTracker.Application.Plugins;
 using WorkTracker.Application.Services;
+using WorkTracker.Infrastructure.Plugins;
 using WorkTracker.Domain.Interfaces;
 using WorkTracker.Infrastructure.Data;
 using WorkTracker.Infrastructure.Repositories;

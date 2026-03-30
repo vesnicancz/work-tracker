@@ -1,7 +1,7 @@
 using System.Reflection;
 using System.Runtime.Loader;
 
-namespace WorkTracker.Application.Plugins;
+namespace WorkTracker.Infrastructure.Plugins;
 
 /// <summary>
 /// Custom assembly load context for plugin isolation

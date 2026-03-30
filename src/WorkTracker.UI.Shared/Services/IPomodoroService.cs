@@ -1,13 +1,5 @@
 namespace WorkTracker.UI.Shared.Services;
 
-public enum PomodoroPhase
-{
-	Idle,
-	Work,
-	ShortBreak,
-	LongBreak
-}
-
 public interface IPomodoroService
 {
 	PomodoroPhase CurrentPhase { get; }
@@ -16,12 +8,23 @@ public interface IPomodoroService
 	int PomodorosBeforeLongBreak { get; }
 	bool IsRunning { get; }
 
+	/// <summary>
+	/// Returns an atomic snapshot of all timer state in a single lock acquisition.
+	/// Prefer this over reading individual properties when multiple values are needed.
+	/// </summary>
+	PomodoroSnapshot GetSnapshot();
+
 	void Start();
+
 	void Stop();
+
 	void Skip();
+
 	void Reset();
 
 	event EventHandler<PomodoroPhase>? PhaseChanged;
+
 	event EventHandler? Tick;
+
 	event EventHandler? PomodoroCompleted;
 }
