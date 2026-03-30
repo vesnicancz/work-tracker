@@ -489,30 +489,23 @@ V nástrojové liště nad seznamem pracovních záznamů (vedle tlačítka **+*
 
 ```
 ┌────────────────────────────────────────┐
-│  Work Suggestions                      │
+│  Suggestions                     ↻  ✕  │
 ├────────────────────────────────────────┤
-│  Search: [___________________] 🔍      │
-│                                        │
 │  ▼ Jira Suggestions (3)               │
 │  ┌──────────────────────────────────┐ │
+│  │ [hledat...]                      │ │
 │  │ PROJ-123  Fix login timeout      │ │
 │  │ PROJ-456  Update API docs        │ │
 │  │ PROJ-789  Refactor auth module   │ │
 │  └──────────────────────────────────┘ │
 │                                        │
-│  ▼ Office 365 Calendar (2)            │
-│  ┌──────────────────────────────────┐ │
-│  │ 09:00  Sprint planning           │ │
-│  │ 14:00  1:1 with manager          │ │
-│  └──────────────────────────────────┘ │
-│                                        │
-│  [Create Work Entry]  [Close]          │
+│  ▶ Office 365 Calendar (2)            │
 └────────────────────────────────────────┘
 ```
 
-- Návrhy jsou **seskupeny podle pluginu** (Jira, O365 Calendar apod.)
-- U Jira pluginu můžete **vyhledávat** pomocí textového pole (vyhledávání přes JQL)
-- Kliknutím na návrh a tlačítkem **"Create Work Entry"** vytvoříte nový pracovní záznam s předvyplněnými údaji
+- Návrhy jsou **seskupeny podle pluginu** ve formě akordeonu — kliknutím na hlavičku sekci rozbalíte/sbalíte
+- U pluginů s podporou vyhledávání (např. Jira) je k dispozici **textové pole pro hledání**
+- **Kliknutím na návrh** se dialog zavře a otevře se formulář pro vytvoření nového pracovního záznamu s předvyplněnými údaji
 
 #### Start Work Panel
 
@@ -908,8 +901,11 @@ worktracker start PROJ-999 --start 10:00 --end 11:30
 ```bash
 cd src/WorkTracker.CLI
 dotnet user-secrets init
-dotnet user-secrets set "Plugins:atlassian:TempoApiToken" "your-tempo-token"
-dotnet user-secrets set "Plugins:atlassian:JiraApiToken" "your-jira-token"
+# Tempo Timesheets plugin (ID: tempo.worklog)
+dotnet user-secrets set "Plugins:tempo.worklog:TempoApiToken" "your-tempo-token"
+dotnet user-secrets set "Plugins:tempo.worklog:JiraApiToken" "your-jira-token"
+# Jira Suggestions plugin (ID: jira.suggestions)
+dotnet user-secrets set "Plugins:jira.suggestions:JiraApiToken" "your-jira-token"
 ```
 
 **Metoda 2: Environment Variables**
@@ -929,13 +925,18 @@ export WORKTRACKER_JIRA_TOKEN="your-jira-token"
 ```json
 {
   "Plugins": {
-    "atlassian": {
-      "TempoBaseUrl": "https://api.tempo.io/core/3",
+    "tempo.worklog": {
+      "TempoBaseUrl": "https://api.eu.tempo.io/4",
       "TempoApiToken": "your-tempo-token-here",
       "JiraBaseUrl": "https://your-company.atlassian.net",
       "JiraEmail": "your.email@company.com",
       "JiraApiToken": "your-jira-token-here",
-      "JiraAccountId": ""  // Optional, auto-detected
+      "JiraAccountId": ""
+    },
+    "jira.suggestions": {
+      "JiraBaseUrl": "https://your-company.atlassian.net",
+      "JiraEmail": "your.email@company.com",
+      "JiraApiToken": "your-jira-token-here"
     }
   }
 }
