@@ -66,14 +66,14 @@ public class WorkSuggestionOrchestrator : IWorkSuggestionOrchestrator
 			catch (OperationCanceledException) { throw; }
 			catch (Exception ex)
 			{
-				_logger.LogError(ex, "Plugin {Name} threw an exception", plugin.Metadata.Name);
+				_logger.LogError(ex, "Plugin {Name} threw an exception: {Message}", plugin.Metadata.Name, ex.Message);
 				return new SuggestionGroup
 				{
 					PluginId = plugin.Metadata.Id,
 					PluginName = plugin.Metadata.Name,
 					SupportsSearch = plugin.SupportsSearch,
 					Items = [],
-					Error = ex.Message,
+					Error = "Failed to load suggestions",
 					IconHint = plugin.Metadata.IconName ?? "LightbulbOutline"
 				};
 			}
@@ -94,7 +94,7 @@ public class WorkSuggestionOrchestrator : IWorkSuggestionOrchestrator
 
 		try
 		{
-			var result = string.IsNullOrWhiteSpace(query)
+			var result = string.IsNullOrWhiteSpace(query) || !plugin.SupportsSearch
 				? await plugin.GetSuggestionsAsync(date, cancellationToken)
 				: await plugin.SearchAsync(query, cancellationToken);
 

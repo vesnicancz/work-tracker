@@ -94,7 +94,7 @@ public sealed class DialogService : IDialogService
 		return Task.CompletedTask;
 	}
 
-	public async Task<WorkSuggestionViewModel?> ShowSuggestionsDialogAsync(DateTime selectedDate)
+	public Task<WorkSuggestionViewModel?> ShowSuggestionsDialogAsync(DateTime selectedDate)
 	{
 		using var scope = _scopeFactory.CreateScope();
 		var orchestrator = scope.ServiceProvider.GetRequiredService<IWorkSuggestionOrchestrator>();
@@ -113,7 +113,7 @@ public sealed class DialogService : IDialogService
 		dialog.Owner = System.Windows.Application.Current.MainWindow;
 		dialog.ShowDialog();
 
-		return dialog.SelectedSuggestion;
+		return Task.FromResult(dialog.SelectedSuggestion);
 	}
 
 	public Task<bool> ShowSettingsDialogAsync()

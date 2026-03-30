@@ -102,7 +102,7 @@ public class WorkSuggestionOrchestratorTests
 
 		result.Should().HaveCount(1);
 		result[0].Items.Should().BeEmpty();
-		result[0].Error.Should().Be("Network error");
+		result[0].Error.Should().Be("Failed to load suggestions");
 	}
 
 	[Fact]
@@ -199,6 +199,7 @@ public class WorkSuggestionOrchestratorTests
 	public async Task SearchPluginAsync_NonEmptyQuery_CallsSearch()
 	{
 		var plugin = CreateMockPlugin("jira", "Jira");
+		plugin.Setup(p => p.SupportsSearch).Returns(true);
 		plugin.Setup(p => p.SearchAsync("fix", It.IsAny<CancellationToken>()))
 			.ReturnsAsync(PluginResult<IReadOnlyList<WorkSuggestion>>.Success(new List<WorkSuggestion>
 			{
@@ -216,6 +217,7 @@ public class WorkSuggestionOrchestratorTests
 	public async Task SearchPluginAsync_PluginThrows_ReturnsEmpty()
 	{
 		var plugin = CreateMockPlugin("jira", "Jira");
+		plugin.Setup(p => p.SupportsSearch).Returns(true);
 		plugin.Setup(p => p.SearchAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
 			.ThrowsAsync(new HttpRequestException("Timeout"));
 		_mockPluginManager.Setup(m => m.GetPlugin<IWorkSuggestionPlugin>("jira")).Returns(plugin.Object);

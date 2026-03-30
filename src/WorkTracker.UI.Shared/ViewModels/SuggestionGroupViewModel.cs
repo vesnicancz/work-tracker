@@ -98,6 +98,10 @@ public class SuggestionGroupViewModel : ObservableObject, IDisposable
 			ReplaceItems(results);
 		}
 		catch (OperationCanceledException) { }
+		catch (Exception)
+		{
+			// Search failed — orchestrator already logs details, keep UI consistent
+		}
 		finally
 		{
 			IsSearching = false;
