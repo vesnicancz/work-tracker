@@ -186,8 +186,9 @@ public sealed class Office365CalendarPlugin : WorkSuggestionPluginBase, IDisposa
 					"Not authenticated — please use Test Connection in Settings to sign in first.");
 			}
 
+			var endLocal = date.Date.AddDays(1).AddSeconds(-1);
 			var startDto = new DateTimeOffset(date.Date, TimeZoneInfo.Local.GetUtcOffset(date.Date));
-			var endDto = new DateTimeOffset(date.Date.AddDays(1).AddSeconds(-1), TimeZoneInfo.Local.GetUtcOffset(date.Date));
+			var endDto = new DateTimeOffset(endLocal, TimeZoneInfo.Local.GetUtcOffset(endLocal));
 			var startDateTime = Uri.EscapeDataString(startDto.ToString("o"));
 			var endDateTime = Uri.EscapeDataString(endDto.ToString("o"));
 

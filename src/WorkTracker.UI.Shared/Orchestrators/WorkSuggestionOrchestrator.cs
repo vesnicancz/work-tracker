@@ -48,7 +48,7 @@ public class WorkSuggestionOrchestrator : IWorkSuggestionOrchestrator
 					};
 				}
 
-				var items = result.Value!
+				var items = (result.Value ?? [])
 					.Select(MapToViewModel)
 					.OrderBy(s => s.StartTime ?? DateTime.MaxValue)
 					.ThenBy(s => s.Title)
@@ -104,7 +104,7 @@ public class WorkSuggestionOrchestrator : IWorkSuggestionOrchestrator
 				return [];
 			}
 
-			return result.Value!
+			return (result.Value ?? [])
 				.Select(MapToViewModel)
 				.OrderBy(s => s.StartTime ?? DateTime.MaxValue)
 				.ThenBy(s => s.Title)
