@@ -35,5 +35,12 @@ public static class AppBootstrapper
 		// 3. Application state
 		var worklogStateService = services.GetRequiredService<IWorklogStateService>();
 		await worklogStateService.InitializeAsync();
+
+		// 4. Check for updates (non-blocking, fire-and-forget)
+		var updateCheckService = services.GetService<IUpdateCheckService>();
+		if (updateCheckService != null)
+		{
+			_ = updateCheckService.CheckForUpdateAsync(cancellationToken);
+		}
 	}
 }

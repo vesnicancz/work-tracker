@@ -21,6 +21,11 @@ public class ApplicationSettings
 	public bool StartMinimized { get; set; }
 
 	/// <summary>
+	/// Whether to check GitHub for newer releases on startup
+	/// </summary>
+	public bool CheckForUpdates { get; set; } = true;
+
+	/// <summary>
 	/// Plugin configurations (pluginId -> configuration dictionary)
 	/// </summary>
 	public Dictionary<string, Dictionary<string, string>> PluginConfigurations { get; set; } = new();

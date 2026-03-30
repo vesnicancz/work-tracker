@@ -22,6 +22,7 @@ public class SettingsViewModel : ViewModelBase
 	private CloseWindowBehavior _closeWindowBehavior;
 	private bool _startWithWindows;
 	private bool _startMinimized;
+	private bool _checkForUpdates;
 	private PluginViewModel? _selectedPlugin;
 	private string? _testConnectionResult;
 	private bool _isTestingConnection;
@@ -62,6 +63,7 @@ public class SettingsViewModel : ViewModelBase
 		_closeWindowBehavior = _settingsService.Settings.CloseWindowBehavior;
 		_startWithWindows = _autostartManager.IsEnabled;
 		_startMinimized = _settingsService.Settings.StartMinimized;
+		_checkForUpdates = _settingsService.Settings.CheckForUpdates;
 		_selectedTheme = _settingsService.Settings.Theme ?? "Dark";
 
 		// Load Pomodoro settings
@@ -154,6 +156,12 @@ public class SettingsViewModel : ViewModelBase
 	{
 		get => _startMinimized;
 		set => SetProperty(ref _startMinimized, value);
+	}
+
+	public bool CheckForUpdates
+	{
+		get => _checkForUpdates;
+		set => SetProperty(ref _checkForUpdates, value);
 	}
 
 	public string AppVersionDisplay => _localization.GetFormattedString("VersionFormat", Application.AppInfo.Version);
@@ -355,6 +363,7 @@ public class SettingsViewModel : ViewModelBase
 				CloseWindowBehavior = CloseWindowBehavior,
 				StartWithWindows = StartWithWindows,
 				StartMinimized = StartMinimized,
+				CheckForUpdates = CheckForUpdates,
 				Theme = SelectedTheme,
 				FavoriteWorkItems = FavoriteWorkItems.ToList(),
 				Plugins = Plugins.ToList(),

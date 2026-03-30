@@ -1,4 +1,6 @@
+using System.Net.Http;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using WorkTracker.UI.Shared.Orchestrators;
 using WorkTracker.UI.Shared.Services;
 
@@ -13,6 +15,21 @@ public static class UISharedServiceCollectionExtensions
 		services.AddTransient<ISettingsOrchestrator, SettingsOrchestrator>();
 		services.AddTransient<IWorkSuggestionOrchestrator, WorkSuggestionOrchestrator>();
 		services.AddSingleton<IPomodoroService, PomodoroService>();
+
+		services.AddSingleton<IUpdateCheckService>(sp =>
+		{
+			var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+			httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("WorkTracker-UpdateCheck/1.0");
+			httpClient.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
+			return new UpdateCheckService(
+				Application.AppInfo.Version,
+				httpClient,
+				sp.GetRequiredService<ISettingsService>(),
+				sp.GetRequiredService<ISystemNotificationService>(),
+				sp.GetRequiredService<ILocalizationService>(),
+				sp.GetRequiredService<ILogger<UpdateCheckService>>());
+		});
+
 		return services;
 	}
 }

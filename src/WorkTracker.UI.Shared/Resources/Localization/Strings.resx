@@ -206,6 +206,23 @@
     <value>Application will start minimized to system tray</value>
   </data>
 
+  <!-- Updates -->
+  <data name="Updates" xml:space="preserve">
+    <value>Updates</value>
+  </data>
+  <data name="CheckForUpdates" xml:space="preserve">
+    <value>Check for updates</value>
+  </data>
+  <data name="CheckForUpdatesDesc" xml:space="preserve">
+    <value>Automatically check GitHub for newer versions on startup</value>
+  </data>
+  <data name="UpdateAvailableTitle" xml:space="preserve">
+    <value>Update Available</value>
+  </data>
+  <data name="UpdateAvailableMessage" xml:space="preserve">
+    <value>New version {0} is available (current: {1}). Click to download.</value>
+  </data>
+
   <!-- Work Entry Edit Dialog -->
   <data name="NewWorkEntry" xml:space="preserve">
     <value>New Work Entry</value>
