@@ -38,7 +38,7 @@ public class SuggestionGroupViewModel : ObservableObject, IDisposable
 	public string? IconHint { get; }
 	public bool SupportsSearch { get; }
 	public int Count { get; private set; }
-	public string? Error { get; }
+	public string? Error { get; private set; }
 	public bool HasError => Error != null;
 	public bool IsEmpty => !HasError && Count == 0;
 	public ObservableCollection<WorkSuggestionViewModel> Items { get; }
@@ -116,7 +116,10 @@ public class SuggestionGroupViewModel : ObservableObject, IDisposable
 			Items.Add(item);
 		}
 		Count = Items.Count;
+		Error = null;
 		OnPropertyChanged(nameof(Count));
+		OnPropertyChanged(nameof(Error));
+		OnPropertyChanged(nameof(HasError));
 		OnPropertyChanged(nameof(IsEmpty));
 	}
 

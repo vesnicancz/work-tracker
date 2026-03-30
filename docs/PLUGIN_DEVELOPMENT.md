@@ -953,24 +953,25 @@ public class MyCalendarPlugin : WorkSuggestionPluginBase
     {
         Id = "my-calendar",
         Name = "My Calendar Suggestions",
-        Version = "1.0.0",
+        Version = new Version(1, 0, 0),
         Author = "Your Name",
         Description = "Navrhy pracovnich zaznamu z kalendare",
-        Tags = new[] { "calendar", "suggestions" }
+        IconName = "CalendarMonth",
+        Tags = ["calendar", "suggestions"]
     };
 
-    protected override List<PluginConfigurationField> GetConfigurationFieldsInternal()
+    public override IReadOnlyList<PluginConfigurationField> GetConfigurationFields()
     {
-        return new List<PluginConfigurationField>
-        {
+        return
+        [
             new()
             {
                 Key = "ApiUrl",
-                DisplayName = "API URL",
+                Label = "API URL",
                 Type = PluginConfigurationFieldType.Url,
                 IsRequired = true
             }
-        };
+        ];
     }
 
     public override async Task<PluginResult<bool>> TestConnectionAsync(
