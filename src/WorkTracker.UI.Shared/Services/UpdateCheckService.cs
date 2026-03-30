@@ -67,7 +67,9 @@ public sealed class UpdateCheckService : IUpdateCheckService
 			var root = json.RootElement;
 			var tagName = root.GetProperty("tag_name").GetString();
 			var htmlUrl = root.TryGetProperty("html_url", out var urlProp)
-				? urlProp.GetString()
+				&& urlProp.ValueKind == JsonValueKind.String
+				&& !string.IsNullOrWhiteSpace(urlProp.GetString())
+				? urlProp.GetString()!
 				: ReleasesFallbackUrl;
 
 			if (string.IsNullOrEmpty(tagName))
