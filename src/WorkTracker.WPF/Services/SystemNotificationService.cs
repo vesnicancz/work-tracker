@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Diagnostics;
 using DesktopNotifications;
 using DesktopNotifications.Windows;
@@ -13,7 +12,7 @@ public sealed class SystemNotificationService : ISystemNotificationService, IDis
 	private readonly WindowsNotificationManager _manager;
 	private readonly SemaphoreSlim _initLock = new(1, 1);
 	private volatile bool _initialized;
-	private readonly ConcurrentDictionary<string, string> _pendingActionUrls = new();
+	private volatile string? _pendingActionUrl;
 
 	public SystemNotificationService(ILogger<SystemNotificationService> logger)
 	{
@@ -38,10 +37,7 @@ public sealed class SystemNotificationService : ISystemNotificationService, IDis
 				Body = message
 			};
 
-			if (!string.IsNullOrEmpty(actionUrl))
-			{
-				_pendingActionUrls[title] = actionUrl;
-			}
+			_pendingActionUrl = actionUrl;
 
 			await _manager.ShowNotification(notification, null);
 		}
@@ -60,10 +56,8 @@ public sealed class SystemNotificationService : ISystemNotificationService, IDis
 
 	private void OnNotificationActivated(object? sender, NotificationActivatedEventArgs e)
 	{
-		// DesktopNotifications doesn't provide a reliable notification ID in the activated event,
-		// so we pop the first available URL (typically only one is pending at a time)
-		var key = _pendingActionUrls.Keys.FirstOrDefault();
-		if (key != null && _pendingActionUrls.TryRemove(key, out var url))
+		var url = Interlocked.Exchange(ref _pendingActionUrl, null);
+		if (url != null && IsHttpUrl(url))
 		{
 			try
 			{
@@ -75,6 +69,10 @@ public sealed class SystemNotificationService : ISystemNotificationService, IDis
 			}
 		}
 	}
+
+	private static bool IsHttpUrl(string url) =>
+		Uri.TryCreate(url, UriKind.Absolute, out var uri)
+		&& uri.Scheme is "https" or "http";
 
 	private async Task EnsureInitializedAsync()
 	{

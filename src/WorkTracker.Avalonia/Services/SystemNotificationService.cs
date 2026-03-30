@@ -6,19 +6,20 @@ using WorkTracker.UI.Shared.Services;
 
 namespace WorkTracker.Avalonia.Services;
 
-public sealed class SystemNotificationService : ISystemNotificationService
+public sealed class SystemNotificationService : ISystemNotificationService, IDisposable
 {
 	private readonly ILogger<SystemNotificationService> _logger;
 	private readonly ConcurrentDictionary<uint, string> _pendingActionUrls = new();
+	private INativeNotificationManager? _manager;
 
 	public SystemNotificationService(ILogger<SystemNotificationService> logger)
 	{
 		_logger = logger;
 
-		var manager = NativeNotificationManager.Current;
-		if (manager != null)
+		_manager = NativeNotificationManager.Current;
+		if (_manager != null)
 		{
-			manager.NotificationCompleted += OnNotificationCompleted;
+			_manager.NotificationCompleted += OnNotificationCompleted;
 		}
 	}
 
@@ -59,6 +60,15 @@ public sealed class SystemNotificationService : ISystemNotificationService
 		return Task.CompletedTask;
 	}
 
+	public void Dispose()
+	{
+		if (_manager != null)
+		{
+			_manager.NotificationCompleted -= OnNotificationCompleted;
+			_manager = null;
+		}
+	}
+
 	private void OnNotificationCompleted(object? sender, NativeNotificationCompletedEventArgs e)
 	{
 		if (e.NotificationId == null)
@@ -68,13 +78,16 @@ public sealed class SystemNotificationService : ISystemNotificationService
 
 		if (e.IsActivated && _pendingActionUrls.TryRemove(e.NotificationId.Value, out var url))
 		{
-			try
+			if (IsHttpUrl(url))
 			{
-				Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
-			}
-			catch (Exception ex)
-			{
-				_logger.LogWarning(ex, "Failed to open URL {Url}", url);
+				try
+				{
+					Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+				}
+				catch (Exception ex)
+				{
+					_logger.LogWarning(ex, "Failed to open URL {Url}", url);
+				}
 			}
 		}
 		else
@@ -83,4 +96,8 @@ public sealed class SystemNotificationService : ISystemNotificationService
 			_pendingActionUrls.TryRemove(e.NotificationId.Value, out _);
 		}
 	}
+
+	private static bool IsHttpUrl(string url) =>
+		Uri.TryCreate(url, UriKind.Absolute, out var uri)
+		&& uri.Scheme is "https" or "http";
 }
