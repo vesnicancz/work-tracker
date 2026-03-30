@@ -10,7 +10,11 @@ public static class TaskExtensions
 	{
 		try
 		{
-			await task;
+			await task.ConfigureAwait(false);
+		}
+		catch (OperationCanceledException)
+		{
+			// Normal cancellation — not an error worth reporting.
 		}
 		catch (Exception ex)
 		{

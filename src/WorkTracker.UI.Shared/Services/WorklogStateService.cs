@@ -133,30 +133,57 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 			cancellationToken);
 	}
 
-	public Task<Result> StopTrackingAsync(CancellationToken cancellationToken)
+	public async Task<Result> StopTrackingAsync(CancellationToken cancellationToken)
 	{
-		return ExecuteLockedAsync(
-			async (svc, ct) =>
+		ThrowIfNotInitialized();
+
+		WorkEntry? oldActiveWork = null;
+		var oldIsTracking = false;
+		var workEntriesModified = false;
+
+		await _stateLock.WaitAsync(cancellationToken);
+		try
+		{
+			oldActiveWork = _activeWork;
+			oldIsTracking = _isTracking;
+
+			if (!_isTracking)
 			{
-				if (!_isTracking)
-				{
-					_logger.LogDebug("No active work to stop");
-					return Result.Success();
-				}
+				_logger.LogDebug("No active work to stop");
+				return Result.Success();
+			}
 
-				_logger.LogInformation("Stopping work tracking: WorkEntryId={WorkEntryId}", _activeWork?.Id);
+			_logger.LogInformation("Stopping work tracking: WorkEntryId={WorkEntryId}", _activeWork?.Id);
 
-				// StopWorkAsync returns Result<WorkEntry>; upcast to Result (value unused)
-				return (Result)await svc.StopWorkAsync(cancellationToken: ct);
-			},
-			_ =>
+			using var scope = _scopeFactory.CreateScope();
+			var workEntryService = scope.ServiceProvider.GetRequiredService<IWorkEntryService>();
+
+			var result = await workEntryService.StopWorkAsync(cancellationToken: cancellationToken);
+
+			if (result.IsSuccess)
 			{
 				UpdateState(null, false);
 				_logger.LogInformation("Work tracking stopped successfully");
-				return Task.CompletedTask;
-			},
-			"StopTracking",
-			cancellationToken);
+				workEntriesModified = true;
+			}
+			else
+			{
+				_logger.LogWarning("Failed StopTracking: {Error}", result.Error);
+			}
+
+			return result;
+		}
+		catch (OperationCanceledException) { throw; }
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Unexpected error in StopTracking");
+			return Result.Failure($"Unexpected error: {ex.Message}");
+		}
+		finally
+		{
+			_stateLock.Release();
+			RaiseEvents(oldActiveWork, oldIsTracking, workEntriesModified);
+		}
 	}
 
 	public async Task RefreshFromDatabaseAsync(CancellationToken cancellationToken)
