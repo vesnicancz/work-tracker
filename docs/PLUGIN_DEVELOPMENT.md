@@ -112,22 +112,18 @@ Plugins are loaded in **isolated AssemblyLoadContexts**, which means:
 
 ### 2.3 Plugin Discovery
 
-Plugins are discovered from:
+All plugins are standalone projects discovered via **directory scanning** using `DiscoverAndLoadPlugins()`:
 
-1. **Embedded Plugins** - Compiled into main application
-   ```
-   src/WorkTracker.Infrastructure/DependencyInjection.cs
-   → LoadEmbeddedPlugin<TempoWorklogPlugin>()
-   → LoadEmbeddedPlugin<JiraSuggestionsPlugin>()
-   → LoadEmbeddedPlugin<LuxaforStatusIndicatorPlugin>()
-   → LoadEmbeddedPlugin<Office365CalendarPlugin>()
-   ```
+```
+%AppData%\WorkTracker\Plugins\
+├── WorkTracker.Plugin.Atlassian.dll
+├── WorkTracker.Plugin.Office365Calendar.dll
+├── WorkTracker.Plugin.Luxafor.dll
+├── WorkTracker.Plugin.GoranG3.dll
+└── MyPlugin.dll
+```
 
-2. **External Plugins** - Loaded from directory
-   ```
-   %AppData%\WorkTracker\Plugins\
-   └── MyPlugin.dll
-   ```
+Plugin DLLs are placed in the plugins scan directory during build. All plugins are loaded the same way via directory scan — there is no distinction between shipped and third-party plugins at runtime.
 
 ---
 
@@ -1362,7 +1358,7 @@ public class MySystemPluginIntegrationTests : IAsyncLifetime
 dotnet build -c Release
 
 # Output will be in:
-bin/Release/net9.0/WorkTracker.Plugin.MySystem.dll
+bin/Release/net10.0/WorkTracker.Plugin.MySystem.dll
 ```
 
 ### 9.2 Installation
@@ -1393,7 +1389,7 @@ Create NuGet package:
     </dependencies>
   </metadata>
   <files>
-    <file src="bin/Release/net9.0/*.dll" target="lib/net9.0" />
+    <file src="bin/Release/net10.0/*.dll" target="lib/net10.0" />
   </files>
 </package>
 ```
@@ -1535,7 +1531,7 @@ protected override async Task<PluginResult<bool>> UploadWorklogInternalAsync(
 
 ## 11. Example Plugins
 
-### 11.1 Atlassian Plugin (Built-in, Worklog Upload + Work Suggestions)
+### 11.1 Atlassian Plugin (Worklog Upload + Work Suggestions)
 
 Adresar `plugins/WorkTracker.Plugin.Atlassian/` obsahuje dva pluginy v jednom baliku:
 
@@ -1544,15 +1540,19 @@ Adresar `plugins/WorkTracker.Plugin.Atlassian/` obsahuje dva pluginy v jednom ba
 
 Oba sdileji `JiraClient` pro komunikaci s Jira REST API. Testy v `tests/WorkTracker.Plugin.Atlassian.Tests/`.
 
-### 11.2 Office 365 Calendar Plugin (Built-in, Work Suggestions)
+### 11.2 Office 365 Calendar Plugin (Work Suggestions)
 
 See `plugins/WorkTracker.Plugin.Office365Calendar/` for a calendar-based suggestion plugin. Pouziva MSAL pro autentizaci vuci Microsoft Graph API a vraci udalosti z kalendare jako `WorkSuggestion` s `StartTime`/`EndTime`.
 
-### 11.3 Luxafor Plugin (Built-in, Status Indicator)
+### 11.3 Luxafor Plugin (Status Indicator)
 
 See `plugins/WorkTracker.Plugin.Luxafor/` for a complete status indicator plugin example. Uses the `Luxafor.HidSharp` library (`src/Luxafor.HidSharp/`) for HID device communication.
 
-### 11.4 Minimal Mock Plugin
+### 11.4 GoranG3 Plugin (Worklog Upload)
+
+See `plugins/WorkTracker.Plugin.GoranG3/` for another worklog upload plugin example.
+
+### 11.5 Minimal Mock Plugin
 
 ```csharp
 public class MockPlugin : WorklogUploadPluginBase
@@ -1594,7 +1594,7 @@ public class MockPlugin : WorklogUploadPluginBase
 
 ---
 
-**Questions?** Open an issue on [GitHub](https://github.com/yourusername/WorkTracker/issues)
+**Questions?** Open an issue on [GitHub](https://github.com/vesnicancz/WorkTracker/issues)
 
 **Last Updated:** March 2026
 **Version:** 1.2

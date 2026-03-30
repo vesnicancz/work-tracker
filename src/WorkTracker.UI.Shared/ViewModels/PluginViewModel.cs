@@ -9,7 +9,7 @@ namespace WorkTracker.UI.Shared.ViewModels;
 /// </summary>
 public class PluginViewModel : ObservableObject
 {
-	private bool _isEnabled = true;
+	private bool _isEnabled;
 
 	public IPlugin Plugin { get; }
 	public Dictionary<string, string> Configuration { get; } = new();

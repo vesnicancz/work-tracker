@@ -1,6 +1,6 @@
 # WorkTracker WPF - Modern Time Tracking Application
 
-A modern, production-ready WPF desktop application for tracking work time and submitting worklogs to Tempo/Jira.
+A modern, production-ready WPF desktop application for tracking work time and submitting worklogs to Tempo/Jira. Built on top of the shared UI library (WorkTracker.UI.Shared) which provides models, orchestrators, and service interfaces.
 
 ## Features
 
@@ -35,10 +35,6 @@ The application strictly follows the MVVM (Model-View-ViewModel) pattern for cle
 
 ```
 WorkTracker.WPF/
-├── Commands/               # ICommand implementations
-│   ├── RelayCommand.cs            # Synchronous commands
-│   └── AsyncRelayCommand.cs       # Async commands with proper await handling
-│
 ├── Converters/            # Value converters for data binding
 │   ├── TimeSpanToStringConverter.cs     # Format TimeSpan as "2h 30m"
 │   ├── DateTimeToStringConverter.cs      # Format DateTime with custom formats
@@ -49,22 +45,28 @@ WorkTracker.WPF/
 │   ├── Colors.xaml                # Color definitions and brushes
 │   └── Styles.xaml                # Reusable styles for controls
 │
-├── Services/              # Application services
-│   ├── IDialogService.cs          # Dialog abstraction interface
+├── Services/              # Platform-specific service implementations
+│   ├── AppIconProvider.cs         # Application icon provider
+│   ├── AutostartManager.cs        # Windows autostart registration
 │   ├── DialogService.cs           # WPF dialog implementation
-│   ├── INotificationService.cs    # Notification abstraction
-│   └── NotificationService.cs     # Toast notification implementation
+│   ├── HotkeyService.cs           # Global hotkey registration
+│   ├── NotificationService.cs     # Toast notification implementation
+│   ├── SystemNotificationService.cs # System-level notifications
+│   └── TrayIconService.cs         # System tray icon management
 │
 ├── ViewModels/            # ViewModels (business logic)
 │   ├── ViewModelBase.cs           # Base class with INotifyPropertyChanged
 │   ├── MainViewModel.cs           # Main window logic
-│   ├── WorkEntryEditViewModel.cs  # Edit dialog logic
-│   └── SendWorklogViewModel.cs    # Tempo submission logic
+│   ├── SettingsViewModel.cs       # Settings window logic
+│   ├── SubmitWorklogViewModel.cs  # Tempo submission logic
+│   └── WorkEntryEditViewModel.cs  # Edit dialog logic
 │
 ├── Views/                 # XAML views
 │   ├── MainWindow.xaml            # Main application window
-│   ├── WorkEntryEditDialog.xaml   # Edit work entry dialog
-│   └── SendWorklogDialog.xaml     # Send to Tempo dialog
+│   ├── SettingsWindow.xaml        # Application settings window
+│   ├── SubmitWorklogDialog.xaml   # Send to Tempo dialog
+│   ├── SuggestionsWindow.xaml     # Work suggestions dialog
+│   └── WorkEntryEditDialog.xaml   # Edit work entry dialog
 │
 ├── App.xaml               # Application resources
 ├── App.xaml.cs            # Dependency injection setup
@@ -180,7 +182,6 @@ The application is designed with testability in mind:
 ## Future Enhancements
 
 Potential improvements:
-- Keyboard shortcuts (Ctrl+N, Ctrl+S, etc.)
 - Export to CSV/Excel
 - Statistics and reporting
 - Multiple work session support

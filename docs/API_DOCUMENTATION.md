@@ -498,7 +498,7 @@ Plugin identification and information.
 ##### InitializeAsync
 
 ```csharp
-Task<bool> InitializeAsync(Dictionary<string, string>? configuration = null)
+Task<bool> InitializeAsync(IDictionary<string, string>? configuration = null, CancellationToken cancellationToken = default)
 ```
 
 Initialize plugin with configuration.
@@ -1130,7 +1130,7 @@ public class WorkflowExample
 
 ## Resources
 
-- [GitHub Repository](https://github.com/yourusername/WorkTracker)
+- [GitHub Repository](https://github.com/vesnicancz/WorkTracker)
 - [User Guide](USER_GUIDE.md)
 - [Developer Guide](DEVELOPER_GUIDE.md)
 - [Plugin Development Guide](PLUGIN_DEVELOPMENT.md)
