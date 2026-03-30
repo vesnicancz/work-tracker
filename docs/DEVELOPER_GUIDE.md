@@ -40,8 +40,8 @@ Last Updated: March 2026
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/WorkTracker.git
-cd WorkTracker
+git clone https://github.com/vesnicancz/work-tracker.git
+cd work-tracker
 
 # Restore dependencies
 dotnet restore
@@ -346,24 +346,20 @@ public class WorkEntryService : IWorkEntryService
                     "Auto-stopping previous work on ticket {PreviousTicketId}",
                     activeEntry.TicketId);
 
-                var stopTime = DateTimeHelper.RoundToMinute(startTime ?? DateTime.Now);
-                activeEntry.EndTime = stopTime;
-                activeEntry.IsActive = false;
-                activeEntry.UpdatedAt = DateTimeHelper.RoundToMinute(DateTime.Now);
+                activeEntry.Stop(
+                    DateTimeHelper.RoundToMinute(startTime ?? DateTime.Now),
+                    DateTimeHelper.RoundToMinute(DateTime.Now));
 
                 await _repository.UpdateAsync(activeEntry);
             }
         }
 
-        var workEntry = new WorkEntry
-        {
-            TicketId = ticketId,
-            StartTime = DateTimeHelper.RoundToMinute(startTime ?? DateTime.Now),
-            EndTime = DateTimeHelper.RoundToMinute(endTime),
-            Description = description,
-            IsActive = !endTime.HasValue,
-            CreatedAt = DateTimeHelper.RoundToMinute(DateTime.Now)
-        };
+        var workEntry = WorkEntry.Create(
+            ticketId,
+            DateTimeHelper.RoundToMinute(startTime ?? DateTime.Now),
+            DateTimeHelper.RoundToMinute(endTime),
+            description,
+            DateTimeHelper.RoundToMinute(DateTime.Now));
 
         if (!workEntry.IsValid())
         {
@@ -500,6 +496,8 @@ public class WorkEntryRepository : IWorkEntryRepository
 
 **Dependency Injection:**
 
+> **Note:** This is a simplified example. See `src/WorkTracker.Infrastructure/DependencyInjection.cs` for the actual implementation which uses `AddDbContextFactory`, `AddApplication()` extension method, and configuration-based plugin directories.
+
 ```csharp
 namespace WorkTracker.Infrastructure;
 
@@ -535,29 +533,33 @@ public static class DependencyInjection
         services.AddScoped<IDateRangeService, DateRangeService>();
         services.AddScoped<IWorklogValidator, WorklogValidator>();
 
+        // Secure storage
+        services.AddSingleton<ISecureStorage, CredentialStoreSecureStorage>();
+
         // Plugin System
         services.AddSingleton<PluginManager>(serviceProvider =>
         {
-            var logger = serviceProvider.GetRequiredService<ILogger<PluginManager>>();
-            var pluginManager = new PluginManager(logger);
+            var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
+            var pluginManager = new PluginManager(loggerFactory);
 
-            var pluginsPath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "WorkTracker",
-                "Plugins");
+            var pluginDirs = configuration.GetSection("Plugins:Directories").Get<string[]>()
+                ?? [WorkTrackerPaths.DefaultPluginsPath];
 
-            if (!Directory.Exists(pluginsPath))
+            foreach (var dir in pluginDirs)
             {
-                Directory.CreateDirectory(pluginsPath);
+                if (string.IsNullOrWhiteSpace(dir)) continue;
+
+                var resolvedDir = Path.IsPathRooted(dir)
+                    ? dir
+                    : Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, dir));
+
+                Directory.CreateDirectory(resolvedDir);
+                pluginManager.AddPluginDirectory(resolvedDir);
             }
 
-            pluginManager.AddPluginDirectory(pluginsPath);
             return pluginManager;
         });
-
-        // Application Services
-        services.AddScoped<IWorkEntryService, WorkEntryService>();
-        services.AddScoped<IWorklogSubmissionService, PluginBasedWorklogSubmissionService>();
+        services.AddSingleton<IPluginManager>(sp => sp.GetRequiredService<PluginManager>());
 
         return services;
     }

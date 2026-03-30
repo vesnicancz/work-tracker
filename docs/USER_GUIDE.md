@@ -29,6 +29,7 @@ WorkTracker je aplikace pro **sledování pracovní doby** určená pro vývojá
 - 🎫 Propojit práci s Jira tickety
 - 📤 Automaticky odesílat worklogs do Tempo
 - 💡 Získat návrhy práce z Jira a Office 365 kalendáře
+- 🍅 Pomodoro timer s OS notifikacemi a Luxafor LED indikací
 - 📈 Sledovat svou produktivitu
 - ⚡ Rychle a jednoduše spravovat své pracovní záznamy
 
@@ -45,6 +46,7 @@ WorkTracker je aplikace pro **sledování pracovní doby** určená pro vývojá
 | **Failed Worklog Resubmission** | Opakované odeslání neúspěšných worklogů |
 | **Validation** | Detekce překrývajících se časů, kontrola validních dat |
 | **Work Suggestions** | Návrhy práce z Jira (JQL) a Office 365 kalendáře |
+| **Pomodoro Timer** | Pomodoro timer s OS notifikacemi a Luxafor LED indikací |
 | **Offline First** | Práce bez připojení, sync když je potřeba |
 
 ### 1.3 Požadavky
@@ -63,7 +65,7 @@ WorkTracker je aplikace pro **sledování pracovní doby** určená pro vývojá
 
 #### Varianta A: Stažení Release
 
-1. Stáhněte nejnovější release z [GitHub Releases](https://github.com/yourusername/WorkTracker/releases)
+1. Stáhněte nejnovější release z [GitHub Releases](https://github.com/vesnicancz/work-tracker/releases)
 2. Rozbalte ZIP soubor
 3. Spusťte:
    - **CLI**: `WorkTracker.CLI.exe`
@@ -74,8 +76,8 @@ WorkTracker je aplikace pro **sledování pracovní doby** určená pro vývojá
 
 ```bash
 # Klonování repository
-git clone https://github.com/yourusername/WorkTracker.git
-cd WorkTracker
+git clone https://github.com/vesnicancz/work-tracker.git
+cd work-tracker
 
 # Build
 dotnet build -c Release
@@ -125,9 +127,15 @@ Vytvořte/upravte `appsettings.json` vedle spustitelného souboru:
     "Path": "%LocalAppData%\\WorkTracker\\worktracker.db"
   },
   "Plugins": {
-    "atlassian": {
+    "tempo.worklog": {
       "TempoBaseUrl": "https://api.tempo.io/core/3",
       "TempoApiToken": "",
+      "JiraBaseUrl": "https://your-company.atlassian.net",
+      "JiraEmail": "your.email@company.com",
+      "JiraApiToken": "",
+      "JiraAccountId": ""
+    },
+    "jira.suggestions": {
       "JiraBaseUrl": "https://your-company.atlassian.net",
       "JiraEmail": "your.email@company.com",
       "JiraApiToken": ""
@@ -688,8 +696,8 @@ dotnet run --project src/WorkTracker.Avalonia
 
 - **Cross-platform** - funguje na Windows, Linux i macOS
 - **Fluent theme** - moderní vzhled s Avalonia Fluent motivem
-- **Přepínání motivů** - Dark/Light mód (One Dark Pro / One Light palety)
-  - Settings → General → Appearance → Theme dropdown: Dark / Light
+- **Přepínání motivů** - 5 barevných motivů
+  - Settings → General → Appearance → Theme dropdown: Dark / Light / Midnight / Modern Blue / Purple
 - **Material.Icons.Avalonia** - konzistentní ikony napříč platformami
 - **System tray** - podpora system tray ikony na všech platformách
 
@@ -698,6 +706,9 @@ dotnet run --project src/WorkTracker.Avalonia
 V nastavení (Settings → General → Appearance) můžete přepínat mezi:
 - **Dark** - One Dark Pro paleta (tmavé téma)
 - **Light** - One Light paleta (světlé téma)
+- **Midnight** - hluboce tmavý motiv
+- **Modern Blue** - moderní modrý motiv
+- **Purple** - fialový motiv
 
 Změna se projeví okamžitě bez nutnosti restartovat aplikaci.
 
@@ -1096,10 +1107,11 @@ A: Použijte start s --start a --end:
 
 **Q: Podporuje WorkTracker jiné systémy než Tempo?**
 ```
-A: Ano, WorkTracker má plugin systém. Vestavěné pluginy zahrnují:
+A: Ano, WorkTracker má plugin systém. Dodávané pluginy zahrnují:
    - Atlassian (Tempo/Jira) - export worklogů
    - Jira Suggestions - návrhy práce z Jira (JQL)
    - Office 365 Calendar - návrhy práce z kalendáře
+   - GoranG3 - integrace s GoranG3
    Můžete také vytvořit vlastní plugin. Viz PLUGIN_DEVELOPMENT.md
 ```
 
@@ -1211,10 +1223,9 @@ Viz sekce [6.5 Troubleshooting Tempo/Jira](#65-troubleshooting-tempojira)
 
 ## Podpora
 
-- 📧 **Email**: support@worktracker.example.com
-- 🐛 **Issues**: [GitHub Issues](https://github.com/yourusername/WorkTracker/issues)
-- 💬 **Diskuze**: [GitHub Discussions](https://github.com/yourusername/WorkTracker/discussions)
-- 📖 **Docs**: [Documentation](https://github.com/yourusername/WorkTracker/docs)
+- 🐛 **Issues**: [GitHub Issues](https://github.com/vesnicancz/work-tracker/issues)
+- 💬 **Diskuze**: [GitHub Discussions](https://github.com/vesnicancz/work-tracker/discussions)
+- 📖 **Docs**: [Documentation](https://github.com/vesnicancz/work-tracker/tree/master/docs)
 
 ---
 

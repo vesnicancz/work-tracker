@@ -120,14 +120,14 @@ Prioritizovat testy podle rizikovosti:
                               │
                               ▼
                    ┌──────────────────┐
-                   │  Plugin.Tempo    │
+                   │  Plugin.Atlassian│
                    │  (lib)           │
                    └──────────────────┘
 
    ┌────────────────────────────────────┐
    │  Infrastructure (lib)              │
    │  References: Domain, Application,  │
-   │  Plugin.Tempo (embedded plugin)    │
+   │  Plugin.Atlassian (via directory scan) │
    └────────────────────────────────────┘
 ```
 
@@ -137,7 +137,7 @@ Prioritizovat testy podle rizikovosti:
 
 | Metrika | Hodnota |
 |---------|---------|
-| Počet projektů | 13 (8 src + 4 tests + 1 plugin) |
+| Počet projektů | 18 (9 src + 5 tests + 4 plugins) |
 | Target framework | .NET 10.0 |
 | Testů celkem | ~198 |
 | Pokrytí UI vrstvy | Částečné (orchestrátory testovány, ViewModely ne) |
@@ -159,7 +159,7 @@ Prioritizovat testy podle rizikovosti:
 
 | Nález | Důvod |
 |-------|-------|
-| Infrastructure → Plugin.Tempo | Embedded plugin je de facto součást aplikace, decentralizace by byla horší |
+| Infrastructure → Plugin.Atlassian | Plugin je samostatný projekt, decentralizace registrace by byla horší |
 | Duplikace ViewModelů WPF/Avalonia | ViewModely jsou záměrně platformně specifické |
 | WorklogStateService bez synchronizace | Background tasky nedávají smysl, vše běží na UI threadu |
 | WPF polling loop na `_host` | Řeší reálný problém — `NullReferenceException` při autostartu s Windows |

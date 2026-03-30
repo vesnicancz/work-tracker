@@ -30,6 +30,7 @@ WorkTracker je desktopová aplikace pro sledování pracovní doby postavená na
 - Oblíbené položky jako šablony
 - Navigace "Přejít na dnešek"
 - Opakované odeslání neúspěšných worklogů
+- Automatická kontrola aktualizací
 
 ---
 
@@ -144,7 +145,7 @@ dotnet run --project src/WorkTracker.WPF
 Cross-platform desktopová aplikace (Windows, Linux, macOS) s Fluent theme:
 
 - Stejná funkcionalita jako WPF aplikace
-- Přepínatelné Dark/Light motivy (One Dark Pro / One Light palety)
+- 5 barevných motivů: Dark, Light, Midnight, Modern Blue, Purple
 - Material.Icons.Avalonia pro ikony
 - CommunityToolkit.Mvvm pro MVVM
 - System tray ikona s notifikacemi a toggle okna klikem
@@ -180,13 +181,18 @@ Přidejte do `appsettings.json`:
 ```json
 {
   "Plugins": {
-    "tempo": {
+    "tempo.worklog": {
       "TempoBaseUrl": "https://api.tempo.io/core/3",
       "TempoApiToken": "vas-tempo-token",
       "JiraBaseUrl": "https://vase-firma.atlassian.net",
       "JiraEmail": "vas-email@firma.com",
       "JiraApiToken": "vas-jira-token",
       "JiraAccountId": ""
+    },
+    "jira.suggestions": {
+      "JiraBaseUrl": "https://vase-firma.atlassian.net",
+      "JiraEmail": "vas-email@firma.com",
+      "JiraApiToken": "vas-jira-token"
     }
   }
 }
@@ -200,8 +206,8 @@ Přidejte do `appsettings.json`:
 > ```bash
 > cd src/WorkTracker.CLI
 > dotnet user-secrets init
-> dotnet user-secrets set "Plugins:tempo:TempoApiToken" "vas-token"
-> dotnet user-secrets set "Plugins:tempo:JiraApiToken" "vas-jira-token"
+> dotnet user-secrets set "Plugins:tempo.worklog:TempoApiToken" "vas-token"
+> dotnet user-secrets set "Plugins:tempo.worklog:JiraApiToken" "vas-jira-token"
 > ```
 
 ---
@@ -218,11 +224,12 @@ WorkTracker podporuje pluginy pro rozšíření funkcionality. Pluginy se načí
 | **Work Suggestion** | Návrhy práce z externích zdrojů (issues, kalendáře) | Jira, O365 Calendar |
 | **Status Indicator** | Ovládání fyzických indikátorů stavu (LED) | Luxafor |
 
-### Vestavěné pluginy
+### Dodávané pluginy
 
 - **Atlassian** — Automatické nahrávání worklogs do Jira Tempo (překlad issue key na ID, detekce account ID, validace duplicit) + návrhy práce z Jira issues (JQL)
 - **Office 365 Calendar** — Návrhy práce z kalendářových událostí (MSAL autentizace)
 - **Luxafor LED** — Zobrazení aktuální Pomodoro fáze na Luxafor Bluetooth Pro (konfigurovatelné barvy per fáze)
+- **GoranG3** — Automatické nahrávání worklogs do GoranG3
 
 ### Vlastní plugin
 
@@ -283,6 +290,7 @@ Domain (WorkEntry, Business Rules)
 | `WorkTracker.Plugin.Atlassian` | Tempo worklog upload + Jira work suggestions | net10.0 |
 | `WorkTracker.Plugin.Office365Calendar` | Office 365 Calendar work suggestions | net10.0 |
 | `WorkTracker.Plugin.Luxafor` | Luxafor LED status indikátor | net10.0 |
+| `WorkTracker.Plugin.GoranG3` | GoranG3 worklog upload | net10.0 |
 | `Luxafor.HidSharp` | Luxafor HID knihovna (standalone) | netstandard2.0, net8.0 |
 
 ### Struktura repozitáře
@@ -302,6 +310,7 @@ work-tracker/
 ├── plugins/
 │   ├── WorkTracker.Plugin.Atlassian/        # Atlassian plugin (Tempo + Jira)
 │   ├── WorkTracker.Plugin.Office365Calendar/ # Office 365 Calendar plugin
+│   ├── WorkTracker.Plugin.GoranG3/           # GoranG3 plugin
 │   └── WorkTracker.Plugin.Luxafor/          # Luxafor LED plugin
 ├── tests/
 │   ├── WorkTracker.Domain.Tests/

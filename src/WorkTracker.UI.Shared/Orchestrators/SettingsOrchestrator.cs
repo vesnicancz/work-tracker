@@ -41,7 +41,7 @@ public class SettingsOrchestrator : ISettingsOrchestrator
 	{
 		var plugins = new List<PluginViewModel>();
 
-		foreach (var plugin in _pluginManager.LoadedPlugins.Values)
+		foreach (var plugin in _pluginManager.LoadedPlugins.Values.OrderBy(p => p.Metadata.Name))
 		{
 			var pluginViewModel = new PluginViewModel(plugin);
 
