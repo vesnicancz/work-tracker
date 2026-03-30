@@ -8,6 +8,8 @@ public static class TaskExtensions
 	/// </summary>
 	public static async Task SafeFireAndForgetAsync(this Task task, Action<Exception> onError)
 	{
+		ArgumentNullException.ThrowIfNull(task);
+
 		try
 		{
 			await task.ConfigureAwait(false);
