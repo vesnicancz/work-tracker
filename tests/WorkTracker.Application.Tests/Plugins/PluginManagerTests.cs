@@ -248,6 +248,11 @@ public class TestWorklogPlugin : IWorklogUploadPlugin
 		return Task.FromResult(PluginResult<bool>.Success(true));
 	}
 
+	public Task<PluginResult<bool>> TestConnectionAsync(IProgress<string>? progress, CancellationToken cancellationToken)
+	{
+		return TestConnectionAsync(cancellationToken);
+	}
+
 	public Task<PluginResult<bool>> UploadWorklogAsync(PluginWorklogEntry worklog, CancellationToken cancellationToken)
 	{
 		return Task.FromResult(PluginResult<bool>.Success(true));

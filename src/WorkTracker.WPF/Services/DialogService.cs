@@ -1,7 +1,9 @@
 using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using WorkTracker.Domain.Entities;
+using WorkTracker.UI.Shared.Orchestrators;
 using WorkTracker.UI.Shared.Services;
+using WorkTracker.UI.Shared.ViewModels;
 using WorkTracker.WPF.ViewModels;
 using WorkTracker.WPF.Views;
 
@@ -25,12 +27,12 @@ public sealed class DialogService : IDialogService
 		return ShowWorkEntryDialogCoreAsync(workEntry);
 	}
 
-	public Task<bool> ShowNewWorkEntryDialogAsync(string? ticketId = null, string? description = null, DateTime? date = null)
+	public Task<bool> ShowNewWorkEntryDialogAsync(string? ticketId = null, string? description = null, DateTime? date = null, DateTime? startTime = null, DateTime? endTime = null)
 	{
-		return ShowWorkEntryDialogCoreAsync(null, ticketId, description, date);
+		return ShowWorkEntryDialogCoreAsync(null, ticketId, description, date, startTime, endTime);
 	}
 
-	private Task<bool> ShowWorkEntryDialogCoreAsync(WorkEntry? workEntry, string? templateTicketId = null, string? templateDescription = null, DateTime? date = null)
+	private Task<bool> ShowWorkEntryDialogCoreAsync(WorkEntry? workEntry, string? templateTicketId = null, string? templateDescription = null, DateTime? date = null, DateTime? startTime = null, DateTime? endTime = null)
 	{
 		using var scope = _scopeFactory.CreateScope();
 		var viewModel = scope.ServiceProvider.GetRequiredService<WorkEntryEditViewModel>();
@@ -41,7 +43,7 @@ public sealed class DialogService : IDialogService
 		}
 		else
 		{
-			viewModel.InitializeForNew(templateTicketId, templateDescription, date);
+			viewModel.InitializeForNew(templateTicketId, templateDescription, date, startTime, endTime);
 		}
 
 		var dialog = new WorkEntryEditDialog
@@ -90,6 +92,28 @@ public sealed class DialogService : IDialogService
 	{
 		MessageBox.Show(message, title, MessageBoxButton.OK, MessageBoxImage.Information);
 		return Task.CompletedTask;
+	}
+
+	public Task<WorkSuggestionViewModel?> ShowSuggestionsDialogAsync(DateTime selectedDate)
+	{
+		using var scope = _scopeFactory.CreateScope();
+		var orchestrator = scope.ServiceProvider.GetRequiredService<IWorkSuggestionOrchestrator>();
+		using var viewModel = new SuggestionsViewModel(orchestrator);
+
+		var dialog = new SuggestionsWindow();
+		dialog.BindViewModel(viewModel);
+
+		_ = viewModel.InitializeAsync(selectedDate).ContinueWith(t =>
+		{
+			if (t.IsFaulted)
+			{
+				System.Diagnostics.Debug.WriteLine($"Suggestions init failed: {t.Exception?.InnerException?.Message}");
+			}
+		}, TaskScheduler.Default);
+		dialog.Owner = System.Windows.Application.Current.MainWindow;
+		dialog.ShowDialog();
+
+		return Task.FromResult(dialog.SelectedSuggestion);
 	}
 
 	public Task<bool> ShowSettingsDialogAsync()

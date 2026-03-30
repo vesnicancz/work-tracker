@@ -207,15 +207,25 @@ public class WorkEntryEditViewModel : ViewModelBase
 		ValidateInput();
 	}
 
-	public void InitializeForNew(string? ticketId = null, string? description = null, DateTime? date = null)
+	public void InitializeForNew(string? ticketId = null, string? description = null, DateTime? date = null, DateTime? startTime = null, DateTime? endTime = null)
 	{
 		_isNewEntry = true;
 		var now = DateTimeHelper.RoundToMinute(_timeProvider.GetLocalNow().DateTime);
-		StartDate = date ?? now.Date;
-		StartTime = new TimeSpan(now.Hour, now.Minute, 0);
-		HasEndTime = false;
+		StartDate = date ?? startTime?.Date ?? now.Date;
+		StartTime = startTime?.TimeOfDay ?? new TimeSpan(now.Hour, now.Minute, 0);
 		TicketId = ticketId;
 		Description = description;
+
+		if (endTime.HasValue)
+		{
+			HasEndTime = true;
+			EndDate = endTime.Value.Date;
+			EndTime = endTime.Value.TimeOfDay;
+		}
+		else
+		{
+			HasEndTime = false;
+		}
 
 		ValidateInput();
 	}

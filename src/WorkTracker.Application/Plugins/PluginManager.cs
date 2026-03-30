@@ -52,6 +52,10 @@ public sealed class PluginManager : IPluginManager
 
 	public IEnumerable<IStatusIndicatorPlugin> StatusIndicatorPlugins => GetPlugins<IStatusIndicatorPlugin>(enabledOnly: true);
 
+	public IEnumerable<IWorkSuggestionPlugin> AllWorkSuggestionPlugins => GetPlugins<IWorkSuggestionPlugin>(enabledOnly: false);
+
+	public IEnumerable<IWorkSuggestionPlugin> WorkSuggestionPlugins => GetPlugins<IWorkSuggestionPlugin>(enabledOnly: true);
+
 	private List<T> GetPlugins<T>(bool enabledOnly) where T : IPlugin
 	{
 		lock (_lock)

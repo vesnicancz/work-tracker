@@ -14,7 +14,7 @@ public static class DependencyInjection
 		// Application Services - Transient (stateless, uses factory)
 		services.AddTransient<IWorkEntryService, WorkEntryService>();
 
-		// Register plugin-based submission service
+		// Register plugin-based services
 		services.AddTransient<IWorklogSubmissionService, PluginBasedWorklogSubmissionService>();
 
 		// Time abstraction - Singleton (allows test substitution)

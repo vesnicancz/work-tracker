@@ -3,15 +3,8 @@ namespace WorkTracker.Plugin.Abstractions;
 /// <summary>
 /// Interface for worklog upload provider plugins
 /// </summary>
-public interface IWorklogUploadPlugin : IPlugin
+public interface IWorklogUploadPlugin : ITestablePlugin
 {
-	/// <summary>
-	/// Tests the connection with the current configuration
-	/// </summary>
-	/// <param name="cancellationToken">Cancellation token</param>
-	/// <returns>Result indicating if the connection is successful</returns>
-	Task<PluginResult<bool>> TestConnectionAsync(CancellationToken cancellationToken = default);
-
 	/// <summary>
 	/// Uploads a single worklog entry
 	/// </summary>

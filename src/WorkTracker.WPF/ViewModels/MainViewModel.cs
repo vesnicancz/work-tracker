@@ -22,6 +22,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 	private readonly IDialogService _dialogService;
 	private readonly INotificationService _notificationService;
 	private readonly IWorklogStateService _worklogStateService;
+	private readonly IWorkSuggestionOrchestrator _suggestionOrchestrator;
 	private readonly TimeProvider _timeProvider;
 	private readonly ILocalizationService _localization;
 	private readonly ILogger<MainViewModel> _logger;
@@ -51,6 +52,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 		IDialogService dialogService,
 		INotificationService notificationService,
 		IWorklogStateService worklogStateService,
+		IWorkSuggestionOrchestrator suggestionOrchestrator,
 		IPomodoroService pomodoroService,
 		ISettingsService settingsService,
 		ILocalizationService localization,
@@ -61,6 +63,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 		_dialogService = dialogService;
 		_notificationService = notificationService;
 		_worklogStateService = worklogStateService;
+		_suggestionOrchestrator = suggestionOrchestrator;
 		_localization = localization;
 		_timeProvider = timeProvider;
 		_logger = logger;
@@ -101,6 +104,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 		PreviousDayCommand = new RelayCommand(PreviousDay);
 		NextDayCommand = new RelayCommand(NextDay);
 		GoToTodayCommand = new RelayCommand(GoToToday);
+		OpenSuggestionsCommand = new AsyncRelayCommand(OpenSuggestionsAsync);
 
 		// Initialize data
 		_ = InitializeAsync();
@@ -178,6 +182,8 @@ public class MainViewModel : ViewModelBase, IDisposable
 
 	public PomodoroViewModel Pomodoro { get; }
 
+	public bool HasSuggestionPlugins => _suggestionOrchestrator.HasSuggestionPlugins;
+
 	#endregion Properties
 
 	#region Commands
@@ -194,6 +200,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 	public ICommand PreviousDayCommand { get; }
 	public ICommand NextDayCommand { get; }
 	public ICommand GoToTodayCommand { get; }
+	public ICommand OpenSuggestionsCommand { get; }
 
 	#endregion Commands
 
@@ -429,6 +436,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 		{
 			await _dialogService.ShowSettingsDialogAsync();
 			Pomodoro.RefreshEnabled();
+			OnPropertyChanged(nameof(HasSuggestionPlugins));
 		}
 		catch (Exception ex)
 		{
@@ -493,6 +501,29 @@ public class MainViewModel : ViewModelBase, IDisposable
 	private void GoToToday()
 	{
 		SelectedDate = _timeProvider.GetLocalNow().Date;
+	}
+
+	private async Task OpenSuggestionsAsync()
+	{
+		try
+		{
+			var selected = await _dialogService.ShowSuggestionsDialogAsync(SelectedDate);
+			if (selected == null)
+			{
+				return;
+			}
+
+			await _dialogService.ShowNewWorkEntryDialogAsync(
+				ticketId: selected.TicketId,
+				description: selected.HasTimeSlot ? selected.Title : null,
+				date: SelectedDate,
+				startTime: selected.StartTime,
+				endTime: selected.EndTime);
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Failed to open suggestions");
+		}
 	}
 
 	#endregion Command Implementations
@@ -566,6 +597,14 @@ public class MainViewModel : ViewModelBase, IDisposable
 	}
 
 	#endregion Event Handlers
+
+	/// <summary>
+	/// Called after plugin initialization completes to refresh plugin-dependent UI.
+	/// </summary>
+	public void NotifyPluginsLoaded()
+	{
+		OnPropertyChanged(nameof(HasSuggestionPlugins));
+	}
 
 	#region IDisposable
 

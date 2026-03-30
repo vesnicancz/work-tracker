@@ -7,6 +7,11 @@ public abstract class WorklogUploadPluginBase : PluginBase, IWorklogUploadPlugin
 {
 	public abstract Task<PluginResult<bool>> TestConnectionAsync(CancellationToken cancellationToken);
 
+	public virtual Task<PluginResult<bool>> TestConnectionAsync(IProgress<string>? progress, CancellationToken cancellationToken)
+	{
+		return TestConnectionAsync(cancellationToken);
+	}
+
 	public abstract Task<PluginResult<bool>> UploadWorklogAsync(PluginWorklogEntry worklog, CancellationToken cancellationToken);
 
 	public virtual async Task<PluginResult<WorklogSubmissionResult>> UploadWorklogsAsync(IEnumerable<PluginWorklogEntry> worklogs, CancellationToken cancellationToken)

@@ -2,7 +2,7 @@
 
 **Complete guide to creating WorkTracker plugins**
 
-Version: 1.1
+Version: 1.2
 Last Updated: March 2026
 
 ---
@@ -14,11 +14,12 @@ Last Updated: March 2026
 3. [Quick Start](#3-quick-start)
 4. [Plugin Abstractions](#4-plugin-abstractions)
 5. [Creating a Worklog Upload Plugin](#5-creating-a-worklog-upload-plugin)
-6. [Plugin Configuration](#6-plugin-configuration)
-7. [Testing Plugins](#7-testing-plugins)
-8. [Deployment](#8-deployment)
-9. [Best Practices](#9-best-practices)
-10. [Example Plugins](#10-example-plugins)
+6. [Creating a Work Suggestion Plugin](#6-creating-a-work-suggestion-plugin)
+7. [Plugin Configuration](#7-plugin-configuration)
+8. [Testing Plugins](#8-testing-plugins)
+9. [Deployment](#9-deployment)
+10. [Best Practices](#10-best-practices)
+11. [Example Plugins](#11-example-plugins)
 
 ---
 
@@ -38,6 +39,7 @@ Plugins can:
 - ✅ Check for duplicate entries
 - ✅ Define custom configuration fields
 - ✅ Control status indicator devices (LED lights, etc.)
+- ✅ Navrhovat pracovni zaznamy z externich zdroju (kalendar, issue tracker)
 
 Plugins cannot:
 - ❌ Modify WorkTracker's core behavior
@@ -47,10 +49,11 @@ Plugins cannot:
 
 ### 1.3 Plugin Types
 
-WorkTracker supports two plugin types:
+WorkTracker supports tri typy pluginu:
 
-1. **IWorklogUploadPlugin** - Upload work logs to external systems (e.g. Tempo, Azure DevOps)
-2. **IStatusIndicatorPlugin** - Control physical status indicator devices (e.g. Luxafor LED)
+1. **IWorklogUploadPlugin** - Upload work logu do externich systemu (napr. Tempo, Azure DevOps)
+2. **IStatusIndicatorPlugin** - Ovladani fyzickych stavovych indikatoru (napr. Luxafor LED)
+3. **IWorkSuggestionPlugin** - Navrhy pracovnich zaznamu z externich zdroju (napr. Jira issues, Office 365 kalendar)
 
 ---
 
@@ -115,7 +118,9 @@ Plugins are discovered from:
    ```
    src/WorkTracker.Infrastructure/DependencyInjection.cs
    → LoadEmbeddedPlugin<TempoWorklogPlugin>()
+   → LoadEmbeddedPlugin<JiraSuggestionsPlugin>()
    → LoadEmbeddedPlugin<LuxaforStatusIndicatorPlugin>()
+   → LoadEmbeddedPlugin<Office365CalendarPlugin>()
    ```
 
 2. **External Plugins** - Loaded from directory
@@ -289,47 +294,57 @@ public interface IPlugin
 }
 ```
 
-### 4.2 IWorklogUploadPlugin Interface
+### 4.2 ITestablePlugin Interface
 
-**Specialized interface for worklog upload:**
+**Spolecny interface pro pluginy s testovanim pripojeni. Dedi z nej IWorklogUploadPlugin i IWorkSuggestionPlugin:**
 
 ```csharp
-public interface IWorklogUploadPlugin : IPlugin
+public interface ITestablePlugin : IPlugin
 {
+    Task<PluginResult<bool>> TestConnectionAsync(CancellationToken cancellationToken);
 
-    /// <summary>
-    /// Test connection to external system
-    /// </summary>
-    Task<PluginResult<bool>> TestConnectionAsync();
+    // Overload s progress reportingem pro OAuth flows (device code apod.)
+    Task<PluginResult<bool>> TestConnectionAsync(
+        IProgress<string>? progress, CancellationToken cancellationToken);
+}
+```
 
+Base tridy (`WorklogUploadPluginBase`, `WorkSuggestionPluginBase`) poskytují výchozí implementaci progress overloadu, která deleguje na verzi bez progressu. Pluginy vyžadující interakci (např. Office 365 Calendar s device code flow) přepíší progress overload a reportují stav přihlášení do Settings UI.
+
+### 4.3 IWorklogUploadPlugin Interface
+
+**Specializovany interface pro upload worklogs:**
+
+```csharp
+public interface IWorklogUploadPlugin : ITestablePlugin
+{
     /// <summary>
     /// Upload single worklog
     /// </summary>
-    Task<PluginResult<bool>> UploadWorklogAsync(PluginWorklogEntry worklog);
+    Task<PluginResult<bool>> UploadWorklogAsync(PluginWorklogEntry worklog, CancellationToken cancellationToken);
 
     /// <summary>
     /// Upload multiple worklogs
     /// </summary>
-    Task<PluginResult<List<WorklogSubmissionResult>>> UploadWorklogsAsync(
-        List<PluginWorklogEntry> worklogs);
+    Task<PluginResult<WorklogSubmissionResult>> UploadWorklogsAsync(
+        IEnumerable<PluginWorklogEntry> worklogs, CancellationToken cancellationToken);
 
     /// <summary>
     /// Get worklogs for date range
     /// </summary>
-    Task<PluginResult<List<PluginWorklogEntry>>> GetWorklogsAsync(
-        DateTime startDate,
-        DateTime endDate);
+    Task<PluginResult<IEnumerable<PluginWorklogEntry>>> GetWorklogsAsync(
+        DateTime startDate, DateTime endDate, CancellationToken cancellationToken);
 
     /// <summary>
     /// Check if worklog already exists
     /// </summary>
-    Task<PluginResult<bool>> WorklogExistsAsync(PluginWorklogEntry worklog);
+    Task<PluginResult<bool>> WorklogExistsAsync(PluginWorklogEntry worklog, CancellationToken cancellationToken);
 }
 ```
 
-### 4.3 IStatusIndicatorPlugin Interface
+### 4.4 IStatusIndicatorPlugin Interface
 
-**Specialized interface for physical status indicator devices (LED lights, etc.):**
+**Specializovany interface pro fyzicke stavove indikatory (LED svetla, atd.):**
 
 ```csharp
 public interface IStatusIndicatorPlugin : IPlugin
@@ -352,7 +367,76 @@ The Pomodoro timer calls `SetStateAsync()` on every phase transition. The plugin
 
 See `plugins/WorkTracker.Plugin.Luxafor/` for a complete example using the `Luxafor.HidSharp` library.
 
-### 4.4 WorklogUploadPluginBase
+### 4.5 IWorkSuggestionPlugin Interface
+
+**Specializovany interface pro pluginy navrhujici pracovni zaznamy z externich zdroju (kalendar, issue tracker):**
+
+```csharp
+public interface IWorkSuggestionPlugin : ITestablePlugin
+{
+    /// <summary>
+    /// Gets work suggestions for a specific date
+    /// </summary>
+    Task<PluginResult<IReadOnlyList<WorkSuggestion>>> GetSuggestionsAsync(
+        DateTime date, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Whether this plugin supports text-based search (e.g., Jira issue search).
+    /// When false, only date-based GetSuggestionsAsync is used.
+    /// </summary>
+    bool SupportsSearch { get; }
+
+    /// <summary>
+    /// Searches for suggestions matching a text query.
+    /// Only called when SupportsSearch is true.
+    /// </summary>
+    Task<PluginResult<IReadOnlyList<WorkSuggestion>>> SearchAsync(
+        string query, CancellationToken cancellationToken);
+}
+```
+
+- `GetSuggestionsAsync(date)` - hlavni metoda, vraci navrhy pro dany den (napr. udalosti z kalendare, issues prirazene uzivateli)
+- `SupportsSearch` - indikuje, zda plugin podporuje textove vyhledavani (napr. Jira ano, kalendar ne)
+- `SearchAsync(query)` - volana pouze pokud `SupportsSearch == true`
+
+### 4.6 WorkSuggestion DTO
+
+```csharp
+public class WorkSuggestion
+{
+    public required string Title { get; init; }       // Nazev navrhu (napr. predmet schuzky, summary issue)
+    public string? TicketId { get; init; }            // Ticket/Issue ID pokud existuje (napr. "PROJ-123")
+    public string? Description { get; init; }         // Volitelny delsi popis
+    public DateTime? StartTime { get; init; }         // Navrhovany zacatek (napr. zacatek udalosti v kalendari)
+    public DateTime? EndTime { get; init; }           // Navrhovany konec
+    public required string Source { get; init; }      // Nazev zdrojoveho pluginu (napr. "Jira", "Office 365 Calendar")
+    public required string SourceId { get; init; }    // Unikatni ID ve zdroji (pro deduplikaci)
+    public string? SourceUrl { get; init; }           // URL na zdrojovy zaznam
+}
+```
+
+### 4.7 WorkSuggestionPluginBase
+
+**Abstraktni base class pro suggestion pluginy. Dedi z `PluginBase` (sdilena konfigurace, validace, lifecycle):**
+
+```csharp
+public abstract class WorkSuggestionPluginBase : PluginBase, IWorkSuggestionPlugin
+{
+    // Povinne k implementaci
+    public abstract Task<PluginResult<bool>> TestConnectionAsync(CancellationToken cancellationToken);
+    public abstract Task<PluginResult<IReadOnlyList<WorkSuggestion>>> GetSuggestionsAsync(
+        DateTime date, CancellationToken cancellationToken);
+
+    // Volitelne - vychozi je false / not supported
+    public virtual bool SupportsSearch => false;
+    public virtual Task<PluginResult<IReadOnlyList<WorkSuggestion>>> SearchAsync(
+        string query, CancellationToken cancellationToken);
+}
+```
+
+Minimalni implementace vyzaduje pouze `Metadata`, `GetConfigurationFieldsInternal()`, `TestConnectionAsync()` a `GetSuggestionsAsync()`. Search je opt-in.
+
+### 4.8 WorklogUploadPluginBase
 
 **Abstract base class with helper methods:**
 
@@ -380,7 +464,7 @@ public abstract class WorklogUploadPluginBase : IWorklogUploadPlugin
 }
 ```
 
-### 4.4 Core Types
+### 4.9 Core Types
 
 #### PluginMetadata
 
@@ -856,9 +940,103 @@ public class AdvancedPlugin : WorklogUploadPluginBase
 
 ---
 
-## 6. Plugin Configuration
+## 6. Creating a Work Suggestion Plugin
 
-### 6.1 Configuration Fields
+### 6.1 Minimalni implementace
+
+```csharp
+using WorkTracker.Plugin.Abstractions;
+
+public class MyCalendarPlugin : WorkSuggestionPluginBase
+{
+    public override PluginMetadata Metadata => new()
+    {
+        Id = "my-calendar",
+        Name = "My Calendar Suggestions",
+        Version = new Version(1, 0, 0),
+        Author = "Your Name",
+        Description = "Navrhy pracovnich zaznamu z kalendare",
+        IconName = "CalendarMonth",
+        Tags = ["calendar", "suggestions"]
+    };
+
+    public override IReadOnlyList<PluginConfigurationField> GetConfigurationFields()
+    {
+        return
+        [
+            new()
+            {
+                Key = "ApiUrl",
+                Label = "API URL",
+                Type = PluginConfigurationFieldType.Url,
+                IsRequired = true
+            }
+        ];
+    }
+
+    public override async Task<PluginResult<bool>> TestConnectionAsync(
+        CancellationToken cancellationToken)
+    {
+        // Overeni pripojeni k API
+        return PluginResult<bool>.Success(true);
+    }
+
+    public override async Task<PluginResult<IReadOnlyList<WorkSuggestion>>> GetSuggestionsAsync(
+        DateTime date, CancellationToken cancellationToken)
+    {
+        var suggestions = new List<WorkSuggestion>
+        {
+            new()
+            {
+                Title = "Daily standup",
+                StartTime = date.Date.AddHours(9),
+                EndTime = date.Date.AddHours(9).AddMinutes(15),
+                Source = Metadata.Name,
+                SourceId = "event-123"
+            }
+        };
+
+        return PluginResult<IReadOnlyList<WorkSuggestion>>.Success(suggestions);
+    }
+}
+```
+
+### 6.2 Plugin s podporou vyhledavani (Search)
+
+Pokud plugin podporuje textove vyhledavani (napr. Jira issues), staci overridnout `SupportsSearch` a `SearchAsync`:
+
+```csharp
+public class MyIssueTrackerPlugin : WorkSuggestionPluginBase
+{
+    // ... Metadata, config, TestConnectionAsync, GetSuggestionsAsync ...
+
+    public override bool SupportsSearch => true;
+
+    public override async Task<PluginResult<IReadOnlyList<WorkSuggestion>>> SearchAsync(
+        string query, CancellationToken cancellationToken)
+    {
+        // Vyhledavani issues podle textu
+        var results = await SearchIssuesAsync(query, cancellationToken);
+
+        var suggestions = results.Select(issue => new WorkSuggestion
+        {
+            Title = issue.Summary,
+            TicketId = issue.Key,
+            Source = Metadata.Name,
+            SourceId = issue.Key,
+            SourceUrl = $"https://jira.example.com/browse/{issue.Key}"
+        }).ToList();
+
+        return PluginResult<IReadOnlyList<WorkSuggestion>>.Success(suggestions);
+    }
+}
+```
+
+---
+
+## 7. Plugin Configuration
+
+### 7.1 Configuration Fields
 
 Define what configuration your plugin needs:
 
@@ -916,7 +1094,7 @@ protected override List<PluginConfigurationField> GetConfigurationFieldsInternal
 }
 ```
 
-### 6.2 Reading Configuration
+### 7.2 Reading Configuration
 
 ```csharp
 // In your plugin methods:
@@ -934,7 +1112,7 @@ var timeout = GetConfigValue("Timeout", 30);
 var enableRetry = GetConfigValue<bool>("EnableRetry", true);
 ```
 
-### 6.3 User Configuration (appsettings.json)
+### 7.3 User Configuration (appsettings.json)
 
 ```json
 {
@@ -950,7 +1128,7 @@ var enableRetry = GetConfigValue<bool>("EnableRetry", true);
 }
 ```
 
-### 6.4 Configuration Validation
+### 7.4 Configuration Validation
 
 ```csharp
 public override async Task<PluginResult<bool>> ValidateConfigurationAsync(
@@ -989,9 +1167,9 @@ public override async Task<PluginResult<bool>> ValidateConfigurationAsync(
 
 ---
 
-## 7. Testing Plugins
+## 8. Testing Plugins
 
-### 7.1 Unit Tests
+### 8.1 Unit Tests
 
 ```csharp
 using Xunit;
@@ -1074,7 +1252,49 @@ public class MySystemPluginTests
 }
 ```
 
-### 7.2 Integration Tests
+### 8.2 Testovani Work Suggestion pluginu
+
+Dobrym vzorem je testovani internich pure metod (napr. JQL builder) bez nutnosti mockovat HTTP volani. Viz `WorkTracker.Plugin.Atlassian.Tests`:
+
+```csharp
+using Xunit;
+using FluentAssertions;
+using WorkTracker.Plugin.Atlassian;
+
+public class JiraSuggestionsPluginTests
+{
+    private const string DefaultFilter = "assignee = currentUser() AND status != Done ORDER BY updated DESC";
+
+    [Fact]
+    public void BuildSearchJql_CombinesBaseFilterWithTextSearch()
+    {
+        var jql = JiraSuggestionsPlugin.BuildSearchJql("fix", DefaultFilter);
+
+        jql.Should().Contain("(assignee = currentUser() AND status != Done)");
+        jql.Should().Contain("key ~ \"fix*\"");
+    }
+
+    [Fact]
+    public void BuildSearchJql_EscapesQuotesInQuery()
+    {
+        var jql = JiraSuggestionsPlugin.BuildSearchJql("test\"value", DefaultFilter);
+
+        jql.Should().Contain("test\\\"value*\"");
+    }
+
+    [Fact]
+    public void BuildSearchJql_StripsAsterisksFromQuery()
+    {
+        var jql = JiraSuggestionsPlugin.BuildSearchJql("PROJ*-123", DefaultFilter);
+
+        jql.Should().Contain("PROJ-123*\"");
+    }
+}
+```
+
+Metoda `BuildSearchJql` je `internal static`, testovatelna pres `InternalsVisibleTo`. Tento pattern umoznuje pokryt logiku kompozice JQL dotazu bez zavislosti na siti.
+
+### 8.3 Integration Tests
 
 ```csharp
 public class MySystemPluginIntegrationTests : IAsyncLifetime
@@ -1133,9 +1353,9 @@ public class MySystemPluginIntegrationTests : IAsyncLifetime
 
 ---
 
-## 8. Deployment
+## 9. Deployment
 
-### 8.1 Build Release
+### 9.1 Build Release
 
 ```bash
 # Build release version
@@ -1145,7 +1365,7 @@ dotnet build -c Release
 bin/Release/net9.0/WorkTracker.Plugin.MySystem.dll
 ```
 
-### 8.2 Installation
+### 9.2 Installation
 
 **Option 1: Manual Installation**
 
@@ -1186,7 +1406,7 @@ nuget pack MyPlugin.nuspec
 nuget install WorkTracker.Plugin.MySystem -OutputDirectory %AppData%\WorkTracker\Plugins
 ```
 
-### 8.3 Distribution
+### 9.3 Distribution
 
 **GitHub Releases:**
 1. Create release on GitHub
@@ -1199,9 +1419,9 @@ nuget install WorkTracker.Plugin.MySystem -OutputDirectory %AppData%\WorkTracker
 
 ---
 
-## 9. Best Practices
+## 10. Best Practices
 
-### 9.1 Error Handling
+### 10.1 Error Handling
 
 ```csharp
 // ✅ Good - Return PluginResult
@@ -1233,7 +1453,7 @@ protected override async Task<PluginResult<bool>> UploadWorklogInternalAsync(
 }
 ```
 
-### 9.2 Logging
+### 10.2 Logging
 
 ```csharp
 // ✅ Good - Use structured logging
@@ -1247,7 +1467,7 @@ Logger?.LogInformation(
 Logger?.LogInformation($"Uploading {worklog.IssueKey}");
 ```
 
-### 9.3 Resource Management
+### 10.3 Resource Management
 
 ```csharp
 public class MyPlugin : WorklogUploadPluginBase
@@ -1270,7 +1490,7 @@ public class MyPlugin : WorklogUploadPluginBase
 }
 ```
 
-### 9.4 API Rate Limiting
+### 10.4 API Rate Limiting
 
 ```csharp
 private readonly SemaphoreSlim _rateLimiter = new(5, 5); // 5 concurrent requests
@@ -1290,7 +1510,7 @@ private async Task<T> ExecuteWithRateLimitAsync<T>(Func<Task<T>> action)
 }
 ```
 
-### 9.5 Security
+### 10.5 Security
 
 ```csharp
 // ✅ Never log sensitive data
@@ -1313,17 +1533,26 @@ protected override async Task<PluginResult<bool>> UploadWorklogInternalAsync(
 
 ---
 
-## 10. Example Plugins
+## 11. Example Plugins
 
-### 10.1 Tempo Plugin (Built-in, Worklog Upload)
+### 11.1 Atlassian Plugin (Built-in, Worklog Upload + Work Suggestions)
 
-See `plugins/WorkTracker.Plugin.Tempo/` for a complete worklog upload plugin example.
+Adresar `plugins/WorkTracker.Plugin.Atlassian/` obsahuje dva pluginy v jednom baliku:
 
-### 10.2 Luxafor Plugin (Built-in, Status Indicator)
+- **TempoWorklogPlugin** - Upload worklogs pres Tempo API (`IWorklogUploadPlugin`)
+- **JiraSuggestionsPlugin** - Navrhy pracovnich zaznamu z Jira issues (`IWorkSuggestionPlugin`, `SupportsSearch = true`)
+
+Oba sdileji `JiraClient` pro komunikaci s Jira REST API. Testy v `tests/WorkTracker.Plugin.Atlassian.Tests/`.
+
+### 11.2 Office 365 Calendar Plugin (Built-in, Work Suggestions)
+
+See `plugins/WorkTracker.Plugin.Office365Calendar/` for a calendar-based suggestion plugin. Pouziva MSAL pro autentizaci vuci Microsoft Graph API a vraci udalosti z kalendare jako `WorkSuggestion` s `StartTime`/`EndTime`.
+
+### 11.3 Luxafor Plugin (Built-in, Status Indicator)
 
 See `plugins/WorkTracker.Plugin.Luxafor/` for a complete status indicator plugin example. Uses the `Luxafor.HidSharp` library (`src/Luxafor.HidSharp/`) for HID device communication.
 
-### 10.3 Minimal Mock Plugin
+### 11.4 Minimal Mock Plugin
 
 ```csharp
 public class MockPlugin : WorklogUploadPluginBase
@@ -1367,5 +1596,5 @@ public class MockPlugin : WorklogUploadPluginBase
 
 **Questions?** Open an issue on [GitHub](https://github.com/yourusername/WorkTracker/issues)
 
-**Last Updated:** November 2025
-**Version:** 1.0
+**Last Updated:** March 2026
+**Version:** 1.2

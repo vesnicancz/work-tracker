@@ -160,6 +160,9 @@ public partial class App : global::Avalonia.Application
 						_host.Services, configuration,
 						settingsService.Settings.EnabledPlugins,
 						settingsService.Settings.PluginConfigurations);
+
+					// Refresh suggestions now that plugins are loaded
+					await Dispatcher.UIThread.InvokeAsync(viewModel.NotifyPluginsLoaded);
 				}
 				catch (Exception pluginEx)
 				{

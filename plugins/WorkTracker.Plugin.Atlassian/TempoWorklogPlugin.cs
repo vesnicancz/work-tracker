@@ -5,7 +5,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using WorkTracker.Plugin.Abstractions;
 
-namespace WorkTracker.Plugin.Tempo;
+namespace WorkTracker.Plugin.Atlassian;
 
 /// <summary>
 /// Plugin for uploading worklogs to Tempo (Jira time tracking)
@@ -20,19 +20,11 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 	{
 		public const string TempoBaseUrl = "TempoBaseUrl";
 		public const string TempoApiToken = "TempoApiToken";
-		public const string JiraBaseUrl = "JiraBaseUrl";
-		public const string JiraEmail = "JiraEmail";
-		public const string JiraApiToken = "JiraApiToken";
 		public const string JiraAccountId = "JiraAccountId";
 	}
 
 	private HttpClient? _tempoHttpClient;
-	private HttpClient? _jiraHttpClient;
-	private string? _tempoBaseUrl;
-	private string? _tempoApiToken;
-	private string? _jiraBaseUrl;
-	private string? _jiraEmail;
-	private string? _jiraApiToken;
+	private JiraClient? _jiraClient;
 	private string? _jiraAccountId;
 	private bool _disposed;
 
@@ -46,13 +38,13 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 		Author = "WorkTracker Team",
 		Description = "Upload worklogs to Tempo (Jira time tracking system)",
 		Website = "https://www.tempo.io/",
-		Tags = new[] { "tempo", "jira", "timetracking", "worklog" }
+		Tags = ["tempo", "jira", "timetracking", "worklog"]
 	};
 
 	public override IReadOnlyList<PluginConfigurationField> GetConfigurationFields()
 	{
-		return new List<PluginConfigurationField>
-		{
+		return
+		[
 			new()
 			{
 				Key = ConfigKeys.TempoBaseUrl,
@@ -74,35 +66,9 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 				IsRequired = true,
 				Placeholder = "Enter your Tempo API token"
 			},
-			new()
-			{
-				Key = ConfigKeys.JiraBaseUrl,
-				Label = "Jira Base URL",
-				Description = "Your Jira instance URL (e.g., https://your-domain.atlassian.net)",
-				Type = PluginConfigurationFieldType.Url,
-				IsRequired = true,
-				Placeholder = "https://your-domain.atlassian.net",
-				ValidationPattern = @"^https://.*",
-				ValidationMessage = "Please enter a valid HTTPS URL"
-			},
-			new()
-			{
-				Key = ConfigKeys.JiraEmail,
-				Label = "Jira Email",
-				Description = "Your Jira account email address",
-				Type = PluginConfigurationFieldType.Text,
-				IsRequired = true,
-				Placeholder = "user@example.com"
-			},
-			new()
-			{
-				Key = ConfigKeys.JiraApiToken,
-				Label = "Jira API Token",
-				Description = "Your Jira API token (get it from Atlassian Account Settings > Security > API tokens)",
-				Type = PluginConfigurationFieldType.Password,
-				IsRequired = true,
-				Placeholder = "Enter your Jira API token"
-			},
+			JiraConfigFields.BaseUrlField,
+			JiraConfigFields.EmailField,
+			JiraConfigFields.ApiTokenField,
 			new()
 			{
 				Key = ConfigKeys.JiraAccountId,
@@ -112,57 +78,43 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 				IsRequired = false,
 				Placeholder = "Leave empty to auto-detect"
 			}
-		};
+		];
 	}
 
 	protected override async Task<bool> OnInitializeAsync(IDictionary<string, string> configuration, CancellationToken cancellationToken)
 	{
-		// Clear cache on re-initialization
 		_issueIdCache.Clear();
 
-		// Load Tempo configuration
-		_tempoBaseUrl = GetRequiredConfigValue(ConfigKeys.TempoBaseUrl).TrimEnd('/') + "/";
-		_tempoApiToken = GetRequiredConfigValue(ConfigKeys.TempoApiToken);
-
-		// Load Jira configuration
-		_jiraBaseUrl = GetRequiredConfigValue(ConfigKeys.JiraBaseUrl).TrimEnd('/');
-		_jiraEmail = GetRequiredConfigValue(ConfigKeys.JiraEmail);
-		_jiraApiToken = GetRequiredConfigValue(ConfigKeys.JiraApiToken);
+		var tempoBaseUrl = GetRequiredConfigValue(ConfigKeys.TempoBaseUrl).TrimEnd('/') + "/";
+		var tempoApiToken = GetRequiredConfigValue(ConfigKeys.TempoApiToken);
 		_jiraAccountId = GetConfigValue(ConfigKeys.JiraAccountId);
 
 		// Dispose previous clients and reset disposed state for re-initialization
 		_tempoHttpClient?.Dispose();
-		_jiraHttpClient?.Dispose();
+		_jiraClient?.Dispose();
 		_disposed = false;
 
 		// Initialize Tempo HTTP client
 		_tempoHttpClient = new HttpClient
 		{
-			BaseAddress = new Uri(_tempoBaseUrl),
+			BaseAddress = new Uri(tempoBaseUrl),
 			Timeout = HttpTimeout
 		};
 		_tempoHttpClient.DefaultRequestHeaders.Authorization =
-			new AuthenticationHeaderValue("Bearer", _tempoApiToken);
+			new AuthenticationHeaderValue("Bearer", tempoApiToken);
 		_tempoHttpClient.DefaultRequestHeaders.Accept.Add(
 			new MediaTypeWithQualityHeaderValue("application/json"));
 
-		// Initialize Jira HTTP client with Basic authentication
-		_jiraHttpClient = new HttpClient
-		{
-			BaseAddress = new Uri(_jiraBaseUrl),
-			Timeout = HttpTimeout
-		};
-		var authString = $"{_jiraEmail}:{_jiraApiToken}";
-		var base64Auth = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(authString));
-		_jiraHttpClient.DefaultRequestHeaders.Authorization =
-			new AuthenticationHeaderValue("Basic", base64Auth);
-		_jiraHttpClient.DefaultRequestHeaders.Accept.Add(
-			new MediaTypeWithQualityHeaderValue("application/json"));
+		// Initialize shared Jira client
+		_jiraClient = new JiraClient(
+			GetRequiredConfigValue(JiraConfigFields.JiraBaseUrl),
+			GetRequiredConfigValue(JiraConfigFields.JiraEmail),
+			GetRequiredConfigValue(JiraConfigFields.JiraApiToken));
 
 		// Get account ID if not provided
 		if (string.IsNullOrWhiteSpace(_jiraAccountId))
 		{
-			_jiraAccountId = await GetCurrentUserAccountIdAsync(cancellationToken);
+			_jiraAccountId = await _jiraClient.GetCurrentUserAccountIdAsync(cancellationToken);
 			if (string.IsNullOrWhiteSpace(_jiraAccountId))
 			{
 				Logger?.LogError("Failed to retrieve Jira account ID");
@@ -170,50 +122,27 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 			}
 		}
 
-		Logger?.LogInformation("Plugin initialized successfully");
 		return true;
 	}
 
-	protected override async Task OnShutdownAsync()
+	protected override Task OnShutdownAsync()
 	{
 		_issueIdCache.Clear();
 		Dispose();
-		await Task.CompletedTask;
+		return Task.CompletedTask;
 	}
 
 	public override async Task<PluginResult<bool>> TestConnectionAsync(CancellationToken cancellationToken)
 	{
-		// Check if HTTP clients are initialized (can be called during initialization)
-		if (_jiraHttpClient == null || _tempoHttpClient == null)
+		if (_jiraClient == null || _tempoHttpClient == null)
 		{
 			return PluginResult<bool>.Failure("Plugin is not properly initialized");
 		}
 
-		try
-		{
-			// Test Jira connection (required for issue key to ID translation)
-			var jiraResponse = await _jiraHttpClient.GetAsync("/rest/api/3/myself", cancellationToken);
-			if (!jiraResponse.IsSuccessStatusCode)
-			{
-				var errorContent = await jiraResponse.Content.ReadAsStringAsync(cancellationToken);
-				Logger?.LogWarning("Jira connection test failed: {StatusCode} - {Content}",
-					jiraResponse.StatusCode, errorContent);
-				return PluginResult<bool>.Failure($"Jira connection failed: {jiraResponse.StatusCode}");
-			}
-
-			Logger?.LogInformation("Jira and Tempo configuration test successful");
-			return PluginResult<bool>.Success(true);
-		}
-		catch (HttpRequestException ex)
-		{
-			Logger?.LogError(ex, "Connection test failed with HTTP error");
-			return PluginResult<bool>.Failure($"Connection error: {ex.Message}");
-		}
-		catch (Exception ex)
-		{
-			Logger?.LogError(ex, "Connection test failed");
-			return PluginResult<bool>.Failure($"Unexpected error: {ex.Message}");
-		}
+		var (success, error) = await _jiraClient.TestConnectionAsync(cancellationToken);
+		return success
+			? PluginResult<bool>.Success(true)
+			: PluginResult<bool>.Failure(error!);
 	}
 
 	public override async Task<PluginResult<bool>> UploadWorklogAsync(PluginWorklogEntry worklog, CancellationToken cancellationToken)
@@ -227,39 +156,28 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 
 		try
 		{
-			// Convert issue key to issue ID (uses cache)
 			var issueId = await GetIssueIdFromKeyAsync(worklog.TicketId, cancellationToken);
 			if (!issueId.HasValue)
 			{
-				Logger?.LogError("Could not resolve issue ID for {TicketId}", worklog.TicketId);
 				return PluginResult<bool>.Failure($"Could not resolve issue ID for {worklog.TicketId}");
 			}
 
-			// Calculate duration in seconds
 			var timeSpentSeconds = worklog.DurationMinutes * 60;
 			if (timeSpentSeconds <= 0)
 			{
-				Logger?.LogWarning("Invalid duration for {TicketId}", worklog.TicketId);
 				return PluginResult<bool>.Failure("Invalid duration: must be greater than 0");
 			}
 
-			// Create Tempo worklog with correct format
 			var tempoWorklog = new
 			{
 				issueId = issueId.Value,
-				timeSpentSeconds = timeSpentSeconds,
+				timeSpentSeconds,
 				startDate = worklog.StartTime.ToString("yyyy-MM-dd"),
 				startTime = worklog.StartTime.ToString("HH:mm:ss"),
 				authorAccountId = _jiraAccountId,
 				description = worklog.Description ?? string.Empty
 			};
 
-			Logger?.LogDebug(
-				"Submitting worklog to Tempo: {TicketId} (ID: {IssueId}), Duration: {Duration}s",
-				worklog.TicketId, issueId.Value, timeSpentSeconds
-			);
-
-			// Retry on transient failures
 			string? lastError = null;
 			for (var attempt = 0; attempt <= MaxRetries; attempt++)
 			{
@@ -267,11 +185,8 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 
 				if (response.IsSuccessStatusCode)
 				{
-					Logger?.LogInformation(
-						"Successfully uploaded worklog for {Ticket} ({Duration} minutes)",
-						worklog.TicketId,
-						worklog.DurationMinutes
-					);
+					Logger?.LogInformation("Successfully uploaded worklog for {Ticket} ({Duration} minutes)",
+						worklog.TicketId, worklog.DurationMinutes);
 					return PluginResult<bool>.Success(true);
 				}
 
@@ -279,7 +194,6 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 				var statusCode = (int)response.StatusCode;
 				lastError = $"Upload failed: {response.StatusCode} - {errorContent}";
 
-				// Only retry on server errors (5xx) or rate limiting (429)
 				if (attempt < MaxRetries && (statusCode >= 500 || statusCode == 429))
 				{
 					var delay = TimeSpan.FromSeconds(Math.Pow(2, attempt + 1));
@@ -292,7 +206,6 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 				break;
 			}
 
-			Logger?.LogWarning("Failed to upload worklog: {Error}", lastError);
 			return PluginResult<bool>.Failure(lastError ?? "Upload failed");
 		}
 		catch (Exception ex)
@@ -317,8 +230,7 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 			{
 				var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
 				return PluginResult<IEnumerable<PluginWorklogEntry>>.Failure(
-					$"Failed to get worklogs: {response.StatusCode} - {errorContent}"
-				);
+					$"Failed to get worklogs: {response.StatusCode} - {errorContent}");
 			}
 
 			var content = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -346,11 +258,11 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 					var startDateStr = item.TryGetProperty("startDate", out var sdProp) ? sdProp.GetString() : null;
 					var startTimeStr = item.TryGetProperty("startTime", out var stProp) ? stProp.GetString() : null;
 					var timeSpentSeconds = item.TryGetProperty("timeSpentSeconds", out var tsProp) ? tsProp.GetInt32() : 0;
-					var description = item.TryGetProperty("description", out var descProp)
-						? descProp.GetString()
-						: null;
+					var description = item.TryGetProperty("description", out var descProp) ? descProp.GetString() : null;
 
-					if (DateTime.TryParse($"{startDateStr} {startTimeStr}", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var startTime))
+					if (DateTime.TryParse($"{startDateStr} {startTimeStr}",
+						System.Globalization.CultureInfo.InvariantCulture,
+						System.Globalization.DateTimeStyles.None, out var startTime))
 					{
 						worklogs.Add(new PluginWorklogEntry
 						{
@@ -379,11 +291,7 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 
 	public override async Task<PluginResult<bool>> WorklogExistsAsync(PluginWorklogEntry worklog, CancellationToken cancellationToken)
 	{
-		var result = await GetWorklogsAsync(
-			worklog.StartTime.Date,
-			worklog.StartTime.Date,
-			cancellationToken
-		);
+		var result = await GetWorklogsAsync(worklog.StartTime.Date, worklog.StartTime.Date, cancellationToken);
 
 		if (result.IsFailure)
 		{
@@ -394,54 +302,28 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 			w.TicketId == worklog.TicketId &&
 			w.StartTime.Date == worklog.StartTime.Date &&
 			Math.Abs((w.StartTime.TimeOfDay - worklog.StartTime.TimeOfDay).TotalMinutes) < 1 &&
-			w.DurationMinutes == worklog.DurationMinutes
-		);
+			w.DurationMinutes == worklog.DurationMinutes);
 
 		return PluginResult<bool>.Success(exists);
 	}
 
-	/// <summary>
-	/// Converts a Jira issue key (e.g., "PROJ-123") to its numeric issue ID.
-	/// Results are cached to avoid redundant HTTP requests.
-	/// </summary>
 	private async Task<int?> GetIssueIdFromKeyAsync(string issueKey, CancellationToken cancellationToken)
 	{
-		// Check cache first (with TTL)
 		if (_issueIdCache.TryGetValue(issueKey, out var cached) &&
 			DateTime.UtcNow - cached.CachedAt < CacheTtl)
 		{
-			Logger?.LogDebug("Issue ID for {IssueKey} found in cache: {IssueId}", issueKey, cached.Id);
 			return cached.Id;
 		}
 
 		try
 		{
-			var url = $"/rest/api/3/issue/{issueKey}?fields=id";
-			Logger?.LogDebug("Fetching issue ID for key: {IssueKey}", issueKey);
+			var json = await _jiraClient!.GetJsonAsync($"/rest/api/3/issue/{issueKey}?fields=id", cancellationToken);
 
-			var response = await _jiraHttpClient!.GetAsync(url, cancellationToken);
-
-			if (!response.IsSuccessStatusCode)
+			if (json.TryGetProperty("id", out var idElement) &&
+				int.TryParse(idElement.GetString(), out var id))
 			{
-				var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
-				Logger?.LogError("Failed to get issue {IssueKey}. Status: {Status}, Error: {Error}",
-					issueKey, response.StatusCode, errorContent);
-				return null;
-			}
-
-			var content = await response.Content.ReadAsStringAsync(cancellationToken);
-			using var doc = JsonDocument.Parse(content);
-
-			if (doc.RootElement.TryGetProperty("id", out var idElement))
-			{
-				var idString = idElement.GetString();
-				if (int.TryParse(idString, out var id))
-				{
-					// Cache the result with timestamp
-					_issueIdCache[issueKey] = (id, DateTime.UtcNow);
-					Logger?.LogDebug("Issue {IssueKey} has ID: {IssueId} (cached)", issueKey, id);
-					return id;
-				}
+				_issueIdCache[issueKey] = (id, DateTime.UtcNow);
+				return id;
 			}
 
 			Logger?.LogWarning("Could not parse issue ID from response for {IssueKey}", issueKey);
@@ -449,47 +331,7 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 		}
 		catch (Exception ex)
 		{
-			Logger?.LogError(ex, "Exception occurred while fetching issue ID for {IssueKey}", issueKey);
-			return null;
-		}
-	}
-
-	/// <summary>
-	/// Gets the current user's Jira account ID
-	/// </summary>
-	private async Task<string?> GetCurrentUserAccountIdAsync(CancellationToken cancellationToken)
-	{
-		try
-		{
-			var url = "/rest/api/3/myself";
-			Logger?.LogDebug("Fetching current user account ID");
-
-			var response = await _jiraHttpClient!.GetAsync(url, cancellationToken);
-
-			if (!response.IsSuccessStatusCode)
-			{
-				var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
-				Logger?.LogError("Failed to get current user. Status: {Status}, Error: {Error}",
-					response.StatusCode, errorContent);
-				return null;
-			}
-
-			var content = await response.Content.ReadAsStringAsync(cancellationToken);
-			using var doc = JsonDocument.Parse(content);
-
-			if (doc.RootElement.TryGetProperty("accountId", out var accountIdElement))
-			{
-				var accountId = accountIdElement.GetString();
-				Logger?.LogDebug("Current user account ID: {AccountId}", accountId);
-				return accountId;
-			}
-
-			Logger?.LogWarning("Could not parse account ID from response");
-			return null;
-		}
-		catch (Exception ex)
-		{
-			Logger?.LogError(ex, "Exception occurred while fetching current user account ID");
+			Logger?.LogError(ex, "Failed to fetch issue ID for {IssueKey}", issueKey);
 			return null;
 		}
 	}
@@ -500,8 +342,8 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 		{
 			_tempoHttpClient?.Dispose();
 			_tempoHttpClient = null;
-			_jiraHttpClient?.Dispose();
-			_jiraHttpClient = null;
+			_jiraClient?.Dispose();
+			_jiraClient = null;
 			_issueIdCache.Clear();
 			_disposed = true;
 		}

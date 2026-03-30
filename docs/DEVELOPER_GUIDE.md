@@ -77,13 +77,15 @@ WorkTracker.slnx
 │   ├── WorkTracker.Plugin.Abstractions/ # Plugin API
 │   └── WorkTracker.Plugin.*/           # Plugin implementations
 ├── plugins/
-│   ├── WorkTracker.Plugin.Luxafor/     # Luxafor LED status indicator
-│   └── WorkTracker.Plugin.Tempo/       # Tempo/Jira integration
+│   ├── WorkTracker.Plugin.Luxafor/           # Luxafor LED status indicator
+│   ├── WorkTracker.Plugin.Atlassian/         # Tempo/Jira integration
+│   └── WorkTracker.Plugin.Office365Calendar/ # O365 Calendar work suggestions
 ├── tests/
 │   ├── WorkTracker.Domain.Tests/
 │   ├── WorkTracker.Application.Tests/
 │   ├── WorkTracker.Infrastructure.Tests/
-│   └── WorkTracker.UI.Shared.Tests/
+│   ├── WorkTracker.UI.Shared.Tests/
+│   └── WorkTracker.Plugin.Atlassian.Tests/
 └── docs/                                # Documentation
 ```
 
@@ -105,6 +107,8 @@ WorkTracker follows **Clean Architecture** (Onion Architecture) principles:
 │   UI.Shared Layer                               │
 │   - Shared Models & Service Interfaces          │
 │   - SettingsService, WorklogStateService        │
+│   - WorkSuggestionOrchestrator                  │
+│   - SuggestionsViewModel                        │
 │   - LocalizationService                         │
 ├─────────────────────────────────────────────────┤
 │   Infrastructure Layer                          │
@@ -141,7 +145,8 @@ WorkTracker follows **Clean Architecture** (Onion Architecture) principles:
 | **Repository** | Data access abstraction | `IWorkEntryRepository` |
 | **Dependency Injection** | Loose coupling | Throughout |
 | **Result Pattern** | Functional error handling | `Result<T>` |
-| **Strategy** | Plugin system | `IWorklogUploadPlugin`, `IStatusIndicatorPlugin` |
+| **Strategy** | Plugin system | `IWorklogUploadPlugin`, `IStatusIndicatorPlugin`, `IWorkSuggestionPlugin` |
+| **Interface Extraction** | Testable plugin contracts | `ITestablePlugin` for unit-testable plugin logic |
 | **MVVM** | WPF & Avalonia presentation | ViewModels |
 | **Template Method** | Plugin base classes | `WorklogUploadPluginBase`, `StatusIndicatorPluginBase` |
 | **Factory** | DbContext creation | `WorkTrackerDbContextFactory` |
@@ -598,10 +603,13 @@ WorkTracker.UI.Shared/
 │   ├── WorkEntryEditOrchestrator.cs     # Work entry edit orchestration
 │   ├── IWorklogSubmissionOrchestrator.cs # Submission operations interface
 │   ├── WorklogSubmissionOrchestrator.cs # Worklog submission orchestration
+│   ├── IWorkSuggestionOrchestrator.cs   # Work suggestion operations interface
+│   ├── WorkSuggestionOrchestrator.cs    # Work suggestion orchestration
 │   └── WorkInputParser.cs              # Input parsing logic
 ├── ViewModels/                           # Shared ViewModels
 │   ├── ConfigurationFieldViewModel.cs   # Plugin config field VM
 │   ├── PluginViewModel.cs              # Plugin VM
+│   ├── SuggestionsViewModel.cs         # Work suggestions VM
 │   └── WorklogPreviewItem.cs           # Preview item VM
 ├── Helpers/
 │   └── DurationFormatter.cs            # Duration formatting utility
@@ -630,12 +638,12 @@ WorkTracker.UI.Shared (net10.0)
 WorkTracker.WPF (net10.0-windows)
   ├── WorkTracker.UI.Shared
   ├── WorkTracker.Infrastructure
-  └── WorkTracker.Plugin.Tempo
+  └── WorkTracker.Plugin.Atlassian
 
 WorkTracker.Avalonia (net10.0)
   ├── WorkTracker.UI.Shared
   ├── WorkTracker.Infrastructure
-  └── WorkTracker.Plugin.Tempo
+  └── WorkTracker.Plugin.Atlassian
 ```
 
 #### WPF Application

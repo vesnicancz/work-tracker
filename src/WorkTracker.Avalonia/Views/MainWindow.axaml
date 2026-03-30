@@ -306,6 +306,15 @@
                                                   Height="{DynamicResource ToolbarIconSize}"
                                                   Foreground="{DynamicResource TextMuted}" />
                         </Button>
+                        <Button Command="{Binding OpenSuggestionsCommand}"
+                                IsVisible="{Binding HasSuggestionPlugins}"
+                                ToolTip.Tip="{markup:Localize Suggestions}" Padding="7"
+                                Background="Transparent" BorderThickness="0">
+                            <material:MaterialIcon Kind="LightbulbOutline"
+                                                  Width="{DynamicResource ToolbarIconSize}"
+                                                  Height="{DynamicResource ToolbarIconSize}"
+                                                  Foreground="{DynamicResource TextMuted}" />
+                        </Button>
                         <Button Command="{Binding AddWorkEntryCommand}"
                                 ToolTip.Tip="{markup:Localize AddNewWorkEntry}" Padding="7"
                                 Background="Transparent" BorderThickness="0">

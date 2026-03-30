@@ -11,6 +11,7 @@ public static class UISharedServiceCollectionExtensions
 		services.AddTransient<IWorklogSubmissionOrchestrator, WorklogSubmissionOrchestrator>();
 		services.AddTransient<IWorkEntryEditOrchestrator, WorkEntryEditOrchestrator>();
 		services.AddTransient<ISettingsOrchestrator, SettingsOrchestrator>();
+		services.AddTransient<IWorkSuggestionOrchestrator, WorkSuggestionOrchestrator>();
 		services.AddSingleton<IPomodoroService, PomodoroService>();
 		return services;
 	}

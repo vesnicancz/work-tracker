@@ -1,0 +1,225 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:material="using:Material.Icons.Avalonia"
+        xmlns:markup="using:WorkTracker.Avalonia.Markup"
+        xmlns:vm="using:WorkTracker.UI.Shared.ViewModels"
+        x:Class="WorkTracker.Avalonia.Views.SuggestionsWindow"
+        x:DataType="vm:SuggestionsViewModel"
+        mc:Ignorable="d"
+        Title="{markup:Localize Suggestions}"
+        Width="600"
+        Height="750"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False"
+        ShowInTaskbar="False"
+        SystemDecorations="None"
+        Background="Transparent">
+
+    <Window.Resources>
+        <x:Double x:Key="ItemsScrollMaxHeight">300</x:Double>
+    </Window.Resources>
+
+    <Window.Styles>
+        <Style Selector="Button.suggestionItem">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{DynamicResource TextBright}" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="Button.suggestionItem:pointerover">
+            <Setter Property="Background" Value="{DynamicResource InputBackground}" />
+        </Style>
+        <Style Selector="Button.accordionHeader:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+        <Style Selector="Button.accordionHeader:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+    </Window.Styles>
+
+    <Panel Margin="8">
+    <Border x:Name="DialogBorder"
+            CornerRadius="{DynamicResource WindowCornerRadius}"
+            Background="{DynamicResource DialogBackground}"
+            BorderBrush="{DynamicResource SeparatorColor}"
+            BorderThickness="1"
+            BoxShadow="0 4 24 0 #40000000"
+            ClipToBounds="True">
+
+        <Grid RowDefinitions="Auto,Auto,*">
+
+            <!-- Titlebar -->
+            <Border Grid.Row="0" x:Name="DialogTitleBar"
+                    Background="{DynamicResource TitleBarBackground}"
+                    BorderBrush="{DynamicResource SeparatorColor}"
+                    BorderThickness="{DynamicResource TitleBarBorderThickness}"
+                    CornerRadius="{DynamicResource WindowTopCornerRadius}"
+                    Height="36"
+                    IsVisible="{DynamicResource ShowDialogTitleBar}">
+                <Panel>
+                    <TextBlock Text="{markup:Localize Suggestions}" FontSize="12"
+                               Foreground="{DynamicResource AppTitleForeground}"
+                               HorizontalAlignment="{DynamicResource TitleBarAlignment}"
+                               VerticalAlignment="Center"
+                               Margin="12,0,12,0" />
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
+                                VerticalAlignment="Center" Margin="0,0,6,0" Spacing="0">
+                        <Button Command="{Binding RefreshCommand}"
+                                Width="36" Height="28" Padding="0"
+                                Background="Transparent" BorderThickness="0"
+                                ToolTip.Tip="{markup:Localize Refresh}">
+                            <material:MaterialIcon Kind="Refresh"
+                                                  Width="{DynamicResource WindowControlIconSize}"
+                                                  Height="{DynamicResource WindowControlIconSize}"
+                                                  Foreground="{DynamicResource WindowControlForeground}" />
+                        </Button>
+                        <Button x:Name="CloseButton"
+                                Width="36" Height="28" Padding="0"
+                                Background="Transparent" BorderThickness="0"
+                                ToolTip.Tip="{markup:Localize Close}">
+                            <material:MaterialIcon Kind="Close"
+                                                  Width="{DynamicResource WindowControlIconSize}"
+                                                  Height="{DynamicResource WindowControlIconSize}"
+                                                  Foreground="{DynamicResource WindowControlForeground}" />
+                        </Button>
+                    </StackPanel>
+                </Panel>
+            </Border>
+
+            <!-- Loading -->
+            <ProgressBar Grid.Row="1" IsIndeterminate="True" Height="2"
+                         IsVisible="{Binding IsLoading}" />
+
+            <!-- Groups -->
+            <ItemsControl Grid.Row="2"
+                          ItemsSource="{Binding Groups}"
+                          x:CompileBindings="False"
+                          Margin="16,12">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Classes="card" Margin="0,0,0,6">
+                            <StackPanel>
+
+                                <!-- Accordion header -->
+                                <Button Classes="accordionHeader"
+                                        Command="{Binding $parent[ItemsControl].DataContext.ToggleGroupCommand}"
+                                        CommandParameter="{Binding}"
+                                        Background="Transparent" BorderThickness="0"
+                                        HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Stretch"
+                                        Padding="0" Cursor="Hand">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <TextBlock Width="12" FontSize="10"
+                                                   Foreground="{DynamicResource TextMuted}"
+                                                   VerticalAlignment="Center"
+                                                   Text="▼" IsVisible="{Binding IsExpanded}" />
+                                        <TextBlock Width="12" FontSize="10"
+                                                   Foreground="{DynamicResource TextMuted}"
+                                                   VerticalAlignment="Center"
+                                                   Text="▶" IsVisible="{Binding !IsExpanded}" />
+                                        <material:MaterialIcon Width="18" Height="18"
+                                            Foreground="{DynamicResource AccentBlue}"
+                                            VerticalAlignment="Center"
+                                            Kind="{Binding IconHint, FallbackValue=LightbulbOutline, TargetNullValue=LightbulbOutline}" />
+                                        <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource TextBright}"
+                                                   VerticalAlignment="Center" />
+                                        <Border Background="{DynamicResource InputBackground}"
+                                                CornerRadius="8" Padding="6,2"
+                                                VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Count}"
+                                                       FontSize="11" FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource TextMuted}" />
+                                        </Border>
+                                        <ProgressBar IsIndeterminate="True"
+                                                     Width="50" Height="2"
+                                                     VerticalAlignment="Center"
+                                                     IsVisible="{Binding IsSearching}" />
+                                    </StackPanel>
+                                </Button>
+
+                                <!-- Expandable content -->
+                                <StackPanel Spacing="6" Margin="0,8,0,0"
+                                            IsVisible="{Binding IsExpanded}">
+
+                                    <!-- Error -->
+                                    <Border Background="#20FF4444" CornerRadius="4" Padding="8,6"
+                                            IsVisible="{Binding HasError}">
+                                        <TextBlock Text="{Binding Error}"
+                                                   Foreground="{DynamicResource DangerRed}"
+                                                   FontSize="12" TextWrapping="Wrap" />
+                                    </Border>
+
+                                    <!-- Search -->
+                                    <TextBox Text="{Binding SearchText, Mode=TwoWay}"
+                                             Watermark="{markup:Localize SearchSuggestions}"
+                                             IsVisible="{Binding SupportsSearch}" />
+
+                                    <!-- Empty state -->
+                                    <TextBlock Text="{markup:Localize NoSuggestions}"
+                                               FontSize="12"
+                                               Foreground="{DynamicResource TextMuted}"
+                                               HorizontalAlignment="Center"
+                                               Margin="0,8"
+                                               IsVisible="{Binding IsEmpty}" />
+
+                                    <!-- Items -->
+                                    <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                                                  VerticalScrollBarVisibility="Auto"
+                                                  MaxHeight="{DynamicResource ItemsScrollMaxHeight}">
+                                        <ItemsControl ItemsSource="{Binding Items}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Button Theme="{x:Null}"
+                                                            Classes="suggestionItem"
+                                                            Padding="8,6" Margin="0,1"
+                                                            CornerRadius="4"
+                                                            HorizontalAlignment="Stretch"
+                                                            HorizontalContentAlignment="Stretch"
+                                                            Command="{Binding $parent[ItemsControl].DataContext.SelectCommand}"
+                                                            CommandParameter="{Binding}">
+                                                        <Grid ColumnDefinitions="Auto,*">
+                                                            <!-- Time badge (calendar) -->
+                                                            <TextBlock Grid.Column="0"
+                                                                       Text="{Binding BadgeText}"
+                                                                       VerticalAlignment="Center"
+                                                                       Margin="0,0,10,0"
+                                                                       FontSize="12"
+                                                                       FontFamily="JetBrains Mono,Consolas,monospace"
+                                                                       Foreground="{DynamicResource TextMuted}"
+                                                                       IsVisible="{Binding HasTimeSlot}" />
+                                                            <!-- Ticket badge (Jira) -->
+                                                            <TextBlock Grid.Column="0"
+                                                                       Text="{Binding BadgeText}"
+                                                                       VerticalAlignment="Center"
+                                                                       Margin="0,0,10,0"
+                                                                       FontSize="12"
+                                                                       FontWeight="SemiBold"
+                                                                       Foreground="{DynamicResource AccentBlue}"
+                                                                       IsVisible="{Binding IsBadgeAccent}" />
+                                                            <TextBlock Grid.Column="1"
+                                                                       Text="{Binding Title}"
+                                                                       FontSize="12"
+                                                                       TextTrimming="CharacterEllipsis"
+                                                                       Foreground="{DynamicResource TextBright}"
+                                                                       VerticalAlignment="Center" />
+                                                        </Grid>
+                                                    </Button>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+                                </StackPanel>
+
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </Grid>
+    </Border>
+    </Panel>
+</Window>
