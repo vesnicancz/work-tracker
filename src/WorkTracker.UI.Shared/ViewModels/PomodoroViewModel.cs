@@ -102,13 +102,14 @@ public class PomodoroViewModel : ObservableObject, IDisposable
 	/// </summary>
 	public void UpdatePhase(PomodoroPhase phase)
 	{
-		IsRunning = _pomodoroService.IsRunning;
+		var snapshot = _pomodoroService.GetSnapshot();
+		IsRunning = snapshot.IsRunning;
 		PhaseDisplay = GetPhaseDisplayText(phase);
-		Count = $"{_pomodoroService.CompletedPomodoros}/{_pomodoroService.PomodorosBeforeLongBreak}";
+		Count = $"{snapshot.CompletedPomodoros}/{snapshot.PomodorosBeforeLongBreak}";
 		IsWork = phase == PomodoroPhase.Work;
 		IsShortBreak = phase == PomodoroPhase.ShortBreak;
 		IsLongBreak = phase == PomodoroPhase.LongBreak;
-		UpdateTimeDisplay();
+		TimeRemaining = FormatTimeRemaining(snapshot.TimeRemaining);
 	}
 
 	/// <summary>
@@ -116,9 +117,11 @@ public class PomodoroViewModel : ObservableObject, IDisposable
 	/// </summary>
 	public void UpdateTimeDisplay()
 	{
-		var remaining = _pomodoroService.TimeRemaining;
-		TimeRemaining = $"{(int)remaining.TotalMinutes:D2}:{remaining.Seconds:D2}";
+		TimeRemaining = FormatTimeRemaining(_pomodoroService.TimeRemaining);
 	}
+
+	private static string FormatTimeRemaining(TimeSpan remaining) =>
+		$"{(int)remaining.TotalMinutes:D2}:{remaining.Seconds:D2}";
 
 	public void RefreshEnabled() => OnPropertyChanged(nameof(IsEnabled));
 

@@ -111,58 +111,26 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 
 	#region State Operations
 
-	public async Task<Result<WorkEntry>> StartTrackingAsync(
+	public Task<Result<WorkEntry>> StartTrackingAsync(
 		string? ticketId,
 		string? description,
 		CancellationToken cancellationToken)
 	{
-		ThrowIfNotInitialized();
-
 		_logger.LogInformation(
 			"Starting work tracking: TicketId={TicketId}, Description={Description}",
 			ticketId,
 			description);
 
-		WorkEntry? oldActiveWork = null;
-		var oldIsTracking = false;
-		var workEntriesModified = false;
-
-		await _stateLock.WaitAsync(cancellationToken);
-		try
-		{
-			oldActiveWork = _activeWork;
-			oldIsTracking = _isTracking;
-
-			using var scope = _scopeFactory.CreateScope();
-			var workEntryService = scope.ServiceProvider.GetRequiredService<IWorkEntryService>();
-
-			var result = await workEntryService.StartWorkAsync(ticketId, null, description, cancellationToken: cancellationToken);
-
-			if (result.IsSuccess)
+		return ExecuteLockedAsync<WorkEntry>(
+			(svc, ct) => svc.StartWorkAsync(ticketId, null, description, cancellationToken: ct),
+			result =>
 			{
 				UpdateState(result.Value, true);
-				workEntriesModified = true;
-
 				_logger.LogInformation("Work tracking started successfully: WorkEntryId={WorkEntryId}", result.Value.Id);
-			}
-			else
-			{
-				_logger.LogWarning("Failed to start work tracking: {Error}", result.Error);
-			}
-
-			return result;
-		}
-		catch (OperationCanceledException) { throw; }
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Unexpected error starting work tracking");
-			return Result.Failure<WorkEntry>($"Unexpected error: {ex.Message}");
-		}
-		finally
-		{
-			_stateLock.Release();
-			RaiseEvents(oldActiveWork, oldIsTracking, workEntriesModified);
-		}
+				return Task.CompletedTask;
+			},
+			"StartTracking",
+			cancellationToken);
 	}
 
 	public async Task<Result> StopTrackingAsync(CancellationToken cancellationToken)
@@ -195,13 +163,12 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 			if (result.IsSuccess)
 			{
 				UpdateState(null, false);
-				workEntriesModified = true;
-
 				_logger.LogInformation("Work tracking stopped successfully");
+				workEntriesModified = true;
 			}
 			else
 			{
-				_logger.LogWarning("Failed to stop work tracking: {Error}", result.Error);
+				_logger.LogWarning("Failed StopTracking: {Error}", result.Error);
 			}
 
 			return result;
@@ -209,7 +176,7 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 		catch (OperationCanceledException) { throw; }
 		catch (Exception ex)
 		{
-			_logger.LogError(ex, "Unexpected error stopping work tracking");
+			_logger.LogError(ex, "Unexpected error in StopTracking");
 			return Result.Failure($"Unexpected error: {ex.Message}");
 		}
 		finally
@@ -243,19 +210,18 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 		finally
 		{
 			_stateLock.Release();
-			RaiseEvents(oldActiveWork, oldIsTracking, workEntriesModified: false);
 		}
+
+		RaiseEvents(oldActiveWork, oldIsTracking, workEntriesModified: false);
 	}
 
-	public async Task<Result<WorkEntry>> CreateWorkEntryAsync(
+	public Task<Result<WorkEntry>> CreateWorkEntryAsync(
 		string? ticketId,
 		DateTime startTime,
 		string? description,
 		DateTime? endTime,
 		CancellationToken cancellationToken)
 	{
-		ThrowIfNotInitialized();
-
 		_logger.LogInformation(
 			"Creating work entry: TicketId={TicketId}, StartTime={StartTime}, EndTime={EndTime}, Description={Description}",
 			ticketId,
@@ -263,49 +229,18 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 			endTime,
 			description);
 
-		WorkEntry? oldActiveWork = null;
-		var oldIsTracking = false;
-		var workEntriesModified = false;
-
-		await _stateLock.WaitAsync(cancellationToken);
-		try
-		{
-			oldActiveWork = _activeWork;
-			oldIsTracking = _isTracking;
-
-			using var scope = _scopeFactory.CreateScope();
-			var workEntryService = scope.ServiceProvider.GetRequiredService<IWorkEntryService>();
-
-			var result = await workEntryService.StartWorkAsync(ticketId, startTime, description, endTime, cancellationToken);
-
-			if (result.IsSuccess)
+		return ExecuteLockedAsync<WorkEntry>(
+			(svc, ct) => svc.StartWorkAsync(ticketId, startTime, description, endTime, ct),
+			async result =>
 			{
 				_logger.LogInformation("Work entry created successfully: WorkEntryId={WorkEntryId}", result.Value.Id);
-
 				await RefreshFromDatabaseCoreAsync(cancellationToken);
-				workEntriesModified = true;
-			}
-			else
-			{
-				_logger.LogWarning("Failed to create work entry: {Error}", result.Error);
-			}
-
-			return result;
-		}
-		catch (OperationCanceledException) { throw; }
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Unexpected error creating work entry");
-			return Result.Failure<WorkEntry>($"Unexpected error: {ex.Message}");
-		}
-		finally
-		{
-			_stateLock.Release();
-			RaiseEvents(oldActiveWork, oldIsTracking, workEntriesModified);
-		}
+			},
+			"CreateWorkEntry",
+			cancellationToken);
 	}
 
-	public async Task<Result> UpdateWorkEntryAsync(
+	public Task<Result> UpdateWorkEntryAsync(
 		int id,
 		string? ticketId,
 		DateTime startTime,
@@ -313,8 +248,6 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 		string? description,
 		CancellationToken cancellationToken)
 	{
-		ThrowIfNotInitialized();
-
 		_logger.LogInformation(
 			"Updating work entry: Id={Id}, TicketId={TicketId}, StartTime={StartTime}, EndTime={EndTime}",
 			id,
@@ -322,94 +255,31 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 			startTime,
 			endTime);
 
-		WorkEntry? oldActiveWork = null;
-		var oldIsTracking = false;
-		var workEntriesModified = false;
-
-		await _stateLock.WaitAsync(cancellationToken);
-		try
-		{
-			oldActiveWork = _activeWork;
-			oldIsTracking = _isTracking;
-
-			using var scope = _scopeFactory.CreateScope();
-			var workEntryService = scope.ServiceProvider.GetRequiredService<IWorkEntryService>();
-
-			var result = await workEntryService.UpdateWorkEntryAsync(id, ticketId, startTime, endTime, description, cancellationToken);
-
-			if (result.IsSuccess)
+		return ExecuteLockedAsync(
+			// UpdateWorkEntryAsync returns Result<WorkEntry>; upcast to Result (value unused)
+			async (svc, ct) => (Result)await svc.UpdateWorkEntryAsync(id, ticketId, startTime, endTime, description, ct),
+			async _ =>
 			{
 				_logger.LogInformation("Work entry updated successfully: WorkEntryId={WorkEntryId}", id);
-
 				await RefreshFromDatabaseCoreAsync(cancellationToken);
-				workEntriesModified = true;
-			}
-			else
-			{
-				_logger.LogWarning("Failed to update work entry: {Error}", result.Error);
-			}
-
-			return result;
-		}
-		catch (OperationCanceledException) { throw; }
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Unexpected error updating work entry");
-			return Result.Failure($"Unexpected error: {ex.Message}");
-		}
-		finally
-		{
-			_stateLock.Release();
-			RaiseEvents(oldActiveWork, oldIsTracking, workEntriesModified);
-		}
+			},
+			"UpdateWorkEntry",
+			cancellationToken);
 	}
 
-	public async Task<Result> DeleteWorkEntryAsync(int id, CancellationToken cancellationToken)
+	public Task<Result> DeleteWorkEntryAsync(int id, CancellationToken cancellationToken)
 	{
-		ThrowIfNotInitialized();
-
 		_logger.LogInformation("Deleting work entry: Id={Id}", id);
 
-		WorkEntry? oldActiveWork = null;
-		var oldIsTracking = false;
-		var workEntriesModified = false;
-
-		await _stateLock.WaitAsync(cancellationToken);
-		try
-		{
-			oldActiveWork = _activeWork;
-			oldIsTracking = _isTracking;
-
-			using var scope = _scopeFactory.CreateScope();
-			var workEntryService = scope.ServiceProvider.GetRequiredService<IWorkEntryService>();
-
-			var result = await workEntryService.DeleteWorkEntryAsync(id, cancellationToken);
-
-			if (result.IsSuccess)
+		return ExecuteLockedAsync(
+			(svc, ct) => svc.DeleteWorkEntryAsync(id, ct),
+			async _ =>
 			{
 				_logger.LogInformation("Work entry deleted successfully: WorkEntryId={WorkEntryId}", id);
-
 				await RefreshFromDatabaseCoreAsync(cancellationToken);
-				workEntriesModified = true;
-			}
-			else
-			{
-				_logger.LogWarning("Failed to delete work entry: {Error}", result.Error);
-			}
-
-			return result;
-		}
-		catch (OperationCanceledException) { throw; }
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Unexpected error deleting work entry");
-			return Result.Failure($"Unexpected error: {ex.Message}");
-		}
-		finally
-		{
-			_stateLock.Release();
-			RaiseEvents(oldActiveWork, oldIsTracking, workEntriesModified);
-		}
+			},
+			"DeleteWorkEntry",
+			cancellationToken);
 	}
 
 	public async Task NotifyWorkEntriesModifiedAsync(CancellationToken cancellationToken)
@@ -439,11 +309,120 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 		finally
 		{
 			_stateLock.Release();
-			RaiseEvents(oldActiveWork, oldIsTracking, workEntriesModified: refreshed);
 		}
+
+		RaiseEvents(oldActiveWork, oldIsTracking, workEntriesModified: refreshed);
 	}
 
 	#endregion State Operations
+
+	#region Locked Execution Helpers
+
+	/// <summary>
+	/// Executes a state-modifying operation under the state lock, with scope creation,
+	/// exception handling, and event raising. For operations returning Result{T}.
+	/// </summary>
+	private async Task<Result<T>> ExecuteLockedAsync<T>(
+		Func<IWorkEntryService, CancellationToken, Task<Result<T>>> operation,
+		Func<Result<T>, Task> onSuccess,
+		string operationName,
+		CancellationToken cancellationToken)
+	{
+		ThrowIfNotInitialized();
+
+		WorkEntry? oldActiveWork = null;
+		var oldIsTracking = false;
+		var workEntriesModified = false;
+
+		await _stateLock.WaitAsync(cancellationToken);
+		try
+		{
+			oldActiveWork = _activeWork;
+			oldIsTracking = _isTracking;
+
+			using var scope = _scopeFactory.CreateScope();
+			var workEntryService = scope.ServiceProvider.GetRequiredService<IWorkEntryService>();
+
+			var result = await operation(workEntryService, cancellationToken);
+
+			if (result.IsSuccess)
+			{
+				await onSuccess(result);
+				workEntriesModified = true;
+			}
+			else
+			{
+				_logger.LogWarning("Failed {Operation}: {Error}", operationName, result.Error);
+			}
+
+			return result;
+		}
+		catch (OperationCanceledException) { throw; }
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Unexpected error in {Operation}", operationName);
+			return Result.Failure<T>($"Unexpected error: {ex.Message}");
+		}
+		finally
+		{
+			_stateLock.Release();
+			RaiseEvents(oldActiveWork, oldIsTracking, workEntriesModified);
+		}
+	}
+
+	/// <summary>
+	/// Executes a state-modifying operation under the state lock, with scope creation,
+	/// exception handling, and event raising. For operations returning Result.
+	/// </summary>
+	private async Task<Result> ExecuteLockedAsync(
+		Func<IWorkEntryService, CancellationToken, Task<Result>> operation,
+		Func<Result, Task> onSuccess,
+		string operationName,
+		CancellationToken cancellationToken)
+	{
+		ThrowIfNotInitialized();
+
+		WorkEntry? oldActiveWork = null;
+		var oldIsTracking = false;
+		var workEntriesModified = false;
+
+		await _stateLock.WaitAsync(cancellationToken);
+		try
+		{
+			oldActiveWork = _activeWork;
+			oldIsTracking = _isTracking;
+
+			using var scope = _scopeFactory.CreateScope();
+			var workEntryService = scope.ServiceProvider.GetRequiredService<IWorkEntryService>();
+
+			var result = await operation(workEntryService, cancellationToken);
+
+			if (result.IsSuccess)
+			{
+				await onSuccess(result);
+				workEntriesModified = true;
+			}
+			else
+			{
+				_logger.LogWarning("Failed {Operation}: {Error}", operationName, result.Error);
+			}
+
+			return result;
+		}
+		catch (OperationCanceledException) { throw; }
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Unexpected error in {Operation}", operationName);
+			return Result.Failure($"Unexpected error: {ex.Message}");
+		}
+		finally
+		{
+			_stateLock.Release();
+			RaiseEvents(oldActiveWork, oldIsTracking, workEntriesModified);
+		}
+	}
+
+	#endregion Locked Execution Helpers
 
 	#region Private Helpers
 

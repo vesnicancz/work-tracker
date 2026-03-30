@@ -2,9 +2,10 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
 using WorkTracker.Application.Plugins;
+using WorkTracker.Infrastructure.Plugins;
 using WorkTracker.Plugin.Abstractions;
 
-namespace WorkTracker.Application.Tests.Plugins;
+namespace WorkTracker.Infrastructure.Tests.Plugins;
 
 public class PluginManagerTests : IDisposable
 {
@@ -112,7 +113,7 @@ public class PluginManagerTests : IDisposable
 	{
 		// Arrange
 		_pluginManager.LoadEmbeddedPlugin<TestPlugin>();
-		await _pluginManager.InitializePluginsAsync(cancellationToken: TestContext.Current.CancellationToken);
+		await _pluginManager.InitializePluginsAsync(null, TestContext.Current.CancellationToken);
 
 		// Act
 		var result = await _pluginManager.UnloadPluginAsync("test.plugin");
@@ -147,7 +148,7 @@ public class PluginManagerTests : IDisposable
 	{
 		// Arrange
 		_pluginManager.LoadEmbeddedPlugin<TestPlugin>();
-		await _pluginManager.InitializePluginsAsync(cancellationToken: TestContext.Current.CancellationToken);
+		await _pluginManager.InitializePluginsAsync(null, TestContext.Current.CancellationToken);
 
 		// Act
 		await _pluginManager.DisposeAsync();

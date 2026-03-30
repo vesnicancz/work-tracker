@@ -51,48 +51,26 @@ public sealed class PomodoroService : IPomodoroService, IDisposable
 		_logger = logger;
 	}
 
-	public PomodoroPhase CurrentPhase
-	{
-		get { lock (_lock)
-			{
-				return _currentPhase;
-			}
-		}
-	}
+	public PomodoroPhase CurrentPhase => _currentPhase;
 
-	public TimeSpan TimeRemaining
-	{
-		get { lock (_lock)
-			{
-				return _timeRemaining;
-			}
-		}
-	}
+	public TimeSpan TimeRemaining => _timeRemaining;
 
-	public int CompletedPomodoros
-	{
-		get { lock (_lock)
-			{
-				return _completedPomodoros;
-			}
-		}
-	}
+	public int CompletedPomodoros => _completedPomodoros;
 
-	public int PomodorosBeforeLongBreak
-	{
-		get { lock (_lock)
-			{
-				return _activeSettings.PomodorosBeforeLongBreak;
-			}
-		}
-	}
+	public int PomodorosBeforeLongBreak => _activeSettings.PomodorosBeforeLongBreak;
 
-	public bool IsRunning
+	public bool IsRunning => _isRunning;
+
+	public PomodoroSnapshot GetSnapshot()
 	{
-		get { lock (_lock)
-			{
-				return _isRunning;
-			}
+		lock (_lock)
+		{
+			return new PomodoroSnapshot(
+				_currentPhase,
+				_timeRemaining,
+				_completedPomodoros,
+				_activeSettings.PomodorosBeforeLongBreak,
+				_isRunning);
 		}
 	}
 

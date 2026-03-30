@@ -43,20 +43,25 @@ public partial class App : global::Avalonia.Application
 			var (theme, startMinimized) = ReadEarlySettings();
 			SwitchTheme(theme);
 
-			if (startMinimized)
-			{
-				// Don't show window, just start background init
-				Dispatcher.UIThread.Post(() => _ = InitializeAsync(desktop, localization, startMinimized: true), DispatcherPriority.Background);
-			}
-			else
+			if (!startMinimized)
 			{
 				// Show styled empty window immediately, then load data on background
 				var mainWindow = new MainWindow();
 				desktop.MainWindow = mainWindow;
 				mainWindow.Show();
-
-				Dispatcher.UIThread.Post(() => _ = InitializeAsync(desktop, localization, startMinimized: false), DispatcherPriority.Background);
 			}
+
+			Dispatcher.UIThread.Post(async () =>
+			{
+				try
+				{
+					await InitializeAsync(desktop, localization, startMinimized);
+				}
+				catch (Exception ex)
+				{
+					LogErrorSafe(ex, "Background initialization failed");
+				}
+			}, DispatcherPriority.Background);
 		}
 
 		base.OnFrameworkInitializationCompleted();
@@ -152,7 +157,9 @@ public partial class App : global::Avalonia.Application
 			var updateCheckService = _host.Services.GetService<IUpdateCheckService>();
 			if (updateCheckService != null)
 			{
-				_ = updateCheckService.CheckForUpdateAsync();
+				var updateLogger = _host.Services.GetRequiredService<ILoggerFactory>().CreateLogger<App>();
+				_ = updateCheckService.CheckForUpdateAsync()
+					.SafeFireAndForgetAsync(ex => updateLogger.LogWarning(ex, "Update check failed"));
 			}
 
 			// Load plugins in the background — not needed for initial UI

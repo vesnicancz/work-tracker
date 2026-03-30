@@ -1,9 +1,9 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
-using WorkTracker.Application.Plugins;
+using WorkTracker.Infrastructure.Plugins;
 
-namespace WorkTracker.Application.Tests.Plugins;
+namespace WorkTracker.Infrastructure.Tests.Plugins;
 
 /// <summary>
 /// Tests for PluginLoadContext through PluginManager's file loading APIs.
@@ -53,7 +53,7 @@ public class PluginLoadContextTests : IAsyncDisposable
 		_pluginManager.LoadPluginFromFile(path).Should().BeFalse();
 	}
 
-	#endregion
+	#endregion LoadPluginFromFile
 
 	#region DiscoverAndLoadPlugins
 
@@ -94,7 +94,7 @@ public class PluginLoadContextTests : IAsyncDisposable
 		result.Should().Be(0);
 	}
 
-	#endregion
+	#endregion DiscoverAndLoadPlugins
 
 	#region AddPluginDirectory
 
@@ -125,7 +125,7 @@ public class PluginLoadContextTests : IAsyncDisposable
 		result.Should().Be(0);
 	}
 
-	#endregion
+	#endregion AddPluginDirectory
 
 	#region LoadedPlugins state
 
@@ -146,5 +146,5 @@ public class PluginLoadContextTests : IAsyncDisposable
 		_pluginManager.LoadedPlugins.Should().BeEmpty();
 	}
 
-	#endregion
+	#endregion LoadedPlugins state
 }
