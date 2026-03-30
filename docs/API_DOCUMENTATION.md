@@ -838,7 +838,6 @@ public class WorkSuggestion
     public required string Source { get; init; }   // Source plugin name (e.g., "Jira", "Office 365 Calendar")
     public required string SourceId { get; init; } // Unique ID within the source, used for deduplication
     public string? SourceUrl { get; init; }        // Optional URL to the source item
-    public Dictionary<string, string>? Metadata { get; init; } // Additional source metadata
 }
 ```
 

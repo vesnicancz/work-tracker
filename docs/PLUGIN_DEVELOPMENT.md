@@ -412,7 +412,6 @@ public class WorkSuggestion
     public required string Source { get; init; }      // Nazev zdrojoveho pluginu (napr. "Jira", "Office 365 Calendar")
     public required string SourceId { get; init; }    // Unikatni ID ve zdroji (pro deduplikaci)
     public string? SourceUrl { get; init; }           // URL na zdrojovy zaznam
-    public Dictionary<string, string>? Metadata { get; init; } // Doplnkova metadata ze zdroje
 }
 ```
 

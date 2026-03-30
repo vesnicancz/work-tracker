@@ -132,8 +132,15 @@ public sealed class DialogService : IDialogService
 		var dialog = new SuggestionsWindow();
 		dialog.BindViewModel(viewModel);
 
-		// Show dialog immediately with loading indicator, load data in background
-		_ = viewModel.InitializeAsync(selectedDate);
+		// Show dialog immediately with loading indicator, load data in background.
+		// ContinueWith ensures exceptions don't go unobserved.
+		_ = viewModel.InitializeAsync(selectedDate).ContinueWith(t =>
+		{
+			if (t.IsFaulted)
+			{
+				System.Diagnostics.Debug.WriteLine($"Suggestions init failed: {t.Exception?.InnerException?.Message}");
+			}
+		}, TaskScheduler.Default);
 
 		var mainWindow = GetMainWindow();
 		if (mainWindow != null)

@@ -17,7 +17,7 @@ public class WorkSuggestionViewModel
 	public bool HasTimeSlot => StartTime.HasValue;
 
 	public string TimeDisplay => HasTimeSlot
-		? $"{StartTime:HH:mm} – {EndTime:HH:mm}"
+		? EndTime.HasValue ? $"{StartTime:HH:mm} – {EndTime:HH:mm}" : $"{StartTime:HH:mm}"
 		: string.Empty;
 
 	/// <summary>

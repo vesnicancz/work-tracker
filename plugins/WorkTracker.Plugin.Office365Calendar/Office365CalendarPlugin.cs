@@ -92,16 +92,32 @@ public sealed class Office365CalendarPlugin : WorkSuggestionPluginBase, IDisposa
 		Directory.CreateDirectory(Path.GetDirectoryName(cacheFilePath)!);
 		_msalApp.UserTokenCache.SetBeforeAccess(args =>
 		{
-			if (File.Exists(cacheFilePath))
+			try
 			{
-				args.TokenCache.DeserializeMsalV3(File.ReadAllBytes(cacheFilePath));
+				if (File.Exists(cacheFilePath))
+				{
+					args.TokenCache.DeserializeMsalV3(File.ReadAllBytes(cacheFilePath));
+				}
+			}
+			catch (Exception ex)
+			{
+				Logger?.LogWarning(ex, "Failed to read MSAL token cache, proceeding with empty cache");
 			}
 		});
 		_msalApp.UserTokenCache.SetAfterAccess(args =>
 		{
-			if (args.HasStateChanged)
+			if (!args.HasStateChanged)
+			{
+				return;
+			}
+
+			try
 			{
 				File.WriteAllBytes(cacheFilePath, args.TokenCache.SerializeMsalV3());
+			}
+			catch (Exception ex)
+			{
+				Logger?.LogWarning(ex, "Failed to write MSAL token cache");
 			}
 		});
 

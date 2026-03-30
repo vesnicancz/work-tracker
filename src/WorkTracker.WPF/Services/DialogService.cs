@@ -103,7 +103,13 @@ public sealed class DialogService : IDialogService
 		var dialog = new SuggestionsWindow();
 		dialog.BindViewModel(viewModel);
 
-		_ = viewModel.InitializeAsync(selectedDate);
+		_ = viewModel.InitializeAsync(selectedDate).ContinueWith(t =>
+		{
+			if (t.IsFaulted)
+			{
+				System.Diagnostics.Debug.WriteLine($"Suggestions init failed: {t.Exception?.InnerException?.Message}");
+			}
+		}, TaskScheduler.Default);
 		dialog.Owner = System.Windows.Application.Current.MainWindow;
 		dialog.ShowDialog();
 
