@@ -142,10 +142,19 @@ public sealed class DialogService : IDialogService
 			}
 		}, TaskScheduler.Default);
 
-		var mainWindow = GetMainWindow();
+		var mainWindow = GetVisibleMainWindow();
 		if (mainWindow != null)
 		{
 			await dialog.ShowDialog(mainWindow);
+		}
+		else
+		{
+			// Main window hidden (e.g. minimized to tray) — show as standalone window
+			var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+			dialog.Closed += (_, _) => tcs.TrySetResult(true);
+			dialog.Show();
+			dialog.Activate();
+			await tcs.Task;
 		}
 
 		return dialog.SelectedSuggestion;

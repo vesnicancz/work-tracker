@@ -272,6 +272,8 @@ public sealed class Office365CalendarPlugin : WorkSuggestionPluginBase, IDisposa
 	{
 		using var request = new HttpRequestMessage(method, url);
 		request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+		// Request times in user's local timezone so parsed DateTimes are correct
+		request.Headers.Add("Prefer", $"outlook.timezone=\"{TimeZoneInfo.Local.Id}\"");
 		return await _httpClient!.SendAsync(request, cancellationToken);
 	}
 
