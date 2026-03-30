@@ -182,15 +182,18 @@ jobs:
     strategy:
       matrix:
         include:
-          - plugin: Tempo
-            project: plugins/WorkTracker.Plugin.Tempo/WorkTracker.Plugin.Tempo.csproj
-            artifact: WorkTracker-Plugin-Tempo
+          - plugin: Atlassian
+            project: plugins/WorkTracker.Plugin.Atlassian/WorkTracker.Plugin.Atlassian.csproj
+            artifact: WorkTracker.Plugin.Atlassian
           - plugin: Luxafor
             project: plugins/WorkTracker.Plugin.Luxafor/WorkTracker.Plugin.Luxafor.csproj
-            artifact: WorkTracker-Plugin-Luxafor
+            artifact: WorkTracker.Plugin.Luxafor
           - plugin: GoranG3
             project: plugins/WorkTracker.Plugin.GoranG3/WorkTracker.Plugin.GoranG3.csproj
-            artifact: WorkTracker-Plugin-GoranG3
+            artifact: WorkTracker.Plugin.GoranG3
+          - plugin: Office365Calendar
+            project: plugins/WorkTracker.Plugin.Office365Calendar/WorkTracker.Plugin.Office365Calendar.csproj
+            artifact: WorkTracker.Plugin.Office365Calendar
     steps:
       - uses: actions/checkout@v4
         with:
