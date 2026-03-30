@@ -137,7 +137,7 @@ Additional plugin directories can be configured via `Plugins:Directories` in `ap
 
 Relative paths are resolved against `AppContext.BaseDirectory`. See `WorkTrackerPaths.DefaultPluginsPath` for the default.
 
-Plugin DLLs are placed in the plugins scan directory during build. All plugins are loaded the same way via directory scan — there is no distinction between shipped and third-party plugins at runtime.
+During publish an empty `plugins/` scan directory is created under `<AppContext.BaseDirectory>`. Plugin DLLs are distributed as separate artifacts and must be copied or extracted into one of the configured plugin directories (typically `<AppContext.BaseDirectory>/plugins/`) for the application to discover them. All plugins are loaded the same way via directory scan — there is no distinction between shipped and third-party plugins at runtime.
 
 ---
 
