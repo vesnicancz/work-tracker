@@ -73,8 +73,8 @@ jobs:
 
       - name: Archive
         run: |
-          cd publish
-          zip -r ${{ matrix.artifact }}.zip ${{ matrix.artifact }}
+          cd publish/${{ matrix.artifact }}
+          zip -r ../${{ matrix.artifact }}.zip .
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -162,8 +162,8 @@ jobs:
       - name: Archive (Linux/macOS)
         if: runner.os != 'Windows'
         run: |
-          cd publish
-          zip -r ${{ matrix.artifact }}.zip ${{ matrix.artifact }}
+          cd publish/${{ matrix.artifact }}
+          zip -r ../${{ matrix.artifact }}.zip .
 
       - name: Archive (Windows)
         if: runner.os == 'Windows'
