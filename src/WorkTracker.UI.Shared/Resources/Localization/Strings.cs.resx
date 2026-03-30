@@ -206,6 +206,23 @@
     <value>Aplikace se spustí minimalizovaná v systémové liště</value>
   </data>
 
+  <!-- Aktualizace -->
+  <data name="Updates" xml:space="preserve">
+    <value>Aktualizace</value>
+  </data>
+  <data name="CheckForUpdates" xml:space="preserve">
+    <value>Kontrolovat aktualizace</value>
+  </data>
+  <data name="CheckForUpdatesDesc" xml:space="preserve">
+    <value>Při spuštění automaticky zkontrolovat novou verzi na GitHubu</value>
+  </data>
+  <data name="UpdateAvailableTitle" xml:space="preserve">
+    <value>Dostupná aktualizace</value>
+  </data>
+  <data name="UpdateAvailableMessage" xml:space="preserve">
+    <value>Je dostupná nová verze {0} (aktuální: {1}). Klikněte pro stažení.</value>
+  </data>
+
   <!-- Dialog úpravy záznamu práce -->
   <data name="NewWorkEntry" xml:space="preserve">
     <value>Nový záznam práce</value>

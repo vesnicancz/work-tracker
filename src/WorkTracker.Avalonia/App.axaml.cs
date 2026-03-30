@@ -148,6 +148,13 @@ public partial class App : global::Avalonia.Application
 			_hotkeyService.HotkeyPressed += OnHotkeyPressed;
 			_hotkeyService.Register();
 
+			// Check for updates (non-blocking, fire-and-forget)
+			var updateCheckService = _host.Services.GetService<IUpdateCheckService>();
+			if (updateCheckService != null)
+			{
+				_ = updateCheckService.CheckForUpdateAsync();
+			}
+
 			// Load plugins in the background — not needed for initial UI
 			var pluginLogger = _host.Services.GetRequiredService<ILoggerFactory>().CreateLogger<App>();
 			var configuration = _host.Services.GetRequiredService<IConfiguration>();

@@ -92,6 +92,7 @@ public class SettingsOrchestrator : ISettingsOrchestrator
 			CloseWindowBehavior = request.CloseWindowBehavior,
 			StartWithWindows = request.StartWithWindows,
 			StartMinimized = request.StartMinimized,
+			CheckForUpdates = request.CheckForUpdates,
 			Theme = request.Theme ?? _settingsService.Settings.Theme,
 			PluginConfigurations = new Dictionary<string, Dictionary<string, string>>(),
 			EnabledPlugins = new Dictionary<string, bool>(),

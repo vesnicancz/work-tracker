@@ -110,6 +110,19 @@
 
                                 <Separator Margin="0,16" />
 
+                                <TextBlock Text="{markup:Localize Updates}" FontSize="13" Foreground="{DynamicResource TextMuted}"
+                                           Margin="0,0,0,8" />
+
+                                <CheckBox IsChecked="{Binding CheckForUpdates}">
+                                    <StackPanel>
+                                        <TextBlock Text="{markup:Localize CheckForUpdates}" FontWeight="Medium" />
+                                        <TextBlock Text="{markup:Localize CheckForUpdatesDesc}"
+                                                   Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,2,0,0" />
+                                    </StackPanel>
+                                </CheckBox>
+
+                                <Separator Margin="0,16" />
+
                                 <TextBlock Text="{markup:Localize Appearance}" FontSize="13" Foreground="{DynamicResource TextMuted}"
                                            Margin="0,0,0,8" />
 
