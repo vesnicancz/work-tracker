@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using WorkTracker.Application.Common;
+using WorkTracker.Application.Models;
 using WorkTracker.Domain.Entities;
 using WorkTracker.Domain.Interfaces;
 
@@ -172,5 +173,293 @@ public sealed class WorkEntryService : IWorkEntryService
 	public async Task<IEnumerable<WorkEntry>> GetWorkEntriesByDateRangeAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken)
 	{
 		return await _repository.GetByDateRangeAsync(startDate, endDate, cancellationToken);
+	}
+
+	public async Task<OverlapResolutionPlan> ComputeOverlapResolutionAsync(int? excludeEntryId, DateTime startTime, DateTime? endTime, CancellationToken cancellationToken)
+	{
+		var roundedStart = DateTimeHelper.RoundToMinute(startTime);
+		var roundedEnd = DateTimeHelper.RoundToMinute(endTime);
+
+		// For the query: when endTime is null (active/ongoing entry), use +1 minute
+		// to detect overlaps at the exact start time (predicate uses StartTime < end)
+		// while avoiding matching all future entries
+		var queryEnd = roundedEnd ?? roundedStart.AddMinutes(1);
+
+		var overlapping = await _repository.GetOverlappingEntriesAsync(excludeEntryId, roundedStart, queryEnd, cancellationToken);
+
+		if (overlapping.Count == 0)
+		{
+			return new OverlapResolutionPlan();
+		}
+
+		// For adjustments: use DateTime.MaxValue for active entries so DetermineAdjustment
+		// correctly produces TrimEnd/Delete (not TrimStart/Split with an artificial +1min boundary)
+		var candidateEnd = roundedEnd ?? DateTime.MaxValue;
+		var adjustments = new List<OverlapAdjustment>();
+
+		foreach (var existing in overlapping)
+		{
+			var existingEnd = existing.EndTime ?? DateTime.MaxValue;
+			var adjustment = DetermineAdjustment(existing, existingEnd, roundedStart, candidateEnd);
+			adjustments.Add(adjustment);
+		}
+
+		return new OverlapResolutionPlan { Adjustments = adjustments };
+	}
+
+	private static OverlapAdjustment DetermineAdjustment(WorkEntry existing, DateTime existingEnd, DateTime candidateStart, DateTime candidateEnd)
+	{
+		var minDuration = TimeSpan.FromMinutes(1);
+
+		// Complete cover: candidate fully contains existing
+		if (candidateStart <= existing.StartTime && candidateEnd >= existingEnd)
+		{
+			return new OverlapAdjustment(
+				existing.Id, existing.TicketId, existing.Description,
+				OverlapAdjustmentKind.Delete,
+				existing.StartTime, existing.EndTime,
+				null, null);
+		}
+
+		// Split: candidate is inside existing (only for completed entries)
+		// Active entries (no EndTime) are never split — they are trimmed instead,
+		// because splitting would create a new active entry after the candidate.
+		if (candidateStart > existing.StartTime && candidateEnd < existingEnd && existing.EndTime.HasValue)
+		{
+			// Check if either half would be too short
+			var firstHalf = candidateStart - existing.StartTime;
+			var secondHalf = existingEnd - candidateEnd;
+
+			if (firstHalf < minDuration && secondHalf < minDuration)
+			{
+				return new OverlapAdjustment(
+					existing.Id, existing.TicketId, existing.Description,
+					OverlapAdjustmentKind.Delete,
+					existing.StartTime, existing.EndTime,
+					null, null);
+			}
+
+			if (firstHalf < minDuration)
+			{
+				return new OverlapAdjustment(
+					existing.Id, existing.TicketId, existing.Description,
+					OverlapAdjustmentKind.TrimStart,
+					existing.StartTime, existing.EndTime,
+					candidateEnd, null);
+			}
+
+			if (secondHalf < minDuration)
+			{
+				return new OverlapAdjustment(
+					existing.Id, existing.TicketId, existing.Description,
+					OverlapAdjustmentKind.TrimEnd,
+					existing.StartTime, existing.EndTime,
+					null, candidateStart);
+			}
+
+			return new OverlapAdjustment(
+				existing.Id, existing.TicketId, existing.Description,
+				OverlapAdjustmentKind.Split,
+				existing.StartTime, existing.EndTime,
+				candidateEnd, candidateStart);
+		}
+
+		// Head overlap: candidate covers the end of existing
+		if (candidateStart > existing.StartTime)
+		{
+			var remaining = candidateStart - existing.StartTime;
+			if (remaining < minDuration)
+			{
+				return new OverlapAdjustment(
+					existing.Id, existing.TicketId, existing.Description,
+					OverlapAdjustmentKind.Delete,
+					existing.StartTime, existing.EndTime,
+					null, null);
+			}
+
+			return new OverlapAdjustment(
+				existing.Id, existing.TicketId, existing.Description,
+				OverlapAdjustmentKind.TrimEnd,
+				existing.StartTime, existing.EndTime,
+				null, candidateStart);
+		}
+
+		// Tail overlap: candidate covers the beginning of existing
+		{
+			var remaining = existingEnd - candidateEnd;
+			if (remaining < minDuration)
+			{
+				return new OverlapAdjustment(
+					existing.Id, existing.TicketId, existing.Description,
+					OverlapAdjustmentKind.Delete,
+					existing.StartTime, existing.EndTime,
+					null, null);
+			}
+
+			return new OverlapAdjustment(
+				existing.Id, existing.TicketId, existing.Description,
+				OverlapAdjustmentKind.TrimStart,
+				existing.StartTime, existing.EndTime,
+				candidateEnd, null);
+		}
+	}
+
+	public async Task<Result<WorkEntry>> CreateWithOverlapResolutionAsync(
+		string? ticketId, DateTime startTime, string? description, DateTime? endTime,
+		OverlapResolutionPlan plan, CancellationToken cancellationToken)
+	{
+		_logger.LogInformation("Creating work entry with overlap resolution ({AdjustmentCount} adjustments)", plan.Adjustments.Count);
+
+		var now = Now;
+		var roundedStart = DateTimeHelper.RoundToMinute(startTime);
+		var roundedEnd = DateTimeHelper.RoundToMinute(endTime);
+
+		// Validate the candidate entry before applying any adjustments to avoid partial state changes
+		var workEntry = WorkEntry.Create(ticketId, roundedStart, roundedEnd, description, DateTimeHelper.RoundToMinute(now));
+
+		if (!workEntry.IsValid())
+		{
+			_logger.LogWarning("Invalid work entry data");
+			return Result.Failure<WorkEntry>("Invalid work entry data. Both ticket ID and description cannot be empty.");
+		}
+
+		// Apply adjustments to overlapping entries
+		var applyResult = await ApplyAdjustmentsAsync(plan, now, cancellationToken);
+		if (applyResult.IsFailure)
+		{
+			return Result.Failure<WorkEntry>(applyResult.Error);
+		}
+
+		// Create the new entry (skip overlap check since we resolved them)
+		var result = await _repository.AddAsync(workEntry, cancellationToken);
+		_logger.LogInformation("Work entry created successfully with overlap resolution, ID {Id}", result.Id);
+
+		return Result.Success(result);
+	}
+
+	public async Task<Result<WorkEntry>> UpdateWithOverlapResolutionAsync(
+		int id, string? ticketId, DateTime startTime, DateTime? endTime, string? description,
+		OverlapResolutionPlan plan, CancellationToken cancellationToken)
+	{
+		_logger.LogInformation("Updating work entry {Id} with overlap resolution ({AdjustmentCount} adjustments)", id, plan.Adjustments.Count);
+
+		var now = Now;
+		var workEntry = await _repository.GetByIdAsync(id, cancellationToken);
+		if (workEntry == null)
+		{
+			return Result.Failure<WorkEntry>($"Work entry with ID {id} not found");
+		}
+
+		// Validate the updated fields before applying any adjustments to avoid partial state changes
+		workEntry.UpdateFields(
+			ticketId,
+			DateTimeHelper.RoundToMinute(startTime),
+			DateTimeHelper.RoundToMinute(endTime),
+			description,
+			DateTimeHelper.RoundToMinute(now));
+
+		if (!workEntry.IsValid())
+		{
+			return Result.Failure<WorkEntry>("Invalid work entry data after update. Both ticket ID and description cannot be empty, and end time must be after start time.");
+		}
+
+		// Apply adjustments to overlapping entries
+		var applyResult = await ApplyAdjustmentsAsync(plan, now, cancellationToken);
+		if (applyResult.IsFailure)
+		{
+			return Result.Failure<WorkEntry>(applyResult.Error);
+		}
+
+		// Save the updated entry (skip overlap check since we resolved them)
+		await _repository.UpdateAsync(workEntry, cancellationToken);
+		_logger.LogInformation("Work entry {Id} updated successfully with overlap resolution", id);
+
+		return Result.Success(workEntry);
+	}
+
+	private async Task<Result> ApplyAdjustmentsAsync(OverlapResolutionPlan plan, DateTime now, CancellationToken cancellationToken)
+	{
+		var roundedNow = DateTimeHelper.RoundToMinute(now);
+
+		foreach (var adjustment in plan.Adjustments)
+		{
+			switch (adjustment.Kind)
+			{
+				case OverlapAdjustmentKind.Delete:
+					await _repository.DeleteAsync(adjustment.WorkEntryId, cancellationToken);
+					_logger.LogInformation("Deleted overlapping entry {Id}", adjustment.WorkEntryId);
+					break;
+
+				case OverlapAdjustmentKind.TrimEnd:
+				{
+					if (!adjustment.NewEnd.HasValue)
+					{
+						return Result.Failure($"TrimEnd adjustment for entry {adjustment.WorkEntryId} is missing NewEnd value");
+					}
+
+					var entry = await _repository.GetByIdAsync(adjustment.WorkEntryId, cancellationToken);
+					if (entry == null)
+					{
+						return Result.Failure($"Overlapping entry {adjustment.WorkEntryId} no longer exists");
+					}
+
+					entry.AdjustEndTime(adjustment.NewEnd.Value, roundedNow);
+					await _repository.UpdateAsync(entry, cancellationToken);
+					_logger.LogInformation("Trimmed end of entry {Id} to {NewEnd}", adjustment.WorkEntryId, adjustment.NewEnd);
+					break;
+				}
+
+				case OverlapAdjustmentKind.TrimStart:
+				{
+					if (!adjustment.NewStart.HasValue)
+					{
+						return Result.Failure($"TrimStart adjustment for entry {adjustment.WorkEntryId} is missing NewStart value");
+					}
+
+					var entry = await _repository.GetByIdAsync(adjustment.WorkEntryId, cancellationToken);
+					if (entry == null)
+					{
+						return Result.Failure($"Overlapping entry {adjustment.WorkEntryId} no longer exists");
+					}
+
+					entry.AdjustStartTime(adjustment.NewStart.Value, roundedNow);
+					await _repository.UpdateAsync(entry, cancellationToken);
+					_logger.LogInformation("Trimmed start of entry {Id} to {NewStart}", adjustment.WorkEntryId, adjustment.NewStart);
+					break;
+				}
+
+				case OverlapAdjustmentKind.Split:
+				{
+					if (!adjustment.NewEnd.HasValue || !adjustment.NewStart.HasValue)
+					{
+						return Result.Failure($"Split adjustment for entry {adjustment.WorkEntryId} is missing NewEnd or NewStart value");
+					}
+
+					var entry = await _repository.GetByIdAsync(adjustment.WorkEntryId, cancellationToken);
+					if (entry == null)
+					{
+						return Result.Failure($"Overlapping entry {adjustment.WorkEntryId} no longer exists");
+					}
+
+					// First half: original start to candidate start (NewEnd)
+					entry.AdjustEndTime(adjustment.NewEnd.Value, roundedNow);
+					await _repository.UpdateAsync(entry, cancellationToken);
+
+					// Second half: candidate end (NewStart) to original end
+					var secondHalf = WorkEntry.Create(
+						entry.TicketId,
+						adjustment.NewStart.Value,
+						adjustment.OriginalEnd,
+						entry.Description,
+						roundedNow);
+					await _repository.AddAsync(secondHalf, cancellationToken);
+
+					_logger.LogInformation("Split entry {Id} into two parts", adjustment.WorkEntryId);
+					break;
+				}
+			}
+		}
+
+		return Result.Success();
 	}
 }

@@ -2,6 +2,7 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
 using WorkTracker.Application.Common;
+using WorkTracker.Application.Models;
 using WorkTracker.Domain.Entities;
 using WorkTracker.UI.Shared.Orchestrators;
 using WorkTracker.UI.Shared.Services;
@@ -11,18 +12,28 @@ namespace WorkTracker.UI.Shared.Tests.Orchestrators;
 public class WorkEntryEditOrchestratorTests
 {
 	private readonly Mock<IWorklogStateService> _mockStateService;
+	private readonly Mock<IDialogService> _mockDialogService;
 	private readonly Mock<ILocalizationService> _mockLocalization;
 	private readonly WorkEntryEditOrchestrator _orchestrator;
 
 	public WorkEntryEditOrchestratorTests()
 	{
 		_mockStateService = new Mock<IWorklogStateService>();
+		_mockDialogService = new Mock<IDialogService>();
 		_mockLocalization = new Mock<ILocalizationService>();
 		_mockLocalization.Setup(l => l[It.IsAny<string>()]).Returns((string key) => key);
 		_mockLocalization.Setup(l => l.GetString(It.IsAny<string>())).Returns((string key) => key);
+		_mockLocalization.Setup(l => l.GetFormattedString(It.IsAny<string>(), It.IsAny<object[]>()))
+			.Returns((string key, object[] args) => string.Format(key, args));
+
+		// Default: no overlaps
+		_mockStateService
+			.Setup(s => s.ComputeOverlapResolutionAsync(It.IsAny<int?>(), It.IsAny<DateTime>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(new OverlapResolutionPlan());
 
 		_orchestrator = new WorkEntryEditOrchestrator(
 			_mockStateService.Object,
+			_mockDialogService.Object,
 			_mockLocalization.Object,
 			new Mock<ILogger<WorkEntryEditOrchestrator>>().Object);
 	}
@@ -98,7 +109,7 @@ public class WorkEntryEditOrchestratorTests
 	}
 
 	[Fact]
-	public async Task SaveNewAsync_Success_ReturnsSuccess()
+	public async Task SaveNewAsync_NoOverlaps_Success_ReturnsTrue()
 	{
 		var entry = WorkEntry.Reconstitute(1, "PROJ-1", DateTime.Now, null, null, true, DateTime.MinValue);
 		_mockStateService
@@ -108,23 +119,73 @@ public class WorkEntryEditOrchestratorTests
 		var result = await _orchestrator.SaveNewAsync("PROJ-1", DateTime.Now, null, "desc", TestContext.Current.CancellationToken);
 
 		result.IsSuccess.Should().BeTrue();
+		result.Value.Should().BeTrue();
 	}
 
 	[Fact]
-	public async Task SaveNewAsync_Failure_ReturnsFailure()
+	public async Task SaveNewAsync_NoOverlaps_Failure_ReturnsFailure()
 	{
 		_mockStateService
 			.Setup(s => s.CreateWorkEntryAsync(It.IsAny<string?>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
-			.ReturnsAsync(Result.Failure<WorkEntry>("Overlap detected"));
+			.ReturnsAsync(Result.Failure<WorkEntry>("Validation error"));
 
 		var result = await _orchestrator.SaveNewAsync("PROJ-1", DateTime.Now, null, "desc", TestContext.Current.CancellationToken);
 
 		result.IsFailure.Should().BeTrue();
-		result.Error.Should().Be("Overlap detected");
+		result.Error.Should().Be("Validation error");
 	}
 
 	[Fact]
-	public async Task SaveExistingAsync_Success_ReturnsSuccess()
+	public async Task SaveNewAsync_WithOverlaps_UserConfirms_ReturnsTrue()
+	{
+		var plan = new OverlapResolutionPlan
+		{
+			Adjustments = [new OverlapAdjustment(2, "PROJ-2", null, OverlapAdjustmentKind.TrimEnd,
+				new DateTime(2025, 1, 1, 9, 0, 0), new DateTime(2025, 1, 1, 11, 0, 0),
+				null, new DateTime(2025, 1, 1, 10, 0, 0))]
+		};
+		_mockStateService
+			.Setup(s => s.ComputeOverlapResolutionAsync(null, It.IsAny<DateTime>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(plan);
+		_mockDialogService
+			.Setup(d => d.ShowConfirmationAsync(It.IsAny<string>(), It.IsAny<string>()))
+			.ReturnsAsync(true);
+
+		var entry = WorkEntry.Reconstitute(1, "PROJ-1", DateTime.Now, null, null, true, DateTime.MinValue);
+		_mockStateService
+			.Setup(s => s.CreateWorkEntryWithResolutionAsync(It.IsAny<string?>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<DateTime?>(), It.IsAny<OverlapResolutionPlan>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(Result.Success(entry));
+
+		var result = await _orchestrator.SaveNewAsync("PROJ-1", DateTime.Now, null, "desc", TestContext.Current.CancellationToken);
+
+		result.IsSuccess.Should().BeTrue();
+		result.Value.Should().BeTrue();
+	}
+
+	[Fact]
+	public async Task SaveNewAsync_WithOverlaps_UserCancels_ReturnsFalse()
+	{
+		var plan = new OverlapResolutionPlan
+		{
+			Adjustments = [new OverlapAdjustment(2, "PROJ-2", null, OverlapAdjustmentKind.TrimEnd,
+				new DateTime(2025, 1, 1, 9, 0, 0), new DateTime(2025, 1, 1, 11, 0, 0),
+				null, new DateTime(2025, 1, 1, 10, 0, 0))]
+		};
+		_mockStateService
+			.Setup(s => s.ComputeOverlapResolutionAsync(null, It.IsAny<DateTime>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(plan);
+		_mockDialogService
+			.Setup(d => d.ShowConfirmationAsync(It.IsAny<string>(), It.IsAny<string>()))
+			.ReturnsAsync(false);
+
+		var result = await _orchestrator.SaveNewAsync("PROJ-1", DateTime.Now, null, "desc", TestContext.Current.CancellationToken);
+
+		result.IsSuccess.Should().BeTrue();
+		result.Value.Should().BeFalse();
+	}
+
+	[Fact]
+	public async Task SaveExistingAsync_NoOverlaps_Success_ReturnsTrue()
 	{
 		_mockStateService
 			.Setup(s => s.UpdateWorkEntryAsync(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<DateTime>(), It.IsAny<DateTime?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
@@ -133,10 +194,11 @@ public class WorkEntryEditOrchestratorTests
 		var result = await _orchestrator.SaveExistingAsync(1, "PROJ-1", DateTime.Now, null, "desc", TestContext.Current.CancellationToken);
 
 		result.IsSuccess.Should().BeTrue();
+		result.Value.Should().BeTrue();
 	}
 
 	[Fact]
-	public async Task SaveExistingAsync_Failure_ReturnsFailure()
+	public async Task SaveExistingAsync_NoOverlaps_Failure_ReturnsFailure()
 	{
 		_mockStateService
 			.Setup(s => s.UpdateWorkEntryAsync(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<DateTime>(), It.IsAny<DateTime?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))

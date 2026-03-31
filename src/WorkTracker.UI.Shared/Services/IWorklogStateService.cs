@@ -1,4 +1,5 @@
 using WorkTracker.Application.Common;
+using WorkTracker.Application.Models;
 using WorkTracker.Domain.Entities;
 
 namespace WorkTracker.UI.Shared.Services;
@@ -96,4 +97,24 @@ public interface IWorklogStateService
 	/// Refreshes internal state from the database before raising the event.
 	/// </summary>
 	Task NotifyWorkEntriesModifiedAsync(CancellationToken cancellationToken);
+
+	/// <summary>
+	/// Computes an overlap resolution plan for a new or updated work entry.
+	/// </summary>
+	Task<OverlapResolutionPlan> ComputeOverlapResolutionAsync(
+		int? excludeEntryId, DateTime startTime, DateTime? endTime, CancellationToken cancellationToken);
+
+	/// <summary>
+	/// Creates a new work entry with automatic overlap resolution.
+	/// </summary>
+	Task<Result<WorkEntry>> CreateWorkEntryWithResolutionAsync(
+		string? ticketId, DateTime startTime, string? description, DateTime? endTime,
+		OverlapResolutionPlan plan, CancellationToken cancellationToken);
+
+	/// <summary>
+	/// Updates an existing work entry with automatic overlap resolution.
+	/// </summary>
+	Task<Result> UpdateWorkEntryWithResolutionAsync(
+		int id, string? ticketId, DateTime startTime, DateTime? endTime, string? description,
+		OverlapResolutionPlan plan, CancellationToken cancellationToken);
 }

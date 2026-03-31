@@ -667,4 +667,22 @@ Váš výkaz práce také ne.</value>
   <data name="PomodoroLongBreakStarted" xml:space="preserve">
     <value>Čas na dlouhou pauzu!</value>
   </data>
+  <data name="OverlapResolutionTitle" xml:space="preserve">
+    <value>Detekován překryv časů</value>
+  </data>
+  <data name="OverlapResolutionMessage" xml:space="preserve">
+    <value>Tento záznam koliduje s existujícími. Budou provedeny následující úpravy:</value>
+  </data>
+  <data name="OverlapTrimEnd" xml:space="preserve">
+    <value>{0}: Konec bude zkrácen z {1} na {2}</value>
+  </data>
+  <data name="OverlapTrimStart" xml:space="preserve">
+    <value>{0}: Začátek bude posunut z {1} na {2}</value>
+  </data>
+  <data name="OverlapDelete" xml:space="preserve">
+    <value>{0}: Bude smazán (kompletně překryt)</value>
+  </data>
+  <data name="OverlapSplit" xml:space="preserve">
+    <value>{0}: Bude rozdělen na dva záznamy</value>
+  </data>
 </root>

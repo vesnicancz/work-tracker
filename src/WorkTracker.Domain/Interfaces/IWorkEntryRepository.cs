@@ -19,4 +19,6 @@ public interface IWorkEntryRepository
 	Task DeleteAsync(int id, CancellationToken cancellationToken = default);
 
 	Task<bool> HasOverlappingEntriesAsync(WorkEntry workEntry, CancellationToken cancellationToken = default);
+
+	Task<IReadOnlyList<WorkEntry>> GetOverlappingEntriesAsync(int? excludeEntryId, DateTime startTime, DateTime? endTime, CancellationToken cancellationToken = default);
 }

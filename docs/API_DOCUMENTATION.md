@@ -146,8 +146,9 @@ Task<Result<WorkEntry>> StartWorkAsync(
 **Behavior:**
 - Automatically stops any active work entry
 - Validates that at least one of ticketId or description is provided
-- Checks for overlapping time entries
+- Checks for overlapping time entries (overlap detection still occurs; automatic resolution is not applied)
 - Rounds times to nearest minute
+- For automatic overlap resolution during create or update, use `CreateWithOverlapResolutionAsync` or `UpdateWithOverlapResolutionAsync` instead
 
 **Example:**
 
@@ -324,6 +325,182 @@ if (result.IsSuccess)
 }
 ```
 
+##### ComputeOverlapResolutionAsync
+
+Computes an overlap resolution plan without applying any changes. Use this to preview what adjustments would be made before creating or updating an entry.
+
+```csharp
+Task<OverlapResolutionPlan> ComputeOverlapResolutionAsync(
+    int? excludeEntryId,
+    DateTime startTime,
+    DateTime? endTime,
+    CancellationToken cancellationToken)
+```
+
+**Parameters:**
+- `excludeEntryId` (`int?`) - Entry ID to exclude from overlap check (use when updating an existing entry to exclude itself). Pass null when creating a new entry.
+- `startTime` (`DateTime`) - Start time of the entry being created or updated
+- `endTime` (`DateTime?`) - End time of the entry (null for active/ongoing entries)
+- `cancellationToken` - Cancellation token
+
+**Returns:** `Task<OverlapResolutionPlan>` - Plan containing list of adjustments to be made
+
+**Behavior:**
+- Identifies all entries that overlap with the given time range
+- Generates adjustment instructions (TrimEnd, TrimStart, Delete, Split)
+- Does not modify the database
+- Active entries (no EndTime) are never split — always use TrimEnd adjustment
+
+**Example:**
+
+```csharp
+// Preview what would happen if we create an entry from 10:00 to 12:00
+var plan = await _service.ComputeOverlapResolutionAsync(
+    excludeEntryId: null,
+    startTime: DateTime.Today.AddHours(10),
+    endTime: DateTime.Today.AddHours(12),
+    cancellationToken: CancellationToken.None);
+
+if (plan.HasAdjustments)
+{
+    Console.WriteLine($"Would adjust {plan.Adjustments.Count} entries:");
+    foreach (var adjustment in plan.Adjustments)
+    {
+        Console.WriteLine($"  {adjustment.Kind}: Entry {adjustment.WorkEntryId}");
+    }
+}
+```
+
+##### CreateWithOverlapResolutionAsync
+
+Creates a new work entry and automatically applies the overlap resolution plan. Validates the new entry before applying any adjustments to avoid partial state changes.
+
+```csharp
+Task<Result<WorkEntry>> CreateWithOverlapResolutionAsync(
+    string? ticketId,
+    DateTime startTime,
+    string? description,
+    DateTime? endTime,
+    OverlapResolutionPlan plan,
+    CancellationToken cancellationToken)
+```
+
+**Parameters:**
+- `ticketId` (`string?`) - Jira ticket ID (optional if description provided)
+- `startTime` (`DateTime`) - Work start time
+- `description` (`string?`) - Work description (optional if ticketId provided)
+- `endTime` (`DateTime?`) - Work end time (optional for active entries)
+- `plan` (`OverlapResolutionPlan`) - The resolution plan from `ComputeOverlapResolutionAsync`
+- `cancellationToken` - Cancellation token
+
+**Returns:** `Task<Result<WorkEntry>>` - Result with created entry or error
+
+**Behavior:**
+- Validates that at least one of ticketId or description is provided before applying adjustments
+- Applies all adjustments from the plan before creating the new entry
+- Creates the new entry after adjustments are applied
+- Rounds times to nearest minute
+- Returns failure if entry is invalid before any adjustments are applied
+
+**Example:**
+
+```csharp
+// Step 1: Compute what adjustments are needed
+var plan = await _service.ComputeOverlapResolutionAsync(
+    excludeEntryId: null,
+    startTime: DateTime.Today.AddHours(14),
+    endTime: DateTime.Today.AddHours(15),
+    cancellationToken: CancellationToken.None);
+
+// Step 2: Review the plan (optional)
+if (plan.HasAdjustments)
+{
+    Console.WriteLine($"Will adjust {plan.Adjustments.Count} entries");
+}
+
+// Step 3: Create with the plan
+var result = await _service.CreateWithOverlapResolutionAsync(
+    ticketId: "PROJ-456",
+    startTime: DateTime.Today.AddHours(14),
+    description: "Code review",
+    endTime: DateTime.Today.AddHours(15),
+    plan: plan,
+    cancellationToken: CancellationToken.None);
+
+if (result.IsSuccess)
+{
+    Console.WriteLine($"Created entry {result.Value.Id} with adjustments applied");
+}
+else
+{
+    Console.WriteLine($"Error: {result.Error}");
+}
+```
+
+##### UpdateWithOverlapResolutionAsync
+
+Updates an existing work entry and automatically applies the overlap resolution plan. Validates the updated entry before applying any adjustments to avoid partial state changes.
+
+```csharp
+Task<Result<WorkEntry>> UpdateWithOverlapResolutionAsync(
+    int id,
+    string? ticketId,
+    DateTime startTime,
+    DateTime? endTime,
+    string? description,
+    OverlapResolutionPlan plan,
+    CancellationToken cancellationToken)
+```
+
+**Parameters:**
+- `id` (`int`) - Entry ID to update
+- `ticketId` (`string?`) - New ticket ID (or null to clear)
+- `startTime` (`DateTime`) - New start time
+- `endTime` (`DateTime?`) - New end time
+- `description` (`string?`) - New description (or null to clear)
+- `plan` (`OverlapResolutionPlan`) - The resolution plan from `ComputeOverlapResolutionAsync` (computed with `excludeEntryId: id`)
+- `cancellationToken` - Cancellation token
+
+**Returns:** `Task<Result<WorkEntry>>` - Result with updated entry or error
+
+**Behavior:**
+- Validates that at least one of ticketId or description is provided
+- Applies all adjustments from the plan before updating the entry
+- Updates the entry after adjustments are applied
+- Rounds times to nearest minute
+- Returns failure if entry not found or is invalid after applying plan
+
+**Example:**
+
+```csharp
+// Step 1: Compute what adjustments are needed for the new time range
+// Important: exclude the entry being updated (id: 5)
+var plan = await _service.ComputeOverlapResolutionAsync(
+    excludeEntryId: 5,
+    startTime: DateTime.Today.AddHours(15),
+    endTime: DateTime.Today.AddHours(16),
+    cancellationToken: CancellationToken.None);
+
+// Step 2: Update with the plan
+var result = await _service.UpdateWithOverlapResolutionAsync(
+    id: 5,
+    ticketId: "PROJ-789",
+    startTime: DateTime.Today.AddHours(15),
+    endTime: DateTime.Today.AddHours(16),
+    description: "Updated description",
+    plan: plan,
+    cancellationToken: CancellationToken.None);
+
+if (result.IsSuccess)
+{
+    Console.WriteLine($"Updated entry {result.Value.Id} with adjustments applied");
+}
+else
+{
+    Console.WriteLine($"Error: {result.Error}");
+}
+```
+
 ### 2.2 IWorklogSubmissionService
 
 **Namespace:** `WorkTracker.Application.Interfaces`
@@ -472,6 +649,26 @@ Task<bool> HasOverlappingEntriesAsync(WorkEntry workEntry)
 ```
 
 Checks if the given entry overlaps with existing entries.
+
+##### GetOverlappingEntriesAsync
+
+```csharp
+Task<IReadOnlyList<WorkEntry>> GetOverlappingEntriesAsync(
+    int? excludeEntryId,
+    DateTime startTime,
+    DateTime? endTime,
+    CancellationToken cancellationToken)
+```
+
+Retrieves all entries that overlap with the given time range.
+
+**Parameters:**
+- `excludeEntryId` (`int?`) - Entry ID to exclude from results (use null to include all)
+- `startTime` (`DateTime`) - Range start time
+- `endTime` (`DateTime?`) - Range end time (null for open-ended range)
+- `cancellationToken` - Cancellation token
+
+**Returns:** `Task<IReadOnlyList<WorkEntry>>` - List of overlapping entries (empty if none)
 
 ---
 
@@ -880,6 +1077,118 @@ public class WorklogSubmissionResult
     public TimeSpan TimeSpent { get; set; }     // Duration
     public bool Success { get; set; }           // Upload succeeded?
     public string? Error { get; set; }          // Error message if failed
+}
+```
+
+---
+
+## 2.4 Overlap Resolution Models
+
+**Namespace:** `WorkTracker.Application.Models`
+
+Models for computing and applying overlap resolution plans when creating or updating work entries.
+
+### OverlapAdjustmentKind
+
+Enum defining the type of adjustment to be applied to an overlapping entry.
+
+```csharp
+public enum OverlapAdjustmentKind
+{
+    TrimEnd,   // Trim the end of existing entry to new entry's start
+    TrimStart, // Trim the start of existing entry to new entry's end
+    Delete,    // Remove the existing entry entirely
+    Split      // Split existing entry into two around the new entry
+}
+```
+
+**Adjustment Scenarios:**
+
+| Kind | When Applied | Result |
+|------|--------------|--------|
+| **TrimEnd** | New entry overlaps the end of existing | Existing end time is moved to new entry's start time |
+| **TrimStart** | New entry overlaps the start of existing | Existing start time is moved to new entry's end time |
+| **Delete** | New entry completely covers existing | Existing entry is removed from database |
+| **Split** | New entry is inside existing (between its start and end) | Existing entry is split: first part keeps original start, second part starts after new entry ends |
+
+**Note:** Active entries (entries with no EndTime) are never split. If a new entry overlaps an active entry, TrimEnd is used instead — the active entry's end time is set to the new entry's start time.
+
+### OverlapAdjustment
+
+Record describing a single adjustment to be applied to an overlapping entry.
+
+```csharp
+public record OverlapAdjustment(
+    int WorkEntryId,                      // ID of the entry being adjusted
+    string? TicketId,                     // Original ticket ID
+    string? Description,                  // Original description
+    OverlapAdjustmentKind Kind,          // Type of adjustment
+    DateTime OriginalStart,               // Original start time
+    DateTime? OriginalEnd,                // Original end time (null if active)
+    DateTime? NewStart,                   // New start time after adjustment (null for Delete)
+    DateTime? NewEnd                      // New end time after adjustment (null for Delete)
+);
+```
+
+**Properties:**
+- `WorkEntryId` - ID of the entry that will be adjusted
+- `TicketId` - Ticket ID of the entry being adjusted (for reference)
+- `Description` - Description of the entry being adjusted (for reference)
+- `Kind` - The type of adjustment (TrimEnd, TrimStart, Delete, Split)
+- `OriginalStart` - Original start time before adjustment
+- `OriginalEnd` - Original end time before adjustment (null if active)
+- `NewStart` - Start time after adjustment is applied
+- `NewEnd` - End time after adjustment is applied (null if the adjusted entry becomes active)
+
+### OverlapResolutionPlan
+
+Class representing a complete plan for resolving overlaps when creating or updating an entry.
+
+```csharp
+public sealed class OverlapResolutionPlan
+{
+    public IReadOnlyList<OverlapAdjustment> Adjustments { get; init; } = [];  // List of adjustments
+    public bool HasAdjustments => Adjustments.Count > 0;                       // Whether any adjustments are needed
+}
+```
+
+**Properties:**
+- `Adjustments` - Read-only list of `OverlapAdjustment` objects describing all changes
+- `HasAdjustments` - Convenience property; true if there are adjustments to apply
+
+**Usage:**
+
+1. Obtain a plan via `ComputeOverlapResolutionAsync`
+2. Review the plan and its adjustments (optional)
+3. Pass the plan to `CreateWithOverlapResolutionAsync` or `UpdateWithOverlapResolutionAsync`
+
+**Example:**
+
+```csharp
+var plan = await _service.ComputeOverlapResolutionAsync(
+    excludeEntryId: null,
+    startTime: new DateTime(2026, 3, 31, 14, 0, 0),
+    endTime: new DateTime(2026, 3, 31, 15, 0, 0),
+    cancellationToken: CancellationToken.None);
+
+// Inspect adjustments
+foreach (var adjustment in plan.Adjustments)
+{
+    Console.WriteLine($"Entry {adjustment.WorkEntryId}: {adjustment.Kind}");
+    Console.WriteLine($"  From: {adjustment.OriginalStart:t} - {adjustment.OriginalEnd:t}");
+    Console.WriteLine($"  To:   {adjustment.NewStart:t} - {adjustment.NewEnd:t}");
+}
+
+// If satisfied with plan, apply it
+if (plan.HasAdjustments)
+{
+    var result = await _service.CreateWithOverlapResolutionAsync(
+        ticketId: "PROJ-123",
+        startTime: new DateTime(2026, 3, 31, 14, 0, 0),
+        endTime: new DateTime(2026, 3, 31, 15, 0, 0),
+        description: "Meeting",
+        plan: plan,
+        cancellationToken: CancellationToken.None);
 }
 ```
 
