@@ -52,7 +52,7 @@ Plugins load in isolated `AssemblyLoadContext` from `./plugins/` directory. Thre
 - **`IWorkSuggestionPlugin`** — Suggest work items (e.g., Jira issues)
 - **`IStatusIndicatorPlugin`** — Physical status indicators (e.g., Luxafor LED)
 
-All plugins extend `PluginBase` which provides configuration management with declarative fields, validation (including regex), and `ILogger` injection. Plugin configuration comes from `appsettings.json` under the `Plugins` section.
+All plugins extend `PluginBase` which provides configuration management with declarative fields, validation (including regex), and `ILogger` injection. Plugin configuration is primarily persisted in the user settings file, with `appsettings.json` (under the `Plugins` section) used only as an initial fallback.
 
 Existing plugins: `Plugin.Atlassian` (Tempo + Jira), `Plugin.Office365Calendar`, `Plugin.GoranG3`, `Plugin.Luxafor`.
 

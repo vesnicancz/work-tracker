@@ -56,7 +56,7 @@ public sealed class JiraSuggestionsPlugin : WorkSuggestionPluginBase, IDisposabl
 			{
 				Key = ConfigKeys.SearchJqlFilter,
 				Label = "Search JQL Filter",
-				Description = "JQL template for search. Use {query} as a placeholder for the search text (escaped automatically). If {query} is not present, the filter is combined with a default text search. If not set, JQL Filter is used instead.",
+				Description = "JQL template for search. Use {query} as a placeholder for the search text, and place {query} inside double quotes when used with ~ (e.g., summary ~ \"{query}\"). The value for {query} is escaped for use inside a quoted JQL string (backslashes/quotes escaped, * and newlines removed). If {query} is not present, the filter is combined with a default text search. If not set, JQL Filter is used instead.",
 				Type = PluginConfigurationFieldType.MultilineText,
 				IsRequired = false,
 				Placeholder = "project = PROJ AND (summary ~ \"{query}*\" OR key ~ \"{query}*\") ORDER BY updated DESC"
@@ -79,7 +79,8 @@ public sealed class JiraSuggestionsPlugin : WorkSuggestionPluginBase, IDisposabl
 	{
 		_jqlFilter = GetConfigValue(ConfigKeys.JqlFilter)
 			?? "assignee = currentUser() AND status != Done ORDER BY updated DESC";
-		_searchJqlFilter = GetConfigValue(ConfigKeys.SearchJqlFilter);
+		var searchJqlConfig = GetConfigValue(ConfigKeys.SearchJqlFilter);
+		_searchJqlFilter = string.IsNullOrWhiteSpace(searchJqlConfig) ? null : searchJqlConfig;
 		_maxResults = int.TryParse(GetConfigValue(ConfigKeys.MaxResults), out var max) ? max : 20;
 
 		_jiraClient?.Dispose();
