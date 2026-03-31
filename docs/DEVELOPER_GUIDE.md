@@ -297,6 +297,9 @@ WorkTracker.Application/
 │   ├── IWorklogSubmissionService.cs
 │   ├── IDateRangeService.cs
 │   └── IWorklogValidator.cs
+├── Models/
+│   ├── OverlapAdjustment.cs            # Overlap adjustment record + enum
+│   └── OverlapResolutionPlan.cs        # Resolution plan with adjustments
 ├── Services/
 │   ├── WorkEntryService.cs             # Core business service
 │   ├── PluginBasedWorklogSubmissionService.cs
@@ -385,6 +388,8 @@ public class WorkEntryService : IWorkEntryService
     // ... other methods
 }
 ```
+
+> **Note on Overlap Handling:** The `StartWorkAsync` example above rejects overlapping entries at the service layer. However, for a better user experience, the UI layer uses `WorkEntryEditOrchestrator` to detect overlaps and offer automatic resolution options (trim, delete, or split overlapping entries) via a confirmation dialog. This allows users to handle conflicts interactively rather than simply failing the operation.
 
 **Rules for Application Layer:**
 - ✅ Depends only on Domain
@@ -602,7 +607,7 @@ WorkTracker.UI.Shared/
 │   ├── ISettingsOrchestrator.cs         # Settings operations interface
 │   ├── SettingsOrchestrator.cs          # Settings save/load orchestration
 │   ├── IWorkEntryEditOrchestrator.cs    # Edit operations interface
-│   ├── WorkEntryEditOrchestrator.cs     # Work entry edit orchestration
+│   ├── WorkEntryEditOrchestrator.cs     # Work entry edit orchestration with overlap resolution
 │   ├── IWorklogSubmissionOrchestrator.cs # Submission operations interface
 │   ├── WorklogSubmissionOrchestrator.cs # Worklog submission orchestration
 │   ├── IWorkSuggestionOrchestrator.cs   # Work suggestion operations interface
@@ -647,6 +652,17 @@ WorkTracker.Avalonia (net10.0)
   ├── WorkTracker.Infrastructure
   └── WorkTracker.Plugin.Atlassian
 ```
+
+##### Orchestrator Pattern: Overlap Resolution
+
+The `WorkEntryEditOrchestrator` demonstrates the orchestrator pattern for complex UI workflows. When creating or updating work entries, it handles entry overlap detection and resolution automatically:
+
+1. **Detection** — Computes an `OverlapResolutionPlan` for the entry being saved
+2. **User Confirmation** — If overlaps are detected, displays a confirmation dialog via `IDialogService` showing proposed adjustments (trim end, trim start, delete, or split)
+3. **Resolution** — Applies the plan atomically using `CreateWithOverlapResolutionAsync` or `UpdateWithOverlapResolutionAsync`
+4. **Result** — Returns `Result<bool>` where `true` indicates successful save, `false` indicates user cancellation
+
+This pattern separates business logic (overlap computation in Application layer) from UI orchestration (confirmation dialogs and user interaction in UI.Shared layer), providing a better user experience than simply rejecting conflicting entries.
 
 #### WPF Application
 

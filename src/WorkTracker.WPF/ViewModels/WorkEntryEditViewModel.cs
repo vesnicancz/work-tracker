@@ -254,6 +254,11 @@ public class WorkEntryEditViewModel : ViewModelBase
 				return;
 			}
 
+			if (!result.Value)
+			{
+				return;
+			}
+
 			DialogResult = true;
 			CloseAction?.Invoke();
 		}

@@ -44,12 +44,7 @@ public sealed class WorkEntry
 	/// Stops this work entry by setting end time and marking as inactive.
 	/// Times should be pre-rounded by the caller.
 	/// </summary>
-	public void Stop(DateTime endTime, DateTime now)
-	{
-		EndTime = endTime;
-		IsActive = false;
-		UpdatedAt = now;
-	}
+	public void Stop(DateTime endTime, DateTime now) => AdjustEndTime(endTime, now);
 
 	/// <summary>
 	/// Updates mutable fields of this work entry.
@@ -66,6 +61,27 @@ public sealed class WorkEntry
 		EndTime = endTime;
 		IsActive = !endTime.HasValue;
 		Description = description;
+		UpdatedAt = now;
+	}
+
+	/// <summary>
+	/// Adjusts only the start time, preserving all other fields.
+	/// Times should be pre-rounded by the caller.
+	/// </summary>
+	public void AdjustStartTime(DateTime newStart, DateTime now)
+	{
+		StartTime = newStart;
+		UpdatedAt = now;
+	}
+
+	/// <summary>
+	/// Adjusts only the end time and marks the entry as inactive.
+	/// Times should be pre-rounded by the caller.
+	/// </summary>
+	public void AdjustEndTime(DateTime newEnd, DateTime now)
+	{
+		EndTime = newEnd;
+		IsActive = false;
 		UpdatedAt = now;
 	}
 

@@ -667,4 +667,22 @@ Neither is your timesheet.</value>
   <data name="PomodoroLongBreakStarted" xml:space="preserve">
     <value>Time for a long break!</value>
   </data>
+  <data name="OverlapResolutionTitle" xml:space="preserve">
+    <value>Time Overlap Detected</value>
+  </data>
+  <data name="OverlapResolutionMessage" xml:space="preserve">
+    <value>This entry overlaps with existing entries. The following adjustments will be made:</value>
+  </data>
+  <data name="OverlapTrimEnd" xml:space="preserve">
+    <value>{0}: End time will be adjusted from {1} to {2}</value>
+  </data>
+  <data name="OverlapTrimStart" xml:space="preserve">
+    <value>{0}: Start time will be adjusted from {1} to {2}</value>
+  </data>
+  <data name="OverlapDelete" xml:space="preserve">
+    <value>{0}: Will be removed (completely covered)</value>
+  </data>
+  <data name="OverlapSplit" xml:space="preserve">
+    <value>{0}: Will be split into two entries</value>
+  </data>
 </root>

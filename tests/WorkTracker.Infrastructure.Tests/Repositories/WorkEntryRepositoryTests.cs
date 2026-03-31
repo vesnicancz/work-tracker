@@ -283,6 +283,131 @@ public class WorkEntryRepositoryTests : IDisposable
 
 	#endregion
 
+	#region GetOverlappingEntriesAsync Tests
+
+	[Fact]
+	public async Task GetOverlappingEntriesAsync_NoOverlaps_ReturnsEmpty()
+	{
+		// Arrange
+		var baseDate = new DateTime(2026, 1, 15);
+		var entry1 = WorkEntry.Create("PROJ-1", baseDate.AddHours(8), baseDate.AddHours(9), null, baseDate.AddHours(8));
+		var entry2 = WorkEntry.Create("PROJ-2", baseDate.AddHours(12), baseDate.AddHours(13), null, baseDate.AddHours(12));
+		await _testContext.WorkEntries.AddRangeAsync([entry1, entry2], TestContext.Current.CancellationToken);
+		await _testContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+		// Act
+		var results = await _repository.GetOverlappingEntriesAsync(null, baseDate.AddHours(10), baseDate.AddHours(11), TestContext.Current.CancellationToken);
+
+		// Assert
+		results.Should().BeEmpty();
+	}
+
+	[Fact]
+	public async Task GetOverlappingEntriesAsync_PartialOverlap_ReturnsOverlapping()
+	{
+		// Arrange
+		var baseDate = new DateTime(2026, 1, 15);
+		var entry = WorkEntry.Create("PROJ-1", baseDate.AddHours(9), baseDate.AddHours(11), null, baseDate.AddHours(9));
+		await _testContext.WorkEntries.AddAsync(entry, TestContext.Current.CancellationToken);
+		await _testContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+		// Act
+		var results = await _repository.GetOverlappingEntriesAsync(null, baseDate.AddHours(10), baseDate.AddHours(12), TestContext.Current.CancellationToken);
+
+		// Assert
+		results.Should().HaveCount(1);
+		results.Should().Contain(e => e.TicketId == "PROJ-1");
+	}
+
+	[Fact]
+	public async Task GetOverlappingEntriesAsync_CompleteOverlap_ReturnsOverlapping()
+	{
+		// Arrange
+		var baseDate = new DateTime(2026, 1, 15);
+		var entry = WorkEntry.Create("PROJ-1", baseDate.AddHours(10), baseDate.AddHours(10).AddMinutes(30), null, baseDate.AddHours(10));
+		await _testContext.WorkEntries.AddAsync(entry, TestContext.Current.CancellationToken);
+		await _testContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+		// Act
+		var results = await _repository.GetOverlappingEntriesAsync(null, baseDate.AddHours(9), baseDate.AddHours(11), TestContext.Current.CancellationToken);
+
+		// Assert
+		results.Should().HaveCount(1);
+		results.Should().Contain(e => e.TicketId == "PROJ-1");
+	}
+
+	[Fact]
+	public async Task GetOverlappingEntriesAsync_ActiveEntry_ReturnsOverlapping()
+	{
+		// Arrange
+		var baseDate = new DateTime(2026, 1, 15);
+		var activeEntry = WorkEntry.Create("PROJ-1", baseDate.AddHours(9), null, null, baseDate.AddHours(9));
+		await _testContext.WorkEntries.AddAsync(activeEntry, TestContext.Current.CancellationToken);
+		await _testContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+		// Act
+		var results = await _repository.GetOverlappingEntriesAsync(null, baseDate.AddHours(10), baseDate.AddHours(11), TestContext.Current.CancellationToken);
+
+		// Assert
+		results.Should().HaveCount(1);
+		results.Should().Contain(e => e.TicketId == "PROJ-1");
+	}
+
+	[Fact]
+	public async Task GetOverlappingEntriesAsync_ExcludesSelf()
+	{
+		// Arrange
+		var baseDate = new DateTime(2026, 1, 15);
+		var entry = WorkEntry.Create("PROJ-1", baseDate.AddHours(9), baseDate.AddHours(11), null, baseDate.AddHours(9));
+		await _testContext.WorkEntries.AddAsync(entry, TestContext.Current.CancellationToken);
+		await _testContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+		// Act
+		var results = await _repository.GetOverlappingEntriesAsync(entry.Id, baseDate.AddHours(9), baseDate.AddHours(11), TestContext.Current.CancellationToken);
+
+		// Assert
+		results.Should().BeEmpty();
+	}
+
+	[Fact]
+	public async Task GetOverlappingEntriesAsync_MultipleOverlaps_ReturnsAll()
+	{
+		// Arrange
+		var baseDate = new DateTime(2026, 1, 15);
+		var entry1 = WorkEntry.Create("PROJ-1", baseDate.AddHours(9), baseDate.AddHours(11), null, baseDate.AddHours(9));
+		var entry2 = WorkEntry.Create("PROJ-2", baseDate.AddHours(10), baseDate.AddHours(12), null, baseDate.AddHours(10));
+		var entry3 = WorkEntry.Create("PROJ-3", baseDate.AddHours(13), baseDate.AddHours(14), null, baseDate.AddHours(13));
+		await _testContext.WorkEntries.AddRangeAsync([entry1, entry2, entry3], TestContext.Current.CancellationToken);
+		await _testContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+		// Act
+		var results = await _repository.GetOverlappingEntriesAsync(null, baseDate.AddHours(10), baseDate.AddHours(11).AddMinutes(30), TestContext.Current.CancellationToken);
+
+		// Assert
+		results.Should().HaveCount(2);
+		results.Should().Contain(e => e.TicketId == "PROJ-1");
+		results.Should().Contain(e => e.TicketId == "PROJ-2");
+		results.Should().NotContain(e => e.TicketId == "PROJ-3");
+	}
+
+	[Fact]
+	public async Task GetOverlappingEntriesAsync_AdjacentEntries_NoOverlap()
+	{
+		// Arrange
+		var baseDate = new DateTime(2026, 1, 15);
+		var entry = WorkEntry.Create("PROJ-1", baseDate.AddHours(9), baseDate.AddHours(10), null, baseDate.AddHours(9));
+		await _testContext.WorkEntries.AddAsync(entry, TestContext.Current.CancellationToken);
+		await _testContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+		// Act
+		var results = await _repository.GetOverlappingEntriesAsync(null, baseDate.AddHours(10), baseDate.AddHours(11), TestContext.Current.CancellationToken);
+
+		// Assert
+		results.Should().BeEmpty();
+	}
+
+	#endregion
+
 	#region AddAsync Tests
 
 	[Fact]

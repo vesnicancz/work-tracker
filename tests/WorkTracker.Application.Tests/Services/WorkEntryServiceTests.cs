@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
+using WorkTracker.Application.Models;
 using WorkTracker.Application.Services;
 using WorkTracker.Domain.Entities;
 using WorkTracker.Domain.Interfaces;
@@ -304,5 +305,199 @@ public class WorkEntryServiceTests
 		// Assert
 		result.Should().NotBeNull();
 		result.Should().HaveCount(2);
+	}
+
+	[Fact]
+	public async Task ComputeOverlapResolutionAsync_NoOverlaps_ReturnsEmptyPlan()
+	{
+		// Arrange
+		_mockRepository
+			.Setup(r => r.GetOverlappingEntriesAsync(It.IsAny<int?>(), It.IsAny<DateTime>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(new List<WorkEntry>());
+
+		// Act
+		var plan = await _service.ComputeOverlapResolutionAsync(null, new DateTime(2026, 1, 15, 10, 0, 0), new DateTime(2026, 1, 15, 11, 0, 0), TestContext.Current.CancellationToken);
+
+		// Assert
+		plan.HasAdjustments.Should().BeFalse();
+		plan.Adjustments.Should().BeEmpty();
+	}
+
+	[Fact]
+	public async Task ComputeOverlapResolutionAsync_HeadOverlap_ReturnsTrimEnd()
+	{
+		// Arrange
+		// Existing: 9:00-11:00, candidate: 10:00-12:00 → existing end overlaps with candidate start → TrimEnd existing to 10:00
+		var existing = WorkEntry.Reconstitute(1, "PROJ-100", new DateTime(2026, 1, 15, 9, 0, 0), new DateTime(2026, 1, 15, 11, 0, 0), "Existing", false, DateTime.MinValue);
+		_mockRepository
+			.Setup(r => r.GetOverlappingEntriesAsync(It.IsAny<int?>(), It.IsAny<DateTime>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(new List<WorkEntry> { existing });
+
+		// Act
+		var plan = await _service.ComputeOverlapResolutionAsync(null, new DateTime(2026, 1, 15, 10, 0, 0), new DateTime(2026, 1, 15, 12, 0, 0), TestContext.Current.CancellationToken);
+
+		// Assert
+		plan.HasAdjustments.Should().BeTrue();
+		plan.Adjustments.Should().HaveCount(1);
+		var adjustment = plan.Adjustments[0];
+		adjustment.WorkEntryId.Should().Be(1);
+		adjustment.Kind.Should().Be(OverlapAdjustmentKind.TrimEnd);
+		adjustment.NewEnd.Should().Be(new DateTime(2026, 1, 15, 10, 0, 0));
+		adjustment.OriginalStart.Should().Be(new DateTime(2026, 1, 15, 9, 0, 0));
+		adjustment.OriginalEnd.Should().Be(new DateTime(2026, 1, 15, 11, 0, 0));
+	}
+
+	[Fact]
+	public async Task ComputeOverlapResolutionAsync_TailOverlap_ReturnsTrimStart()
+	{
+		// Arrange
+		// Existing: 10:00-12:00, candidate: 9:00-11:00 → candidate end overlaps with existing start → TrimStart existing to 11:00
+		var existing = WorkEntry.Reconstitute(2, "PROJ-101", new DateTime(2026, 1, 15, 10, 0, 0), new DateTime(2026, 1, 15, 12, 0, 0), "Existing", false, DateTime.MinValue);
+		_mockRepository
+			.Setup(r => r.GetOverlappingEntriesAsync(It.IsAny<int?>(), It.IsAny<DateTime>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(new List<WorkEntry> { existing });
+
+		// Act
+		var plan = await _service.ComputeOverlapResolutionAsync(null, new DateTime(2026, 1, 15, 9, 0, 0), new DateTime(2026, 1, 15, 11, 0, 0), TestContext.Current.CancellationToken);
+
+		// Assert
+		plan.HasAdjustments.Should().BeTrue();
+		plan.Adjustments.Should().HaveCount(1);
+		var adjustment = plan.Adjustments[0];
+		adjustment.WorkEntryId.Should().Be(2);
+		adjustment.Kind.Should().Be(OverlapAdjustmentKind.TrimStart);
+		adjustment.NewStart.Should().Be(new DateTime(2026, 1, 15, 11, 0, 0));
+		adjustment.OriginalStart.Should().Be(new DateTime(2026, 1, 15, 10, 0, 0));
+		adjustment.OriginalEnd.Should().Be(new DateTime(2026, 1, 15, 12, 0, 0));
+	}
+
+	[Fact]
+	public async Task ComputeOverlapResolutionAsync_CompleteCover_ReturnsDelete()
+	{
+		// Arrange
+		// Existing: 10:00-10:30, candidate: 9:00-11:00 → candidate fully contains existing → Delete
+		var existing = WorkEntry.Reconstitute(3, "PROJ-102", new DateTime(2026, 1, 15, 10, 0, 0), new DateTime(2026, 1, 15, 10, 30, 0), "Short task", false, DateTime.MinValue);
+		_mockRepository
+			.Setup(r => r.GetOverlappingEntriesAsync(It.IsAny<int?>(), It.IsAny<DateTime>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(new List<WorkEntry> { existing });
+
+		// Act
+		var plan = await _service.ComputeOverlapResolutionAsync(null, new DateTime(2026, 1, 15, 9, 0, 0), new DateTime(2026, 1, 15, 11, 0, 0), TestContext.Current.CancellationToken);
+
+		// Assert
+		plan.HasAdjustments.Should().BeTrue();
+		plan.Adjustments.Should().HaveCount(1);
+		var adjustment = plan.Adjustments[0];
+		adjustment.WorkEntryId.Should().Be(3);
+		adjustment.Kind.Should().Be(OverlapAdjustmentKind.Delete);
+		adjustment.NewStart.Should().BeNull();
+		adjustment.NewEnd.Should().BeNull();
+	}
+
+	[Fact]
+	public async Task ComputeOverlapResolutionAsync_CandidateInsideExisting_ReturnsSplit()
+	{
+		// Arrange
+		// Existing: 9:00-15:00, candidate: 11:00-13:00 → candidate is inside existing → Split into 9:00-11:00 and 13:00-15:00
+		var existing = WorkEntry.Reconstitute(4, "PROJ-103", new DateTime(2026, 1, 15, 9, 0, 0), new DateTime(2026, 1, 15, 15, 0, 0), "Long task", false, DateTime.MinValue);
+		_mockRepository
+			.Setup(r => r.GetOverlappingEntriesAsync(It.IsAny<int?>(), It.IsAny<DateTime>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(new List<WorkEntry> { existing });
+
+		// Act
+		var plan = await _service.ComputeOverlapResolutionAsync(null, new DateTime(2026, 1, 15, 11, 0, 0), new DateTime(2026, 1, 15, 13, 0, 0), TestContext.Current.CancellationToken);
+
+		// Assert
+		plan.HasAdjustments.Should().BeTrue();
+		plan.Adjustments.Should().HaveCount(1);
+		var adjustment = plan.Adjustments[0];
+		adjustment.WorkEntryId.Should().Be(4);
+		adjustment.Kind.Should().Be(OverlapAdjustmentKind.Split);
+		// NewEnd = candidateStart = first half ends at 11:00
+		adjustment.NewEnd.Should().Be(new DateTime(2026, 1, 15, 11, 0, 0));
+		// NewStart = candidateEnd = second half starts at 13:00
+		adjustment.NewStart.Should().Be(new DateTime(2026, 1, 15, 13, 0, 0));
+		adjustment.OriginalStart.Should().Be(new DateTime(2026, 1, 15, 9, 0, 0));
+		adjustment.OriginalEnd.Should().Be(new DateTime(2026, 1, 15, 15, 0, 0));
+	}
+
+	[Fact]
+	public async Task ComputeOverlapResolutionAsync_TrimResultsTooShort_PromotesToDelete()
+	{
+		// Arrange
+		// Existing: 10:00-10:00:30 (30 seconds long, sub-minute), candidate: 9:00-11:00
+		// After rounding candidate times: 9:00-11:00. Existing is fully covered (candidateStart <= existingStart && candidateEnd >= existingEnd) → Delete
+		// Use an existing entry where remaining time after trim would be < 1 minute:
+		// Existing: 10:00-10:00 (same start/end — degenerate), or use existing 9:59-10:01 with candidate 10:00-11:00
+		// → remaining = candidateStart(10:00) - existingStart(9:59) = 1 minute exactly, not < 1 min
+		// Use existing 9:59:30-10:01 reconstituted with seconds, candidate 10:00-11:00
+		// → remaining after TrimEnd = 10:00 - 9:59:30 = 30 seconds < 1 minute → Delete
+		var existing = WorkEntry.Reconstitute(5, "PROJ-104", new DateTime(2026, 1, 15, 9, 59, 30), new DateTime(2026, 1, 15, 10, 1, 0), "Tiny task", false, DateTime.MinValue);
+		_mockRepository
+			.Setup(r => r.GetOverlappingEntriesAsync(It.IsAny<int?>(), It.IsAny<DateTime>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(new List<WorkEntry> { existing });
+
+		// Act
+		var plan = await _service.ComputeOverlapResolutionAsync(null, new DateTime(2026, 1, 15, 10, 0, 0), new DateTime(2026, 1, 15, 11, 0, 0), TestContext.Current.CancellationToken);
+
+		// Assert
+		plan.HasAdjustments.Should().BeTrue();
+		plan.Adjustments.Should().HaveCount(1);
+		var adjustment = plan.Adjustments[0];
+		adjustment.WorkEntryId.Should().Be(5);
+		adjustment.Kind.Should().Be(OverlapAdjustmentKind.Delete);
+	}
+
+	[Fact]
+	public async Task ComputeOverlapResolutionAsync_ActiveEntry_WithCompletedCandidate_ReturnsTrimEnd()
+	{
+		// Arrange
+		// Existing active entry from 9:00 (no EndTime → MaxValue).
+		// Candidate is a completed entry 10:00-11:00 (e.g. calendar meeting).
+		// Active entries are never split — they get TrimEnd instead.
+		var existingActive = WorkEntry.Reconstitute(6, "PROJ-105", new DateTime(2026, 1, 15, 9, 0, 0), null, "Active task", true, DateTime.MinValue);
+		_mockRepository
+			.Setup(r => r.GetOverlappingEntriesAsync(It.IsAny<int?>(), It.IsAny<DateTime>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(new List<WorkEntry> { existingActive });
+
+		// Act — completed candidate (with endTime) inserted while active entry runs
+		var plan = await _service.ComputeOverlapResolutionAsync(null, new DateTime(2026, 1, 15, 10, 0, 0), new DateTime(2026, 1, 15, 11, 0, 0), TestContext.Current.CancellationToken);
+
+		// Assert — active entry gets TrimEnd (stopped), not Split
+		plan.HasAdjustments.Should().BeTrue();
+		plan.Adjustments.Should().HaveCount(1);
+		var adjustment = plan.Adjustments[0];
+		adjustment.WorkEntryId.Should().Be(6);
+		adjustment.Kind.Should().Be(OverlapAdjustmentKind.TrimEnd);
+		adjustment.NewEnd.Should().Be(new DateTime(2026, 1, 15, 10, 0, 0));
+		adjustment.OriginalEnd.Should().BeNull();
+	}
+
+	[Fact]
+	public async Task ComputeOverlapResolutionAsync_MultipleOverlaps_ReturnsMultipleAdjustments()
+	{
+		// Arrange
+		// Entry A: 8:00-10:30 → head overlap with candidate 10:00-12:00 → TrimEnd to 10:00
+		// Entry B: 11:00-13:00 → tail overlap with candidate 10:00-12:00 → TrimStart to 12:00
+		var entryA = WorkEntry.Reconstitute(7, "PROJ-106", new DateTime(2026, 1, 15, 8, 0, 0), new DateTime(2026, 1, 15, 10, 30, 0), "Task A", false, DateTime.MinValue);
+		var entryB = WorkEntry.Reconstitute(8, "PROJ-107", new DateTime(2026, 1, 15, 11, 0, 0), new DateTime(2026, 1, 15, 13, 0, 0), "Task B", false, DateTime.MinValue);
+		_mockRepository
+			.Setup(r => r.GetOverlappingEntriesAsync(It.IsAny<int?>(), It.IsAny<DateTime>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(new List<WorkEntry> { entryA, entryB });
+
+		// Act
+		var plan = await _service.ComputeOverlapResolutionAsync(null, new DateTime(2026, 1, 15, 10, 0, 0), new DateTime(2026, 1, 15, 12, 0, 0), TestContext.Current.CancellationToken);
+
+		// Assert
+		plan.HasAdjustments.Should().BeTrue();
+		plan.Adjustments.Should().HaveCount(2);
+
+		var adjustmentA = plan.Adjustments.Single(a => a.WorkEntryId == 7);
+		adjustmentA.Kind.Should().Be(OverlapAdjustmentKind.TrimEnd);
+		adjustmentA.NewEnd.Should().Be(new DateTime(2026, 1, 15, 10, 0, 0));
+
+		var adjustmentB = plan.Adjustments.Single(a => a.WorkEntryId == 8);
+		adjustmentB.Kind.Should().Be(OverlapAdjustmentKind.TrimStart);
+		adjustmentB.NewStart.Should().Be(new DateTime(2026, 1, 15, 12, 0, 0));
 	}
 }

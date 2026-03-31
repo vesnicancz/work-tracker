@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using WorkTracker.Application.Common;
+using WorkTracker.Application.Models;
 using WorkTracker.Application.Services;
 using WorkTracker.Domain.Entities;
 
@@ -312,6 +313,55 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 		}
 
 		RaiseEvents(oldActiveWork, oldIsTracking, workEntriesModified: refreshed);
+	}
+
+	public async Task<OverlapResolutionPlan> ComputeOverlapResolutionAsync(
+		int? excludeEntryId, DateTime startTime, DateTime? endTime, CancellationToken cancellationToken)
+	{
+		ThrowIfNotInitialized();
+
+		using var scope = _scopeFactory.CreateScope();
+		var workEntryService = scope.ServiceProvider.GetRequiredService<IWorkEntryService>();
+
+		return await workEntryService.ComputeOverlapResolutionAsync(excludeEntryId, startTime, endTime, cancellationToken);
+	}
+
+	public Task<Result<WorkEntry>> CreateWorkEntryWithResolutionAsync(
+		string? ticketId, DateTime startTime, string? description, DateTime? endTime,
+		OverlapResolutionPlan plan, CancellationToken cancellationToken)
+	{
+		_logger.LogInformation(
+			"Creating work entry with overlap resolution: TicketId={TicketId}, StartTime={StartTime}, EndTime={EndTime}",
+			ticketId, startTime, endTime);
+
+		return ExecuteLockedAsync<WorkEntry>(
+			(svc, ct) => svc.CreateWithOverlapResolutionAsync(ticketId, startTime, description, endTime, plan, ct),
+			async result =>
+			{
+				_logger.LogInformation("Work entry created with resolution: WorkEntryId={WorkEntryId}", result.Value.Id);
+				await RefreshFromDatabaseCoreAsync(cancellationToken);
+			},
+			"CreateWorkEntryWithResolution",
+			cancellationToken);
+	}
+
+	public Task<Result> UpdateWorkEntryWithResolutionAsync(
+		int id, string? ticketId, DateTime startTime, DateTime? endTime, string? description,
+		OverlapResolutionPlan plan, CancellationToken cancellationToken)
+	{
+		_logger.LogInformation(
+			"Updating work entry with overlap resolution: Id={Id}, TicketId={TicketId}",
+			id, ticketId);
+
+		return ExecuteLockedAsync(
+			async (svc, ct) => (Result)await svc.UpdateWithOverlapResolutionAsync(id, ticketId, startTime, endTime, description, plan, ct),
+			async _ =>
+			{
+				_logger.LogInformation("Work entry updated with resolution: WorkEntryId={WorkEntryId}", id);
+				await RefreshFromDatabaseCoreAsync(cancellationToken);
+			},
+			"UpdateWorkEntryWithResolution",
+			cancellationToken);
 	}
 
 	#endregion State Operations

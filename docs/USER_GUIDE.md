@@ -44,7 +44,7 @@ WorkTracker je aplikace pro **sledování pracovní doby** určená pro vývojá
 | **Favorite Templates** | Oblíbené pracovní položky jako šablony pro rychlé spuštění |
 | **Go to Today** | Rychlá navigace na dnešní datum |
 | **Failed Worklog Resubmission** | Opakované odeslání neúspěšných worklogů |
-| **Validation** | Detekce překrývajících se časů, kontrola validních dat |
+| **Validation** | Automatické řešení překrývajících se časů, kontrola validních dat |
 | **Work Suggestions** | Návrhy práce z Jira (JQL) a Office 365 kalendáře |
 | **Pomodoro Timer** | Pomodoro timer s OS notifikacemi a Luxafor LED indikací |
 | **Offline First** | Práce bez připojení, sync když je potřeba |
@@ -185,6 +185,33 @@ worktracker start PROJ-123 -s 09:00 -e 12:00
 - ✅ Detekuje Jira ticket ID v různých formátech (PROJ-123, proj-123)
 - ✅ Zaokrouhluje čas na minuty
 - ✅ Validuje, že alespoň ticket nebo popis je zadán
+- ✅ Při překryvu s existujícími záznamy nabídne automatické přizpůsobení (zkrácení, smazání nebo rozdělení kolidujících záznamů)
+
+##### Řešení Překryvů Časů
+
+Pokud vytváříte nebo upravujete pracovní záznam, který se překrývá s existujícími záznamy, aplikace:
+
+1. **Detekuje konflikt** — identifikuje všechny záznamy, které se překrývají s novým záznamem
+2. **Nabídne řešení** — dialog s navrhovanými úpravami:
+   - ✅ Zkrácení konce existujícího záznamu
+   - ✅ Posunutí začátku existujícího záznamu
+   - ✅ Smazání kompletně překrytého záznamu
+   - ✅ Rozdělení záznamu na dvě části (před a po novém záznamu)
+3. **Potvrzení změn** — po vaší akceptaci se všechny úpravy aplikují najednou
+
+**Speciální případ — aktivní sledování:**
+
+Pokud právě probíhá sledování práce (aktivní záznam) a vložíte dokončený záznam (např. z kalendáře), který se s ním překrývá, aplikace **automaticky zastaví aktivní sledování** v čase, kdy nový záznam začíná. Pokračování sledování původní práce se **neobnovuje automaticky**.
+
+**Příklad:**
+```
+Aktivní práce: 09:00 - [teď] PROJ-123 (stále běží)
+Nový záznam:   10:30 - 11:30 PROJ-456 (kompletní práce)
+
+Výsledek:
+  PROJ-123: 09:00 - 10:30 (zkráceno na začátek nového záznamu)
+  PROJ-456: 10:30 - 11:30 (nový záznam)
+```
 
 #### Stop - Zastavit Sledování
 

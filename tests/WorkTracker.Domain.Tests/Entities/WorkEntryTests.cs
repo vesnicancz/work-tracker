@@ -320,4 +320,92 @@ public class WorkEntryTests
 		workEntry.IsActive.Should().BeTrue();
 		workEntry.EndTime.Should().BeNull();
 	}
+
+	[Fact]
+	public void AdjustStartTime_UpdatesStartTimeAndUpdatedAt()
+	{
+		// Arrange
+		var originalStart = new DateTime(2026, 3, 25, 9, 0, 0);
+		var newStart = new DateTime(2026, 3, 25, 8, 30, 0);
+		var now = new DateTime(2026, 3, 25, 10, 0, 0);
+		var workEntry = WorkEntry.Reconstitute(0, "PROJ-123", originalStart, null, null, true, originalStart);
+
+		// Act
+		workEntry.AdjustStartTime(newStart, now);
+
+		// Assert
+		workEntry.StartTime.Should().Be(newStart);
+		workEntry.UpdatedAt.Should().Be(now);
+	}
+
+	[Fact]
+	public void AdjustStartTime_PreservesOtherFields()
+	{
+		// Arrange
+		var originalStart = new DateTime(2026, 3, 25, 9, 0, 0);
+		var endTime = new DateTime(2026, 3, 25, 11, 0, 0);
+		var createdAt = new DateTime(2026, 3, 25, 9, 0, 0);
+		var workEntry = WorkEntry.Reconstitute(42, "PROJ-999", originalStart, endTime, "Important task", false, createdAt);
+
+		// Act
+		workEntry.AdjustStartTime(new DateTime(2026, 3, 25, 8, 30, 0), new DateTime(2026, 3, 25, 10, 0, 0));
+
+		// Assert
+		workEntry.TicketId.Should().Be("PROJ-999");
+		workEntry.EndTime.Should().Be(endTime);
+		workEntry.Description.Should().Be("Important task");
+		workEntry.IsActive.Should().BeFalse();
+		workEntry.CreatedAt.Should().Be(createdAt);
+	}
+
+	[Fact]
+	public void AdjustEndTime_UpdatesEndTimeAndIsActiveAndUpdatedAt()
+	{
+		// Arrange
+		var startTime = new DateTime(2026, 3, 25, 9, 0, 0);
+		var newEnd = new DateTime(2026, 3, 25, 11, 0, 0);
+		var now = new DateTime(2026, 3, 25, 11, 0, 0);
+		var workEntry = WorkEntry.Reconstitute(0, "PROJ-123", startTime, null, null, true, startTime);
+
+		// Act
+		workEntry.AdjustEndTime(newEnd, now);
+
+		// Assert
+		workEntry.EndTime.Should().Be(newEnd);
+		workEntry.IsActive.Should().BeFalse();
+		workEntry.UpdatedAt.Should().Be(now);
+	}
+
+	[Fact]
+	public void AdjustEndTime_PreservesOtherFields()
+	{
+		// Arrange
+		var startTime = new DateTime(2026, 3, 25, 9, 0, 0);
+		var createdAt = new DateTime(2026, 3, 25, 9, 0, 0);
+		var workEntry = WorkEntry.Reconstitute(42, "PROJ-999", startTime, null, "Important task", true, createdAt);
+
+		// Act
+		workEntry.AdjustEndTime(new DateTime(2026, 3, 25, 11, 0, 0), new DateTime(2026, 3, 25, 11, 0, 0));
+
+		// Assert
+		workEntry.TicketId.Should().Be("PROJ-999");
+		workEntry.StartTime.Should().Be(startTime);
+		workEntry.Description.Should().Be("Important task");
+		workEntry.CreatedAt.Should().Be(createdAt);
+	}
+
+	[Fact]
+	public void AdjustEndTime_OnActiveEntry_SetsIsActiveFalse()
+	{
+		// Arrange
+		var startTime = new DateTime(2026, 3, 25, 9, 0, 0);
+		var workEntry = WorkEntry.Reconstitute(0, "PROJ-123", startTime, null, null, true, startTime);
+
+		// Act
+		workEntry.AdjustEndTime(new DateTime(2026, 3, 25, 11, 0, 0), new DateTime(2026, 3, 25, 11, 0, 0));
+
+		// Assert
+		workEntry.IsActive.Should().BeFalse();
+		workEntry.EndTime.Should().NotBeNull();
+	}
 }

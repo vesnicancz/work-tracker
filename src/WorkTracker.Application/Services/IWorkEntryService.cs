@@ -1,4 +1,5 @@
 using WorkTracker.Application.Common;
+using WorkTracker.Application.Models;
 using WorkTracker.Domain.Entities;
 
 namespace WorkTracker.Application.Services;
@@ -18,4 +19,10 @@ public interface IWorkEntryService
 	Task<Result<WorkEntry>> UpdateWorkEntryAsync(int id, string? ticketId = null, DateTime? startTime = null, DateTime? endTime = null, string? description = null, CancellationToken cancellationToken = default);
 
 	Task<Result> DeleteWorkEntryAsync(int id, CancellationToken cancellationToken = default);
+
+	Task<OverlapResolutionPlan> ComputeOverlapResolutionAsync(int? excludeEntryId, DateTime startTime, DateTime? endTime, CancellationToken cancellationToken);
+
+	Task<Result<WorkEntry>> CreateWithOverlapResolutionAsync(string? ticketId, DateTime startTime, string? description, DateTime? endTime, OverlapResolutionPlan plan, CancellationToken cancellationToken);
+
+	Task<Result<WorkEntry>> UpdateWithOverlapResolutionAsync(int id, string? ticketId, DateTime startTime, DateTime? endTime, string? description, OverlapResolutionPlan plan, CancellationToken cancellationToken);
 }
