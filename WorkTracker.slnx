@@ -14,31 +14,32 @@
     <File Path=".editorconfig" />
     <File Path=".gitignore" />
     <File Path="ARCHITECTURE_REVIEW.md" />
+    <File Path="CLAUDE.md" />
     <File Path="Directory.Build.props" />
     <File Path="README.md" />
   </Folder>
   <Folder Name="/src/">
+    <Project Path="src/Luxafor.HidSharp/Luxafor.HidSharp.csproj" />
     <Project Path="src/WorkTracker.Application/WorkTracker.Application.csproj" />
     <Project Path="src/WorkTracker.Avalonia/WorkTracker.Avalonia.csproj" />
     <Project Path="src/WorkTracker.CLI/WorkTracker.CLI.csproj" />
     <Project Path="src/WorkTracker.Domain/WorkTracker.Domain.csproj" />
-    <Project Path="src/Luxafor.HidSharp/Luxafor.HidSharp.csproj" />
     <Project Path="src/WorkTracker.Infrastructure/WorkTracker.Infrastructure.csproj" />
     <Project Path="src/WorkTracker.Plugin.Abstractions/WorkTracker.Plugin.Abstractions.csproj" />
     <Project Path="src/WorkTracker.UI.Shared/WorkTracker.UI.Shared.csproj" />
     <Project Path="src/WorkTracker.WPF/WorkTracker.WPF.csproj" />
   </Folder>
   <Folder Name="/plugins/">
-    <Project Path="plugins/WorkTracker.Plugin.Luxafor/WorkTracker.Plugin.Luxafor.csproj" />
-    <Project Path="plugins/WorkTracker.Plugin.GoranG3/WorkTracker.Plugin.GoranG3.csproj" />
     <Project Path="plugins/WorkTracker.Plugin.Atlassian/WorkTracker.Plugin.Atlassian.csproj" />
+    <Project Path="plugins/WorkTracker.Plugin.GoranG3/WorkTracker.Plugin.GoranG3.csproj" />
+    <Project Path="plugins/WorkTracker.Plugin.Luxafor/WorkTracker.Plugin.Luxafor.csproj" />
     <Project Path="plugins/WorkTracker.Plugin.Office365Calendar/WorkTracker.Plugin.Office365Calendar.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/WorkTracker.Application.Tests/WorkTracker.Application.Tests.csproj" />
     <Project Path="tests/WorkTracker.Domain.Tests/WorkTracker.Domain.Tests.csproj" />
     <Project Path="tests/WorkTracker.Infrastructure.Tests/WorkTracker.Infrastructure.Tests.csproj" />
-    <Project Path="tests/WorkTracker.UI.Shared.Tests/WorkTracker.UI.Shared.Tests.csproj" />
     <Project Path="tests/WorkTracker.Plugin.Atlassian.Tests/WorkTracker.Plugin.Atlassian.Tests.csproj" />
+    <Project Path="tests/WorkTracker.UI.Shared.Tests/WorkTracker.UI.Shared.Tests.csproj" />
   </Folder>
 </Solution>
