@@ -307,14 +307,7 @@ public sealed class WorkEntryService : IWorkEntryService
 		var roundedStart = DateTimeHelper.RoundToMinute(startTime);
 		var roundedEnd = DateTimeHelper.RoundToMinute(endTime);
 
-		// Apply adjustments to overlapping entries first
-		var applyResult = await ApplyAdjustmentsAsync(plan, now, cancellationToken);
-		if (applyResult.IsFailure)
-		{
-			return Result.Failure<WorkEntry>(applyResult.Error);
-		}
-
-		// Now create the new entry (skip overlap check since we resolved them)
+		// Validate the candidate entry before applying any adjustments to avoid partial state changes
 		var workEntry = WorkEntry.Create(ticketId, roundedStart, roundedEnd, description, DateTimeHelper.RoundToMinute(now));
 
 		if (!workEntry.IsValid())
@@ -323,6 +316,14 @@ public sealed class WorkEntryService : IWorkEntryService
 			return Result.Failure<WorkEntry>("Invalid work entry data. Both ticket ID and description cannot be empty.");
 		}
 
+		// Apply adjustments to overlapping entries
+		var applyResult = await ApplyAdjustmentsAsync(plan, now, cancellationToken);
+		if (applyResult.IsFailure)
+		{
+			return Result.Failure<WorkEntry>(applyResult.Error);
+		}
+
+		// Create the new entry (skip overlap check since we resolved them)
 		var result = await _repository.AddAsync(workEntry, cancellationToken);
 		_logger.LogInformation("Work entry created successfully with overlap resolution, ID {Id}", result.Id);
 
@@ -342,14 +343,7 @@ public sealed class WorkEntryService : IWorkEntryService
 			return Result.Failure<WorkEntry>($"Work entry with ID {id} not found");
 		}
 
-		// Apply adjustments to overlapping entries first
-		var applyResult = await ApplyAdjustmentsAsync(plan, now, cancellationToken);
-		if (applyResult.IsFailure)
-		{
-			return Result.Failure<WorkEntry>(applyResult.Error);
-		}
-
-		// Now update the entry (skip overlap check since we resolved them)
+		// Validate the updated fields before applying any adjustments to avoid partial state changes
 		workEntry.UpdateFields(
 			ticketId,
 			DateTimeHelper.RoundToMinute(startTime),
@@ -362,6 +356,14 @@ public sealed class WorkEntryService : IWorkEntryService
 			return Result.Failure<WorkEntry>("Invalid work entry data after update. Both ticket ID and description cannot be empty, and end time must be after start time.");
 		}
 
+		// Apply adjustments to overlapping entries
+		var applyResult = await ApplyAdjustmentsAsync(plan, now, cancellationToken);
+		if (applyResult.IsFailure)
+		{
+			return Result.Failure<WorkEntry>(applyResult.Error);
+		}
+
+		// Save the updated entry (skip overlap check since we resolved them)
 		await _repository.UpdateAsync(workEntry, cancellationToken);
 		_logger.LogInformation("Work entry {Id} updated successfully with overlap resolution", id);
 

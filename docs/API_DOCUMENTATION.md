@@ -373,7 +373,7 @@ if (plan.HasAdjustments)
 
 ##### CreateWithOverlapResolutionAsync
 
-Creates a new work entry and automatically applies the overlap resolution plan atomically. All adjustments to overlapping entries happen in a single transaction with the new entry creation.
+Creates a new work entry and automatically applies the overlap resolution plan. Validates the new entry before applying any adjustments to avoid partial state changes.
 
 ```csharp
 Task<Result<WorkEntry>> CreateWithOverlapResolutionAsync(
@@ -396,11 +396,11 @@ Task<Result<WorkEntry>> CreateWithOverlapResolutionAsync(
 **Returns:** `Task<Result<WorkEntry>>` - Result with created entry or error
 
 **Behavior:**
-- Validates that at least one of ticketId or description is provided
-- Applies all adjustments from the plan atomically
-- Creates the new entry in the same transaction
+- Validates that at least one of ticketId or description is provided before applying adjustments
+- Applies all adjustments from the plan before creating the new entry
+- Creates the new entry after adjustments are applied
 - Rounds times to nearest minute
-- Returns failure if entry is invalid after applying plan
+- Returns failure if entry is invalid before any adjustments are applied
 
 **Example:**
 
@@ -439,7 +439,7 @@ else
 
 ##### UpdateWithOverlapResolutionAsync
 
-Updates an existing work entry and automatically applies the overlap resolution plan atomically. All adjustments to overlapping entries happen in a single transaction with the entry update.
+Updates an existing work entry and automatically applies the overlap resolution plan. Validates the updated entry before applying any adjustments to avoid partial state changes.
 
 ```csharp
 Task<Result<WorkEntry>> UpdateWithOverlapResolutionAsync(
@@ -465,8 +465,8 @@ Task<Result<WorkEntry>> UpdateWithOverlapResolutionAsync(
 
 **Behavior:**
 - Validates that at least one of ticketId or description is provided
-- Applies all adjustments from the plan atomically
-- Updates the entry in the same transaction
+- Applies all adjustments from the plan before updating the entry
+- Updates the entry after adjustments are applied
 - Rounds times to nearest minute
 - Returns failure if entry not found or is invalid after applying plan
 
@@ -1125,8 +1125,8 @@ public record OverlapAdjustment(
     OverlapAdjustmentKind Kind,          // Type of adjustment
     DateTime OriginalStart,               // Original start time
     DateTime? OriginalEnd,                // Original end time (null if active)
-    DateTime NewStart,                    // New start time after adjustment
-    DateTime? NewEnd                      // New end time after adjustment
+    DateTime? NewStart,                   // New start time after adjustment (null for Delete)
+    DateTime? NewEnd                      // New end time after adjustment (null for Delete)
 );
 ```
 
