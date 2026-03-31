@@ -1145,10 +1145,10 @@ public record OverlapAdjustment(
 Class representing a complete plan for resolving overlaps when creating or updating an entry.
 
 ```csharp
-public class OverlapResolutionPlan
+public sealed class OverlapResolutionPlan
 {
-    public IReadOnlyList<OverlapAdjustment> Adjustments { get; }  // List of adjustments
-    public bool HasAdjustments => Adjustments.Count > 0;           // Whether any adjustments are needed
+    public IReadOnlyList<OverlapAdjustment> Adjustments { get; init; } = [];  // List of adjustments
+    public bool HasAdjustments => Adjustments.Count > 0;                       // Whether any adjustments are needed
 }
 ```
 

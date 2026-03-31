@@ -180,9 +180,10 @@ public sealed class WorkEntryService : IWorkEntryService
 		var roundedStart = DateTimeHelper.RoundToMinute(startTime);
 		var roundedEnd = DateTimeHelper.RoundToMinute(endTime);
 
-		// When endTime is null (active/ongoing entry), treat as an instant at start time
-		// to avoid proposing adjustments for all future entries
-		var effectiveEnd = roundedEnd ?? roundedStart;
+		// When endTime is null (active/ongoing entry), use a minimal non-zero range
+		// to detect overlaps at the exact start time (predicate uses StartTime < end)
+		// while avoiding adjustments for all future entries
+		var effectiveEnd = roundedEnd ?? roundedStart.AddMinutes(1);
 
 		var overlapping = await _repository.GetOverlappingEntriesAsync(excludeEntryId, roundedStart, effectiveEnd, cancellationToken);
 
