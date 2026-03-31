@@ -659,7 +659,7 @@ The `WorkEntryEditOrchestrator` demonstrates the orchestrator pattern for comple
 
 1. **Detection** — Computes an `OverlapResolutionPlan` for the entry being saved
 2. **User Confirmation** — If overlaps are detected, displays a confirmation dialog via `IDialogService` showing proposed adjustments (trim end, trim start, delete, or split)
-3. **Resolution** — Applies the plan atomically using `CreateWithOverlapResolutionAsync` or `UpdateWithOverlapResolutionAsync`
+3. **Resolution** — Applies the plan using `CreateWithOverlapResolutionAsync` or `UpdateWithOverlapResolutionAsync`
 4. **Result** — Returns `Result<bool>` where `true` indicates successful save, `false` indicates user cancellation
 
 This pattern separates business logic (overlap computation in Application layer) from UI orchestration (confirmation dialogs and user interaction in UI.Shared layer), providing a better user experience than simply rejecting conflicting entries.
