@@ -82,7 +82,7 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 		};
 
 		// Load initial icon
-		_trayIcon.Icon = AppIconProvider.GetIcon(false);
+		_trayIcon.Icon = AppIconProvider.GetTrayIcon(false);
 
 		// Click to toggle window visibility
 		_trayIcon.Clicked += (_, _) => ToggleMainWindow();
@@ -222,7 +222,7 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 			? _localizationService["TrayTooltipActive"]
 			: _localizationService["TrayTooltip"];
 
-		_trayIcon.Icon = AppIconProvider.GetIcon(isActive) ?? _trayIcon.Icon;
+		_trayIcon.Icon = AppIconProvider.GetTrayIcon(isActive) ?? _trayIcon.Icon;
 	}
 
 	private void OnIsTrackingChanged(object? sender, bool isTracking)

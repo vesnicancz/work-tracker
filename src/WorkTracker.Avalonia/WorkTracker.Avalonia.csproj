@@ -35,6 +35,7 @@
   <ItemGroup>
     <EmbeddedResource Include="..\..\resources\app-ico.ico" Link="Resources\Icons\app-ico.ico" LogicalName="app-ico.ico" />
     <EmbeddedResource Include="..\..\resources\app-ico-active.ico" Link="Resources\Icons\app-ico-active.ico" LogicalName="app-ico-active.ico" />
+    <EmbeddedResource Include="..\..\resources\app-ico-inactive.ico" Link="Resources\Icons\app-ico-inactive.ico" LogicalName="app-ico-inactive.ico" />
   </ItemGroup>
 
   <ItemGroup>

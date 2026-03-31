@@ -7,31 +7,24 @@ namespace WorkTracker.WPF.Services;
 
 public static class AppIconProvider
 {
-	private const string IdleIconResource = "app-ico.ico";
-	private const string ActiveIconResource = "app-ico-active.ico";
+	private const string AppIconResource = "app-ico.ico";
+	private const string TrayInactiveIconResource = "app-ico-inactive.ico";
+	private const string TrayActiveIconResource = "app-ico-active.ico";
 
-	private static ImageSource? _idleIcon;
-	private static ImageSource? _activeIcon;
-	private static Icon? _idleTrayIcon;
-	private static Icon? _activeTrayIcon;
+	private static ImageSource? _appIcon;
+	private static Icon? _trayInactiveIcon;
+	private static Icon? _trayActiveIcon;
 
-	public static ImageSource? GetIcon(bool isActive)
+	public static ImageSource? GetIcon()
 	{
-		if (isActive && _activeIcon != null)
+		if (_appIcon != null)
 		{
-			return _activeIcon;
+			return _appIcon;
 		}
-
-		if (!isActive && _idleIcon != null)
-		{
-			return _idleIcon;
-		}
-
-		var resourceName = isActive ? ActiveIconResource : IdleIconResource;
 
 		try
 		{
-			using var stream = typeof(AppIconProvider).Assembly.GetManifestResourceStream(resourceName);
+			using var stream = typeof(AppIconProvider).Assembly.GetManifestResourceStream(AppIconResource);
 			if (stream == null)
 			{
 				return null;
@@ -44,15 +37,7 @@ public static class AppIconProvider
 			image.EndInit();
 			image.Freeze();
 
-			if (isActive)
-			{
-				_activeIcon = image;
-			}
-			else
-			{
-				_idleIcon = image;
-			}
-
+			_appIcon = image;
 			return image;
 		}
 		catch
@@ -63,18 +48,16 @@ public static class AppIconProvider
 
 	public static Icon? GetTrayIcon(bool isActive)
 	{
-		if (isActive && _activeTrayIcon != null)
+		if (isActive)
 		{
-			return _activeTrayIcon;
+			return _trayActiveIcon ??= LoadTrayIcon(TrayActiveIconResource);
 		}
 
-		if (!isActive && _idleTrayIcon != null)
-		{
-			return _idleTrayIcon;
-		}
+		return _trayInactiveIcon ??= LoadTrayIcon(TrayInactiveIconResource);
+	}
 
-		var resourceName = isActive ? ActiveIconResource : IdleIconResource;
-
+	private static Icon? LoadTrayIcon(string resourceName)
+	{
 		try
 		{
 			using var resourceStream = typeof(AppIconProvider).Assembly.GetManifestResourceStream(resourceName);
@@ -88,18 +71,7 @@ public static class AppIconProvider
 			resourceStream.CopyTo(memoryStream);
 			memoryStream.Position = 0;
 
-			var icon = new Icon(memoryStream);
-
-			if (isActive)
-			{
-				_activeTrayIcon = icon;
-			}
-			else
-			{
-				_idleTrayIcon = icon;
-			}
-
-			return icon;
+			return new Icon(memoryStream);
 		}
 		catch
 		{
