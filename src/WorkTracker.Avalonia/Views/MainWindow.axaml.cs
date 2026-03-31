@@ -12,7 +12,6 @@ public partial class MainWindow : Window
 {
 	private ITrayIconService? _trayIconService;
 	private ISettingsService? _settingsService;
-	private IWorklogStateService? _worklogStateService;
 
 	public MainWindow()
 	{
@@ -37,12 +36,11 @@ public partial class MainWindow : Window
 		}
 	}
 
-	public void Initialize(MainViewModel viewModel, ITrayIconService trayIconService, ISettingsService settingsService, IWorklogStateService worklogStateService)
+	public void Initialize(MainViewModel viewModel, ITrayIconService trayIconService, ISettingsService settingsService)
 	{
 		DataContext = viewModel;
 		_trayIconService = trayIconService;
 		_settingsService = settingsService;
-		_worklogStateService = worklogStateService;
 
 		// Swap loading indicator for main content
 		LoadingPanel.IsVisible = false;

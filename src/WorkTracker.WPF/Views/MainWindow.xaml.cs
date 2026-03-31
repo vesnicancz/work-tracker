@@ -16,16 +16,14 @@ public partial class MainWindow : Window
 {
 	private readonly ITrayIconService _trayIconService;
 	private readonly ISettingsService _settingsService;
-	private readonly IWorklogStateService _worklogStateService;
 	private bool _cleanedUp;
 
-	public MainWindow(MainViewModel viewModel, ITrayIconService trayIconService, ISettingsService settingsService, ISnackbarMessageQueue messageQueue, IWorklogStateService worklogStateService)
+	public MainWindow(MainViewModel viewModel, ITrayIconService trayIconService, ISettingsService settingsService, ISnackbarMessageQueue messageQueue)
 	{
 		InitializeComponent();
 		DataContext = viewModel;
 		_trayIconService = trayIconService;
 		_settingsService = settingsService;
-		_worklogStateService = worklogStateService;
 
 		// Set application window icon
 		Icon = AppIconProvider.GetIcon() ?? Icon;
