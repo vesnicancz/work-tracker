@@ -180,19 +180,21 @@ public sealed class WorkEntryService : IWorkEntryService
 		var roundedStart = DateTimeHelper.RoundToMinute(startTime);
 		var roundedEnd = DateTimeHelper.RoundToMinute(endTime);
 
-		// When endTime is null (active/ongoing entry), use a minimal non-zero range
+		// For the query: when endTime is null (active/ongoing entry), use +1 minute
 		// to detect overlaps at the exact start time (predicate uses StartTime < end)
-		// while avoiding adjustments for all future entries
-		var effectiveEnd = roundedEnd ?? roundedStart.AddMinutes(1);
+		// while avoiding matching all future entries
+		var queryEnd = roundedEnd ?? roundedStart.AddMinutes(1);
 
-		var overlapping = await _repository.GetOverlappingEntriesAsync(excludeEntryId, roundedStart, effectiveEnd, cancellationToken);
+		var overlapping = await _repository.GetOverlappingEntriesAsync(excludeEntryId, roundedStart, queryEnd, cancellationToken);
 
 		if (overlapping.Count == 0)
 		{
 			return new OverlapResolutionPlan();
 		}
 
-		var candidateEnd = effectiveEnd;
+		// For adjustments: use DateTime.MaxValue for active entries so DetermineAdjustment
+		// correctly produces TrimEnd/Delete (not TrimStart/Split with an artificial +1min boundary)
+		var candidateEnd = roundedEnd ?? DateTime.MaxValue;
 		var adjustments = new List<OverlapAdjustment>();
 
 		foreach (var existing in overlapping)
