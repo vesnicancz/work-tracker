@@ -13,11 +13,13 @@ public sealed class JiraSuggestionsPlugin : WorkSuggestionPluginBase, IDisposabl
 	private static class ConfigKeys
 	{
 		public const string JqlFilter = "JqlFilter";
+		public const string SearchJqlFilter = "SearchJqlFilter";
 		public const string MaxResults = "MaxResults";
 	}
 
 	private JiraClient? _jiraClient;
 	private string? _jqlFilter;
+	private string? _searchJqlFilter;
 	private int _maxResults;
 	private bool _disposed;
 
@@ -44,11 +46,20 @@ public sealed class JiraSuggestionsPlugin : WorkSuggestionPluginBase, IDisposabl
 			{
 				Key = ConfigKeys.JqlFilter,
 				Label = "JQL Filter",
-				Description = "JQL query to filter issues (e.g., assignee = currentUser() AND status != Done)",
+				Description = "JQL query for daily suggestions. Also used as the base filter for search when Search JQL Filter is not configured.",
 				Type = PluginConfigurationFieldType.MultilineText,
 				IsRequired = false,
 				DefaultValue = "assignee = currentUser() AND status != Done ORDER BY updated DESC",
 				Placeholder = "assignee = currentUser() AND status != Done ORDER BY updated DESC"
+			},
+			new()
+			{
+				Key = ConfigKeys.SearchJqlFilter,
+				Label = "Search JQL Filter",
+				Description = "JQL template for search. Use {query} as a placeholder for the search text (escaped automatically). If {query} is not present, the filter is combined with a default text search. If not set, JQL Filter is used instead.",
+				Type = PluginConfigurationFieldType.MultilineText,
+				IsRequired = false,
+				Placeholder = "project = PROJ AND (summary ~ \"{query}*\" OR key ~ \"{query}*\") ORDER BY updated DESC"
 			},
 			new()
 			{
@@ -68,6 +79,7 @@ public sealed class JiraSuggestionsPlugin : WorkSuggestionPluginBase, IDisposabl
 	{
 		_jqlFilter = GetConfigValue(ConfigKeys.JqlFilter)
 			?? "assignee = currentUser() AND status != Done ORDER BY updated DESC";
+		_searchJqlFilter = GetConfigValue(ConfigKeys.SearchJqlFilter);
 		_maxResults = int.TryParse(GetConfigValue(ConfigKeys.MaxResults), out var max) ? max : 20;
 
 		_jiraClient?.Dispose();
@@ -98,8 +110,7 @@ public sealed class JiraSuggestionsPlugin : WorkSuggestionPluginBase, IDisposabl
 
 	public override bool SupportsSearch => true;
 
-	public override Task<PluginResult<IReadOnlyList<WorkSuggestion>>> GetSuggestionsAsync(
-		DateTime date, CancellationToken cancellationToken)
+	public override Task<PluginResult<IReadOnlyList<WorkSuggestion>>> GetSuggestionsAsync(DateTime date, CancellationToken cancellationToken)
 	{
 		return ExecuteJqlSearchAsync(_jqlFilter!, _maxResults, cancellationToken);
 	}
@@ -108,18 +119,33 @@ public sealed class JiraSuggestionsPlugin : WorkSuggestionPluginBase, IDisposabl
 		string query, CancellationToken cancellationToken)
 	{
 		EnsureInitialized();
-		var jql = BuildSearchJql(query, _jqlFilter!);
+
+		string jql;
+		if (_searchJqlFilter is not null && _searchJqlFilter.Contains("{query}"))
+		{
+			jql = ApplySearchTemplate(query, _searchJqlFilter);
+		}
+		else
+		{
+			jql = BuildSearchJql(query, _searchJqlFilter ?? _jqlFilter!);
+		}
+
 		return ExecuteJqlSearchAsync(jql, _maxResults, cancellationToken);
 	}
 
-	internal static string BuildSearchJql(string query, string baseJqlFilter)
+	internal static string EscapeJqlQueryText(string query)
 	{
-		var escapedQuery = query
+		return query
 			.Replace("\\", "\\\\")
 			.Replace("\"", "\\\"")
 			.Replace("*", "")
 			.Replace("\r", "")
 			.Replace("\n", "");
+	}
+
+	internal static string BuildSearchJql(string query, string baseJqlFilter)
+	{
+		var escapedQuery = EscapeJqlQueryText(query);
 		var textFilter = $"(key ~ \"{escapedQuery}*\" OR summary ~ \"{escapedQuery}*\" OR text ~ \"{escapedQuery}*\")";
 
 		var orderByIndex = baseJqlFilter.IndexOf("ORDER BY", StringComparison.OrdinalIgnoreCase);
@@ -131,8 +157,13 @@ public sealed class JiraSuggestionsPlugin : WorkSuggestionPluginBase, IDisposabl
 			: $"({filterPart}) AND {textFilter} {orderPart}";
 	}
 
-	private async Task<PluginResult<IReadOnlyList<WorkSuggestion>>> ExecuteJqlSearchAsync(
-		string jql, int maxResults, CancellationToken cancellationToken)
+	internal static string ApplySearchTemplate(string query, string jqlTemplate)
+	{
+		var escapedQuery = EscapeJqlQueryText(query);
+		return jqlTemplate.Replace("{query}", escapedQuery);
+	}
+
+	private async Task<PluginResult<IReadOnlyList<WorkSuggestion>>> ExecuteJqlSearchAsync(string jql, int maxResults, CancellationToken cancellationToken)
 	{
 		EnsureInitialized();
 

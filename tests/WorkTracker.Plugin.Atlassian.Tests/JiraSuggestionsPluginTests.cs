@@ -121,4 +121,56 @@ public class JiraSuggestionsPluginTests
 	}
 
 	#endregion
+
+	#region EscapeJqlQueryText
+
+	[Fact]
+	public void EscapeJqlQueryText_EscapesAllSpecialCharacters()
+	{
+		var result = JiraSuggestionsPlugin.EscapeJqlQueryText("test\\\"value*\r\n");
+
+		result.Should().Be("test\\\\\\\"value");
+	}
+
+	#endregion
+
+	#region ApplySearchTemplate
+
+	[Fact]
+	public void ApplySearchTemplate_ReplacesQueryPlaceholder()
+	{
+		var jql = JiraSuggestionsPlugin.ApplySearchTemplate("fix",
+			"project = PROJ AND summary ~ \"{query}*\" ORDER BY updated DESC");
+
+		jql.Should().Be("project = PROJ AND summary ~ \"fix*\" ORDER BY updated DESC");
+	}
+
+	[Fact]
+	public void ApplySearchTemplate_EscapesSpecialCharacters()
+	{
+		var jql = JiraSuggestionsPlugin.ApplySearchTemplate("test\"value",
+			"summary ~ \"{query}*\"");
+
+		jql.Should().Be("summary ~ \"test\\\"value*\"");
+	}
+
+	[Fact]
+	public void ApplySearchTemplate_MultipleQueryPlaceholders()
+	{
+		var jql = JiraSuggestionsPlugin.ApplySearchTemplate("bug",
+			"key ~ \"{query}*\" OR summary ~ \"{query}*\"");
+
+		jql.Should().Be("key ~ \"bug*\" OR summary ~ \"bug*\"");
+	}
+
+	[Fact]
+	public void ApplySearchTemplate_PreservesTemplateStructure()
+	{
+		var template = "project = PROJ AND (summary ~ \"{query}*\" OR key ~ \"{query}*\") ORDER BY priority DESC";
+		var jql = JiraSuggestionsPlugin.ApplySearchTemplate("task", template);
+
+		jql.Should().Be("project = PROJ AND (summary ~ \"task*\" OR key ~ \"task*\") ORDER BY priority DESC");
+	}
+
+	#endregion
 }
