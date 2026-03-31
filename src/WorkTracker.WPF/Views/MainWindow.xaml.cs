@@ -16,20 +16,17 @@ public partial class MainWindow : Window
 {
 	private readonly ITrayIconService _trayIconService;
 	private readonly ISettingsService _settingsService;
-	private readonly IWorklogStateService _worklogStateService;
 	private bool _cleanedUp;
 
-	public MainWindow(MainViewModel viewModel, ITrayIconService trayIconService, ISettingsService settingsService, ISnackbarMessageQueue messageQueue, IWorklogStateService worklogStateService)
+	public MainWindow(MainViewModel viewModel, ITrayIconService trayIconService, ISettingsService settingsService, ISnackbarMessageQueue messageQueue)
 	{
 		InitializeComponent();
 		DataContext = viewModel;
 		_trayIconService = trayIconService;
 		_settingsService = settingsService;
-		_worklogStateService = worklogStateService;
 
-		// Set initial window icon based on current tracking state and subscribe to changes
-		_worklogStateService.IsTrackingChanged += OnIsTrackingChanged;
-		OnIsTrackingChanged(this, _worklogStateService.IsTracking);
+		// Set application window icon
+		Icon = AppIconProvider.GetIcon() ?? Icon;
 
 		// Bind the shared MessageQueue to the Snackbar
 		MainSnackbar.MessageQueue = messageQueue as SnackbarMessageQueue;
@@ -105,19 +102,9 @@ public partial class MainWindow : Window
 		}
 
 		_cleanedUp = true;
-		_worklogStateService.IsTrackingChanged -= OnIsTrackingChanged;
 		StateChanged -= OnStateChanged;
 		Closing -= OnClosing;
 		_trayIconService.Dispose();
-	}
-
-	private void OnIsTrackingChanged(object? sender, bool isTracking)
-	{
-		var icon = AppIconProvider.GetIcon(isTracking);
-		if (icon != null)
-		{
-			Icon = icon;
-		}
 	}
 
 	private void TitleBar_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)

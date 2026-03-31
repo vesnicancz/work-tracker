@@ -4,26 +4,31 @@ namespace WorkTracker.Avalonia.Services;
 
 public static class AppIconProvider
 {
-	private const string IdleIconResource = "app-ico.ico";
-	private const string ActiveIconResource = "app-ico-active.ico";
+	private const string AppIconResource = "app-ico.ico";
+	private const string TrayInactiveIconResource = "app-ico-inactive.ico";
+	private const string TrayActiveIconResource = "app-ico-active.ico";
 
-	private static WindowIcon? _idleIcon;
-	private static WindowIcon? _activeIcon;
+	private static WindowIcon? _appIcon;
+	private static WindowIcon? _trayInactiveIcon;
+	private static WindowIcon? _trayActiveIcon;
 
-	public static WindowIcon? GetIcon(bool isActive)
+	public static WindowIcon? GetIcon()
 	{
-		if (isActive && _activeIcon != null)
+		return _appIcon ??= LoadIcon(AppIconResource);
+	}
+
+	public static WindowIcon? GetTrayIcon(bool isActive)
+	{
+		if (isActive)
 		{
-			return _activeIcon;
+			return _trayActiveIcon ??= LoadIcon(TrayActiveIconResource);
 		}
 
-		if (!isActive && _idleIcon != null)
-		{
-			return _idleIcon;
-		}
+		return _trayInactiveIcon ??= LoadIcon(TrayInactiveIconResource);
+	}
 
-		var resourceName = isActive ? ActiveIconResource : IdleIconResource;
-
+	private static WindowIcon? LoadIcon(string resourceName)
+	{
 		try
 		{
 			using var resourceStream = typeof(AppIconProvider).Assembly.GetManifestResourceStream(resourceName);
@@ -37,18 +42,7 @@ public static class AppIconProvider
 			resourceStream.CopyTo(memoryStream);
 			memoryStream.Position = 0;
 
-			var icon = new WindowIcon(memoryStream);
-
-			if (isActive)
-			{
-				_activeIcon = icon;
-			}
-			else
-			{
-				_idleIcon = icon;
-			}
-
-			return icon;
+			return new WindowIcon(memoryStream);
 		}
 		catch
 		{

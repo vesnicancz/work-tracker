@@ -12,7 +12,6 @@ public partial class MainWindow : Window
 {
 	private ITrayIconService? _trayIconService;
 	private ISettingsService? _settingsService;
-	private IWorklogStateService? _worklogStateService;
 
 	public MainWindow()
 	{
@@ -37,20 +36,18 @@ public partial class MainWindow : Window
 		}
 	}
 
-	public void Initialize(MainViewModel viewModel, ITrayIconService trayIconService, ISettingsService settingsService, IWorklogStateService worklogStateService)
+	public void Initialize(MainViewModel viewModel, ITrayIconService trayIconService, ISettingsService settingsService)
 	{
 		DataContext = viewModel;
 		_trayIconService = trayIconService;
 		_settingsService = settingsService;
-		_worklogStateService = worklogStateService;
 
 		// Swap loading indicator for main content
 		LoadingPanel.IsVisible = false;
 		MainContent.IsVisible = true;
 
-		// Set initial window icon based on current tracking state and subscribe to changes
-		_worklogStateService.IsTrackingChanged += OnIsTrackingChanged;
-		OnIsTrackingChanged(this, _worklogStateService.IsTracking);
+		// Set application window icon
+		Icon = AppIconProvider.GetIcon() ?? Icon;
 
 		_trayIconService.Initialize();
 
@@ -80,10 +77,6 @@ public partial class MainWindow : Window
 		}
 		else
 		{
-			if (_worklogStateService != null)
-			{
-				_worklogStateService.IsTrackingChanged -= OnIsTrackingChanged;
-			}
 			(DataContext as IDisposable)?.Dispose();
 			_trayIconService?.Dispose();
 		}
@@ -94,15 +87,6 @@ public partial class MainWindow : Window
 		if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
 		{
 			BeginMoveDrag(e);
-		}
-	}
-
-	private void OnIsTrackingChanged(object? sender, bool isTracking)
-	{
-		var icon = AppIconProvider.GetIcon(isTracking);
-		if (icon != null)
-		{
-			Icon = icon;
 		}
 	}
 

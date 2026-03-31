@@ -146,7 +146,7 @@ public partial class App : global::Avalonia.Application
 				}
 			}
 
-			mainWindow.Initialize(viewModel, trayIconService, settingsService, worklogStateService);
+			mainWindow.Initialize(viewModel, trayIconService, settingsService);
 
 			// Initialize global hotkey (Ctrl+Shift+W) for new work entry dialog
 			_hotkeyService = _host.Services.GetRequiredService<IHotkeyService>();
