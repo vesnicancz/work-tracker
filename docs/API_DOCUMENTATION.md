@@ -1084,7 +1084,7 @@ public class WorklogSubmissionResult
 
 ## 2.4 Overlap Resolution Models
 
-**Namespace:** `WorkTracker.Application.DTOs`
+**Namespace:** `WorkTracker.Application.Models`
 
 Models for computing and applying overlap resolution plans when creating or updating work entries.
 

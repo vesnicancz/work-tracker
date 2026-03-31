@@ -92,7 +92,7 @@ public sealed class WorkEntryRepository : IWorkEntryRepository
 	public async Task<IReadOnlyList<WorkEntry>> GetOverlappingEntriesAsync(int? excludeEntryId, DateTime startTime, DateTime? endTime, CancellationToken cancellationToken)
 	{
 		await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
-		return await BuildOverlapQuery(context.WorkEntries, excludeEntryId ?? 0, startTime, endTime)
+		return await BuildOverlapQuery(context.WorkEntries, excludeEntryId, startTime, endTime)
 			.OrderBy(e => e.StartTime)
 			.ToListAsync(cancellationToken);
 	}
@@ -101,13 +101,19 @@ public sealed class WorkEntryRepository : IWorkEntryRepository
 	/// Builds the overlap detection query. Two time ranges overlap if: start1 &lt; end2 AND end1 &gt; start2.
 	/// Null endTime is treated as ongoing (DateTime.MaxValue).
 	/// </summary>
-	private static IQueryable<WorkEntry> BuildOverlapQuery(IQueryable<WorkEntry> entries, int excludeId, DateTime startTime, DateTime? endTime)
+	private static IQueryable<WorkEntry> BuildOverlapQuery(IQueryable<WorkEntry> entries, int? excludeId, DateTime startTime, DateTime? endTime)
 	{
 		var effectiveEnd = endTime ?? DateTime.MaxValue;
-		return entries
+		var query = entries
 			.AsNoTracking()
-			.Where(e => e.Id != excludeId &&
-						e.StartTime < effectiveEnd &&
+			.Where(e => e.StartTime < effectiveEnd &&
 						(e.EndTime == null || e.EndTime > startTime));
+
+		if (excludeId.HasValue)
+		{
+			query = query.Where(e => e.Id != excludeId.Value);
+		}
+
+		return query;
 	}
 }
