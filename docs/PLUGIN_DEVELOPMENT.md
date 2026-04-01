@@ -464,7 +464,7 @@ public class PluginConfigurationField
 
 Password fields are automatically stored in the OS credential manager via `ISecureStorage`.
 
-`PluginBase` validates `IsRequired` and `ValidationPattern` automatically before calling `OnInitializeAsync`. Override `OnValidateConfigurationAsync` only for custom validation logic.
+`PluginBase` always validates `IsRequired` before calling `OnInitializeAsync`. It applies `ValidationPattern` only to required fields; optional fields are not automatically regex-validated. Override `OnValidateConfigurationAsync` to validate optional fields or add any custom validation logic.
 
 See `plugins/WorkTracker.Plugin.Atlassian/TempoWorklogPlugin.cs` for a real example with URL validation, password fields, and optional auto-detected fields.
 
