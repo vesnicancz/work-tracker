@@ -1461,4 +1461,4 @@ public class WorkflowExample
 ---
 
 **Last Updated:** April 2026
-**Version:** 1.2
+**Version:** 1.3
