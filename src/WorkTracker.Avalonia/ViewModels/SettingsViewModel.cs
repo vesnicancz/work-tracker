@@ -164,7 +164,7 @@ public class SettingsViewModel : ViewModelBase
 		set => SetProperty(ref _checkForUpdates, value);
 	}
 
-	public string AppVersionDisplay => _localization.GetFormattedString("VersionFormat", Application.AppInfo.Version);
+	public string AppVersionDisplay => _localization.GetFormattedString("VersionFormat", Application.AppInfo.DisplayVersion);
 	public string RuntimeVersion => $".NET {Environment.Version}";
 	public string PlatformInfo => System.Runtime.InteropServices.RuntimeInformation.OSDescription;
 

@@ -8,4 +8,7 @@ public static class AppInfo
 		Assembly.GetEntryAssembly()?
 			.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
 			.InformationalVersion ?? "dev";
+
+	public static string DisplayVersion { get; } =
+		Version.Split('+')[0];
 }

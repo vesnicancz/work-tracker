@@ -155,7 +155,7 @@ public class SettingsViewModel : ViewModelBase
 		set => SetProperty(ref _checkForUpdates, value);
 	}
 
-	public string AppVersion => Application.AppInfo.Version;
+	public string AppVersion => Application.AppInfo.DisplayVersion;
 	public string RuntimeVersion => $".NET {Environment.Version}";
 	public string PlatformInfo => System.Runtime.InteropServices.RuntimeInformation.OSDescription;
 

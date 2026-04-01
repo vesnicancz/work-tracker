@@ -97,7 +97,8 @@ public sealed class UpdateCheckService : IUpdateCheckService
 			_logger.LogInformation("New version available: {Remote} (current: {Local})", remoteVersion, localVersion);
 
 			var title = _localization["UpdateAvailableTitle"];
-			var message = _localization.GetFormattedString("UpdateAvailableMessage", tagName, _currentVersion);
+			var displayTag = tagName.TrimStart('v', 'V');
+			var message = _localization.GetFormattedString("UpdateAvailableMessage", displayTag, localVersion.ToString());
 			await _systemNotification.ShowNotificationAsync(title, message, htmlUrl);
 		}
 		catch (OperationCanceledException)
