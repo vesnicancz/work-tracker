@@ -185,6 +185,33 @@ public class WorkEntryEditOrchestratorTests
 	}
 
 	[Fact]
+	public async Task SaveNewAsync_OverlapOnlyClosesActiveEntry_SkipsDialog_ReturnsTrue()
+	{
+		var plan = new OverlapResolutionPlan
+		{
+			Adjustments = [new OverlapAdjustment(
+				WorkEntryId: 2, TicketId: "PROJ-2", Description: null,
+				Kind: OverlapAdjustmentKind.TrimEnd,
+				OriginalStart: new DateTime(2025, 1, 1, 9, 0, 0), OriginalEnd: null,
+				NewStart: null, NewEnd: new DateTime(2025, 1, 1, 10, 0, 0))]
+		};
+		_mockStateService
+			.Setup(s => s.ComputeOverlapResolutionAsync(null, It.IsAny<DateTime>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(plan);
+
+		var entry = WorkEntry.Reconstitute(1, "PROJ-1", DateTime.Now, null, null, true, DateTime.MinValue);
+		_mockStateService
+			.Setup(s => s.CreateWorkEntryWithResolutionAsync(It.IsAny<string?>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<DateTime?>(), It.IsAny<OverlapResolutionPlan>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(Result.Success(entry));
+
+		var result = await _orchestrator.SaveNewAsync("PROJ-1", DateTime.Now, null, "desc", TestContext.Current.CancellationToken);
+
+		result.IsSuccess.Should().BeTrue();
+		result.Value.Should().BeTrue();
+		_mockDialogService.Verify(d => d.ShowConfirmationAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+	}
+
+	[Fact]
 	public async Task SaveExistingAsync_NoOverlaps_Success_ReturnsTrue()
 	{
 		_mockStateService
