@@ -460,7 +460,7 @@ public class PluginConfigurationField
 
 ## 5. Configuration
 
-`GetConfigurationFields()` returns a list of `PluginConfigurationField` describing what the user fills in the Settings UI. Available field types: `Text`, `Password`, `Url`, `Email`, `Number`, `Boolean`, `MultilineText`.
+`GetConfigurationFields()` returns a list of `PluginConfigurationField` describing what the user fills in the Settings UI. Available field types: `Text`, `Password`, `Url`, `Email`, `Number`, `MultilineText`, `Checkbox`, `Dropdown`.
 
 Password fields are automatically stored in the OS credential manager via `ISecureStorage`.
 

@@ -285,10 +285,16 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 
 					var startDateStr = item.TryGetProperty("startDate", out var sdProp) ? sdProp.GetString() : null;
 					var startTimeStr = item.TryGetProperty("startTime", out var stProp) ? stProp.GetString() : null;
+					if (string.IsNullOrEmpty(startDateStr) || string.IsNullOrEmpty(startTimeStr))
+					{
+						continue;
+					}
+
 					var timeSpentSeconds = item.TryGetProperty("timeSpentSeconds", out var tsProp) ? tsProp.GetInt32() : 0;
 					var description = item.TryGetProperty("description", out var descProp) ? descProp.GetString() : null;
 
-					if (DateTime.TryParse($"{startDateStr} {startTimeStr}",
+					if (DateTime.TryParseExact($"{startDateStr} {startTimeStr}",
+						"yyyy-MM-dd HH:mm:ss",
 						System.Globalization.CultureInfo.InvariantCulture,
 						System.Globalization.DateTimeStyles.None, out var parsedStartTime))
 					{
