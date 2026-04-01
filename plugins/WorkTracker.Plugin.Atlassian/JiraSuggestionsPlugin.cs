@@ -23,11 +23,13 @@ public sealed class JiraSuggestionsPlugin : WorkSuggestionPluginBase, IDisposabl
 	private int _maxResults;
 	private bool _disposed;
 
+	internal HttpMessageHandler? JiraHttpHandler { get; set; }
+
 	public override PluginMetadata Metadata => new()
 	{
 		Id = "jira.suggestions",
 		Name = "Jira Suggestions",
-		Version = new Version(1, 0, 0),
+		Version = new Version(1, 1, 0),
 		Author = "WorkTracker Team",
 		Description = "Suggests work items based on Jira issues matching a JQL filter",
 		Website = "https://www.atlassian.com/software/jira",
@@ -83,12 +85,16 @@ public sealed class JiraSuggestionsPlugin : WorkSuggestionPluginBase, IDisposabl
 		_searchJqlFilter = string.IsNullOrWhiteSpace(searchJqlConfig) ? null : searchJqlConfig;
 		_maxResults = int.TryParse(GetConfigValue(ConfigKeys.MaxResults), out var max) ? max : 20;
 
-		_jiraClient?.Dispose();
-		_disposed = false;
-		_jiraClient = new JiraClient(
+		var newClient = new JiraClient(
 			GetRequiredConfigValue(JiraConfigFields.JiraBaseUrl),
 			GetRequiredConfigValue(JiraConfigFields.JiraEmail),
-			GetRequiredConfigValue(JiraConfigFields.JiraApiToken));
+			GetRequiredConfigValue(JiraConfigFields.JiraApiToken),
+			JiraHttpHandler);
+
+		var oldClient = _jiraClient;
+		_jiraClient = newClient;
+		_disposed = false;
+		oldClient?.Dispose();
 
 		return Task.FromResult(true);
 	}
@@ -224,6 +230,7 @@ public sealed class JiraSuggestionsPlugin : WorkSuggestionPluginBase, IDisposabl
 		if (!_disposed)
 		{
 			_jiraClient?.Dispose();
+			_jiraClient = null;
 			_disposed = true;
 		}
 	}

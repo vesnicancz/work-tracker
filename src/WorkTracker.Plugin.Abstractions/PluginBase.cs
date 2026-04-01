@@ -19,6 +19,7 @@ public abstract class PluginBase : IPlugin
 
 	public virtual async Task<bool> InitializeAsync(IDictionary<string, string>? configuration = null, CancellationToken cancellationToken = default)
 	{
+		var previousConfiguration = Configuration;
 		Configuration = configuration ?? new Dictionary<string, string>();
 
 		var validationResult = await ValidateConfigurationAsync(Configuration, cancellationToken);
@@ -29,19 +30,31 @@ public abstract class PluginBase : IPlugin
 				Metadata.Name,
 				string.Join(", ", validationResult.Errors)
 			);
+			if (IsInitialized)
+			{
+				Configuration = previousConfiguration;
+			}
 			return false;
 		}
 
 		var result = await OnInitializeAsync(Configuration, cancellationToken);
-		IsInitialized = result;
 
 		if (result)
 		{
+			IsInitialized = true;
 			Logger?.LogInformation("Plugin {Name} initialized successfully", Metadata.Name);
 		}
 		else
 		{
-			Logger?.LogError("Plugin {Name} initialization failed", Metadata.Name);
+			if (IsInitialized)
+			{
+				Configuration = previousConfiguration;
+				Logger?.LogWarning("Plugin {Name} re-initialization failed, keeping previous state", Metadata.Name);
+			}
+			else
+			{
+				Logger?.LogError("Plugin {Name} initialization failed", Metadata.Name);
+			}
 		}
 
 		return result;

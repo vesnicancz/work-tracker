@@ -2,8 +2,8 @@
 
 **Complete guide to creating WorkTracker plugins**
 
-Version: 1.2
-Last Updated: March 2026
+Version: 1.3
+Last Updated: April 2026
 
 ---
 
@@ -13,13 +13,10 @@ Last Updated: March 2026
 2. [Plugin Architecture](#2-plugin-architecture)
 3. [Quick Start](#3-quick-start)
 4. [Plugin Abstractions](#4-plugin-abstractions)
-5. [Creating a Worklog Upload Plugin](#5-creating-a-worklog-upload-plugin)
-6. [Creating a Work Suggestion Plugin](#6-creating-a-work-suggestion-plugin)
-7. [Plugin Configuration](#7-plugin-configuration)
-8. [Testing Plugins](#8-testing-plugins)
-9. [Deployment](#9-deployment)
-10. [Best Practices](#10-best-practices)
-11. [Example Plugins](#11-example-plugins)
+5. [Configuration](#5-configuration)
+6. [Testing](#6-testing)
+7. [Deployment](#7-deployment)
+8. [Reference Plugins](#8-reference-plugins)
 
 ---
 
@@ -160,109 +157,23 @@ dotnet add package System.Net.Http
 
 ### 3.2 Implement Plugin
 
-```csharp
-using WorkTracker.Plugin.Abstractions;
+Choose a base class based on your plugin type:
 
-namespace WorkTracker.Plugin.MySystem;
+- **`WorklogUploadPluginBase`** for worklog upload — see `plugins/WorkTracker.Plugin.Atlassian/TempoWorklogPlugin.cs`
+- **`WorkSuggestionPluginBase`** for work suggestions — see `plugins/WorkTracker.Plugin.Atlassian/JiraSuggestionsPlugin.cs`
+- **`PluginBase`** with `IStatusIndicatorPlugin` for status indicators — see `plugins/WorkTracker.Plugin.Luxafor/`
 
-public class MySystemPlugin : WorklogUploadPluginBase
-{
-    public override PluginMetadata Metadata => new()
-    {
-        Id = "mysystem",
-        Name = "My System Integration",
-        Version = "1.0.0",
-        Author = "Your Name",
-        Description = "Uploads worklogs to My System",
-        Tags = new[] { "time-tracking", "integration" }
-    };
-
-    protected override List<PluginConfigurationField> GetConfigurationFieldsInternal()
-    {
-        return new List<PluginConfigurationField>
-        {
-            new()
-            {
-                Key = "ApiUrl",
-                DisplayName = "API URL",
-                Description = "Base URL for My System API",
-                Type = PluginConfigurationFieldType.Url,
-                IsRequired = true,
-                ValidationRegex = @"^https?://.*"
-            },
-            new()
-            {
-                Key = "ApiKey",
-                DisplayName = "API Key",
-                Description = "Your My System API key",
-                Type = PluginConfigurationFieldType.Password,
-                IsRequired = true
-            }
-        };
-    }
-
-    protected override async Task<PluginResult<bool>> UploadWorklogInternalAsync(
-        PluginWorklogEntry worklog)
-    {
-        try
-        {
-            var apiUrl = GetRequiredConfigValue("ApiUrl");
-            var apiKey = GetRequiredConfigValue("ApiKey");
-
-            // Your upload logic here
-            using var client = new HttpClient();
-            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
-
-            var response = await client.PostAsJsonAsync(
-                $"{apiUrl}/worklogs",
-                new
-                {
-                    issueKey = worklog.IssueKey,
-                    date = worklog.Date,
-                    timeSpentSeconds = (int)worklog.TimeSpent.TotalSeconds,
-                    description = worklog.Description
-                });
-
-            if (response.IsSuccessStatusCode)
-            {
-                return PluginResult<bool>.Success(true);
-            }
-
-            return PluginResult<bool>.Failure(
-                $"API returned {response.StatusCode}: {await response.Content.ReadAsStringAsync()}");
-        }
-        catch (Exception ex)
-        {
-            Logger?.LogError(ex, "Failed to upload worklog");
-            return PluginResult<bool>.Failure($"Upload failed: {ex.Message}");
-        }
-    }
-}
-```
+Every plugin must provide:
+1. `Metadata` — plugin ID, name, version, author
+2. `GetConfigurationFields()` — configuration fields the user fills in Settings UI
+3. `OnInitializeAsync()` — setup logic (create HTTP clients, validate credentials)
+4. The abstract methods from the chosen base class (e.g. `UploadWorklogAsync`, `GetSuggestionsAsync`)
 
 ### 3.3 Build and Deploy
 
 ```bash
-# Build plugin
 dotnet build -c Release
-
-# Copy to plugin directory
-copy bin/Release/net10.0/WorkTracker.Plugin.MySystem.dll %AppData%\WorkTracker\Plugins\
-```
-
-### 3.4 Configure Plugin
-
-Edit `appsettings.json`:
-
-```json
-{
-  "Plugins": {
-    "mysystem": {
-      "ApiUrl": "https://api.mysystem.com",
-      "ApiKey": "your-api-key-here"
-    }
-  }
-}
+# Copy DLL to plugin directory (see Section 7 for details)
 ```
 
 ---
@@ -444,33 +355,37 @@ public abstract class WorkSuggestionPluginBase : PluginBase, IWorkSuggestionPlug
 }
 ```
 
-Minimalni implementace vyzaduje pouze `Metadata`, `GetConfigurationFieldsInternal()`, `TestConnectionAsync()` a `GetSuggestionsAsync()`. Search je opt-in.
+Minimalni implementace vyzaduje pouze `Metadata`, `GetConfigurationFields()`, `TestConnectionAsync()` a `GetSuggestionsAsync()`. Search je opt-in.
 
 ### 4.8 WorklogUploadPluginBase
 
 **Abstract base class with helper methods:**
 
 ```csharp
-public abstract class WorklogUploadPluginBase : IWorklogUploadPlugin
+public abstract class WorklogUploadPluginBase : PluginBase, IWorklogUploadPlugin
 {
-    protected ILogger? Logger { get; private set; }
-    protected Dictionary<string, string> Configuration { get; private set; }
+    // Inherited from PluginBase:
+    //   protected ILogger? Logger { get; }
+    //   protected IDictionary<string, string> Configuration { get; }
+    //   protected string? GetConfigValue(string key);
+    //   protected string GetRequiredConfigValue(string key);
+    //   protected void EnsureInitialized();
 
     // Abstract members to implement
     public abstract PluginMetadata Metadata { get; }
-    protected abstract List<PluginConfigurationField> GetConfigurationFieldsInternal();
-    protected abstract Task<PluginResult<bool>> UploadWorklogInternalAsync(
-        PluginWorklogEntry worklog);
+    public abstract IReadOnlyList<PluginConfigurationField> GetConfigurationFields();
+    public abstract Task<PluginResult<bool>> UploadWorklogAsync(
+        PluginWorklogEntry worklog, CancellationToken cancellationToken);
+    public abstract Task<PluginResult<bool>> TestConnectionAsync(
+        CancellationToken cancellationToken);
+    public abstract Task<PluginResult<IEnumerable<PluginWorklogEntry>>> GetWorklogsAsync(
+        DateTime startDate, DateTime endDate, CancellationToken cancellationToken);
+    public abstract Task<PluginResult<bool>> WorklogExistsAsync(
+        PluginWorklogEntry worklog, CancellationToken cancellationToken);
 
-    // Helper methods provided
-    protected string? GetConfigValue(string key);
-    protected string GetRequiredConfigValue(string key);
-    protected T GetConfigValue<T>(string key, T defaultValue);
-
-    // Default implementations (can override)
-    public virtual Task<PluginResult<bool>> TestConnectionAsync();
-    public virtual Task<PluginResult<List<WorklogSubmissionResult>>> UploadWorklogsAsync(
-        List<PluginWorklogEntry> worklogs);
+    // Default batch upload (calls UploadWorklogAsync for each entry)
+    public virtual Task<PluginResult<WorklogSubmissionResult>> UploadWorklogsAsync(
+        IEnumerable<PluginWorklogEntry> worklogs, CancellationToken cancellationToken);
 }
 ```
 
@@ -481,12 +396,15 @@ public abstract class WorklogUploadPluginBase : IWorklogUploadPlugin
 ```csharp
 public class PluginMetadata
 {
-    public string Id { get; set; }              // Unique identifier
-    public string Name { get; set; }            // Display name
-    public string Version { get; set; }         // Semantic version
-    public string Author { get; set; }          // Author name
-    public string Description { get; set; }     // Short description
-    public string[] Tags { get; set; }          // Categorization tags
+    public required string Id { get; init; }              // Unique identifier
+    public required string Name { get; init; }            // Display name
+    public required Version Version { get; init; }        // System.Version
+    public required string Author { get; init; }          // Author name
+    public string? Description { get; init; }             // Short description
+    public string? Website { get; init; }                 // Website or repository URL
+    public Version? MinimumAppVersion { get; init; }      // Minimum WorkTracker version
+    public string? IconName { get; init; }                // Icon name for UI (MaterialIcon Kind)
+    public IReadOnlyList<string> Tags { get; init; } = [];// Categorization tags
 }
 ```
 
@@ -495,11 +413,14 @@ public class PluginMetadata
 ```csharp
 public class PluginWorklogEntry
 {
-    public string IssueKey { get; set; }        // Ticket/issue ID
-    public DateTime Date { get; set; }          // Work date
-    public TimeSpan TimeSpent { get; set; }     // Duration
+    public string? TicketId { get; set; }       // Ticket/issue ID (e.g., "PROJ-123")
+    public string? Description { get; set; }    // Work description
     public DateTime StartTime { get; set; }     // Start timestamp
-    public string? Description { get; set; }    // Optional description
+    public DateTime EndTime { get; set; }       // End timestamp
+    public int DurationMinutes { get; set; }    // Duration in minutes
+    public string? Category { get; set; }       // Category/type of work (optional)
+    public string? ProjectName { get; set; }    // Project name (optional)
+    public Dictionary<string, string>? Metadata { get; set; } // Additional metadata
 }
 ```
 
@@ -522,1093 +443,114 @@ public class PluginResult<T>
 ```csharp
 public class PluginConfigurationField
 {
-    public string Key { get; set; }                      // Config key
-    public string DisplayName { get; set; }              // UI label
-    public string? Description { get; set; }             // Tooltip
-    public PluginConfigurationFieldType Type { get; set; } // Input type
-    public bool IsRequired { get; set; }                 // Required?
-    public string? ValidationRegex { get; set; }         // Validation
-    public string? DefaultValue { get; set; }            // Default
+    public required string Key { get; init; }                      // Config key
+    public required string Label { get; init; }                    // UI label
+    public string? Description { get; init; }                      // Tooltip
+    public PluginConfigurationFieldType Type { get; init; }        // Input type
+    public bool IsRequired { get; init; }                          // Required?
+    public string? DefaultValue { get; init; }                     // Default
+    public string? Placeholder { get; init; }                      // Placeholder text
+    public string? ValidationPattern { get; init; }                // Validation regex
+    public string? ValidationMessage { get; init; }                // Validation error message
 }
 ```
 
 ---
 
-## 5. Creating a Worklog Upload Plugin
 
-### 5.1 Minimal Implementation
+## 5. Configuration
 
-```csharp
-using WorkTracker.Plugin.Abstractions;
+`GetConfigurationFields()` returns a list of `PluginConfigurationField` describing what the user fills in the Settings UI. Available field types: `Text`, `Password`, `Url`, `Email`, `Number`, `Boolean`, `MultilineText`.
 
-public class MinimalPlugin : WorklogUploadPluginBase
-{
-    // 1. Define metadata
-    public override PluginMetadata Metadata => new()
-    {
-        Id = "minimal",
-        Name = "Minimal Plugin",
-        Version = "1.0.0",
-        Author = "Me"
-    };
+Password fields are automatically stored in the OS credential manager via `ISecureStorage`.
 
-    // 2. Define config fields
-    protected override List<PluginConfigurationField> GetConfigurationFieldsInternal()
-    {
-        return new List<PluginConfigurationField>
-        {
-            new()
-            {
-                Key = "ApiUrl",
-                DisplayName = "API URL",
-                Type = PluginConfigurationFieldType.Url,
-                IsRequired = true
-            }
-        };
-    }
+`PluginBase` validates `IsRequired` and `ValidationPattern` automatically before calling `OnInitializeAsync`. Override `OnValidateConfigurationAsync` only for custom validation logic.
 
-    // 3. Implement upload
-    protected override async Task<PluginResult<bool>> UploadWorklogInternalAsync(
-        PluginWorklogEntry worklog)
-    {
-        var apiUrl = GetRequiredConfigValue("ApiUrl");
+See `plugins/WorkTracker.Plugin.Atlassian/TempoWorklogPlugin.cs` for a real example with URL validation, password fields, and optional auto-detected fields.
 
-        // Your logic here
-        await Task.Delay(100); // Simulate API call
-
-        return PluginResult<bool>.Success(true);
-    }
-}
-```
-
-### 5.2 Advanced Implementation
-
-**Full-featured plugin with all bells and whistles:**
+### 5.1 Reading Configuration
 
 ```csharp
-using System.Net.Http.Json;
-using WorkTracker.Plugin.Abstractions;
-using Microsoft.Extensions.Logging;
-
-namespace WorkTracker.Plugin.Advanced;
-
-public class AdvancedPlugin : WorklogUploadPluginBase
-{
-    private HttpClient? _httpClient;
-    private string? _accountId;
-
-    public override PluginMetadata Metadata => new()
-    {
-        Id = "advanced",
-        Name = "Advanced Integration",
-        Version = "1.0.0",
-        Author = "Your Company",
-        Description = "Full-featured integration with external system",
-        Tags = new[] { "time-tracking", "advanced" }
-    };
-
-    #region Configuration
-
-    protected override List<PluginConfigurationField> GetConfigurationFieldsInternal()
-    {
-        return new List<PluginConfigurationField>
-        {
-            new()
-            {
-                Key = "BaseUrl",
-                DisplayName = "Base URL",
-                Description = "API base URL (e.g., https://api.example.com)",
-                Type = PluginConfigurationFieldType.Url,
-                IsRequired = true,
-                ValidationRegex = @"^https://.*",
-                DefaultValue = "https://api.example.com"
-            },
-            new()
-            {
-                Key = "ApiToken",
-                DisplayName = "API Token",
-                Description = "Your API authentication token",
-                Type = PluginConfigurationFieldType.Password,
-                IsRequired = true
-            },
-            new()
-            {
-                Key = "AccountId",
-                DisplayName = "Account ID",
-                Description = "Your account ID (leave empty for auto-detection)",
-                Type = PluginConfigurationFieldType.Text,
-                IsRequired = false
-            },
-            new()
-            {
-                Key = "Timeout",
-                DisplayName = "Request Timeout (seconds)",
-                Type = PluginConfigurationFieldType.Number,
-                IsRequired = false,
-                DefaultValue = "30"
-            }
-        };
-    }
-
-    #endregion
-
-    #region Initialization
-
-    public override async Task<bool> InitializeAsync(
-        Dictionary<string, string>? configuration = null)
-    {
-        var result = await base.InitializeAsync(configuration);
-        if (!result)
-            return false;
-
-        try
-        {
-            // Initialize HTTP client
-            var baseUrl = GetRequiredConfigValue("BaseUrl");
-            var apiToken = GetRequiredConfigValue("ApiToken");
-            var timeout = GetConfigValue("Timeout", 30);
-
-            _httpClient = new HttpClient
-            {
-                BaseAddress = new Uri(baseUrl),
-                Timeout = TimeSpan.FromSeconds(timeout)
-            };
-
-            _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiToken}");
-            _httpClient.DefaultRequestHeaders.Add("User-Agent", "WorkTracker/1.0");
-
-            // Auto-detect account ID if not provided
-            _accountId = GetConfigValue("AccountId");
-            if (string.IsNullOrEmpty(_accountId))
-            {
-                _accountId = await DetectAccountIdAsync();
-                Logger?.LogInformation("Auto-detected account ID: {AccountId}", _accountId);
-            }
-
-            Logger?.LogInformation("Plugin initialized successfully");
-            return true;
-        }
-        catch (Exception ex)
-        {
-            Logger?.LogError(ex, "Failed to initialize plugin");
-            return false;
-        }
-    }
-
-    private async Task<string> DetectAccountIdAsync()
-    {
-        EnsureInitialized();
-
-        var response = await _httpClient!.GetAsync("/api/me");
-        response.EnsureSuccessStatusCode();
-
-        var user = await response.Content.ReadFromJsonAsync<UserInfo>();
-        return user?.AccountId ?? throw new InvalidOperationException("Could not detect account ID");
-    }
-
-    #endregion
-
-    #region Connection Testing
-
-    public override async Task<PluginResult<bool>> TestConnectionAsync()
-    {
-        try
-        {
-            EnsureInitialized();
-
-            var response = await _httpClient!.GetAsync("/api/health");
-
-            if (response.IsSuccessStatusCode)
-            {
-                Logger?.LogInformation("Connection test successful");
-                return PluginResult<bool>.Success(true);
-            }
-
-            return PluginResult<bool>.Failure(
-                $"Connection test failed: {response.StatusCode}");
-        }
-        catch (Exception ex)
-        {
-            Logger?.LogError(ex, "Connection test failed");
-            return PluginResult<bool>.Failure($"Connection error: {ex.Message}");
-        }
-    }
-
-    #endregion
-
-    #region Worklog Upload
-
-    protected override async Task<PluginResult<bool>> UploadWorklogInternalAsync(
-        PluginWorklogEntry worklog)
-    {
-        try
-        {
-            EnsureInitialized();
-
-            // Check if worklog already exists
-            var existsResult = await WorklogExistsAsync(worklog);
-            if (existsResult.IsSuccess && existsResult.Value)
-            {
-                Logger?.LogWarning("Worklog already exists for {IssueKey} on {Date}",
-                    worklog.IssueKey, worklog.Date);
-                return PluginResult<bool>.Failure("Worklog already exists");
-            }
-
-            // Build request
-            var request = new
-            {
-                issueKey = worklog.IssueKey,
-                accountId = _accountId,
-                date = worklog.Date.ToString("yyyy-MM-dd"),
-                timeSpentSeconds = (int)worklog.TimeSpent.TotalSeconds,
-                startTime = worklog.StartTime.ToString("HH:mm"),
-                description = worklog.Description
-            };
-
-            // Send request
-            var response = await _httpClient!.PostAsJsonAsync("/api/worklogs", request);
-
-            if (response.IsSuccessStatusCode)
-            {
-                Logger?.LogInformation("Worklog uploaded: {IssueKey} - {Duration}",
-                    worklog.IssueKey, worklog.TimeSpent);
-                return PluginResult<bool>.Success(true);
-            }
-
-            var error = await response.Content.ReadAsStringAsync();
-            Logger?.LogError("Upload failed: {StatusCode} - {Error}",
-                response.StatusCode, error);
-            return PluginResult<bool>.Failure($"Upload failed: {error}");
-        }
-        catch (HttpRequestException ex)
-        {
-            Logger?.LogError(ex, "HTTP request failed");
-            return PluginResult<bool>.Failure($"Network error: {ex.Message}");
-        }
-        catch (Exception ex)
-        {
-            Logger?.LogError(ex, "Upload failed");
-            return PluginResult<bool>.Failure($"Upload failed: {ex.Message}");
-        }
-    }
-
-    #endregion
-
-    #region Worklog Retrieval
-
-    public override async Task<PluginResult<List<PluginWorklogEntry>>> GetWorklogsAsync(
-        DateTime startDate,
-        DateTime endDate)
-    {
-        try
-        {
-            EnsureInitialized();
-
-            var url = $"/api/worklogs?accountId={_accountId}" +
-                      $"&from={startDate:yyyy-MM-dd}&to={endDate:yyyy-MM-dd}";
-
-            var response = await _httpClient!.GetAsync(url);
-            response.EnsureSuccessStatusCode();
-
-            var worklogs = await response.Content.ReadFromJsonAsync<List<ExternalWorklog>>();
-            if (worklogs == null)
-                return PluginResult<List<PluginWorklogEntry>>.Success(new List<PluginWorklogEntry>());
-
-            var result = worklogs.Select(w => new PluginWorklogEntry
-            {
-                IssueKey = w.IssueKey,
-                Date = DateTime.Parse(w.Date),
-                TimeSpent = TimeSpan.FromSeconds(w.TimeSpentSeconds),
-                StartTime = DateTime.Parse($"{w.Date}T{w.StartTime}"),
-                Description = w.Description
-            }).ToList();
-
-            return PluginResult<List<PluginWorklogEntry>>.Success(result);
-        }
-        catch (Exception ex)
-        {
-            Logger?.LogError(ex, "Failed to retrieve worklogs");
-            return PluginResult<List<PluginWorklogEntry>>.Failure(
-                $"Retrieval failed: {ex.Message}");
-        }
-    }
-
-    public override async Task<PluginResult<bool>> WorklogExistsAsync(
-        PluginWorklogEntry worklog)
-    {
-        try
-        {
-            var result = await GetWorklogsAsync(worklog.Date, worklog.Date);
-            if (!result.IsSuccess)
-                return PluginResult<bool>.Failure(result.Error!);
-
-            var exists = result.Value!.Any(w =>
-                w.IssueKey == worklog.IssueKey &&
-                w.Date.Date == worklog.Date.Date &&
-                Math.Abs((w.TimeSpent - worklog.TimeSpent).TotalMinutes) < 1);
-
-            return PluginResult<bool>.Success(exists);
-        }
-        catch (Exception ex)
-        {
-            Logger?.LogError(ex, "Failed to check worklog existence");
-            return PluginResult<bool>.Failure($"Check failed: {ex.Message}");
-        }
-    }
-
-    #endregion
-
-    #region Batch Upload with Retry
-
-    public override async Task<PluginResult<List<WorklogSubmissionResult>>> UploadWorklogsAsync(
-        List<PluginWorklogEntry> worklogs)
-    {
-        var results = new List<WorklogSubmissionResult>();
-
-        foreach (var worklog in worklogs)
-        {
-            var result = await UploadWorklogWithRetryAsync(worklog);
-
-            results.Add(new WorklogSubmissionResult
-            {
-                IssueKey = worklog.IssueKey,
-                Date = worklog.Date,
-                TimeSpent = worklog.TimeSpent,
-                Success = result.IsSuccess,
-                Error = result.Error
-            });
-
-            // Rate limiting - be nice to the API
-            if (result.IsSuccess)
-            {
-                await Task.Delay(200);
-            }
-        }
-
-        return PluginResult<List<WorklogSubmissionResult>>.Success(results);
-    }
-
-    private async Task<PluginResult<bool>> UploadWorklogWithRetryAsync(
-        PluginWorklogEntry worklog,
-        int maxRetries = 3)
-    {
-        for (int attempt = 1; attempt <= maxRetries; attempt++)
-        {
-            var result = await UploadWorklogAsync(worklog);
-
-            if (result.IsSuccess)
-                return result;
-
-            if (attempt < maxRetries)
-            {
-                var delay = TimeSpan.FromSeconds(Math.Pow(2, attempt)); // Exponential backoff
-                Logger?.LogWarning(
-                    "Upload failed, retrying in {Delay}s (attempt {Attempt}/{MaxRetries})",
-                    delay.TotalSeconds, attempt, maxRetries);
-                await Task.Delay(delay);
-            }
-        }
-
-        return PluginResult<bool>.Failure("Upload failed after retries");
-    }
-
-    #endregion
-
-    #region Cleanup
-
-    public override async Task ShutdownAsync()
-    {
-        await base.ShutdownAsync();
-
-        _httpClient?.Dispose();
-        _httpClient = null;
-
-        Logger?.LogInformation("Plugin shut down successfully");
-    }
-
-    #endregion
-
-    #region DTOs
-
-    private class UserInfo
-    {
-        public string? AccountId { get; set; }
-    }
-
-    private class ExternalWorklog
-    {
-        public string IssueKey { get; set; } = string.Empty;
-        public string Date { get; set; } = string.Empty;
-        public int TimeSpentSeconds { get; set; }
-        public string StartTime { get; set; } = string.Empty;
-        public string? Description { get; set; }
-    }
-
-    #endregion
-}
-```
-
----
-
-## 6. Creating a Work Suggestion Plugin
-
-### 6.1 Minimalni implementace
-
-```csharp
-using WorkTracker.Plugin.Abstractions;
-
-public class MyCalendarPlugin : WorkSuggestionPluginBase
-{
-    public override PluginMetadata Metadata => new()
-    {
-        Id = "my-calendar",
-        Name = "My Calendar Suggestions",
-        Version = new Version(1, 0, 0),
-        Author = "Your Name",
-        Description = "Navrhy pracovnich zaznamu z kalendare",
-        IconName = "CalendarMonth",
-        Tags = ["calendar", "suggestions"]
-    };
-
-    public override IReadOnlyList<PluginConfigurationField> GetConfigurationFields()
-    {
-        return
-        [
-            new()
-            {
-                Key = "ApiUrl",
-                Label = "API URL",
-                Type = PluginConfigurationFieldType.Url,
-                IsRequired = true
-            }
-        ];
-    }
-
-    public override async Task<PluginResult<bool>> TestConnectionAsync(
-        CancellationToken cancellationToken)
-    {
-        // Overeni pripojeni k API
-        return PluginResult<bool>.Success(true);
-    }
-
-    public override async Task<PluginResult<IReadOnlyList<WorkSuggestion>>> GetSuggestionsAsync(
-        DateTime date, CancellationToken cancellationToken)
-    {
-        var suggestions = new List<WorkSuggestion>
-        {
-            new()
-            {
-                Title = "Daily standup",
-                StartTime = date.Date.AddHours(9),
-                EndTime = date.Date.AddHours(9).AddMinutes(15),
-                Source = Metadata.Name,
-                SourceId = "event-123"
-            }
-        };
-
-        return PluginResult<IReadOnlyList<WorkSuggestion>>.Success(suggestions);
-    }
-}
-```
-
-### 6.2 Plugin s podporou vyhledavani (Search)
-
-Pokud plugin podporuje textove vyhledavani (napr. Jira issues), staci overridnout `SupportsSearch` a `SearchAsync`:
-
-```csharp
-public class MyIssueTrackerPlugin : WorkSuggestionPluginBase
-{
-    // ... Metadata, config, TestConnectionAsync, GetSuggestionsAsync ...
-
-    public override bool SupportsSearch => true;
-
-    public override async Task<PluginResult<IReadOnlyList<WorkSuggestion>>> SearchAsync(
-        string query, CancellationToken cancellationToken)
-    {
-        // Vyhledavani issues podle textu
-        var results = await SearchIssuesAsync(query, cancellationToken);
-
-        var suggestions = results.Select(issue => new WorkSuggestion
-        {
-            Title = issue.Summary,
-            TicketId = issue.Key,
-            Source = Metadata.Name,
-            SourceId = issue.Key,
-            SourceUrl = $"https://jira.example.com/browse/{issue.Key}"
-        }).ToList();
-
-        return PluginResult<IReadOnlyList<WorkSuggestion>>.Success(suggestions);
-    }
-}
-```
-
----
-
-## 7. Plugin Configuration
-
-### 7.1 Configuration Fields
-
-Define what configuration your plugin needs:
-
-```csharp
-protected override List<PluginConfigurationField> GetConfigurationFieldsInternal()
-{
-    return new List<PluginConfigurationField>
-    {
-        // Text field
-        new()
-        {
-            Key = "Username",
-            DisplayName = "Username",
-            Type = PluginConfigurationFieldType.Text,
-            IsRequired = true
-        },
-
-        // Password field (masked input)
-        new()
-        {
-            Key = "Password",
-            DisplayName = "Password",
-            Type = PluginConfigurationFieldType.Password,
-            IsRequired = true
-        },
-
-        // URL field (with validation)
-        new()
-        {
-            Key = "ApiEndpoint",
-            DisplayName = "API Endpoint",
-            Type = PluginConfigurationFieldType.Url,
-            ValidationRegex = @"^https?://.*",
-            IsRequired = true
-        },
-
-        // Number field
-        new()
-        {
-            Key = "Timeout",
-            DisplayName = "Timeout (seconds)",
-            Type = PluginConfigurationFieldType.Number,
-            DefaultValue = "30"
-        },
-
-        // Boolean field
-        new()
-        {
-            Key = "EnableRetry",
-            DisplayName = "Enable automatic retry",
-            Type = PluginConfigurationFieldType.Boolean,
-            DefaultValue = "true"
-        }
-    };
-}
-```
-
-### 7.2 Reading Configuration
-
-```csharp
-// In your plugin methods:
-
 // Get optional value (returns null if not found)
 var username = GetConfigValue("Username");
 
-// Get required value (throws if not found)
+// Get required value (throws InvalidOperationException if not found)
 var password = GetRequiredConfigValue("Password");
 
-// Get with default value
-var timeout = GetConfigValue("Timeout", 30);
-
-// Get typed value
-var enableRetry = GetConfigValue<bool>("EnableRetry", true);
+// Parse numeric values manually
+var timeout = int.TryParse(GetConfigValue("Timeout"), out var t) ? t : 30;
 ```
 
-### 7.3 User Configuration (appsettings.json)
+### 5.2 User Configuration (appsettings.json)
+
+Plugin configuration is primarily persisted in the user settings file. The `appsettings.json` `Plugins` section is only used as an initial fallback:
 
 ```json
 {
   "Plugins": {
     "your-plugin-id": {
       "ApiEndpoint": "https://api.example.com",
-      "Username": "john.doe",
-      "Password": "secret",
-      "Timeout": "60",
-      "EnableRetry": "true"
+      "Username": "john.doe"
     }
   }
 }
 ```
 
-### 7.4 Configuration Validation
+---
 
-```csharp
-public override async Task<PluginResult<bool>> ValidateConfigurationAsync(
-    Dictionary<string, string> configuration)
-{
-    // Check required fields
-    if (!configuration.ContainsKey("ApiToken"))
-        return PluginResult<bool>.Failure("ApiToken is required");
+## 6. Testing
 
-    // Validate format
-    if (configuration.TryGetValue("ApiEndpoint", out var endpoint))
-    {
-        if (!Uri.TryCreate(endpoint, UriKind.Absolute, out _))
-            return PluginResult<bool>.Failure("ApiEndpoint must be a valid URL");
-    }
+For HTTP-based plugins, inject a mock `HttpMessageHandler` via `internal` properties (pattern used by `TempoWorklogPlugin.TempoHttpHandler` / `JiraHttpHandler`). This avoids network calls while testing real plugin logic.
 
-    // Test connection
-    try
-    {
-        using var client = new HttpClient();
-        client.DefaultRequestHeaders.Add("Authorization",
-            $"Bearer {configuration["ApiToken"]}");
+For pure logic (JQL building, data mapping), expose methods as `internal static` and test them directly via `InternalsVisibleTo`.
 
-        var response = await client.GetAsync(endpoint);
-        if (!response.IsSuccessStatusCode)
-            return PluginResult<bool>.Failure("Connection test failed");
-    }
-    catch (Exception ex)
-    {
-        return PluginResult<bool>.Failure($"Connection error: {ex.Message}");
-    }
-
-    return PluginResult<bool>.Success(true);
-}
-```
+Reference test suites:
+- `tests/WorkTracker.Plugin.Atlassian.Tests/TempoWorklogPluginTests.cs` — HTTP mock handler pattern, retry testing, caching, worklog matching
+- `tests/WorkTracker.Plugin.Atlassian.Tests/JiraSuggestionsPluginTests.cs` — pure logic testing (JQL composition, escaping)
 
 ---
 
-## 8. Testing Plugins
+## 7. Deployment
 
-### 8.1 Unit Tests
-
-```csharp
-using Xunit;
-using FluentAssertions;
-
-namespace WorkTracker.Plugin.MySystem.Tests;
-
-public class MySystemPluginTests
-{
-    [Fact]
-    public void Metadata_ShouldHaveCorrectValues()
-    {
-        // Arrange & Act
-        var plugin = new MySystemPlugin();
-
-        // Assert
-        plugin.Metadata.Id.Should().Be("mysystem");
-        plugin.Metadata.Name.Should().NotBeNullOrEmpty();
-        plugin.Metadata.Version.Should().MatchRegex(@"^\d+\.\d+\.\d+$");
-    }
-
-    [Fact]
-    public void GetConfigurationFields_ShouldReturnRequiredFields()
-    {
-        // Arrange
-        var plugin = new MySystemPlugin();
-
-        // Act
-        var fields = plugin.GetConfigurationFields();
-
-        // Assert
-        fields.Should().Contain(f => f.Key == "ApiUrl");
-        fields.Should().Contain(f => f.Key == "ApiKey");
-        fields.Should().OnlyContain(f => f.IsRequired);
-    }
-
-    [Fact]
-    public async Task InitializeAsync_WithValidConfig_ReturnsTrue()
-    {
-        // Arrange
-        var plugin = new MySystemPlugin();
-        var config = new Dictionary<string, string>
-        {
-            ["ApiUrl"] = "https://api.test.com",
-            ["ApiKey"] = "test-key"
-        };
-
-        // Act
-        var result = await plugin.InitializeAsync(config);
-
-        // Assert
-        result.Should().BeTrue();
-    }
-
-    [Fact]
-    public async Task UploadWorklogAsync_WithValidData_ReturnsSuccess()
-    {
-        // Arrange
-        var plugin = new MySystemPlugin();
-        await plugin.InitializeAsync(new Dictionary<string, string>
-        {
-            ["ApiUrl"] = "https://api.test.com",
-            ["ApiKey"] = "test-key"
-        });
-
-        var worklog = new PluginWorklogEntry
-        {
-            IssueKey = "PROJ-123",
-            Date = DateTime.Today,
-            TimeSpent = TimeSpan.FromHours(2),
-            StartTime = DateTime.Today.AddHours(9)
-        };
-
-        // Act
-        var result = await plugin.UploadWorklogAsync(worklog);
-
-        // Assert
-        result.IsSuccess.Should().BeTrue();
-    }
-}
-```
-
-### 8.2 Testovani Work Suggestion pluginu
-
-Dobrym vzorem je testovani internich pure metod (napr. JQL builder) bez nutnosti mockovat HTTP volani. Viz `WorkTracker.Plugin.Atlassian.Tests`:
-
-```csharp
-using Xunit;
-using FluentAssertions;
-using WorkTracker.Plugin.Atlassian;
-
-public class JiraSuggestionsPluginTests
-{
-    private const string DefaultFilter = "assignee = currentUser() AND status != Done ORDER BY updated DESC";
-
-    [Fact]
-    public void BuildSearchJql_CombinesBaseFilterWithTextSearch()
-    {
-        var jql = JiraSuggestionsPlugin.BuildSearchJql("fix", DefaultFilter);
-
-        jql.Should().Contain("(assignee = currentUser() AND status != Done)");
-        jql.Should().Contain("key ~ \"fix*\"");
-    }
-
-    [Fact]
-    public void BuildSearchJql_EscapesQuotesInQuery()
-    {
-        var jql = JiraSuggestionsPlugin.BuildSearchJql("test\"value", DefaultFilter);
-
-        jql.Should().Contain("test\\\"value*\"");
-    }
-
-    [Fact]
-    public void BuildSearchJql_StripsAsterisksFromQuery()
-    {
-        var jql = JiraSuggestionsPlugin.BuildSearchJql("PROJ*-123", DefaultFilter);
-
-        jql.Should().Contain("PROJ-123*\"");
-    }
-}
-```
-
-Metoda `BuildSearchJql` je `internal static`, testovatelna pres `InternalsVisibleTo`. Tento pattern umoznuje pokryt logiku kompozice JQL dotazu bez zavislosti na siti.
-
-### 8.3 Integration Tests
-
-```csharp
-public class MySystemPluginIntegrationTests : IAsyncLifetime
-{
-    private MySystemPlugin? _plugin;
-    private TestServer? _testServer;
-
-    public async Task InitializeAsync()
-    {
-        // Setup test HTTP server
-        _testServer = new TestServer();
-        await _testServer.StartAsync();
-
-        // Initialize plugin with test server
-        _plugin = new MySystemPlugin();
-        await _plugin.InitializeAsync(new Dictionary<string, string>
-        {
-            ["ApiUrl"] = _testServer.Url,
-            ["ApiKey"] = "test-key"
-        });
-    }
-
-    [Fact]
-    public async Task UploadWorklog_RealAPI_Success()
-    {
-        // Arrange
-        var worklog = new PluginWorklogEntry
-        {
-            IssueKey = "TEST-123",
-            Date = DateTime.Today,
-            TimeSpent = TimeSpan.FromHours(1),
-            StartTime = DateTime.Today.AddHours(9)
-        };
-
-        // Act
-        var result = await _plugin!.UploadWorklogAsync(worklog);
-
-        // Assert
-        result.IsSuccess.Should().BeTrue();
-
-        // Verify API was called
-        _testServer!.Requests.Should().ContainSingle(r =>
-            r.Path == "/api/worklogs" &&
-            r.Method == "POST");
-    }
-
-    public async Task DisposeAsync()
-    {
-        if (_plugin != null)
-            await _plugin.ShutdownAsync();
-
-        await _testServer!.DisposeAsync();
-    }
-}
-```
-
----
-
-## 9. Deployment
-
-### 9.1 Build Release
+### 7.1 Build
 
 ```bash
-# Build release version
 dotnet build -c Release
-
-# Output will be in:
-bin/Release/net10.0/WorkTracker.Plugin.MySystem.dll
+# Output: bin/Release/net10.0/WorkTracker.Plugin.MySystem.dll
 ```
 
-### 9.2 Installation
+### 7.2 Installation
 
-**Option 1: Manual Installation**
+Copy plugin DLL to one of the configured plugin directories (default: `<AppContext.BaseDirectory>/plugins/`). Restart WorkTracker.
 
-1. Copy plugin DLL to:
-   ```
-   %AppData%\WorkTracker\Plugins\WorkTracker.Plugin.MySystem.dll
-   ```
-
-2. Restart WorkTracker
-
-**Option 2: Installer Package**
-
-Create NuGet package:
-
-```xml
-<!-- MyPlugin.nuspec -->
-<package>
-  <metadata>
-    <id>WorkTracker.Plugin.MySystem</id>
-    <version>1.0.0</version>
-    <authors>Your Name</authors>
-    <description>My System integration for WorkTracker</description>
-    <dependencies>
-      <dependency id="WorkTracker.Plugin.Abstractions" version="1.0.0" />
-    </dependencies>
-  </metadata>
-  <files>
-    <file src="bin/Release/net10.0/*.dll" target="lib/net10.0" />
-  </files>
-</package>
-```
-
-```bash
-# Create package
-nuget pack MyPlugin.nuspec
-
-# Install
-nuget install WorkTracker.Plugin.MySystem -OutputDirectory %AppData%\WorkTracker\Plugins
-```
-
-### 9.3 Distribution
-
-**GitHub Releases:**
-1. Create release on GitHub
-2. Attach plugin DLL as asset
-3. Users download and copy to plugins folder
-
-**NuGet Gallery:**
-1. Publish to NuGet.org
-2. Users install via package manager
+Additional plugin directories can be configured via `Plugins:Directories` in `appsettings.json`.
 
 ---
 
-## 10. Best Practices
+## 8. Reference Plugins
 
-### 10.1 Error Handling
+All plugins in this repository are working examples. Use them as reference instead of synthetic code samples:
 
-```csharp
-// ✅ Good - Return PluginResult
-protected override async Task<PluginResult<bool>> UploadWorklogInternalAsync(
-    PluginWorklogEntry worklog)
-{
-    try
-    {
-        // Upload logic
-        return PluginResult<bool>.Success(true);
-    }
-    catch (HttpRequestException ex)
-    {
-        Logger?.LogError(ex, "Network error");
-        return PluginResult<bool>.Failure($"Network error: {ex.Message}");
-    }
-    catch (Exception ex)
-    {
-        Logger?.LogError(ex, "Unexpected error");
-        return PluginResult<bool>.Failure($"Error: {ex.Message}");
-    }
-}
+| Plugin | Type | Path | Key patterns |
+|--------|------|------|-------------|
+| **Tempo** | `IWorklogUploadPlugin` | `plugins/WorkTracker.Plugin.Atlassian/TempoWorklogPlugin.cs` | HTTP client lifecycle, retry with exponential backoff, issue ID caching, safe re-initialization, JSON response parsing |
+| **Jira Suggestions** | `IWorkSuggestionPlugin` | `plugins/WorkTracker.Plugin.Atlassian/JiraSuggestionsPlugin.cs` | `SupportsSearch`, JQL building, shared `JiraClient` |
+| **Office 365 Calendar** | `IWorkSuggestionPlugin` | `plugins/WorkTracker.Plugin.Office365Calendar/` | MSAL authentication, device code flow with `IProgress<string>`, Microsoft Graph API |
+| **Luxafor** | `IStatusIndicatorPlugin` | `plugins/WorkTracker.Plugin.Luxafor/` | HID device communication, `SetStateAsync` mapping |
+| **GoranG3** | `IWorklogUploadPlugin` | `plugins/WorkTracker.Plugin.GoranG3/` | Simple worklog upload |
 
-// ❌ Bad - Don't throw exceptions
-protected override async Task<PluginResult<bool>> UploadWorklogInternalAsync(
-    PluginWorklogEntry worklog)
-{
-    throw new Exception("This will crash the host app!");
-}
-```
-
-### 10.2 Logging
-
-```csharp
-// ✅ Good - Use structured logging
-Logger?.LogInformation(
-    "Uploading worklog for {IssueKey} on {Date} ({Duration})",
-    worklog.IssueKey,
-    worklog.Date,
-    worklog.TimeSpent);
-
-// ❌ Bad - String concatenation
-Logger?.LogInformation($"Uploading {worklog.IssueKey}");
-```
-
-### 10.3 Resource Management
-
-```csharp
-public class MyPlugin : WorklogUploadPluginBase
-{
-    private HttpClient? _httpClient;
-
-    public override async Task<bool> InitializeAsync(...)
-    {
-        _httpClient = new HttpClient();
-        return true;
-    }
-
-    public override async Task ShutdownAsync()
-    {
-        _httpClient?.Dispose();
-        _httpClient = null;
-
-        await base.ShutdownAsync();
-    }
-}
-```
-
-### 10.4 API Rate Limiting
-
-```csharp
-private readonly SemaphoreSlim _rateLimiter = new(5, 5); // 5 concurrent requests
-
-private async Task<T> ExecuteWithRateLimitAsync<T>(Func<Task<T>> action)
-{
-    await _rateLimiter.WaitAsync();
-    try
-    {
-        return await action();
-    }
-    finally
-    {
-        _rateLimiter.Release();
-        await Task.Delay(200); // 200ms between requests
-    }
-}
-```
-
-### 10.5 Security
-
-```csharp
-// ✅ Never log sensitive data
-Logger?.LogInformation("Connecting to {Url}", baseUrl);
-// NOT: Logger?.LogInformation("Using token {Token}", apiToken);
-
-// ✅ Validate input
-protected override async Task<PluginResult<bool>> UploadWorklogInternalAsync(
-    PluginWorklogEntry worklog)
-{
-    if (string.IsNullOrWhiteSpace(worklog.IssueKey))
-        return PluginResult<bool>.Failure("IssueKey is required");
-
-    if (worklog.TimeSpent <= TimeSpan.Zero)
-        return PluginResult<bool>.Failure("TimeSpent must be positive");
-
-    // ...
-}
-```
-
----
-
-## 11. Example Plugins
-
-### 11.1 Atlassian Plugin (Worklog Upload + Work Suggestions)
-
-Adresar `plugins/WorkTracker.Plugin.Atlassian/` obsahuje dva pluginy v jednom baliku:
-
-- **TempoWorklogPlugin** - Upload worklogs pres Tempo API (`IWorklogUploadPlugin`)
-- **JiraSuggestionsPlugin** - Navrhy pracovnich zaznamu z Jira issues (`IWorkSuggestionPlugin`, `SupportsSearch = true`)
-
-Oba sdileji `JiraClient` pro komunikaci s Jira REST API. Testy v `tests/WorkTracker.Plugin.Atlassian.Tests/`.
-
-### 11.2 Office 365 Calendar Plugin (Work Suggestions)
-
-See `plugins/WorkTracker.Plugin.Office365Calendar/` for a calendar-based suggestion plugin. Pouziva MSAL pro autentizaci vuci Microsoft Graph API a vraci udalosti z kalendare jako `WorkSuggestion` s `StartTime`/`EndTime`.
-
-### 11.3 Luxafor Plugin (Status Indicator)
-
-See `plugins/WorkTracker.Plugin.Luxafor/` for a complete status indicator plugin example. Uses the `Luxafor.HidSharp` library (`src/Luxafor.HidSharp/`) for HID device communication.
-
-### 11.4 GoranG3 Plugin (Worklog Upload)
-
-See `plugins/WorkTracker.Plugin.GoranG3/` for another worklog upload plugin example.
-
-### 11.5 Minimal Mock Plugin
-
-```csharp
-public class MockPlugin : WorklogUploadPluginBase
-{
-    public override PluginMetadata Metadata => new()
-    {
-        Id = "mock",
-        Name = "Mock Plugin",
-        Version = "1.0.0",
-        Author = "WorkTracker"
-    };
-
-    protected override List<PluginConfigurationField> GetConfigurationFieldsInternal()
-    {
-        return new List<PluginConfigurationField>
-        {
-            new() { Key = "Delay", DisplayName = "Simulated Delay (ms)", Type = PluginConfigurationFieldType.Number, DefaultValue = "100" }
-        };
-    }
-
-    protected override async Task<PluginResult<bool>> UploadWorklogInternalAsync(PluginWorklogEntry worklog)
-    {
-        var delay = GetConfigValue("Delay", 100);
-        await Task.Delay(delay);
-
-        Logger?.LogInformation("Mock upload: {IssueKey}", worklog.IssueKey);
-        return PluginResult<bool>.Success(true);
-    }
-}
-```
+Tests: `tests/WorkTracker.Plugin.Atlassian.Tests/`
 
 ---
 
 ## Resources
 
-- [WorkTracker Plugin Abstractions API](API_DOCUMENTATION.md)
+- [Plugin Abstractions API](API_DOCUMENTATION.md)
 - [Tempo API Documentation](https://tempo-io.github.io/tempo-api-docs/)
-- [HttpClient Best Practices](https://docs.microsoft.com/aspnet/core/fundamentals/http-requests)
 
 ---
 
 **Questions?** Open an issue on [GitHub](https://github.com/vesnicancz/work-tracker/issues)
 
-**Last Updated:** March 2026
-**Version:** 1.2
+**Last Updated:** April 2026
+**Version:** 1.3

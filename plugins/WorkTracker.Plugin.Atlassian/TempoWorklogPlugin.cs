@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -16,6 +17,16 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 	private static readonly TimeSpan CacheTtl = TimeSpan.FromHours(1);
 	private const int MaxRetries = 2;
 
+	private static readonly HashSet<HttpStatusCode> RetryableStatusCodes =
+	[
+		HttpStatusCode.RequestTimeout,       // 408
+		HttpStatusCode.TooManyRequests,       // 429
+		HttpStatusCode.InternalServerError,   // 500
+		HttpStatusCode.BadGateway,            // 502
+		HttpStatusCode.ServiceUnavailable,    // 503
+		HttpStatusCode.GatewayTimeout         // 504
+	];
+
 	private static class ConfigKeys
 	{
 		public const string TempoBaseUrl = "TempoBaseUrl";
@@ -28,13 +39,17 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 	private string? _jiraAccountId;
 	private bool _disposed;
 
+	internal HttpMessageHandler? TempoHttpHandler { get; set; }
+	internal HttpMessageHandler? JiraHttpHandler { get; set; }
+	internal Func<int, TimeSpan>? RetryDelayStrategy { get; set; }
+
 	private readonly ConcurrentDictionary<string, (int Id, DateTime CachedAt)> _issueIdCache = new();
 
 	public override PluginMetadata Metadata => new()
 	{
 		Id = "tempo.worklog",
 		Name = "Tempo Timesheets",
-		Version = new Version(1, 0, 0),
+		Version = new Version(1, 1, 0),
 		Author = "WorkTracker Team",
 		Description = "Upload worklogs to Tempo (Jira time tracking system)",
 		Website = "https://www.tempo.io/",
@@ -87,42 +102,59 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 
 		var tempoBaseUrl = GetRequiredConfigValue(ConfigKeys.TempoBaseUrl).TrimEnd('/') + "/";
 		var tempoApiToken = GetRequiredConfigValue(ConfigKeys.TempoApiToken);
-		_jiraAccountId = GetConfigValue(ConfigKeys.JiraAccountId);
+		var jiraAccountId = GetConfigValue(ConfigKeys.JiraAccountId);
 
-		// Dispose previous clients and reset disposed state for re-initialization
-		_tempoHttpClient?.Dispose();
-		_jiraClient?.Dispose();
-		_disposed = false;
-
-		// Initialize Tempo HTTP client
-		_tempoHttpClient = new HttpClient
-		{
-			BaseAddress = new Uri(tempoBaseUrl),
-			Timeout = HttpTimeout
-		};
-		_tempoHttpClient.DefaultRequestHeaders.Authorization =
-			new AuthenticationHeaderValue("Bearer", tempoApiToken);
-		_tempoHttpClient.DefaultRequestHeaders.Accept.Add(
-			new MediaTypeWithQualityHeaderValue("application/json"));
-
-		// Initialize shared Jira client
-		_jiraClient = new JiraClient(
+		// Create new clients before disposing old ones — if creation fails, the old state stays valid
+		var newTempoClient = CreateTempoHttpClient(tempoBaseUrl, tempoApiToken);
+		var newJiraClient = new JiraClient(
 			GetRequiredConfigValue(JiraConfigFields.JiraBaseUrl),
 			GetRequiredConfigValue(JiraConfigFields.JiraEmail),
-			GetRequiredConfigValue(JiraConfigFields.JiraApiToken));
+			GetRequiredConfigValue(JiraConfigFields.JiraApiToken),
+			JiraHttpHandler);
 
-		// Get account ID if not provided
-		if (string.IsNullOrWhiteSpace(_jiraAccountId))
+		// Validate account ID before committing to the new clients
+		if (string.IsNullOrWhiteSpace(jiraAccountId))
 		{
-			_jiraAccountId = await _jiraClient.GetCurrentUserAccountIdAsync(cancellationToken);
-			if (string.IsNullOrWhiteSpace(_jiraAccountId))
+			try
 			{
-				Logger?.LogError("Failed to retrieve Jira account ID");
+				jiraAccountId = await newJiraClient.GetCurrentUserAccountIdAsync(cancellationToken);
+			}
+			catch (Exception ex)
+			{
+				Logger?.LogError(ex, "Failed to retrieve Jira account ID");
+			}
+
+			if (string.IsNullOrWhiteSpace(jiraAccountId))
+			{
+				newTempoClient.Dispose();
+				newJiraClient.Dispose();
 				return false;
 			}
 		}
 
+		_jiraAccountId = jiraAccountId;
+
+		// Success — swap clients and dispose old ones
+		var oldTempoClient = _tempoHttpClient;
+		var oldJiraClient = _jiraClient;
+		_tempoHttpClient = newTempoClient;
+		_jiraClient = newJiraClient;
+		_disposed = false;
+		oldTempoClient?.Dispose();
+		oldJiraClient?.Dispose();
+
 		return true;
+	}
+
+	private HttpClient CreateTempoHttpClient(string baseUrl, string apiToken)
+	{
+		var client = TempoHttpHandler != null
+			? new HttpClient(TempoHttpHandler, disposeHandler: false) { BaseAddress = new Uri(baseUrl), Timeout = HttpTimeout }
+			: new HttpClient { BaseAddress = new Uri(baseUrl), Timeout = HttpTimeout };
+
+		client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiToken);
+		client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+		return client;
 	}
 
 	protected override Task OnShutdownAsync()
@@ -134,12 +166,9 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 
 	public override async Task<PluginResult<bool>> TestConnectionAsync(CancellationToken cancellationToken)
 	{
-		if (_jiraClient == null || _tempoHttpClient == null)
-		{
-			return PluginResult<bool>.Failure("Plugin is not properly initialized");
-		}
+		EnsureInitialized();
 
-		var (success, error) = await _jiraClient.TestConnectionAsync(cancellationToken);
+		var (success, error) = await _jiraClient!.TestConnectionAsync(cancellationToken);
 		return success
 			? PluginResult<bool>.Success(true)
 			: PluginResult<bool>.Failure(error!);
@@ -191,12 +220,12 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 				}
 
 				var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
-				var statusCode = (int)response.StatusCode;
 				lastError = $"Upload failed: {response.StatusCode} - {errorContent}";
 
-				if (attempt < MaxRetries && (statusCode >= 500 || statusCode == 429))
+				if (attempt < MaxRetries && RetryableStatusCodes.Contains(response.StatusCode))
 				{
-					var delay = TimeSpan.FromSeconds(Math.Pow(2, attempt + 1));
+					var delay = RetryDelayStrategy?.Invoke(attempt)
+						?? TimeSpan.FromSeconds(Math.Pow(2, attempt + 1));
 					Logger?.LogWarning("Tempo API returned {StatusCode}, retrying in {Delay}s (attempt {Attempt}/{MaxRetries})",
 						response.StatusCode, delay.TotalSeconds, attempt + 1, MaxRetries);
 					await Task.Delay(delay, cancellationToken);
@@ -224,7 +253,7 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 			var from = startDate.ToString("yyyy-MM-dd");
 			var to = endDate.ToString("yyyy-MM-dd");
 
-			var response = await _tempoHttpClient!.GetAsync($"worklogs?from={from}&to={to}", cancellationToken);
+			using var response = await _tempoHttpClient!.GetAsync($"worklogs?from={from}&to={to}", cancellationToken);
 
 			if (!response.IsSuccessStatusCode)
 			{
@@ -234,7 +263,7 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 			}
 
 			var content = await response.Content.ReadAsStringAsync(cancellationToken);
-			var jsonDoc = JsonDocument.Parse(content);
+			using var jsonDoc = JsonDocument.Parse(content);
 			var results = jsonDoc.RootElement.GetProperty("results");
 
 			var worklogs = new List<PluginWorklogEntry>();
@@ -262,14 +291,14 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 
 					if (DateTime.TryParse($"{startDateStr} {startTimeStr}",
 						System.Globalization.CultureInfo.InvariantCulture,
-						System.Globalization.DateTimeStyles.None, out var startTime))
+						System.Globalization.DateTimeStyles.None, out var parsedStartTime))
 					{
 						worklogs.Add(new PluginWorklogEntry
 						{
 							TicketId = ticketId,
 							Description = description,
-							StartTime = startTime,
-							EndTime = startTime.AddSeconds(timeSpentSeconds),
+							StartTime = parsedStartTime,
+							EndTime = parsedStartTime.AddSeconds(timeSpentSeconds),
 							DurationMinutes = timeSpentSeconds / 60
 						});
 					}
@@ -309,10 +338,14 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 
 	private async Task<int?> GetIssueIdFromKeyAsync(string issueKey, CancellationToken cancellationToken)
 	{
-		if (_issueIdCache.TryGetValue(issueKey, out var cached) &&
-			DateTime.UtcNow - cached.CachedAt < CacheTtl)
+		if (_issueIdCache.TryGetValue(issueKey, out var cached))
 		{
-			return cached.Id;
+			if (DateTime.UtcNow - cached.CachedAt < CacheTtl)
+			{
+				return cached.Id;
+			}
+
+			_issueIdCache.TryRemove(issueKey, out _);
 		}
 
 		try

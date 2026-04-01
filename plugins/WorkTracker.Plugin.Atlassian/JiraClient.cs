@@ -19,10 +19,17 @@ internal sealed class JiraClient : IDisposable
 	public string BaseUrl { get; }
 
 	public JiraClient(string baseUrl, string email, string apiToken)
+		: this(baseUrl, email, apiToken, handler: null)
+	{
+	}
+
+	internal JiraClient(string baseUrl, string email, string apiToken, HttpMessageHandler? handler)
 	{
 		BaseUrl = baseUrl.TrimEnd('/');
 
-		_httpClient = new HttpClient { Timeout = HttpTimeout };
+		_httpClient = handler != null
+			? new HttpClient(handler, disposeHandler: false) { Timeout = HttpTimeout }
+			: new HttpClient { Timeout = HttpTimeout };
 
 		var credentials = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{email}:{apiToken}"));
 		_httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", credentials);
