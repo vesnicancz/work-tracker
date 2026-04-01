@@ -230,7 +230,6 @@ public sealed class JiraSuggestionsPlugin : WorkSuggestionPluginBase, IDisposabl
 		if (!_disposed)
 		{
 			_jiraClient?.Dispose();
-			_jiraClient = null;
 			_disposed = true;
 		}
 	}

@@ -380,10 +380,7 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 		if (!_disposed)
 		{
 			_tempoHttpClient?.Dispose();
-			_tempoHttpClient = null;
 			_jiraClient?.Dispose();
-			_jiraClient = null;
-			_issueIdCache.Clear();
 			_disposed = true;
 		}
 	}

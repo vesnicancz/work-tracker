@@ -2,7 +2,7 @@
 
 **Complete API reference for WorkTracker**
 
-Version: 1.2
+Version: 1.3
 Last Updated: April 2026
 
 ---
