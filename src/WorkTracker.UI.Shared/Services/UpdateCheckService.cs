@@ -98,7 +98,7 @@ public sealed class UpdateCheckService : IUpdateCheckService
 
 			var title = _localization["UpdateAvailableTitle"];
 			var displayTag = tagName.TrimStart('v', 'V');
-			var message = _localization.GetFormattedString("UpdateAvailableMessage", displayTag, Application.AppInfo.DisplayVersion);
+			var message = _localization.GetFormattedString("UpdateAvailableMessage", displayTag, localVersion.ToString());
 			await _systemNotification.ShowNotificationAsync(title, message, htmlUrl);
 		}
 		catch (OperationCanceledException)
