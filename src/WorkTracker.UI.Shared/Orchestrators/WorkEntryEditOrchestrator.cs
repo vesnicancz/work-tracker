@@ -74,12 +74,15 @@ public class WorkEntryEditOrchestrator : IWorkEntryEditOrchestrator
 
 		if (plan.HasAdjustments)
 		{
-			var message = BuildOverlapMessage(plan);
-			var confirmed = await _dialogService.ShowConfirmationAsync(message, _localization["OverlapResolutionTitle"]);
-
-			if (!confirmed)
+			if (!plan.IsOnlyClosingActiveEntry)
 			{
-				return Result.Success(false);
+				var message = BuildOverlapMessage(plan);
+				var confirmed = await _dialogService.ShowConfirmationAsync(message, _localization["OverlapResolutionTitle"]);
+
+				if (!confirmed)
+				{
+					return Result.Success(false);
+				}
 			}
 
 			var result = await withResolution(plan, cancellationToken);
