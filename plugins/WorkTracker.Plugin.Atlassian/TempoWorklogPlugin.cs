@@ -98,8 +98,6 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 
 	protected override async Task<bool> OnInitializeAsync(IDictionary<string, string> configuration, CancellationToken cancellationToken)
 	{
-		_issueIdCache.Clear();
-
 		var tempoBaseUrl = GetRequiredConfigValue(ConfigKeys.TempoBaseUrl).TrimEnd('/') + "/";
 		var tempoApiToken = GetRequiredConfigValue(ConfigKeys.TempoApiToken);
 		var jiraAccountId = GetConfigValue(ConfigKeys.JiraAccountId);
@@ -134,7 +132,8 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 
 		_jiraAccountId = jiraAccountId;
 
-		// Success — swap clients and dispose old ones
+		// Success — swap clients, clear cache, and dispose old ones
+		_issueIdCache.Clear();
 		var oldTempoClient = _tempoHttpClient;
 		var oldJiraClient = _jiraClient;
 		_tempoHttpClient = newTempoClient;
