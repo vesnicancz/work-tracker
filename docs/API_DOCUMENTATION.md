@@ -2,8 +2,8 @@
 
 **Complete API reference for WorkTracker**
 
-Version: 1.2
-Last Updated: March 2026
+Version: 1.3
+Last Updated: April 2026
 
 ---
 
@@ -584,7 +584,7 @@ if (preview.IsSuccess)
 {
     foreach (var worklog in preview.Value)
     {
-        Console.WriteLine($"{worklog.IssueKey}: {worklog.TimeSpent}");
+        Console.WriteLine($"{worklog.TicketId}: {worklog.DurationMinutes}m");
     }
 
     // If looks good, submit
@@ -1001,12 +1001,15 @@ Abstract base class for status indicator plugins. Provides the same configuratio
 ```csharp
 public class PluginMetadata
 {
-    public string Id { get; set; }              // Unique identifier
-    public string Name { get; set; }            // Display name
-    public string Version { get; set; }         // Semantic version (1.0.0)
-    public string Author { get; set; }          // Author name
-    public string Description { get; set; }     // Short description
-    public string[] Tags { get; set; }          // Tags for categorization
+    public required string Id { get; init; }              // Unique identifier
+    public required string Name { get; init; }            // Display name
+    public required Version Version { get; init; }        // System.Version
+    public required string Author { get; init; }          // Author name
+    public string? Description { get; init; }             // Short description
+    public string? Website { get; init; }                 // Website or repository URL
+    public Version? MinimumAppVersion { get; init; }      // Minimum WorkTracker version
+    public string? IconName { get; init; }                // Icon name for UI (MaterialIcon Kind)
+    public IReadOnlyList<string> Tags { get; init; } = [];// Tags for categorization
 }
 ```
 
@@ -1015,11 +1018,14 @@ public class PluginMetadata
 ```csharp
 public class PluginWorklogEntry
 {
-    public string IssueKey { get; set; }        // Ticket/issue ID
-    public DateTime Date { get; set; }          // Work date
-    public TimeSpan TimeSpent { get; set; }     // Duration
+    public string? TicketId { get; set; }       // Ticket/issue ID (e.g., "PROJ-123")
+    public string? Description { get; set; }    // Work description
     public DateTime StartTime { get; set; }     // Start timestamp
-    public string? Description { get; set; }    // Optional description
+    public DateTime EndTime { get; set; }       // End timestamp
+    public int DurationMinutes { get; set; }    // Duration in minutes
+    public string? Category { get; set; }       // Category/type of work (optional)
+    public string? ProjectName { get; set; }    // Project name (optional)
+    public Dictionary<string, string>? Metadata { get; set; } // Additional metadata
 }
 ```
 
@@ -1044,13 +1050,15 @@ public class WorkSuggestion
 ```csharp
 public class PluginConfigurationField
 {
-    public string Key { get; set; }                      // Config key
-    public string DisplayName { get; set; }              // UI label
-    public string? Description { get; set; }             // Tooltip/help text
-    public PluginConfigurationFieldType Type { get; set; } // Input type
-    public bool IsRequired { get; set; }                 // Required field?
-    public string? ValidationRegex { get; set; }         // Validation pattern
-    public string? DefaultValue { get; set; }            // Default value
+    public required string Key { get; init; }                      // Config key
+    public required string Label { get; init; }                    // UI label
+    public string? Description { get; init; }                      // Tooltip/help text
+    public PluginConfigurationFieldType Type { get; init; }        // Input type
+    public bool IsRequired { get; init; }                          // Required field?
+    public string? DefaultValue { get; init; }                     // Default value
+    public string? Placeholder { get; init; }                      // Placeholder text
+    public string? ValidationPattern { get; init; }                // Validation regex
+    public string? ValidationMessage { get; init; }                // Validation error message
 }
 ```
 
@@ -1072,11 +1080,16 @@ public enum PluginConfigurationFieldType
 ```csharp
 public class WorklogSubmissionResult
 {
-    public string IssueKey { get; set; }        // Ticket ID
-    public DateTime Date { get; set; }          // Work date
-    public TimeSpan TimeSpent { get; set; }     // Duration
-    public bool Success { get; set; }           // Upload succeeded?
-    public string? Error { get; set; }          // Error message if failed
+    public int TotalEntries { get; init; }                          // Total entries submitted
+    public int SuccessfulEntries { get; init; }                    // Successfully uploaded
+    public int FailedEntries { get; init; }                        // Failed to upload
+    public IReadOnlyList<WorklogSubmissionError> Errors { get; init; } = []; // Error details
+}
+
+public class WorklogSubmissionError
+{
+    public required PluginWorklogEntry Worklog { get; init; }      // The failed worklog
+    public required string ErrorMessage { get; init; }             // Error description
 }
 ```
 
@@ -1447,5 +1460,5 @@ public class WorkflowExample
 
 ---
 
-**Last Updated:** March 2026
-**Version:** 1.2
+**Last Updated:** April 2026
+**Version:** 1.3
