@@ -1,348 +1,503 @@
 using System.Globalization;
-using System.Net.Http.Headers;
+using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Identity.Client;
+using ModelContextProtocol.Client;
+using ModelContextProtocol.Protocol;
 using WorkTracker.Plugin.Abstractions;
 
 namespace WorkTracker.Plugin.GoranG3;
 
 /// <summary>
-/// Plugin for uploading worklogs to Goran G3 Timesheets via HTTP GET endpoint.
+/// Plugin for uploading and reading worklogs via Goran G3 MCP server.
 /// </summary>
-public sealed class GoranG3WorklogPlugin : WorklogUploadPluginBase, IDisposable
+public sealed class GoranG3WorklogPlugin : WorklogUploadPluginBase, IAsyncDisposable
 {
-	private static readonly TimeSpan HttpTimeout = TimeSpan.FromSeconds(30);
-	private const int MaxRetries = 2;
+    private static class ConfigKeys
+    {
+        public const string GoranBaseUrl = "GoranBaseUrl";
+        public const string ProjectCode = "ProjectCode";
+        public const string ProjectPhaseCode = "ProjectPhaseCode";
+        public const string Tags = "Tags";
+        public const string EntraClientId = "EntraClientId";
+        public const string EntraTenantId = "EntraTenantId";
+        public const string EntraScopes = "EntraScopes";
+    }
 
-	private static class ConfigKeys
-	{
-		public const string GoranBaseUrl = "GoranBaseUrl";
-		public const string ProjectCode = "ProjectCode";
-		public const string ProjectPhaseCode = "ProjectPhaseCode";
-		public const string Tags = "Tags";
-		public const string EntraClientId = "EntraClientId";
-		public const string EntraTenantId = "EntraTenantId";
-		public const string EntraScopes = "EntraScopes";
-	}
+    private McpClient? _mcpClient;
+    private TokenInjectingHandler? _handler;
+    private HttpClient? _httpClient;
+    private string? _projectCode;
+    private string? _projectPhaseCode;
+    private string? _tags;
 
-	private HttpClient? _httpClient;
-	private IPublicClientApplication? _msalApp;
-	private string[]? _scopes;
-	private string? _baseUrl;
-	private string? _projectCode;
-	private string? _projectPhaseCode;
-	private string? _tags;
-	private bool _disposed;
+    public override PluginMetadata Metadata => new()
+    {
+        Id = "gorang3.worklog",
+        Name = "Goran G3 Timesheets",
+        Version = new Version(2, 0, 0),
+        Author = "WorkTracker Team",
+        Description = "Upload and read worklogs via Goran G3 MCP server",
+        Tags = ["goran", "gorang3", "timetracking", "worklog", "mcp", "entra"]
+    };
 
-	public override PluginMetadata Metadata => new()
-	{
-		Id = "gorang3.worklog",
-		Name = "Goran G3 Timesheets",
-		Version = new Version(1, 0, 0),
-		Author = "WorkTracker Team",
-		Description = "Upload worklogs to Goran G3 Timesheets (moonfish/Goran time tracking system)",
-		Tags = ["goran", "gorang3", "timetracking", "worklog", "entra"]
-	};
+    public override IReadOnlyList<PluginConfigurationField> GetConfigurationFields()
+    {
+        return new List<PluginConfigurationField>
+        {
+            new()
+            {
+                Key = ConfigKeys.GoranBaseUrl,
+                Label = "Goran URL",
+                Description = "The base URL of the Goran instance (e.g., https://moonfish-g3.goran.cz)",
+                Type = PluginConfigurationFieldType.Url,
+                IsRequired = true,
+                Placeholder = "https://moonfish-g3.goran.cz",
+                ValidationPattern = @"^https://.*",
+                ValidationMessage = "Please enter a valid HTTPS URL"
+            },
+            new()
+            {
+                Key = ConfigKeys.ProjectCode,
+                Label = "Project Code",
+                Description = "Global project code for all worklogs (e.g., 000.GOR)",
+                Type = PluginConfigurationFieldType.Text,
+                IsRequired = true,
+                Placeholder = "000.GOR"
+            },
+            new()
+            {
+                Key = ConfigKeys.ProjectPhaseCode,
+                Label = "Project Phase Code",
+                Description = "Optional project phase code (e.g., SP, DEV)",
+                Type = PluginConfigurationFieldType.Text,
+                IsRequired = false,
+                Placeholder = "Leave empty if not required"
+            },
+            new()
+            {
+                Key = ConfigKeys.Tags,
+                Label = "Default Tags",
+                Description = "Optional comma-separated list of default tags (e.g., review,bugfix)",
+                Type = PluginConfigurationFieldType.Text,
+                IsRequired = false,
+                Placeholder = "tag1,tag2"
+            },
+            new()
+            {
+                Key = ConfigKeys.EntraClientId,
+                Label = "Entra Client ID",
+                Description = "Application (client) ID of the MCP Client app registration in Microsoft Entra",
+                Type = PluginConfigurationFieldType.Text,
+                IsRequired = true,
+                Placeholder = "00000000-0000-0000-0000-000000000000"
+            },
+            new()
+            {
+                Key = ConfigKeys.EntraTenantId,
+                Label = "Entra Tenant ID",
+                Description = "Directory (tenant) ID, or 'organizations' for multi-tenant",
+                Type = PluginConfigurationFieldType.Text,
+                IsRequired = true,
+                Placeholder = "00000000-0000-0000-0000-000000000000"
+            },
+            new()
+            {
+                Key = ConfigKeys.EntraScopes,
+                Label = "Entra Scopes",
+                Description = "API scopes for MCP access (e.g., api://{goran-api-client-id}/Mcp.Access)",
+                Type = PluginConfigurationFieldType.Text,
+                IsRequired = true,
+                Placeholder = "api://{client-id}/Mcp.Access"
+            }
+        };
+    }
 
-	public override IReadOnlyList<PluginConfigurationField> GetConfigurationFields()
-	{
-		return new List<PluginConfigurationField>
-		{
-			new()
-			{
-				Key = ConfigKeys.GoranBaseUrl,
-				Label = "Goran URL",
-				Description = "The base URL of the Goran instance (e.g., https://moonfish-g3.goran.cz)",
-				Type = PluginConfigurationFieldType.Url,
-				IsRequired = true,
-				Placeholder = "https://moonfish-g3.goran.cz",
-				ValidationPattern = @"^https://.*",
-				ValidationMessage = "Please enter a valid HTTPS URL"
-			},
-			new()
-			{
-				Key = ConfigKeys.ProjectCode,
-				Label = "Project Code",
-				Description = "Global project code for all worklogs (e.g., 000.GOR)",
-				Type = PluginConfigurationFieldType.Text,
-				IsRequired = true,
-				Placeholder = "000.GOR"
-			},
-			new()
-			{
-				Key = ConfigKeys.ProjectPhaseCode,
-				Label = "Project Phase Code",
-				Description = "Optional project phase code (e.g., SP, DEV)",
-				Type = PluginConfigurationFieldType.Text,
-				IsRequired = false,
-				Placeholder = "Leave empty if not required"
-			},
-			new()
-			{
-				Key = ConfigKeys.Tags,
-				Label = "Default Tags",
-				Description = "Optional comma-separated list of default tags (e.g., review,bugfix)",
-				Type = PluginConfigurationFieldType.Text,
-				IsRequired = false,
-				Placeholder = "tag1,tag2"
-			},
-			new()
-			{
-				Key = ConfigKeys.EntraClientId,
-				Label = "Entra Client ID",
-				Description = "Application (client) ID from Microsoft Entra app registration",
-				Type = PluginConfigurationFieldType.Text,
-				IsRequired = true,
-				Placeholder = "00000000-0000-0000-0000-000000000000"
-			},
-			new()
-			{
-				Key = ConfigKeys.EntraTenantId,
-				Label = "Entra Tenant ID",
-				Description = "Directory (tenant) ID, or 'organizations' for multi-tenant",
-				Type = PluginConfigurationFieldType.Text,
-				IsRequired = true,
-				Placeholder = "00000000-0000-0000-0000-000000000000"
-			},
-			new()
-			{
-				Key = ConfigKeys.EntraScopes,
-				Label = "Entra Scopes",
-				Description = "API scopes for token acquisition (e.g., api://client-id/user_impersonation)",
-				Type = PluginConfigurationFieldType.Text,
-				IsRequired = true,
-				Placeholder = "api://client-id/user_impersonation"
-			}
-		};
-	}
+    protected override async Task<bool> OnInitializeAsync(IDictionary<string, string> configuration, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var baseUrl = GetRequiredConfigValue(ConfigKeys.GoranBaseUrl).TrimEnd('/');
+            _projectCode = GetRequiredConfigValue(ConfigKeys.ProjectCode);
+            _projectPhaseCode = GetConfigValue(ConfigKeys.ProjectPhaseCode);
+            _tags = GetConfigValue(ConfigKeys.Tags);
 
-	protected override Task<bool> OnInitializeAsync(IDictionary<string, string> configuration, CancellationToken cancellationToken)
-	{
-		try
-		{
-			_baseUrl = GetRequiredConfigValue(ConfigKeys.GoranBaseUrl).TrimEnd('/');
-			_projectCode = GetRequiredConfigValue(ConfigKeys.ProjectCode);
-			_projectPhaseCode = GetConfigValue(ConfigKeys.ProjectPhaseCode);
-			_tags = GetConfigValue(ConfigKeys.Tags);
+            var clientId = GetRequiredConfigValue(ConfigKeys.EntraClientId);
+            var tenantId = GetRequiredConfigValue(ConfigKeys.EntraTenantId);
+            var scopesRaw = GetRequiredConfigValue(ConfigKeys.EntraScopes);
+            var scopes = scopesRaw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-			var clientId = GetRequiredConfigValue(ConfigKeys.EntraClientId);
-			var tenantId = GetRequiredConfigValue(ConfigKeys.EntraTenantId);
-			var scopesRaw = GetRequiredConfigValue(ConfigKeys.EntraScopes);
-			_scopes = scopesRaw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (scopes.Length == 0)
+            {
+                Logger?.LogError("EntraScopes configuration is empty or contains only whitespace/commas");
+                return false;
+            }
 
-			if (_scopes.Length == 0)
-			{
-				Logger?.LogError("EntraScopes configuration is empty or contains only whitespace/commas");
-				return Task.FromResult(false);
-			}
+            var msalApp = PublicClientApplicationBuilder
+                .Create(clientId)
+                .WithAuthority(AzureCloudInstance.AzurePublic, tenantId)
+                .WithDefaultRedirectUri()
+                .Build();
 
-			_msalApp = PublicClientApplicationBuilder
-				.Create(clientId)
-				.WithAuthority(AzureCloudInstance.AzurePublic, tenantId)
-				.WithDefaultRedirectUri()
-				.Build();
+            _handler = new TokenInjectingHandler(msalApp, scopes, Logger);
+            _httpClient = new HttpClient(_handler, disposeHandler: false);
 
-			_httpClient = new HttpClient
-			{
-				Timeout = HttpTimeout
-			};
+            var transport = new HttpClientTransport(
+                new HttpClientTransportOptions
+                {
+                    Endpoint = new Uri($"{baseUrl}/mcp"),
+                    Name = "GoranG3"
+                },
+                _httpClient,
+                ownsHttpClient: false);
 
-			Logger?.LogInformation("Goran G3 plugin initialized for {BaseUrl}, project {ProjectCode}", _baseUrl, _projectCode);
+            _mcpClient = await McpClient.CreateAsync(transport, cancellationToken: cancellationToken);
 
-			return Task.FromResult(true);
-		}
-		catch (Exception ex)
-		{
-			Logger?.LogError(ex, "Failed to initialize Goran G3 plugin");
-			return Task.FromResult(false);
-		}
-	}
+            Logger?.LogInformation("Goran G3 MCP plugin initialized for {BaseUrl}, project {ProjectCode}", baseUrl, _projectCode);
 
-	protected override Task OnShutdownAsync()
-	{
-		Dispose();
-		return Task.CompletedTask;
-	}
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "Failed to initialize Goran G3 MCP plugin");
+            return false;
+        }
+    }
 
-	public override async Task<PluginResult<bool>> TestConnectionAsync(CancellationToken cancellationToken)
-	{
-		if (_httpClient == null || _msalApp == null)
-		{
-			return PluginResult<bool>.Failure("Plugin is not properly initialized");
-		}
+    protected override async Task OnShutdownAsync()
+    {
+        await DisposeAsync();
+    }
 
-		try
-		{
-			var token = await AcquireTokenAsync(cancellationToken);
-			if (string.IsNullOrEmpty(token))
-			{
-				return PluginResult<bool>.Failure("Failed to acquire authentication token");
-			}
+    public override async Task<PluginResult<bool>> TestConnectionAsync(CancellationToken cancellationToken)
+    {
+        if (_mcpClient == null)
+        {
+            return PluginResult<bool>.Failure("Plugin is not properly initialized");
+        }
 
-			Logger?.LogInformation("Successfully authenticated with Microsoft Entra ID");
-			return PluginResult<bool>.Success(true);
-		}
-		catch (MsalException ex)
-		{
-			Logger?.LogError(ex, "MSAL authentication failed");
-			return PluginResult<bool>.Failure($"Authentication failed: {ex.Message}");
-		}
-		catch (Exception ex)
-		{
-			Logger?.LogError(ex, "Connection test failed");
-			return PluginResult<bool>.Failure($"Unexpected error: {ex.Message}");
-		}
-	}
+        try
+        {
+            var tools = await _mcpClient.ListToolsAsync(cancellationToken: cancellationToken);
+            var hasTimesheetTool = tools.Any(t => t.Name == "create_my_timesheet_item");
 
-	public override async Task<PluginResult<bool>> UploadWorklogAsync(PluginWorklogEntry worklog, CancellationToken cancellationToken)
-	{
-		EnsureInitialized();
+            if (!hasTimesheetTool)
+            {
+                return PluginResult<bool>.Failure("MCP server does not expose expected timesheet tools");
+            }
 
-		try
-		{
-			var token = await AcquireTokenAsync(cancellationToken);
-			if (string.IsNullOrEmpty(token))
-			{
-				return PluginResult<bool>.Failure("Failed to acquire authentication token");
-			}
+            Logger?.LogInformation("Successfully connected to Goran G3 MCP server ({ToolCount} tools available)", tools.Count);
+            return PluginResult<bool>.Success(true);
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "MCP connection test failed");
+            return PluginResult<bool>.Failure($"Connection test failed: {ex.Message}");
+        }
+    }
 
-			var url = BuildCreateUrl(worklog);
+    public override async Task<PluginResult<bool>> UploadWorklogAsync(PluginWorklogEntry worklog, CancellationToken cancellationToken)
+    {
+        EnsureInitialized();
 
-			Logger?.LogDebug("Uploading worklog to Goran: {Url}", url);
+        try
+        {
+            var arguments = new Dictionary<string, object?>
+            {
+                ["project_code"] = _projectCode,
+                ["date"] = worklog.StartTime.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                ["duration_minutes"] = worklog.DurationMinutes,
+                ["start_time"] = worklog.StartTime.ToString("HH:mm", CultureInfo.InvariantCulture)
+            };
 
-			string? lastError = null;
-			for (var attempt = 0; attempt <= MaxRetries; attempt++)
-			{
-				using var request = new HttpRequestMessage(HttpMethod.Get, url);
-				request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            var text = BuildText(worklog);
+            if (!string.IsNullOrWhiteSpace(text))
+            {
+                arguments["text"] = text;
+            }
 
-				using var response = await _httpClient!.SendAsync(request, cancellationToken);
+            if (!string.IsNullOrWhiteSpace(_projectPhaseCode))
+            {
+                arguments["project_phase_code"] = _projectPhaseCode;
+            }
 
-				if (response.IsSuccessStatusCode)
-				{
-					var responseText = await response.Content.ReadAsStringAsync(cancellationToken);
-					var truncatedResponse = responseText.Length > 500 ? responseText[..500] + "..." : responseText;
-					Logger?.LogInformation(
-						"Successfully uploaded worklog: {ProjectCode}, {Duration} minutes on {Date}. Response: {Response}",
-						_projectCode, worklog.DurationMinutes, worklog.StartTime.Date.ToString("yyyy-MM-dd"), truncatedResponse);
-					return PluginResult<bool>.Success(true);
-				}
+            var tags = ParseTags(_tags);
+            if (tags != null)
+            {
+                arguments["tags"] = tags;
+            }
 
-				var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
-				var statusCode = (int)response.StatusCode;
-				lastError = $"Upload failed: {response.StatusCode} - {errorContent}";
+            var externalId = ParseExternalId(worklog.TicketId);
+            if (externalId.HasValue)
+            {
+                arguments["external_id"] = externalId.Value;
+            }
 
-				if (attempt < MaxRetries && (statusCode >= 500 || statusCode == 429))
-				{
-					var delay = TimeSpan.FromSeconds(Math.Pow(2, attempt + 1));
-					Logger?.LogWarning("Goran API returned {StatusCode}, retrying in {Delay}s (attempt {Attempt}/{MaxRetries})",
-						response.StatusCode, delay.TotalSeconds, attempt + 1, MaxRetries);
-					await Task.Delay(delay, cancellationToken);
-					continue;
-				}
+            var result = await _mcpClient!.CallToolAsync("create_my_timesheet_item", arguments, cancellationToken: cancellationToken);
 
-				break;
-			}
+            if (result.IsError == true)
+            {
+                var errorText = GetResultText(result);
+                Logger?.LogWarning("Failed to upload worklog: {Error}", errorText);
+                return PluginResult<bool>.Failure($"Upload failed: {errorText}");
+            }
 
-			Logger?.LogWarning("Failed to upload worklog: {Error}", lastError);
-			return PluginResult<bool>.Failure(lastError ?? "Upload failed");
-		}
-		catch (Exception ex)
-		{
-			Logger?.LogError(ex, "Error uploading worklog to Goran");
-			return PluginResult<bool>.Failure($"Error: {ex.Message}");
-		}
-	}
+            Logger?.LogInformation(
+                "Successfully uploaded worklog: {ProjectCode}, {Duration} minutes on {Date}",
+                _projectCode, worklog.DurationMinutes, worklog.StartTime.Date.ToString("yyyy-MM-dd"));
+            return PluginResult<bool>.Success(true);
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "Error uploading worklog to Goran via MCP");
+            return PluginResult<bool>.Failure($"Error: {ex.Message}");
+        }
+    }
 
-	public override Task<PluginResult<IEnumerable<PluginWorklogEntry>>> GetWorklogsAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken)
-	{
-		return Task.FromResult(
-			PluginResult<IEnumerable<PluginWorklogEntry>>.Failure("Not supported by Goran G3 plugin — no read API available"));
-	}
+    public override async Task<PluginResult<IEnumerable<PluginWorklogEntry>>> GetWorklogsAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken)
+    {
+        EnsureInitialized();
 
-	public override Task<PluginResult<bool>> WorklogExistsAsync(PluginWorklogEntry worklog, CancellationToken cancellationToken)
-	{
-		return Task.FromResult(
-			PluginResult<bool>.Failure("Not supported by Goran G3 plugin — no read API available"));
-	}
+        try
+        {
+            var arguments = new Dictionary<string, object?>
+            {
+                ["date_from"] = startDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                ["date_to"] = endDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
+            };
 
-	private string BuildCreateUrl(PluginWorklogEntry worklog)
-	{
-		var textParts = new List<string>();
-		if (!string.IsNullOrWhiteSpace(worklog.TicketId))
-		{
-			textParts.Add(worklog.TicketId);
-		}
+            var result = await _mcpClient!.CallToolAsync("get_my_timesheet_items_list", arguments, cancellationToken: cancellationToken);
 
-		if (!string.IsNullOrWhiteSpace(worklog.Description))
-		{
-			textParts.Add(worklog.Description);
-		}
+            if (result.IsError == true)
+            {
+                var errorText = GetResultText(result);
+                return PluginResult<IEnumerable<PluginWorklogEntry>>.Failure($"Failed to get worklogs: {errorText}");
+            }
 
-		var text = string.Join(" - ", textParts);
+            var responseText = GetResultText(result);
+            var worklogs = ParseTimesheetResponse(responseText);
 
-		var queryParams = new List<string>
-		{
-			$"projectCode={Uri.EscapeDataString(_projectCode!)}",
-			$"date={worklog.StartTime.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}",
-			$"durationMinutes={worklog.DurationMinutes}",
-			$"startTime={worklog.StartTime.ToString("HH:mm", CultureInfo.InvariantCulture)}",
-			$"responseMode=plain"
-		};
+            return PluginResult<IEnumerable<PluginWorklogEntry>>.Success(worklogs);
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "Error getting worklogs from Goran via MCP");
+            return PluginResult<IEnumerable<PluginWorklogEntry>>.Failure($"Error: {ex.Message}");
+        }
+    }
 
-		if (!string.IsNullOrWhiteSpace(text))
-		{
-			queryParams.Add($"text={Uri.EscapeDataString(text)}");
-		}
+    public override async Task<PluginResult<bool>> WorklogExistsAsync(PluginWorklogEntry worklog, CancellationToken cancellationToken)
+    {
+        var result = await GetWorklogsAsync(worklog.StartTime.Date, worklog.StartTime.Date, cancellationToken);
 
-		if (!string.IsNullOrWhiteSpace(_projectPhaseCode))
-		{
-			queryParams.Add($"projectPhaseCode={Uri.EscapeDataString(_projectPhaseCode)}");
-		}
+        if (result.IsFailure)
+        {
+            return PluginResult<bool>.Failure(result.Error!);
+        }
 
-		if (!string.IsNullOrWhiteSpace(_tags))
-		{
-			queryParams.Add($"tags={Uri.EscapeDataString(_tags)}");
-		}
+        var exists = result.Value!.Any(w =>
+            w.StartTime.Date == worklog.StartTime.Date &&
+            Math.Abs((w.StartTime.TimeOfDay - worklog.StartTime.TimeOfDay).TotalMinutes) < 1 &&
+            w.DurationMinutes == worklog.DurationMinutes);
 
-		return $"{_baseUrl}/timesheets/my/create?{string.Join("&", queryParams)}";
-	}
+        return PluginResult<bool>.Success(exists);
+    }
 
-	private async Task<string?> AcquireTokenAsync(CancellationToken cancellationToken)
-	{
-		var accounts = await _msalApp!.GetAccountsAsync().ConfigureAwait(false);
-		var firstAccount = accounts.FirstOrDefault();
+    private static string BuildText(PluginWorklogEntry worklog)
+    {
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(worklog.TicketId))
+        {
+            parts.Add(worklog.TicketId);
+        }
 
-		try
-		{
-			if (firstAccount != null)
-			{
-				var silentResult = await _msalApp
-					.AcquireTokenSilent(_scopes!, firstAccount)
-					.ExecuteAsync(cancellationToken)
-					.ConfigureAwait(false);
-				return silentResult.AccessToken;
-			}
-		}
-		catch (MsalUiRequiredException)
-		{
-			Logger?.LogDebug("Silent token acquisition failed, falling back to interactive login");
-		}
+        if (!string.IsNullOrWhiteSpace(worklog.Description))
+        {
+            parts.Add(worklog.Description);
+        }
 
-		var interactiveResult = await _msalApp
-			.AcquireTokenInteractive(_scopes!)
-			.ExecuteAsync(cancellationToken)
-			.ConfigureAwait(false);
-		return interactiveResult.AccessToken;
-	}
+        return string.Join(" - ", parts);
+    }
 
-	public void Dispose()
-	{
-		if (!_disposed)
-		{
-			_httpClient?.Dispose();
-			_httpClient = null;
-			_disposed = true;
-		}
-	}
+    private static string[]? ParseTags(string? tagsConfig)
+    {
+        if (string.IsNullOrWhiteSpace(tagsConfig))
+        {
+            return null;
+        }
+
+        var tags = tagsConfig.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return tags.Length > 0 ? tags : null;
+    }
+
+    private static int? ParseExternalId(string? ticketId)
+    {
+        if (string.IsNullOrWhiteSpace(ticketId))
+        {
+            return null;
+        }
+
+        // Extract numeric ID from ticket ID like "PROJ-123" → 123, or return null if not numeric
+        var lastDash = ticketId.LastIndexOf('-');
+        var numberPart = lastDash >= 0 ? ticketId[(lastDash + 1)..] : ticketId;
+
+        return int.TryParse(numberPart, out var id) ? id : null;
+    }
+
+    private static string GetResultText(CallToolResult result)
+    {
+        return string.Join(Environment.NewLine,
+            result.Content
+                .Where(c => c is TextContentBlock)
+                .Cast<TextContentBlock>()
+                .Select(c => c.Text));
+    }
+
+    private List<PluginWorklogEntry> ParseTimesheetResponse(string responseText)
+    {
+        var worklogs = new List<PluginWorklogEntry>();
+
+        if (string.IsNullOrWhiteSpace(responseText))
+        {
+            return worklogs;
+        }
+
+        // The MCP server returns a text table. Parse each line that contains timesheet data.
+        // Expected columns: Date | Project | Phase | Description | Start | Duration | Status | Tags
+        var lines = responseText.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+
+        // Skip header lines (typically first 2 lines: header + separator)
+        var dataStartIndex = 0;
+        for (var i = 0; i < lines.Length; i++)
+        {
+            if (lines[i].Contains("---") || lines[i].Contains("==="))
+            {
+                dataStartIndex = i + 1;
+            }
+        }
+
+        for (var i = dataStartIndex; i < lines.Length; i++)
+        {
+            var line = lines[i].Trim();
+
+            // Skip empty lines, separator lines, and the total line
+            if (string.IsNullOrWhiteSpace(line) ||
+                line.Contains("---") ||
+                line.Contains("===") ||
+                line.StartsWith("Total", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            try
+            {
+                var entry = ParseTimesheetLine(line);
+                if (entry != null)
+                {
+                    worklogs.Add(entry);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger?.LogWarning(ex, "Failed to parse timesheet line: {Line}", line);
+            }
+        }
+
+        return worklogs;
+    }
+
+    private static PluginWorklogEntry? ParseTimesheetLine(string line)
+    {
+        // Split by pipe delimiter (common in MCP text table responses)
+        var columns = line.Split('|', StringSplitOptions.TrimEntries);
+
+        // Need at least Date, Project, Description, Start, Duration
+        if (columns.Length < 5)
+        {
+            return null;
+        }
+
+        // Try to find date column (first column that looks like a date)
+        DateTime? date = null;
+        string? project = null;
+        string? description = null;
+        TimeSpan? startTime = null;
+        int? durationMinutes = null;
+
+        foreach (var col in columns)
+        {
+            if (date == null && DateTime.TryParseExact(col, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d))
+            {
+                date = d;
+            }
+            else if (startTime == null && TimeSpan.TryParseExact(col, "h\\:mm", CultureInfo.InvariantCulture, out var t))
+            {
+                startTime = t;
+            }
+            else if (durationMinutes == null && TryParseDuration(col, out var dur))
+            {
+                durationMinutes = dur;
+            }
+        }
+
+        if (date == null || durationMinutes == null)
+        {
+            return null;
+        }
+
+        // Heuristic: project is typically the second column, description after that
+        var nonEmptyColumns = columns.Where(c => !string.IsNullOrWhiteSpace(c)).ToArray();
+        if (nonEmptyColumns.Length >= 3)
+        {
+            project = nonEmptyColumns.Length > 1 ? nonEmptyColumns[1] : null;
+            description = nonEmptyColumns.Length > 3 ? nonEmptyColumns[3] : nonEmptyColumns.Length > 2 ? nonEmptyColumns[2] : null;
+        }
+
+        var entryStart = date.Value.Add(startTime ?? TimeSpan.Zero);
+
+        return new PluginWorklogEntry
+        {
+            ProjectName = project,
+            Description = description,
+            StartTime = entryStart,
+            EndTime = entryStart.AddMinutes(durationMinutes.Value),
+            DurationMinutes = durationMinutes.Value
+        };
+    }
+
+    private static bool TryParseDuration(string text, out int minutes)
+    {
+        minutes = 0;
+
+        // Try direct integer (minutes)
+        if (int.TryParse(text, out minutes))
+        {
+            return true;
+        }
+
+        // Try "Xh Ym" format (e.g., "2h 30m" or "2:30")
+        if (text.Contains(':') &&
+            TimeSpan.TryParseExact(text, "h\\:mm", CultureInfo.InvariantCulture, out var ts))
+        {
+            minutes = (int)ts.TotalMinutes;
+            return true;
+        }
+
+        return false;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_mcpClient != null)
+        {
+            await _mcpClient.DisposeAsync();
+            _mcpClient = null;
+        }
+
+        _httpClient?.Dispose();
+        _httpClient = null;
+
+        _handler?.Dispose();
+        _handler = null;
+    }
 }

@@ -51,6 +51,9 @@
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
     <PackageVersion Include="xunit.v3" Version="3.2.2" />
 
+    <!-- MCP -->
+    <PackageVersion Include="ModelContextProtocol" Version="1.2.0" />
+
     <!-- Other -->
     <PackageVersion Include="Devlooped.CredentialManager" Version="2.7.0" />
     <PackageVersion Include="HidSharp" Version="2.6.4" />
