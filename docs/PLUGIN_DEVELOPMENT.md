@@ -500,7 +500,13 @@ Plugin configuration is primarily persisted in the user settings file. The `apps
 
 ## 6. Testing
 
-For HTTP-based plugins, inject a mock `HttpMessageHandler` via `internal` properties (pattern used by `TempoWorklogPlugin.TempoHttpHandler` / `JiraHttpHandler`). This avoids network calls while testing real plugin logic.
+For HTTP-based plugins, inject a mock `HttpMessageHandler` via `internal` properties (pattern used by `TempoWorklogPlugin.TempoHttpHandler` / `JiraHttpHandler`). This avoids network calls while testing real plugin logic. To access `internal` members from a test project, add `InternalsVisibleTo` in your plugin `.csproj`:
+
+```xml
+<ItemGroup>
+  <InternalsVisibleTo Include="YourPlugin.Tests" />
+</ItemGroup>
+```
 
 For pure logic (JQL building, data mapping), expose methods as `internal static` and test them directly via `InternalsVisibleTo`.
 
