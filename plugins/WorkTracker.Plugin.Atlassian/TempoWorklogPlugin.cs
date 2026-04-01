@@ -124,6 +124,7 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 
 			if (string.IsNullOrWhiteSpace(jiraAccountId))
 			{
+				Logger?.LogError("Jira account ID auto-detection returned null or empty");
 				newTempoClient.Dispose();
 				newJiraClient.Dispose();
 				return false;
@@ -200,8 +201,8 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 			{
 				issueId = issueId.Value,
 				timeSpentSeconds,
-				startDate = worklog.StartTime.ToString("yyyy-MM-dd"),
-				startTime = worklog.StartTime.ToString("HH:mm:ss"),
+				startDate = worklog.StartTime.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
+				startTime = worklog.StartTime.ToString("HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture),
 				authorAccountId = _jiraAccountId,
 				description = worklog.Description ?? string.Empty
 			};
@@ -225,8 +226,8 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 				{
 					var delay = RetryDelayStrategy?.Invoke(attempt)
 						?? TimeSpan.FromSeconds(Math.Pow(2, attempt + 1));
-					Logger?.LogWarning("Tempo API returned {StatusCode}, retrying in {Delay}s (attempt {Attempt}/{MaxRetries})",
-						response.StatusCode, delay.TotalSeconds, attempt + 1, MaxRetries);
+					Logger?.LogWarning("Tempo API returned {StatusCode}, retrying in {Delay}s (attempt {Attempt}/{MaxAttempts})",
+						response.StatusCode, delay.TotalSeconds, attempt + 1, MaxRetries + 1);
 					await Task.Delay(delay, cancellationToken);
 					continue;
 				}
@@ -249,8 +250,8 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 
 		try
 		{
-			var from = startDate.ToString("yyyy-MM-dd");
-			var to = endDate.ToString("yyyy-MM-dd");
+			var from = startDate.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+			var to = endDate.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
 
 			using var response = await _tempoHttpClient!.GetAsync($"worklogs?from={from}&to={to}", cancellationToken);
 

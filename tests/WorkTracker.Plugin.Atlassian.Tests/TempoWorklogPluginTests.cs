@@ -40,7 +40,8 @@ public class TempoWorklogPluginTests : IDisposable
 
     private async Task InitializePluginAsync()
     {
-        await _plugin.InitializeAsync(ValidConfig);
+        var initialized = await _plugin.InitializeAsync(ValidConfig);
+        initialized.Should().BeTrue("plugin initialization should succeed for the test configuration");
     }
 
     private static PluginWorklogEntry CreateWorklog(
