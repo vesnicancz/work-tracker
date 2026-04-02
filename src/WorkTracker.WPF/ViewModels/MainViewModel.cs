@@ -22,6 +22,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 	private readonly IDialogService _dialogService;
 	private readonly INotificationService _notificationService;
 	private readonly IWorklogStateService _worklogStateService;
+	private readonly IWorkEntryEditOrchestrator _editOrchestrator;
 	private readonly IWorkSuggestionOrchestrator _suggestionOrchestrator;
 	private readonly TimeProvider _timeProvider;
 	private readonly ILocalizationService _localization;
@@ -52,6 +53,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 		IDialogService dialogService,
 		INotificationService notificationService,
 		IWorklogStateService worklogStateService,
+		IWorkEntryEditOrchestrator editOrchestrator,
 		IWorkSuggestionOrchestrator suggestionOrchestrator,
 		IPomodoroService pomodoroService,
 		ISettingsService settingsService,
@@ -63,6 +65,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 		_dialogService = dialogService;
 		_notificationService = notificationService;
 		_worklogStateService = worklogStateService;
+		_editOrchestrator = editOrchestrator;
 		_suggestionOrchestrator = suggestionOrchestrator;
 		_localization = localization;
 		_timeProvider = timeProvider;
@@ -390,11 +393,8 @@ public class MainViewModel : ViewModelBase, IDisposable
 
 		try
 		{
-			// Start new work with the same ticket and description
-			var result = await _worklogStateService.StartTrackingAsync(
-				workEntry.TicketId,
-				workEntry.Description,
-				_cts.Token);
+			var startTime = _timeProvider.GetLocalNow().DateTime;
+			var result = await _editOrchestrator.SaveNewAsync(workEntry.TicketId, startTime, null, workEntry.Description, _cts.Token);
 
 			if (result.IsFailure)
 			{
@@ -403,7 +403,10 @@ public class MainViewModel : ViewModelBase, IDisposable
 				return;
 			}
 
-			_notificationService.ShowSuccess(_localization["WorkRestartedSuccessfully"]);
+			if (result.Value)
+			{
+				_notificationService.ShowSuccess(_localization["WorkRestartedSuccessfully"]);
+			}
 		}
 		catch (OperationCanceledException) when (_disposed) { }
 		catch (Exception ex)

@@ -296,16 +296,9 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 				return;
 			}
 
-			// Stop current tracking if active
-			if (_worklogStateService.IsTracking)
-			{
-				await _worklogStateService.StopTrackingAsync(_cts.Token);
-			}
-
-			// Start tracking with favorite's ticket and description
 			var result = await _worklogStateService.StartTrackingAsync(favorite.TicketId, favorite.Description, _cts.Token);
 
-			if (!result.IsSuccess)
+			if (result.IsFailure)
 			{
 				MessageBox.Show(
 					_localizationService.GetFormattedString("FailedToStartWork", result.Error ?? "Unknown error"),

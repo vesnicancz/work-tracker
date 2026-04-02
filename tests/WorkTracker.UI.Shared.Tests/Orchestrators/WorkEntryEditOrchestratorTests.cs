@@ -235,4 +235,110 @@ public class WorkEntryEditOrchestratorTests
 
 		result.IsFailure.Should().BeTrue();
 	}
+
+	#region Restart from history (SaveNewAsync with endTime=null)
+
+	[Fact]
+	public async Task SaveNewAsync_OpenEnded_WithActiveEntryOverlap_SkipsDialogAndReturnsTrue()
+	{
+		var plan = new OverlapResolutionPlan
+		{
+			Adjustments = [new OverlapAdjustment(
+				WorkEntryId: 5, TicketId: "PROJ-OLD", Description: "old task",
+				Kind: OverlapAdjustmentKind.TrimEnd,
+				OriginalStart: new DateTime(2025, 1, 1, 9, 0, 0), OriginalEnd: null,
+				NewStart: null, NewEnd: new DateTime(2025, 1, 1, 14, 0, 0))]
+		};
+		_mockStateService
+			.Setup(s => s.ComputeOverlapResolutionAsync(null, It.IsAny<DateTime>(), null, It.IsAny<CancellationToken>()))
+			.ReturnsAsync(plan);
+
+		var entry = WorkEntry.Reconstitute(10, "PROJ-NEW", new DateTime(2025, 1, 1, 14, 0, 0), null, "new task", true, DateTime.MinValue);
+		_mockStateService
+			.Setup(s => s.CreateWorkEntryWithResolutionAsync("PROJ-NEW", It.IsAny<DateTime>(), "new task", null, plan, It.IsAny<CancellationToken>()))
+			.ReturnsAsync(Result.Success(entry));
+
+		var result = await _orchestrator.SaveNewAsync("PROJ-NEW", new DateTime(2025, 1, 1, 14, 0, 0), null, "new task", TestContext.Current.CancellationToken);
+
+		result.IsSuccess.Should().BeTrue();
+		result.Value.Should().BeTrue();
+		_mockDialogService.Verify(d => d.ShowConfirmationAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+		_mockStateService.Verify(s => s.CreateWorkEntryWithResolutionAsync("PROJ-NEW", It.IsAny<DateTime>(), "new task", null, plan, It.IsAny<CancellationToken>()), Times.Once);
+	}
+
+	[Fact]
+	public async Task SaveNewAsync_OpenEnded_WithClosedEntryOverlap_ShowsDialogAndRequiresConfirmation()
+	{
+		var plan = new OverlapResolutionPlan
+		{
+			Adjustments = [new OverlapAdjustment(
+				WorkEntryId: 5, TicketId: "PROJ-OLD", Description: "old task",
+				Kind: OverlapAdjustmentKind.TrimEnd,
+				OriginalStart: new DateTime(2025, 1, 1, 13, 0, 0), OriginalEnd: new DateTime(2025, 1, 1, 15, 0, 0),
+				NewStart: null, NewEnd: new DateTime(2025, 1, 1, 14, 0, 0))]
+		};
+		_mockStateService
+			.Setup(s => s.ComputeOverlapResolutionAsync(null, It.IsAny<DateTime>(), null, It.IsAny<CancellationToken>()))
+			.ReturnsAsync(plan);
+		_mockDialogService
+			.Setup(d => d.ShowConfirmationAsync(It.IsAny<string>(), It.IsAny<string>()))
+			.ReturnsAsync(true);
+
+		var entry = WorkEntry.Reconstitute(10, "PROJ-NEW", new DateTime(2025, 1, 1, 14, 0, 0), null, "new task", true, DateTime.MinValue);
+		_mockStateService
+			.Setup(s => s.CreateWorkEntryWithResolutionAsync("PROJ-NEW", It.IsAny<DateTime>(), "new task", null, plan, It.IsAny<CancellationToken>()))
+			.ReturnsAsync(Result.Success(entry));
+
+		var result = await _orchestrator.SaveNewAsync("PROJ-NEW", new DateTime(2025, 1, 1, 14, 0, 0), null, "new task", TestContext.Current.CancellationToken);
+
+		result.IsSuccess.Should().BeTrue();
+		result.Value.Should().BeTrue();
+		_mockDialogService.Verify(d => d.ShowConfirmationAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Once);
+	}
+
+	[Fact]
+	public async Task SaveNewAsync_OpenEnded_NoOverlaps_CreatesWithoutResolution()
+	{
+		var entry = WorkEntry.Reconstitute(10, "PROJ-NEW", new DateTime(2025, 1, 1, 14, 0, 0), null, "new task", true, DateTime.MinValue);
+		_mockStateService
+			.Setup(s => s.CreateWorkEntryAsync("PROJ-NEW", It.IsAny<DateTime>(), "new task", null, It.IsAny<CancellationToken>()))
+			.ReturnsAsync(Result.Success(entry));
+
+		var result = await _orchestrator.SaveNewAsync("PROJ-NEW", new DateTime(2025, 1, 1, 14, 0, 0), null, "new task", TestContext.Current.CancellationToken);
+
+		result.IsSuccess.Should().BeTrue();
+		result.Value.Should().BeTrue();
+		_mockStateService.Verify(s => s.CreateWorkEntryAsync("PROJ-NEW", It.IsAny<DateTime>(), "new task", null, It.IsAny<CancellationToken>()), Times.Once);
+		_mockStateService.Verify(s => s.CreateWorkEntryWithResolutionAsync(It.IsAny<string?>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<DateTime?>(), It.IsAny<OverlapResolutionPlan>(), It.IsAny<CancellationToken>()), Times.Never);
+	}
+
+	#endregion
+
+	#region Restart from history (SaveNewAsync with resolution failure)
+
+	[Fact]
+	public async Task SaveNewAsync_OpenEnded_WithResolutionFailure_ReturnsFailure()
+	{
+		var plan = new OverlapResolutionPlan
+		{
+			Adjustments = [new OverlapAdjustment(
+				WorkEntryId: 5, TicketId: "PROJ-OLD", Description: null,
+				Kind: OverlapAdjustmentKind.TrimEnd,
+				OriginalStart: new DateTime(2025, 1, 1, 9, 0, 0), OriginalEnd: null,
+				NewStart: null, NewEnd: new DateTime(2025, 1, 1, 14, 0, 0))]
+		};
+		_mockStateService
+			.Setup(s => s.ComputeOverlapResolutionAsync(null, It.IsAny<DateTime>(), null, It.IsAny<CancellationToken>()))
+			.ReturnsAsync(plan);
+		_mockStateService
+			.Setup(s => s.CreateWorkEntryWithResolutionAsync(It.IsAny<string?>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<DateTime?>(), It.IsAny<OverlapResolutionPlan>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(Result.Failure<WorkEntry>("Database error"));
+
+		var result = await _orchestrator.SaveNewAsync("PROJ-NEW", new DateTime(2025, 1, 1, 14, 0, 0), null, "new task", TestContext.Current.CancellationToken);
+
+		result.IsFailure.Should().BeTrue();
+		result.Error.Should().Be("Database error");
+	}
+
+	#endregion
 }
