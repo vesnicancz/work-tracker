@@ -484,7 +484,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 
 			await _dialogService.ShowNewWorkEntryDialogAsync(
 				ticketId: selected.TicketId,
-				description: selected.HasTimeSlot ? selected.Title : null,
+				description: selected.Title,
 				date: SelectedDate,
 				startTime: selected.StartTime,
 				endTime: selected.EndTime);
