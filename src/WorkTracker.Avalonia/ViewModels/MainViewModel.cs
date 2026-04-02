@@ -21,6 +21,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 	private readonly IDialogService _dialogService;
 	private readonly INotificationService _notificationService;
 	private readonly IWorklogStateService _worklogStateService;
+	private readonly IWorkEntryEditOrchestrator _editOrchestrator;
 	private readonly IWorkSuggestionOrchestrator _suggestionOrchestrator;
 	private readonly IPomodoroService _pomodoroService;
 	private readonly TimeProvider _timeProvider;
@@ -51,6 +52,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 		IDialogService dialogService,
 		INotificationService notificationService,
 		IWorklogStateService worklogStateService,
+		IWorkEntryEditOrchestrator editOrchestrator,
 		IWorkSuggestionOrchestrator suggestionOrchestrator,
 		IPomodoroService pomodoroService,
 		ISettingsService settingsService,
@@ -62,6 +64,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 		_dialogService = dialogService;
 		_notificationService = notificationService;
 		_worklogStateService = worklogStateService;
+		_editOrchestrator = editOrchestrator;
 		_suggestionOrchestrator = suggestionOrchestrator;
 		_pomodoroService = pomodoroService;
 		_localization = localization;
@@ -379,13 +382,18 @@ public class MainViewModel : ViewModelBase, IDisposable
 
 		try
 		{
-			var result = await _worklogStateService.StartTrackingAsync(workEntry.TicketId, workEntry.Description, _cts.Token);
+			var startTime = _timeProvider.GetLocalNow().DateTime;
+			var result = await _editOrchestrator.SaveNewAsync(workEntry.TicketId, startTime, null, workEntry.Description, _cts.Token);
 			if (result.IsFailure)
 			{
+				_logger.LogWarning("Failed to restart work from history: {Error}", result.Error);
 				await _dialogService.ShowErrorAsync(result.Error);
 				return;
 			}
-			_notificationService.ShowSuccess(_localization["WorkRestartedSuccessfully"]);
+			if (result.Value)
+			{
+				_notificationService.ShowSuccess(_localization["WorkRestartedSuccessfully"]);
+			}
 		}
 		catch (OperationCanceledException) when (_disposed) { }
 		catch (Exception ex)

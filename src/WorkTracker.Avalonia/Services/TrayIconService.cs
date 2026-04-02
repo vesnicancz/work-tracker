@@ -241,11 +241,11 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 				return;
 			}
 
-			if (_worklogStateService.IsTracking)
+			var result = await _worklogStateService.StartTrackingAsync(favorite.TicketId, favorite.Description, _cts.Token);
+			if (result.IsFailure)
 			{
-				await _worklogStateService.StopTrackingAsync(_cts.Token);
+				_logger.LogWarning("Failed to start favorite work from tray: {Error}", result.Error);
 			}
-			await _worklogStateService.StartTrackingAsync(favorite.TicketId, favorite.Description, _cts.Token);
 		}
 		catch (OperationCanceledException) { /* Service is being disposed */ }
 		catch (Exception ex)
