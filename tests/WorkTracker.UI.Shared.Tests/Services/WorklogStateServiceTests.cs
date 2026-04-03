@@ -169,6 +169,26 @@ public class WorklogStateServiceTests : IDisposable
 		await act.Should().ThrowAsync<InvalidOperationException>();
 	}
 
+	[Fact]
+	public async Task StartTrackingAsync_WhenAlreadyTracking_SwitchesToNewEntry()
+	{
+		var oldEntry = CreateActiveEntry(id: 1, ticketId: "PROJ-OLD");
+		await InitializeSut(oldEntry);
+
+		var newEntry = CreateActiveEntry(id: 2, ticketId: "PROJ-NEW");
+		_mockWorkEntryService
+			.Setup(s => s.StartWorkAsync("PROJ-NEW", null, "new task", null, It.IsAny<CancellationToken>()))
+			.ReturnsAsync(Result.Success(newEntry));
+
+		var result = await _sut.StartTrackingAsync("PROJ-NEW", "new task", TestContext.Current.CancellationToken);
+
+		result.IsSuccess.Should().BeTrue();
+		result.Value.TicketId.Should().Be("PROJ-NEW");
+		_sut.IsTracking.Should().BeTrue();
+		_sut.ActiveWork.Should().NotBeNull();
+		_sut.ActiveWork!.TicketId.Should().Be("PROJ-NEW");
+	}
+
 	#endregion
 
 	#region StopTrackingAsync
