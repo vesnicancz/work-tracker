@@ -30,28 +30,13 @@ internal sealed class TokenInjectingHandler : DelegatingHandler
     private async Task<string> AcquireTokenAsync(CancellationToken cancellationToken)
     {
         var accounts = await _msalApp.GetAccountsAsync().ConfigureAwait(false);
-        var firstAccount = accounts.FirstOrDefault();
+        var firstAccount = accounts.FirstOrDefault()
+            ?? throw new MsalUiRequiredException("no_account", "No cached account. Please re-initialize the plugin.");
 
-        try
-        {
-            if (firstAccount != null)
-            {
-                var silentResult = await _msalApp
-                    .AcquireTokenSilent(_scopes, firstAccount)
-                    .ExecuteAsync(cancellationToken)
-                    .ConfigureAwait(false);
-                return silentResult.AccessToken;
-            }
-        }
-        catch (MsalUiRequiredException)
-        {
-            _logger?.LogDebug("Silent token acquisition failed, falling back to interactive login");
-        }
-
-        var interactiveResult = await _msalApp
-            .AcquireTokenInteractive(_scopes)
+        var silentResult = await _msalApp
+            .AcquireTokenSilent(_scopes, firstAccount)
             .ExecuteAsync(cancellationToken)
             .ConfigureAwait(false);
-        return interactiveResult.AccessToken;
+        return silentResult.AccessToken;
     }
 }

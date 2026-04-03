@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Identity.Client;
 using ModelContextProtocol.Client;
@@ -24,6 +23,9 @@ public sealed class GoranG3WorklogPlugin : WorklogUploadPluginBase, IAsyncDispos
         public const string EntraScopes = "EntraScopes";
     }
 
+    private IPublicClientApplication? _msalApp;
+    private string[]? _scopes;
+    private string? _baseUrl;
     private McpClient? _mcpClient;
     private TokenInjectingHandler? _handler;
     private HttpClient? _httpClient;
@@ -115,53 +117,85 @@ public sealed class GoranG3WorklogPlugin : WorklogUploadPluginBase, IAsyncDispos
 
     protected override async Task<bool> OnInitializeAsync(IDictionary<string, string> configuration, CancellationToken cancellationToken)
     {
-        try
+        _baseUrl = GetRequiredConfigValue(ConfigKeys.GoranBaseUrl).TrimEnd('/');
+        _projectCode = GetRequiredConfigValue(ConfigKeys.ProjectCode);
+        _projectPhaseCode = GetConfigValue(ConfigKeys.ProjectPhaseCode);
+        _tags = GetConfigValue(ConfigKeys.Tags);
+
+        var clientId = GetRequiredConfigValue(ConfigKeys.EntraClientId);
+        var tenantId = GetRequiredConfigValue(ConfigKeys.EntraTenantId);
+        var scopesRaw = GetRequiredConfigValue(ConfigKeys.EntraScopes);
+        _scopes = scopesRaw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        if (_scopes.Length == 0)
         {
-            var baseUrl = GetRequiredConfigValue(ConfigKeys.GoranBaseUrl).TrimEnd('/');
-            _projectCode = GetRequiredConfigValue(ConfigKeys.ProjectCode);
-            _projectPhaseCode = GetConfigValue(ConfigKeys.ProjectPhaseCode);
-            _tags = GetConfigValue(ConfigKeys.Tags);
-
-            var clientId = GetRequiredConfigValue(ConfigKeys.EntraClientId);
-            var tenantId = GetRequiredConfigValue(ConfigKeys.EntraTenantId);
-            var scopesRaw = GetRequiredConfigValue(ConfigKeys.EntraScopes);
-            var scopes = scopesRaw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-            if (scopes.Length == 0)
-            {
-                Logger?.LogError("EntraScopes configuration is empty or contains only whitespace/commas");
-                return false;
-            }
-
-            var msalApp = PublicClientApplicationBuilder
-                .Create(clientId)
-                .WithAuthority(AzureCloudInstance.AzurePublic, tenantId)
-                .WithDefaultRedirectUri()
-                .Build();
-
-            _handler = new TokenInjectingHandler(msalApp, scopes, Logger);
-            _httpClient = new HttpClient(_handler, disposeHandler: false);
-
-            var transport = new HttpClientTransport(
-                new HttpClientTransportOptions
-                {
-                    Endpoint = new Uri($"{baseUrl}/mcp"),
-                    Name = "GoranG3"
-                },
-                _httpClient,
-                ownsHttpClient: false);
-
-            _mcpClient = await McpClient.CreateAsync(transport, cancellationToken: cancellationToken);
-
-            Logger?.LogInformation("Goran G3 MCP plugin initialized for {BaseUrl}, project {ProjectCode}", baseUrl, _projectCode);
-
-            return true;
-        }
-        catch (Exception ex)
-        {
-            Logger?.LogError(ex, "Failed to initialize Goran G3 MCP plugin");
+            Logger?.LogError("EntraScopes configuration is empty or contains only whitespace/commas");
             return false;
         }
+
+        // Reuse existing MSAL app to preserve token cache across re-initializations
+        if (_msalApp == null)
+        {
+            _msalApp = PublicClientApplicationBuilder
+                .Create(clientId)
+                .WithAuthority(AzureCloudInstance.AzurePublic, tenantId)
+                .Build();
+
+            var cacheFilePath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "WorkTracker", "msal_gorang3_cache.bin");
+            Directory.CreateDirectory(Path.GetDirectoryName(cacheFilePath)!);
+            _msalApp.UserTokenCache.SetBeforeAccess(args =>
+            {
+                try
+                {
+                    args.TokenCache.DeserializeMsalV3(File.ReadAllBytes(cacheFilePath));
+                }
+                catch (FileNotFoundException)
+                {
+                    // No cache file yet — first run
+                }
+                catch (Exception ex)
+                {
+                    Logger?.LogWarning(ex, "Failed to read MSAL token cache");
+                }
+            });
+            _msalApp.UserTokenCache.SetAfterAccess(args =>
+            {
+                if (!args.HasStateChanged)
+                {
+                    return;
+                }
+
+                try
+                {
+                    File.WriteAllBytes(cacheFilePath, args.TokenCache.SerializeMsalV3());
+                }
+                catch (Exception ex)
+                {
+                    Logger?.LogWarning(ex, "Failed to write MSAL token cache");
+                }
+            });
+        }
+
+        // Try silent auth only — interactive auth happens in TestConnectionAsync where progress is available
+        var accounts = await _msalApp.GetAccountsAsync();
+        var firstAccount = accounts.FirstOrDefault();
+        if (firstAccount != null)
+        {
+            try
+            {
+                await _msalApp.AcquireTokenSilent(_scopes, firstAccount)
+                    .ExecuteAsync(cancellationToken);
+                await ConnectMcpAsync(cancellationToken);
+            }
+            catch (MsalUiRequiredException)
+            {
+                Logger?.LogDebug("Cached token expired, interactive auth needed via Test Connection");
+            }
+        }
+
+        return true;
     }
 
     protected override async Task OnShutdownAsync()
@@ -171,14 +205,60 @@ public sealed class GoranG3WorklogPlugin : WorklogUploadPluginBase, IAsyncDispos
 
     public override async Task<PluginResult<bool>> TestConnectionAsync(CancellationToken cancellationToken)
     {
-        if (_mcpClient == null)
-        {
-            return PluginResult<bool>.Failure("Plugin is not properly initialized");
-        }
+        return await TestConnectionAsync(null, cancellationToken);
+    }
 
+    public override async Task<PluginResult<bool>> TestConnectionAsync(IProgress<string>? progress, CancellationToken cancellationToken)
+    {
         try
         {
-            var tools = await _mcpClient.ListToolsAsync(cancellationToken: cancellationToken);
+            if (_mcpClient == null)
+            {
+                progress?.Report("Authenticating...");
+
+                var accounts = await _msalApp!.GetAccountsAsync();
+                var firstAccount = accounts.FirstOrDefault();
+                try
+                {
+                    if (firstAccount != null)
+                    {
+                        await _msalApp.AcquireTokenSilent(_scopes!, firstAccount)
+                            .ExecuteAsync(cancellationToken);
+                    }
+                    else
+                    {
+                        throw new MsalUiRequiredException("no_account", "No cached account");
+                    }
+                }
+                catch (MsalUiRequiredException)
+                {
+                    Logger?.LogDebug("No cached token, launching device code flow");
+                    await _msalApp.AcquireTokenWithDeviceCode(_scopes!, deviceCodeResult =>
+                    {
+                        progress?.Report($"⏳ Open browser and enter code: {deviceCodeResult.UserCode}\n{deviceCodeResult.VerificationUrl}");
+
+                        try
+                        {
+                            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                            {
+                                FileName = deviceCodeResult.VerificationUrl.ToString(),
+                                UseShellExecute = true
+                            });
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger?.LogWarning(ex, "Could not open browser automatically");
+                        }
+
+                        return Task.CompletedTask;
+                    }).ExecuteAsync(cancellationToken);
+                }
+
+                progress?.Report("Connecting to MCP server...");
+                await ConnectMcpAsync(cancellationToken);
+            }
+
+            var tools = await _mcpClient!.ListToolsAsync(cancellationToken: cancellationToken);
             var hasTimesheetTool = tools.Any(t => t.Name == "create_my_timesheet_item");
 
             if (!hasTimesheetTool)
@@ -189,10 +269,49 @@ public sealed class GoranG3WorklogPlugin : WorklogUploadPluginBase, IAsyncDispos
             Logger?.LogInformation("Successfully connected to Goran G3 MCP server ({ToolCount} tools available)", tools.Count);
             return PluginResult<bool>.Success(true);
         }
+        catch (MsalException ex)
+        {
+            Logger?.LogError(ex, "Authentication failed");
+            return PluginResult<bool>.Failure($"Authentication failed: {ex.Message}");
+        }
         catch (Exception ex)
         {
-            Logger?.LogError(ex, "MCP connection test failed");
-            return PluginResult<bool>.Failure($"Connection test failed: {ex.Message}");
+            Logger?.LogError(ex, "Connection test failed");
+            return PluginResult<bool>.Failure($"Connection failed: {ex.Message}");
+        }
+    }
+
+    private async Task ConnectMcpAsync(CancellationToken cancellationToken)
+    {
+        _handler?.Dispose();
+        _httpClient?.Dispose();
+        if (_mcpClient != null)
+        {
+            await _mcpClient.DisposeAsync();
+        }
+
+        _handler = new TokenInjectingHandler(_msalApp!, _scopes!, Logger);
+        _httpClient = new HttpClient(_handler, disposeHandler: false);
+
+        var transport = new HttpClientTransport(
+            new HttpClientTransportOptions
+            {
+                Endpoint = new Uri($"{_baseUrl}/mcp"),
+                Name = "GoranG3"
+            },
+            _httpClient,
+            ownsHttpClient: false);
+
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeoutCts.CancelAfter(TimeSpan.FromSeconds(30));
+
+        try
+        {
+            _mcpClient = await McpClient.CreateAsync(transport, cancellationToken: timeoutCts.Token);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            throw new TimeoutException($"MCP server at {_baseUrl}/mcp did not respond within 30 seconds");
         }
     }
 

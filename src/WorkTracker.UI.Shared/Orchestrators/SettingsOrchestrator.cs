@@ -137,7 +137,17 @@ public class SettingsOrchestrator : ISettingsOrchestrator
 		_logger.LogInformation("Testing connection for plugin {PluginId}", plugin.Plugin.Metadata.Id);
 
 		var tempConfig = new Dictionary<string, string>(plugin.Configuration);
-		var initialized = await plugin.Plugin.InitializeAsync(tempConfig, cancellationToken);
+		bool initialized;
+		try
+		{
+			initialized = await plugin.Plugin.InitializeAsync(tempConfig, cancellationToken);
+		}
+		catch (Exception ex)
+		{
+			_logger.LogWarning(ex, "Initialization failed for plugin {PluginId} during connection test", plugin.Plugin.Metadata.Id);
+			return $"✗ Connection failed: {ex.Message}";
+		}
+
 		if (!initialized)
 		{
 			_logger.LogWarning("Initialization failed for plugin {PluginId} during connection test", plugin.Plugin.Metadata.Id);
