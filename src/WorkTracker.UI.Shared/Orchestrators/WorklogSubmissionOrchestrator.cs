@@ -121,7 +121,8 @@ public class WorklogSubmissionOrchestrator : IWorklogSubmissionOrchestrator
 	public async Task<SubmissionOutcome> RetryFailedAsync(
 		IReadOnlyList<WorklogPreviewItem> items, string providerId, string providerName, CancellationToken cancellationToken)
 	{
-		var worklogs = ConvertToWorklogs(items.Where(i => !i.IsDateHeader && i.HasError && i.IsSelected));
+		var attemptedItems = items.Where(i => !i.IsDateHeader && i.HasError && i.IsSelected).ToList();
+		var worklogs = ConvertToWorklogs(attemptedItems);
 
 		if (worklogs.Count == 0)
 		{
@@ -133,7 +134,8 @@ public class WorklogSubmissionOrchestrator : IWorklogSubmissionOrchestrator
 		if (result.IsSuccess && result.Value != null)
 		{
 			var submission = result.Value;
-			var hasFailedItems = MarkFailedItems(items, submission);
+			MarkFailedItems(attemptedItems, submission);
+			var hasFailedItems = items.Any(i => !i.IsDateHeader && i.HasError);
 			var statusMessage = FormatSubmissionStatus(submission, providerName);
 			return new SubmissionOutcome(!hasFailedItems, hasFailedItems, statusMessage);
 		}
