@@ -302,12 +302,14 @@ public sealed class GoranG3WorklogPlugin : WorklogUploadPluginBase, IAsyncDispos
 
 	private async Task ConnectMcpAsync(CancellationToken cancellationToken)
 	{
-		_handler?.Dispose();
-		_httpClient?.Dispose();
 		if (_mcpClient != null)
 		{
 			await _mcpClient.DisposeAsync();
+			_mcpClient = null;
 		}
+
+		_httpClient?.Dispose();
+		_handler?.Dispose();
 
 		_handler = new TokenInjectingHandler(_msalApp!, _scopes!, Logger);
 		_httpClient = new HttpClient(_handler, disposeHandler: false);
@@ -664,7 +666,7 @@ public sealed class GoranG3WorklogPlugin : WorklogUploadPluginBase, IAsyncDispos
 			}
 		}
 
-		if (date == null || durationMinutes == null)
+		if (date == null || startTime == null || durationMinutes == null)
 		{
 			return null;
 		}
@@ -677,7 +679,7 @@ public sealed class GoranG3WorklogPlugin : WorklogUploadPluginBase, IAsyncDispos
 			description = nonEmptyColumns.Length > 3 ? nonEmptyColumns[3] : nonEmptyColumns.Length > 2 ? nonEmptyColumns[2] : null;
 		}
 
-		var entryStart = date.Value.Add(startTime ?? TimeSpan.Zero);
+		var entryStart = date.Value.Add(startTime.Value);
 
 		return new PluginWorklogEntry
 		{

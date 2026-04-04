@@ -84,6 +84,14 @@ public class GoranG3ParsingTests
 	}
 
 	[Fact]
+	public void ParseTimesheetLine_NoStartTime_ReturnsNull()
+	{
+		var line = "2025-01-15 | 000.GOR | SP | Bug fix | notime | 60 | Approved | ";
+
+		GoranG3WorklogPlugin.ParseTimesheetLine(line).Should().BeNull();
+	}
+
+	[Fact]
 	public void ParseTimesheetLine_SetsEndTimeFromDuration()
 	{
 		var line = "2025-03-10 | PROJ | DEV | Work item | 10:00 | 45 | Approved | ";
