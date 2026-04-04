@@ -206,6 +206,10 @@ public sealed class GoranG3WorklogPlugin : WorklogUploadPluginBase, IAsyncDispos
 			{
 				Logger?.LogDebug("Cached token expired, interactive auth needed via Test Connection");
 			}
+			catch (Exception ex)
+			{
+				Logger?.LogWarning(ex, "MCP server unavailable during startup, will retry on next operation");
+			}
 		}
 
 		return true;
