@@ -101,7 +101,7 @@ public class WorklogSubmissionOrchestrator : IWorklogSubmissionOrchestrator
 	public async Task<SubmissionOutcome> SubmitAsync(
 		IReadOnlyList<WorklogPreviewItem> items, string providerId, string providerName, CancellationToken cancellationToken)
 	{
-		var worklogs = ConvertToWorklogs(items.Where(i => !i.IsDateHeader));
+		var worklogs = ConvertToWorklogs(items.Where(i => !i.IsDateHeader && i.IsSelected));
 
 		var result = await _submissionService.SubmitCustomWorklogsAsync(worklogs, providerId, cancellationToken);
 
@@ -121,7 +121,7 @@ public class WorklogSubmissionOrchestrator : IWorklogSubmissionOrchestrator
 	public async Task<SubmissionOutcome> RetryFailedAsync(
 		IReadOnlyList<WorklogPreviewItem> items, string providerId, string providerName, CancellationToken cancellationToken)
 	{
-		var worklogs = ConvertToWorklogs(items.Where(i => !i.IsDateHeader && i.HasError));
+		var worklogs = ConvertToWorklogs(items.Where(i => !i.IsDateHeader && i.HasError && i.IsSelected));
 
 		if (worklogs.Count == 0)
 		{
@@ -188,6 +188,22 @@ public class WorklogSubmissionOrchestrator : IWorklogSubmissionOrchestrator
 			item.RestoreOriginalValues();
 			item.HasError = false;
 			item.ErrorMessage = null;
+		}
+	}
+
+	public void InvertSelection(IReadOnlyList<WorklogPreviewItem> items)
+	{
+		foreach (var item in items.Where(i => !i.IsDateHeader))
+		{
+			item.IsSelected = !item.IsSelected;
+		}
+	}
+
+	public void SelectAll(IReadOnlyList<WorklogPreviewItem> items)
+	{
+		foreach (var item in items.Where(i => !i.IsDateHeader))
+		{
+			item.IsSelected = true;
 		}
 	}
 

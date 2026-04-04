@@ -18,6 +18,7 @@ public class SubmitWorklogViewModel : ViewModelBase
 	private readonly TimeProvider _timeProvider;
 	private readonly ILocalizationService _localization;
 	private readonly ILogger<SubmitWorklogViewModel> _logger;
+	private bool _suppressRecalculation;
 	private DateTime _selectedDate;
 	private bool _isWeekly;
 	private bool _isLoading;
@@ -45,6 +46,8 @@ public class SubmitWorklogViewModel : ViewModelBase
 		RetryFailedCommand = new AsyncRelayCommand(RetryFailedAsync, CanRetryFailed);
 		CancelCommand = new RelayCommand(Cancel);
 		ResetCommand = new RelayCommand(ResetToOriginal);
+		InvertSelectionCommand = new RelayCommand(InvertSelection);
+		SelectAllCommand = new RelayCommand(SelectAll);
 
 		var providers = _orchestrator.LoadAvailableProviders();
 		AvailableProviders = new ObservableCollection<ProviderInfo>(providers);
@@ -168,6 +171,8 @@ public class SubmitWorklogViewModel : ViewModelBase
 	public IAsyncRelayCommand RetryFailedCommand { get; }
 	public ICommand CancelCommand { get; }
 	public ICommand ResetCommand { get; }
+	public ICommand InvertSelectionCommand { get; }
+	public ICommand SelectAllCommand { get; }
 
 	#endregion Commands
 
@@ -219,7 +224,7 @@ public class SubmitWorklogViewModel : ViewModelBase
 		}
 	}
 
-	private bool CanSend() => !IsSending && !IsLoading && PreviewItems.Any(i => !i.IsDateHeader) && SelectedProvider != null;
+	private bool CanSend() => !IsSending && !IsLoading && PreviewItems.Any(i => !i.IsDateHeader && i.IsSelected) && SelectedProvider != null;
 
 	private async Task SendAsync()
 	{
@@ -297,20 +302,51 @@ public class SubmitWorklogViewModel : ViewModelBase
 
 	private void ResetToOriginal()
 	{
-		_orchestrator.ResetItems(PreviewItems);
+		WithSuppressedRecalculation(() => _orchestrator.ResetItems(PreviewItems));
 		HasFailedItems = false;
-
-		var totalSeconds = PreviewItems.Where(i => !i.IsDateHeader).Sum(i => i.Duration);
-		TotalTimeDisplay = _orchestrator.FormatDuration(totalSeconds);
+		RecalculateTotals();
 		StatusMessage = _localization["WorklogsResetToOriginal"];
+	}
+
+	private void InvertSelection()
+	{
+		WithSuppressedRecalculation(() => _orchestrator.InvertSelection(PreviewItems));
+		RecalculateTotals();
+	}
+
+	private void SelectAll()
+	{
+		WithSuppressedRecalculation(() => _orchestrator.SelectAll(PreviewItems));
+		RecalculateTotals();
+	}
+
+	private void WithSuppressedRecalculation(Action action)
+	{
+		_suppressRecalculation = true;
+		try
+		{
+			action();
+		}
+		finally
+		{
+			_suppressRecalculation = false;
+		}
+	}
+
+	private void RecalculateTotals()
+	{
+		var selectedItems = PreviewItems.Where(i => !i.IsDateHeader && i.IsSelected);
+		TotalTimeDisplay = _orchestrator.FormatDuration(selectedItems.Sum(i => i.Duration));
+		StatusMessage = _localization.GetFormattedString("ReadyToSubmit", selectedItems.Count());
+		SendCommand.NotifyCanExecuteChanged();
 	}
 
 	private void OnWorklogItemPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
 	{
-		if (e.PropertyName == nameof(WorklogPreviewItem.Duration))
+		if (!_suppressRecalculation &&
+			e.PropertyName is nameof(WorklogPreviewItem.Duration) or nameof(WorklogPreviewItem.IsSelected))
 		{
-			var totalSeconds = PreviewItems.Where(i => !i.IsDateHeader).Sum(i => i.Duration);
-			TotalTimeDisplay = _orchestrator.FormatDuration(totalSeconds);
+			RecalculateTotals();
 		}
 	}
 }

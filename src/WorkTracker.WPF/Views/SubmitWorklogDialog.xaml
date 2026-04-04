@@ -54,17 +54,22 @@
 					<Style TargetType="Border">
 						<Setter Property="Background" Value="Transparent" />
 						<Setter Property="BorderThickness" Value="0" />
+						<Setter Property="Opacity" Value="1" />
 						<Style.Triggers>
 							<DataTrigger Binding="{Binding HasError}" Value="True">
 								<Setter Property="Background" Value="#20FF4444" />
 								<Setter Property="BorderBrush" Value="#60FF4444" />
 								<Setter Property="BorderThickness" Value="1" />
 							</DataTrigger>
+							<DataTrigger Binding="{Binding IsSelected}" Value="False">
+								<Setter Property="Opacity" Value="0.5" />
+							</DataTrigger>
 						</Style.Triggers>
 					</Style>
 				</Border.Style>
 				<Grid>
 					<Grid.ColumnDefinitions>
+						<ColumnDefinition Width="30" />
 						<ColumnDefinition Width="120" />
 						<ColumnDefinition Width="*" />
 						<ColumnDefinition Width="85" />
@@ -72,7 +77,12 @@
 						<ColumnDefinition Width="55" />
 					</Grid.ColumnDefinitions>
 
-					<TextBox Grid.Column="0"
+					<CheckBox Grid.Column="0"
+							  IsChecked="{Binding IsSelected}"
+							  VerticalAlignment="Center"
+							  Margin="2,0" />
+
+					<TextBox Grid.Column="1"
 							 Text="{Binding TicketId, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
 							 materialDesign:HintAssist.Hint="{markup:Localize Ticket}"
 							 FontWeight="Medium"
@@ -82,7 +92,7 @@
 							 Padding="6,4"
 							 Margin="0,0,4,0" />
 
-					<TextBox Grid.Column="1"
+					<TextBox Grid.Column="2"
 							 Text="{Binding Description, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
 							 VerticalAlignment="Center"
 							 BorderBrush="#CCCCCC"
@@ -90,7 +100,7 @@
 							 Padding="6,4"
 							 Margin="4,0" />
 
-					<TextBox Grid.Column="2"
+					<TextBox Grid.Column="3"
 							 Text="{Binding StartTimeDisplay, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
 							 VerticalAlignment="Center"
 							 BorderBrush="#CCCCCC"
@@ -98,7 +108,7 @@
 							 Padding="6,4"
 							 Margin="4,0,4,0" />
 
-					<TextBox Grid.Column="3"
+					<TextBox Grid.Column="4"
 							 Text="{Binding EndTimeDisplay, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
 							 VerticalAlignment="Center"
 							 BorderBrush="#CCCCCC"
@@ -106,7 +116,7 @@
 							 Padding="6,4"
 							 Margin="4,0,4,0" />
 
-					<TextBlock Grid.Column="4"
+					<TextBlock Grid.Column="5"
 							   Text="{Binding DurationDisplay, Mode=OneWay}"
 							   FontWeight="Medium"
 							   HorizontalAlignment="Right"
@@ -218,8 +228,14 @@
 			   CornerRadius="4"
 			   Padding="8">
 					<Grid>
+						<Grid.RowDefinitions>
+							<RowDefinition Height="Auto" />
+							<RowDefinition Height="*" />
+						</Grid.RowDefinitions>
+
 						<!-- Loading Indicator -->
-						<StackPanel HorizontalAlignment="Center"
+						<StackPanel Grid.RowSpan="2"
+						   HorizontalAlignment="Center"
 						   VerticalAlignment="Center"
 						   Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibilityConverter}}">
 							<ProgressBar Style="{StaticResource MaterialDesignCircularProgressBar}"
@@ -232,8 +248,39 @@
 							 HorizontalAlignment="Center" />
 						</StackPanel>
 
+						<!-- Column header -->
+						<Grid Grid.Row="0" Margin="0,0,18,4"
+							  Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
+							<Grid.ColumnDefinitions>
+								<ColumnDefinition Width="30" />
+								<ColumnDefinition Width="120" />
+								<ColumnDefinition Width="*" />
+								<ColumnDefinition Width="85" />
+								<ColumnDefinition Width="85" />
+								<ColumnDefinition Width="55" />
+							</Grid.ColumnDefinitions>
+							<Border Grid.Column="0" Cursor="Hand" Background="Transparent"
+									MouseLeftButtonDown="SelectionHeader_MouseLeftButtonDown">
+								<materialDesign:PackIcon Kind="CheckboxMultipleMarked"
+									Width="14" Height="14"
+									Foreground="{DynamicResource MaterialDesign.Brush.Foreground.Light}"
+									HorizontalAlignment="Center" VerticalAlignment="Center" />
+							</Border>
+							<TextBlock Grid.Column="1" Text="{markup:Localize Ticket}" FontSize="11"
+									   Foreground="{DynamicResource MaterialDesign.Brush.Foreground.Light}" VerticalAlignment="Center" Margin="6,0,0,0" />
+							<TextBlock Grid.Column="2" Text="{markup:Localize Description}" FontSize="11"
+									   Foreground="{DynamicResource MaterialDesign.Brush.Foreground.Light}" VerticalAlignment="Center" Margin="6,0,0,0" />
+							<TextBlock Grid.Column="3" Text="{markup:Localize Start}" FontSize="11"
+									   Foreground="{DynamicResource MaterialDesign.Brush.Foreground.Light}" VerticalAlignment="Center" Margin="6,0,0,0" />
+							<TextBlock Grid.Column="4" Text="{markup:Localize End}" FontSize="11"
+									   Foreground="{DynamicResource MaterialDesign.Brush.Foreground.Light}" VerticalAlignment="Center" Margin="6,0,0,0" />
+							<TextBlock Grid.Column="5" Text="{markup:Localize Duration}" FontSize="11"
+									   Foreground="{DynamicResource MaterialDesign.Brush.Foreground.Light}"
+									   HorizontalAlignment="Right" VerticalAlignment="Center" />
+						</Grid>
+
 						<!-- Preview Items -->
-						<ListBox ItemsSource="{Binding PreviewItems}"
+						<ListBox Grid.Row="1" ItemsSource="{Binding PreviewItems}"
 							 Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}"
 							 VirtualizingPanel.IsVirtualizing="True"
 							 VirtualizingPanel.VirtualizationMode="Recycling"
