@@ -40,6 +40,7 @@
     <Project Path="tests/WorkTracker.Domain.Tests/WorkTracker.Domain.Tests.csproj" />
     <Project Path="tests/WorkTracker.Infrastructure.Tests/WorkTracker.Infrastructure.Tests.csproj" />
     <Project Path="tests/WorkTracker.Plugin.Atlassian.Tests/WorkTracker.Plugin.Atlassian.Tests.csproj" />
+    <Project Path="tests/WorkTracker.Plugin.GoranG3.Tests/WorkTracker.Plugin.GoranG3.Tests.csproj" />
     <Project Path="tests/WorkTracker.UI.Shared.Tests/WorkTracker.UI.Shared.Tests.csproj" />
   </Folder>
 </Solution>

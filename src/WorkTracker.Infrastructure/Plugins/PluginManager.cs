@@ -275,15 +275,23 @@ public sealed class PluginManager : IPluginManager
 	public async Task InitializePluginsAsync(Dictionary<string, Dictionary<string, string>>? configurations, CancellationToken cancellationToken)
 	{
 		List<KeyValuePair<string, IPlugin>> pluginsSnapshot;
+		HashSet<string> enabledSnapshot;
 		lock (_lock)
 		{
 			pluginsSnapshot = new List<KeyValuePair<string, IPlugin>>(_loadedPlugins);
+			enabledSnapshot = new HashSet<string>(_enabledPluginIds);
 		}
 
 		foreach (var kvp in pluginsSnapshot)
 		{
 			var pluginId = kvp.Key;
 			var plugin = kvp.Value;
+
+			if (!enabledSnapshot.Contains(pluginId))
+			{
+				_logger.LogDebug("Skipping initialization of disabled plugin: {Name}", plugin.Metadata.Name);
+				continue;
+			}
 
 			try
 			{
