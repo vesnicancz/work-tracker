@@ -259,7 +259,7 @@ public class SubmitWorklogViewModel : ViewModelBase
 		}
 	}
 
-	private bool CanRetryFailed() => !IsSending && !IsLoading && HasFailedItems && SelectedProvider != null;
+	private bool CanRetryFailed() => !IsSending && !IsLoading && HasFailedItems && PreviewItems.Any(i => !i.IsDateHeader && i.HasError && i.IsSelected) && SelectedProvider != null;
 
 	private async Task RetryFailedAsync()
 	{
@@ -339,6 +339,7 @@ public class SubmitWorklogViewModel : ViewModelBase
 		TotalTimeDisplay = _orchestrator.FormatDuration(selectedItems.Sum(i => i.Duration));
 		StatusMessage = _localization.GetFormattedString("ReadyToSubmit", selectedItems.Count());
 		SendCommand.NotifyCanExecuteChanged();
+		RetryFailedCommand.NotifyCanExecuteChanged();
 	}
 
 	private void OnWorklogItemPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)

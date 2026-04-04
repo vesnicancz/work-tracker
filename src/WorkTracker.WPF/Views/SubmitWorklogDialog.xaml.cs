@@ -16,6 +16,7 @@ public partial class SubmitWorklogDialog : Window
 	{
 		InitializeComponent();
 		_clickTimer.Tick += OnClickTimerTick;
+		Closed += (_, _) => _clickTimer.Stop();
 
 		// Window control button handler
 		CloseButton.Click += (s, e) => Close();
