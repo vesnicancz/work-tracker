@@ -296,7 +296,12 @@ public sealed class GoranG3WorklogPlugin : WorklogUploadPluginBase, IAsyncDispos
 		catch (Exception ex)
 		{
 			// Reset connection state so next attempt will reconnect
-			_mcpClient = null;
+			if (_mcpClient != null)
+			{
+				await _mcpClient.DisposeAsync();
+				_mcpClient = null;
+			}
+
 			Logger?.LogError(ex, "Connection test failed");
 			return PluginResult<bool>.Failure($"Connection failed: {ex.Message}");
 		}
