@@ -21,6 +21,7 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 	private readonly List<MenuItem> _favoriteMenuItems = new();
 	private readonly CancellationTokenSource _cts = new();
 	private Separator? _favoritesSeparator;
+	private MenuItem? _stopWorkItem;
 
 	public TrayIconService(
 		IDialogService dialogService,
@@ -79,6 +80,16 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 		};
 		newEntryMenuItem.Click += async (s, e) => await OpenNewWorkEntryAsync();
 		contextMenu.Items.Add(newEntryMenuItem);
+
+		_stopWorkItem = new MenuItem
+		{
+			Header = _localizationService["TrayStopWork"],
+			Style = (Style)_menuStyles["TrayMenuItemStyle"],
+			Icon = CreateFontAwesomeIcon("Solid_Stop", Brushes.OrangeRed),
+			IsEnabled = _worklogStateService.IsTracking
+		};
+		_stopWorkItem.Click += async (s, e) => await StopWorkAsync();
+		contextMenu.Items.Add(_stopWorkItem);
 
 		// Remember position for favorites (they will be inserted here)
 		_favoritesInsertIndex = contextMenu.Items.Count;
@@ -220,6 +231,8 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 		_taskbarIcon.ToolTipText = isActive
 			? _localizationService["TrayTooltipActive"]
 			: _localizationService["TrayTooltip"];
+
+		_stopWorkItem!.IsEnabled = isActive;
 	}
 
 	private void OnIsTrackingChanged(object? sender, bool isTracking)
@@ -282,6 +295,31 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 				_favoriteMenuItems.Add(menuItem);
 				insertIndex++;
 			}
+		}
+	}
+
+	private async Task StopWorkAsync()
+	{
+		try
+		{
+			var result = await _worklogStateService.StopTrackingAsync(_cts.Token);
+			if (result.IsFailure)
+			{
+				MessageBox.Show(
+					_localizationService.GetFormattedString("FailedToStopWork", result.Error ?? "Unknown error"),
+					_localizationService["Error"],
+					MessageBoxButton.OK,
+					MessageBoxImage.Error);
+			}
+		}
+		catch (OperationCanceledException) { /* Service is being disposed */ }
+		catch (Exception ex)
+		{
+			MessageBox.Show(
+				_localizationService.GetFormattedString("FailedToStopWork", ex.Message),
+				_localizationService["Error"],
+				MessageBoxButton.OK,
+				MessageBoxImage.Error);
 		}
 	}
 

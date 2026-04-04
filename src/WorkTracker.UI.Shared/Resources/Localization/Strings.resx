@@ -435,6 +435,9 @@ Time: {2}</value>
   <data name="TrayNewWorkEntry" xml:space="preserve">
     <value>New Work Entry</value>
   </data>
+  <data name="TrayStopWork" xml:space="preserve">
+    <value>Stop Work</value>
+  </data>
   <data name="TrayExit" xml:space="preserve">
     <value>Exit</value>
   </data>

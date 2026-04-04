@@ -1,5 +1,11 @@
+using System.Collections.Concurrent;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Media;
+using Avalonia.Media.Imaging;
+using Material.Icons;
+using Material.Icons.Avalonia;
 using Microsoft.Extensions.Logging;
 using WorkTracker.UI.Shared.Models;
 using WorkTracker.UI.Shared.Services;
@@ -22,6 +28,8 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 	private readonly List<NativeMenuItem> _favoriteMenuItems = new();
 	private readonly CancellationTokenSource _cts = new();
 	private NativeMenuItemSeparator? _favoritesSeparator;
+	private NativeMenuItem? _stopWorkItem;
+	private int _favoritesInsertIndex;
 
 	public TrayIconService(
 		IDialogService dialogService,
@@ -47,23 +55,36 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 		_menu = new NativeMenu();
 
 		// Show window
-		var showItem = new NativeMenuItem($"❐ {_localizationService["TrayShow"]}");
+		var showItem = new NativeMenuItem(_localizationService["TrayShow"]);
+		showItem.Icon = RenderMenuIcon(MaterialIconKind.WindowRestore, Brushes.DarkSlateGray);
 		showItem.Click += (_, _) => ShowMainWindow();
 		_menu.Items.Add(showItem);
 
 		// New work entry
-		var newEntryItem = new NativeMenuItem($"➕ {_localizationService["TrayNewWorkEntry"]}");
+		var newEntryItem = new NativeMenuItem(_localizationService["TrayNewWorkEntry"]);
+		newEntryItem.Icon = RenderMenuIcon(MaterialIconKind.Plus, Brushes.Green);
 		newEntryItem.Click += async (_, _) => await OpenNewWorkEntryAsync();
 		_menu.Items.Add(newEntryItem);
 
-		// Favorites will be inserted here
+		// Stop work
+		_stopWorkItem = new NativeMenuItem(_localizationService["TrayStopWork"]);
+		_stopWorkItem.Icon = RenderMenuIcon(MaterialIconKind.Stop, Brushes.OrangeRed);
+		_stopWorkItem.IsEnabled = _worklogStateService.IsTracking;
+		_stopWorkItem.Click += async (_, _) => await StopWorkAsync();
+		_menu.Items.Add(_stopWorkItem);
+
+		// Remember position for favorites (they will be inserted here)
+		_favoritesInsertIndex = _menu.Items.Count;
+
+		// Add favorites directly to menu
 		RefreshFavoritesMenu();
 
 		// Separator before exit
 		_menu.Items.Add(new NativeMenuItemSeparator());
 
 		// Exit
-		var exitItem = new NativeMenuItem($"⏻ {_localizationService["TrayExit"]}");
+		var exitItem = new NativeMenuItem(_localizationService["TrayExit"]);
+		exitItem.Icon = RenderMenuIcon(MaterialIconKind.Power, Brushes.Crimson);
 		exitItem.Click += (_, _) =>
 		{
 			if (global::Avalonia.Application.Current?.ApplicationLifetime
@@ -132,16 +153,17 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 		var favorites = _settingsService.Settings.FavoriteWorkItems;
 		if (favorites is { Count: > 0 })
 		{
-			// Insert separator after "New Work Entry" (index 2)
+			var insertIndex = _favoritesInsertIndex;
 			_favoritesSeparator = new NativeMenuItemSeparator();
-			var insertIndex = Math.Min(2, _menu.Items.Count);
 			_menu.Items.Insert(insertIndex, _favoritesSeparator);
 			insertIndex++;
 
 			foreach (var favorite in favorites)
 			{
-				var icon = favorite.ShowAsTemplate ? "\u270E" : "\u2605";
-				var menuItem = new NativeMenuItem($"{icon} {favorite.Name}");
+				var menuItem = new NativeMenuItem(favorite.Name);
+				menuItem.Icon = favorite.ShowAsTemplate
+					? RenderMenuIcon(MaterialIconKind.SquareEditOutline, Brushes.DodgerBlue)
+					: RenderMenuIcon(MaterialIconKind.Star, Brushes.Gold);
 				menuItem.Click += async (_, _) => await StartFavoriteWorkAsync(favorite);
 				_menu.Items.Insert(insertIndex, menuItem);
 				_favoriteMenuItems.Add(menuItem);
@@ -223,11 +245,57 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 			: _localizationService["TrayTooltip"];
 
 		_trayIcon.Icon = AppIconProvider.GetTrayIcon(isActive) ?? _trayIcon.Icon;
+
+		_stopWorkItem!.IsEnabled = isActive;
 	}
 
 	private void OnIsTrackingChanged(object? sender, bool isTracking)
 	{
 		SetActiveState(isTracking);
+	}
+
+	private async Task StopWorkAsync()
+	{
+		try
+		{
+			var result = await _worklogStateService.StopTrackingAsync(_cts.Token);
+			if (result.IsFailure)
+			{
+				_logger.LogWarning("Failed to stop work from tray: {Error}", result.Error);
+			}
+		}
+		catch (OperationCanceledException) { /* Service is being disposed */ }
+		catch (Exception ex)
+		{
+			_logger.LogWarning(ex, "Failed to stop work from tray");
+		}
+	}
+
+	// Cache lives for process lifetime; bitmaps are intentionally never disposed
+	// because NativeMenuItems hold references to them.
+	private static readonly ConcurrentDictionary<(MaterialIconKind, uint, int), Bitmap> s_iconCache = new();
+
+	private static Bitmap RenderMenuIcon(MaterialIconKind kind, ISolidColorBrush foreground, int size = 16)
+	{
+		var cacheKey = (kind, foreground.Color.ToUInt32(), size);
+		return s_iconCache.GetOrAdd(cacheKey, _ =>
+		{
+			var pathData = MaterialIconDataProvider.GetData(kind);
+			var geometry = Geometry.Parse(pathData);
+
+			var bitmap = new RenderTargetBitmap(new PixelSize(size, size));
+			using (var context = bitmap.CreateDrawingContext())
+			{
+				// Material icons use a 24x24 viewbox
+				var scale = size / 24.0;
+				using (context.PushTransform(Matrix.CreateScale(scale, scale)))
+				{
+					context.DrawGeometry(foreground, null, geometry);
+				}
+			}
+
+			return bitmap;
+		});
 	}
 
 	private async Task StartFavoriteWorkAsync(FavoriteWorkItem favorite)

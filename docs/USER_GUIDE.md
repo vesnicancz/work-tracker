@@ -641,18 +641,14 @@ V nástrojové liště nad seznamem pracovních záznamů (vedle tlačítka **+*
 
 ```
 ┌─────────────────────────┐
-│ 🟢 WorkTracker          │
+│ Zobrazit                │
+│ Nový záznam práce       │
+│ Zastavit práci          │  ← aktivní jen při běžícím trackingu
 ├─────────────────────────┤
-│ ⏱ Active: PROJ-123      │
-│   Duration: 2h 30m      │
+│ Oblíbená položka 1      │  ← oblíbené z nastavení
+│ Šablona položka 2       │
 ├─────────────────────────┤
-│ ▶ Start Work...         │
-│ ⏸ Stop Work            │
-│ 📋 Show Window          │
-│ 📤 Submit Today         │
-├─────────────────────────┤
-│ ⚙ Settings              │
-│ ❌ Exit                  │
+│ Ukončit                 │
 └─────────────────────────┘
 ```
 
