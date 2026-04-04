@@ -5,6 +5,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="WorkTracker.Plugin.GoranG3.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\WorkTracker.Plugin.Abstractions\WorkTracker.Plugin.Abstractions.csproj" />
     <ProjectReference Include="..\..\src\WorkTracker.Domain\WorkTracker.Domain.csproj" />
   </ItemGroup>

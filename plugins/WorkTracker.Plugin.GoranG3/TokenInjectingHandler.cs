@@ -30,13 +30,24 @@ internal sealed class TokenInjectingHandler : DelegatingHandler
     private async Task<string> AcquireTokenAsync(CancellationToken cancellationToken)
     {
         var accounts = await _msalApp.GetAccountsAsync().ConfigureAwait(false);
-        var firstAccount = accounts.FirstOrDefault()
-            ?? throw new MsalUiRequiredException("no_account", "No cached account. Please re-initialize the plugin.");
+        var firstAccount = accounts.FirstOrDefault();
 
-        var silentResult = await _msalApp
-            .AcquireTokenSilent(_scopes, firstAccount)
-            .ExecuteAsync(cancellationToken)
-            .ConfigureAwait(false);
-        return silentResult.AccessToken;
+        if (firstAccount == null)
+        {
+            throw new InvalidOperationException("Not authenticated. Please use Test Connection in Settings to sign in first.");
+        }
+
+        try
+        {
+            var silentResult = await _msalApp
+                .AcquireTokenSilent(_scopes, firstAccount)
+                .ExecuteAsync(cancellationToken)
+                .ConfigureAwait(false);
+            return silentResult.AccessToken;
+        }
+        catch (MsalUiRequiredException)
+        {
+            throw new InvalidOperationException("Authentication expired. Please use Test Connection in Settings to sign in again.");
+        }
     }
 }

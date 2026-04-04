@@ -23,7 +23,11 @@ public sealed class GoranG3WorklogPlugin : WorklogUploadPluginBase, IAsyncDispos
         public const string EntraScopes = "EntraScopes";
     }
 
+    private const string NotConnectedMessage = "Not connected to MCP server. Please use Test Connection in Settings to sign in first.";
+
     private IPublicClientApplication? _msalApp;
+    private string? _msalClientId;
+    private string? _msalTenantId;
     private string[]? _scopes;
     private string? _baseUrl;
     private McpClient? _mcpClient;
@@ -133,9 +137,11 @@ public sealed class GoranG3WorklogPlugin : WorklogUploadPluginBase, IAsyncDispos
             return false;
         }
 
-        // Reuse existing MSAL app to preserve token cache across re-initializations
-        if (_msalApp == null)
+        // Recreate MSAL app if credentials changed, reuse otherwise to preserve token cache
+        if (_msalApp == null || _msalClientId != clientId || _msalTenantId != tenantId)
         {
+            _msalClientId = clientId;
+            _msalTenantId = tenantId;
             _msalApp = PublicClientApplicationBuilder
                 .Create(clientId)
                 .WithAuthority(AzureCloudInstance.AzurePublic, tenantId)
@@ -319,6 +325,11 @@ public sealed class GoranG3WorklogPlugin : WorklogUploadPluginBase, IAsyncDispos
     {
         EnsureInitialized();
 
+        if (_mcpClient == null)
+        {
+            return PluginResult<bool>.Failure(NotConnectedMessage);
+        }
+
         try
         {
             var arguments = new Dictionary<string, object?>
@@ -377,58 +388,57 @@ public sealed class GoranG3WorklogPlugin : WorklogUploadPluginBase, IAsyncDispos
     {
         EnsureInitialized();
 
+        if (_mcpClient == null)
+        {
+            return PluginResult<WorklogSubmissionResult>.Failure(NotConnectedMessage);
+        }
+
         var worklogsByDate = worklogs.GroupBy(w => w.StartTime.Date).OrderBy(g => g.Key);
-        var successful = 0;
-        var failed = 0;
-        var errors = new List<WorklogSubmissionError>();
+        var totalSuccessful = 0;
+        var totalFailed = 0;
+        var allErrors = new List<WorklogSubmissionError>();
 
         foreach (var dayGroup in worklogsByDate)
         {
-            foreach (var worklog in dayGroup)
+            var dayResult = await base.UploadWorklogsAsync(dayGroup, cancellationToken);
+            if (dayResult.IsFailure)
             {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                var result = await UploadWorklogAsync(worklog, cancellationToken);
-                if (result.IsSuccess)
-                {
-                    successful++;
-                }
-                else
-                {
-                    failed++;
-                    errors.Add(new WorklogSubmissionError
-                    {
-                        Worklog = worklog,
-                        ErrorMessage = result.Error ?? "Unknown error"
-                    });
-                }
+                return dayResult;
             }
 
-            // Submit (confirm) the timesheet for this day
+            totalSuccessful += dayResult.Value!.SuccessfulEntries;
+            totalFailed += dayResult.Value!.FailedEntries;
+            allErrors.AddRange(dayResult.Value!.Errors);
+
             var submitResult = await SubmitTimesheetAsync(dayGroup.Key, cancellationToken);
             if (submitResult.IsFailure)
             {
-                Logger?.LogWarning("Failed to submit timesheet for {Date}: {Error}", dayGroup.Key.ToString("yyyy-MM-dd"), submitResult.Error);
+                allErrors.Add(new WorklogSubmissionError
+                {
+                    Worklog = dayGroup.First(),
+                    ErrorMessage = $"Timesheet submit failed for {dayGroup.Key:yyyy-MM-dd}: {submitResult.Error}"
+                });
             }
         }
 
-        var total = successful + failed;
         return PluginResult<WorklogSubmissionResult>.Success(new WorklogSubmissionResult
         {
-            TotalEntries = total,
-            SuccessfulEntries = successful,
-            FailedEntries = failed,
-            Errors = errors
+            TotalEntries = totalSuccessful + totalFailed,
+            SuccessfulEntries = totalSuccessful,
+            FailedEntries = totalFailed,
+            Errors = allErrors
         });
     }
 
     private async Task<PluginResult<bool>> SubmitTimesheetAsync(DateTime date, CancellationToken cancellationToken)
     {
+        var dateStr = date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
         try
         {
             var arguments = new Dictionary<string, object?>
             {
-                ["date"] = date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
+                ["date"] = dateStr
             };
 
             var result = await _mcpClient!.CallToolAsync("submit_my_timesheet", arguments, cancellationToken: cancellationToken);
@@ -436,16 +446,16 @@ public sealed class GoranG3WorklogPlugin : WorklogUploadPluginBase, IAsyncDispos
             if (result.IsError == true)
             {
                 var errorText = GetResultText(result);
-                Logger?.LogWarning("Failed to submit timesheet for {Date}: {Error}", date.ToString("yyyy-MM-dd"), errorText);
+                Logger?.LogWarning("Failed to submit timesheet for {Date}: {Error}", dateStr, errorText);
                 return PluginResult<bool>.Failure($"Submit failed: {errorText}");
             }
 
-            Logger?.LogInformation("Submitted timesheet for {Date}", date.ToString("yyyy-MM-dd"));
+            Logger?.LogInformation("Submitted timesheet for {Date}", dateStr);
             return PluginResult<bool>.Success(true);
         }
         catch (Exception ex)
         {
-            Logger?.LogError(ex, "Error submitting timesheet for {Date}", date.ToString("yyyy-MM-dd"));
+            Logger?.LogError(ex, "Error submitting timesheet for {Date}", dateStr);
             return PluginResult<bool>.Failure($"Error: {ex.Message}");
         }
     }
@@ -453,6 +463,11 @@ public sealed class GoranG3WorklogPlugin : WorklogUploadPluginBase, IAsyncDispos
     public override async Task<PluginResult<IEnumerable<PluginWorklogEntry>>> GetWorklogsAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken)
     {
         EnsureInitialized();
+
+        if (_mcpClient == null)
+        {
+            return PluginResult<IEnumerable<PluginWorklogEntry>>.Failure(NotConnectedMessage);
+        }
 
         try
         {
@@ -602,7 +617,7 @@ public sealed class GoranG3WorklogPlugin : WorklogUploadPluginBase, IAsyncDispos
         return worklogs;
     }
 
-    private static PluginWorklogEntry? ParseTimesheetLine(string line)
+    internal static PluginWorklogEntry? ParseTimesheetLine(string line)
     {
         // Split by pipe delimiter (common in MCP text table responses)
         var columns = line.Split('|', StringSplitOptions.TrimEntries);
@@ -661,7 +676,7 @@ public sealed class GoranG3WorklogPlugin : WorklogUploadPluginBase, IAsyncDispos
         };
     }
 
-    private static bool TryParseDuration(string text, out int minutes)
+    internal static bool TryParseDuration(string text, out int minutes)
     {
         minutes = 0;
 
