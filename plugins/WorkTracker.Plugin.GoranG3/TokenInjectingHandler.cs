@@ -34,6 +34,7 @@ internal sealed class TokenInjectingHandler : DelegatingHandler
 
 		if (firstAccount == null)
 		{
+			_logger?.LogWarning("No cached MSAL account available");
 			throw new InvalidOperationException("Not authenticated. Please use Test Connection in Settings to sign in first.");
 		}
 
@@ -47,6 +48,7 @@ internal sealed class TokenInjectingHandler : DelegatingHandler
 		}
 		catch (MsalUiRequiredException)
 		{
+			_logger?.LogWarning("MSAL token expired, interactive auth required");
 			throw new InvalidOperationException("Authentication expired. Please use Test Connection in Settings to sign in again.");
 		}
 	}

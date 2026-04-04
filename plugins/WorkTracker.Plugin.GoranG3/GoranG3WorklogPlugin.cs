@@ -24,6 +24,7 @@ public sealed class GoranG3WorklogPlugin : WorklogUploadPluginBase, IAsyncDispos
 	}
 
 	private const string NotConnectedMessage = "Not connected to MCP server. Please use Test Connection in Settings to sign in first.";
+	private static readonly Lock _cacheLock = new();
 
 	private IPublicClientApplication? _msalApp;
 	private string? _msalClientId;
@@ -153,17 +154,20 @@ public sealed class GoranG3WorklogPlugin : WorklogUploadPluginBase, IAsyncDispos
 			Directory.CreateDirectory(Path.GetDirectoryName(cacheFilePath)!);
 			_msalApp.UserTokenCache.SetBeforeAccess(args =>
 			{
-				try
+				lock (_cacheLock)
 				{
-					args.TokenCache.DeserializeMsalV3(File.ReadAllBytes(cacheFilePath));
-				}
-				catch (FileNotFoundException)
-				{
-					// No cache file yet — first run
-				}
-				catch (Exception ex)
-				{
-					Logger?.LogWarning(ex, "Failed to read MSAL token cache");
+					try
+					{
+						args.TokenCache.DeserializeMsalV3(File.ReadAllBytes(cacheFilePath));
+					}
+					catch (FileNotFoundException)
+					{
+						// No cache file yet — first run
+					}
+					catch (Exception ex)
+					{
+						Logger?.LogWarning(ex, "Failed to read MSAL token cache");
+					}
 				}
 			});
 			_msalApp.UserTokenCache.SetAfterAccess(args =>
@@ -173,13 +177,16 @@ public sealed class GoranG3WorklogPlugin : WorklogUploadPluginBase, IAsyncDispos
 					return;
 				}
 
-				try
+				lock (_cacheLock)
 				{
-					File.WriteAllBytes(cacheFilePath, args.TokenCache.SerializeMsalV3());
-				}
-				catch (Exception ex)
-				{
-					Logger?.LogWarning(ex, "Failed to write MSAL token cache");
+					try
+					{
+						File.WriteAllBytes(cacheFilePath, args.TokenCache.SerializeMsalV3());
+					}
+					catch (Exception ex)
+					{
+						Logger?.LogWarning(ex, "Failed to write MSAL token cache");
+					}
 				}
 			});
 		}
