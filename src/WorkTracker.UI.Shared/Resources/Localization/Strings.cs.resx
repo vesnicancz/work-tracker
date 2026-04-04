@@ -435,6 +435,9 @@ Popis: {1}
   <data name="TrayNewWorkEntry" xml:space="preserve">
     <value>Nový záznam práce</value>
   </data>
+  <data name="TrayStopWork" xml:space="preserve">
+    <value>Zastavit práci</value>
+  </data>
   <data name="TrayExit" xml:space="preserve">
     <value>Ukončit</value>
   </data>
