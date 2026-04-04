@@ -442,13 +442,13 @@
                                       HorizontalScrollBarVisibility="Disabled">
                             <StackPanel Margin="20,12" Spacing="14">
 
-                                <StackPanel Spacing="4">
+                                <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center"
+                                            Margin="0,0,0,10">
                                     <TextBlock Text="{markup:Localize WorkTracker}" FontSize="18" FontWeight="SemiBold" />
                                     <TextBlock Text="{Binding AppVersionDisplay}"
-                                               FontSize="13" Foreground="{DynamicResource TextMuted}" />
+                                               FontSize="13" Foreground="{DynamicResource TextMuted}"
+                                               Margin="0,5,0,0" />
                                 </StackPanel>
-
-                                <Separator />
 
                                 <!-- Keyboard Shortcuts -->
                                 <TextBlock Text="{markup:Localize KeyboardShortcuts}" FontSize="13" FontWeight="SemiBold" />
