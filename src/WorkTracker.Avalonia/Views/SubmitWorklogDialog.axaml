@@ -5,6 +5,7 @@
         xmlns:material="using:Material.Icons.Avalonia"
         xmlns:markup="using:WorkTracker.Avalonia.Markup"
         xmlns:vm="using:WorkTracker.Avalonia.ViewModels"
+        xmlns:converters="using:WorkTracker.Avalonia.Converters"
         xmlns:shared="using:WorkTracker.UI.Shared.ViewModels"
         x:Class="WorkTracker.Avalonia.Views.SubmitWorklogDialog"
         x:DataType="vm:SubmitWorklogViewModel"
@@ -88,9 +89,10 @@
                         BorderThickness="1"
                         CornerRadius="4"
                         Padding="6">
-                    <Grid>
+                    <Grid RowDefinitions="Auto,*">
                         <!-- Loading -->
-                        <StackPanel IsVisible="{Binding IsLoading}"
+                        <StackPanel Grid.RowSpan="2"
+                                    IsVisible="{Binding IsLoading}"
                                     HorizontalAlignment="Center"
                                     VerticalAlignment="Center" Spacing="10">
                             <ProgressBar IsIndeterminate="True" Width="180" Height="3" />
@@ -98,10 +100,35 @@
                                        Foreground="{DynamicResource TextMuted}" FontSize="12" />
                         </StackPanel>
 
+                        <!-- Column header -->
+                        <Grid Grid.Row="0" ColumnDefinitions="30,110,*,75,75,55"
+                              IsVisible="{Binding !IsLoading}" Margin="4,0,11,4">
+                            <Border Grid.Column="0" Cursor="Hand"
+                                    Background="Transparent"
+                                    PointerPressed="SelectionHeader_PointerPressed">
+                                <material:MaterialIcon Kind="CheckboxMultipleMarked"
+                                                       Width="14" Height="14"
+                                                       Foreground="{DynamicResource TextMuted}"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center" />
+                            </Border>
+                            <TextBlock Grid.Column="1" Text="{markup:Localize Ticket}" FontSize="11"
+                                       Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" Margin="6,0,0,0" />
+                            <TextBlock Grid.Column="2" Text="{markup:Localize Description}" FontSize="11"
+                                       Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" Margin="6,0,0,0" />
+                            <TextBlock Grid.Column="3" Text="{markup:Localize Start}" FontSize="11"
+                                       Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" Margin="6,0,0,0" />
+                            <TextBlock Grid.Column="4" Text="{markup:Localize End}" FontSize="11"
+                                       Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" Margin="6,0,0,0" />
+                            <TextBlock Grid.Column="5" Text="{markup:Localize Duration}" FontSize="11"
+                                       Foreground="{DynamicResource TextMuted}" HorizontalAlignment="Right"
+                                       VerticalAlignment="Center" />
+                        </Grid>
+
                         <!-- Items -->
-                        <ScrollViewer IsVisible="{Binding !IsLoading}"
+                        <ScrollViewer Grid.Row="1" IsVisible="{Binding !IsLoading}"
                                       VerticalScrollBarVisibility="Auto">
-                            <ItemsControl ItemsSource="{Binding PreviewItems}">
+                            <ItemsControl ItemsSource="{Binding PreviewItems}" Padding="0,0,7,0">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="shared:WorklogPreviewItem">
                                         <Panel>
@@ -131,8 +158,14 @@
                                                         <Setter Property="BorderThickness" Value="1" />
                                                     </Style>
                                                 </Border.Styles>
-                                                <Grid ColumnDefinitions="110,*,75,75,55">
-                                                    <TextBox Grid.Column="0"
+                                                <Grid ColumnDefinitions="30,110,*,75,75,55"
+                                                      Opacity="{Binding IsSelected, Converter={x:Static converters:BoolToOpacityConverter.Instance}}">
+                                                    <CheckBox Grid.Column="0"
+                                                              IsChecked="{Binding IsSelected}"
+                                                              VerticalAlignment="Center"
+                                                              Margin="2,0"
+                                                              MinWidth="0" Padding="0" />
+                                                    <TextBox Grid.Column="1"
                                                              Text="{Binding TicketId, Mode=TwoWay}"
                                                              Watermark="{Binding NoTicketLabel}"
                                                              FontSize="12" FontWeight="Medium"
@@ -140,14 +173,14 @@
                                                              BorderBrush="{DynamicResource InputBorder}"
                                                              BorderThickness="1" Padding="6,4"
                                                              Margin="0,0,3,0" />
-                                                    <TextBox Grid.Column="1"
+                                                    <TextBox Grid.Column="2"
                                                              Text="{Binding Description, Mode=TwoWay}"
                                                              FontSize="12"
                                                              Background="{DynamicResource InputBackground}"
                                                              BorderBrush="{DynamicResource InputBorder}"
                                                              BorderThickness="1" Padding="6,4"
                                                              Margin="0,0,3,0" />
-                                                    <TextBox Grid.Column="2"
+                                                    <TextBox Grid.Column="3"
                                                              Text="{Binding StartTimeDisplay, Mode=TwoWay}"
                                                              FontSize="12"
                                                              FontFamily="JetBrains Mono,Consolas,monospace"
@@ -155,7 +188,7 @@
                                                              BorderBrush="{DynamicResource InputBorder}"
                                                              BorderThickness="1" Padding="6,4"
                                                              Margin="0,0,3,0" />
-                                                    <TextBox Grid.Column="3"
+                                                    <TextBox Grid.Column="4"
                                                              Text="{Binding EndTimeDisplay, Mode=TwoWay}"
                                                              FontSize="12"
                                                              FontFamily="JetBrains Mono,Consolas,monospace"
@@ -163,7 +196,7 @@
                                                              BorderBrush="{DynamicResource InputBorder}"
                                                              BorderThickness="1" Padding="6,4"
                                                              Margin="0,0,3,0" />
-                                                    <TextBlock Grid.Column="4"
+                                                    <TextBlock Grid.Column="5"
                                                                Text="{Binding DurationDisplay}"
                                                                FontSize="12" FontWeight="Medium"
                                                                FontFamily="JetBrains Mono,Consolas,monospace"

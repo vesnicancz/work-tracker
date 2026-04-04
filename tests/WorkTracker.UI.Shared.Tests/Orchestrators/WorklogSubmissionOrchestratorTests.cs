@@ -372,7 +372,158 @@ public class WorklogSubmissionOrchestratorTests
 		items[1].TicketId.Should().Be("PROJ-1");
 	}
 
+	[Fact]
+	public void ResetItems_RestoresIsSelectedToTrue()
+	{
+		var items = CreatePreviewItems("PROJ-1");
+		items[0].IsSelected = false;
+
+		_orchestrator.ResetItems(items);
+
+		items[0].IsSelected.Should().BeTrue();
+	}
+
 	#endregion ResetItems
+
+	#region InvertSelection
+
+	[Fact]
+	public void InvertSelection_TogglesAllDataItems()
+	{
+		var items = new List<WorklogPreviewItem>
+		{
+			new() { IsDateHeader = true, DateDisplay = "Monday" },
+			new() { TicketId = "A-1", Date = FixedDate, StartTime = FixedDate.AddHours(9), EndTime = FixedDate.AddHours(10), Duration = 3600 },
+			new() { TicketId = "A-2", Date = FixedDate, StartTime = FixedDate.AddHours(10), EndTime = FixedDate.AddHours(11), Duration = 3600, IsSelected = false }
+		};
+
+		_orchestrator.InvertSelection(items);
+
+		items[0].IsDateHeader.Should().BeTrue();
+		items[1].IsSelected.Should().BeFalse();
+		items[2].IsSelected.Should().BeTrue();
+	}
+
+	[Fact]
+	public void InvertSelection_SkipsDateHeaders()
+	{
+		var header = new WorklogPreviewItem { IsDateHeader = true, DateDisplay = "Monday" };
+		var items = new List<WorklogPreviewItem> { header };
+
+		_orchestrator.InvertSelection(items);
+
+		header.IsDateHeader.Should().BeTrue();
+	}
+
+	#endregion InvertSelection
+
+	#region SelectAll
+
+	[Fact]
+	public void SelectAll_SetsAllDataItemsToSelected()
+	{
+		var items = new List<WorklogPreviewItem>
+		{
+			new() { IsDateHeader = true, DateDisplay = "Monday" },
+			new() { TicketId = "A-1", Date = FixedDate, StartTime = FixedDate.AddHours(9), EndTime = FixedDate.AddHours(10), Duration = 3600, IsSelected = false },
+			new() { TicketId = "A-2", Date = FixedDate, StartTime = FixedDate.AddHours(10), EndTime = FixedDate.AddHours(11), Duration = 3600, IsSelected = false }
+		};
+
+		_orchestrator.SelectAll(items);
+
+		items[1].IsSelected.Should().BeTrue();
+		items[2].IsSelected.Should().BeTrue();
+	}
+
+	[Fact]
+	public void SelectAll_SkipsDateHeaders()
+	{
+		var header = new WorklogPreviewItem { IsDateHeader = true, DateDisplay = "Monday" };
+		var items = new List<WorklogPreviewItem> { header };
+
+		_orchestrator.SelectAll(items);
+
+		header.IsDateHeader.Should().BeTrue();
+	}
+
+	#endregion SelectAll
+
+	#region IsSelected
+
+	[Fact]
+	public void WorklogPreviewItem_IsSelected_DefaultsToTrue()
+	{
+		var item = new WorklogPreviewItem();
+
+		item.IsSelected.Should().BeTrue();
+	}
+
+	[Fact]
+	public async Task SubmitAsync_OnlySubmitsSelectedItems()
+	{
+		var item1 = new WorklogPreviewItem
+		{
+			TicketId = "PROJ-1", Description = "Work 1", Date = FixedDate, Duration = 3600,
+			StartTime = FixedDate.AddHours(9), EndTime = FixedDate.AddHours(10)
+		};
+		item1.SaveOriginalValues();
+
+		var item2 = new WorklogPreviewItem
+		{
+			TicketId = "PROJ-2", Description = "Work 2", Date = FixedDate, Duration = 1800,
+			StartTime = FixedDate.AddHours(10), EndTime = FixedDate.AddHours(10).AddMinutes(30),
+			IsSelected = false
+		};
+		item2.SaveOriginalValues();
+
+		var items = new List<WorklogPreviewItem> { item1, item2 };
+
+		var submission = new SubmissionResult { TotalEntries = 1, SuccessfulEntries = 1, FailedEntries = 0 };
+		_mockSubmissionService
+			.Setup(s => s.SubmitCustomWorklogsAsync(It.IsAny<IEnumerable<WorklogDto>>(), "tempo", It.IsAny<CancellationToken>()))
+			.ReturnsAsync(Result.Success(submission));
+
+		await _orchestrator.SubmitAsync(items, "tempo", "Tempo", TestContext.Current.CancellationToken);
+
+		_mockSubmissionService.Verify(s => s.SubmitCustomWorklogsAsync(
+			It.Is<IEnumerable<WorklogDto>>(w => w.Count() == 1 && w.First().TicketId == "PROJ-1"),
+			"tempo", It.IsAny<CancellationToken>()), Times.Once);
+	}
+
+	[Fact]
+	public async Task RetryFailedAsync_OnlyRetriesSelectedFailedItems()
+	{
+		var item1 = new WorklogPreviewItem
+		{
+			TicketId = "PROJ-1", Description = "Work 1", Date = FixedDate, Duration = 3600,
+			StartTime = FixedDate.AddHours(9), EndTime = FixedDate.AddHours(10),
+			HasError = true
+		};
+		item1.SaveOriginalValues();
+
+		var item2 = new WorklogPreviewItem
+		{
+			TicketId = "PROJ-2", Description = "Work 2", Date = FixedDate, Duration = 1800,
+			StartTime = FixedDate.AddHours(10), EndTime = FixedDate.AddHours(10).AddMinutes(30),
+			HasError = true, IsSelected = false
+		};
+		item2.SaveOriginalValues();
+
+		var items = new List<WorklogPreviewItem> { item1, item2 };
+
+		var submission = new SubmissionResult { TotalEntries = 1, SuccessfulEntries = 1, FailedEntries = 0 };
+		_mockSubmissionService
+			.Setup(s => s.SubmitCustomWorklogsAsync(It.IsAny<IEnumerable<WorklogDto>>(), "tempo", It.IsAny<CancellationToken>()))
+			.ReturnsAsync(Result.Success(submission));
+
+		await _orchestrator.RetryFailedAsync(items, "tempo", "Tempo", TestContext.Current.CancellationToken);
+
+		_mockSubmissionService.Verify(s => s.SubmitCustomWorklogsAsync(
+			It.Is<IEnumerable<WorklogDto>>(w => w.Count() == 1 && w.First().TicketId == "PROJ-1"),
+			"tempo", It.IsAny<CancellationToken>()), Times.Once);
+	}
+
+	#endregion IsSelected
 
 	private static readonly DateTime FixedDate = new(2025, 6, 15);
 

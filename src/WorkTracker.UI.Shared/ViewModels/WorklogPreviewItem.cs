@@ -21,6 +21,9 @@ public class WorklogPreviewItem : ObservableObject
 	private string _endTimeDisplay = string.Empty;
 	private string _durationDisplay = string.Empty;
 
+	// Selection state
+	private bool _isSelected = true;
+
 	// Error state
 	private bool _hasError;
 
@@ -39,6 +42,12 @@ public class WorklogPreviewItem : ObservableObject
 	public bool IsDateHeader { get; set; }
 
 	public string? DateDisplay { get; set; }
+
+	public bool IsSelected
+	{
+		get => _isSelected;
+		set => SetProperty(ref _isSelected, value);
+	}
 
 	public bool HasError
 	{
@@ -178,6 +187,7 @@ public class WorklogPreviewItem : ObservableObject
 		Duration = _originalDuration;
 		StartTime = _originalStartTime;
 		EndTime = _originalEndTime;
+		IsSelected = true;
 	}
 
 	private void UpdateDurationFromTimes()

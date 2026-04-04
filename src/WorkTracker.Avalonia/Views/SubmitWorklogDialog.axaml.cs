@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 using WorkTracker.Avalonia.ViewModels;
 
@@ -9,9 +10,14 @@ namespace WorkTracker.Avalonia.Views;
 
 public partial class SubmitWorklogDialog : Window
 {
+	// Debounce: single-click delays 250ms so double-click can cancel it and run select-all instead
+	private readonly DispatcherTimer _clickTimer = new() { Interval = TimeSpan.FromMilliseconds(250) };
+
 	public SubmitWorklogDialog()
 	{
 		InitializeComponent();
+		_clickTimer.Tick += OnClickTimerTick;
+		Closed += (_, _) => _clickTimer.Stop();
 
 		CloseButton.Click += (_, _) => Close(false);
 		DialogTitleBar.PointerPressed += OnDragPointerPressed;
@@ -37,6 +43,32 @@ public partial class SubmitWorklogDialog : Window
 		if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
 		{
 			BeginMoveDrag(e);
+		}
+	}
+
+	private void SelectionHeader_PointerPressed(object? sender, PointerPressedEventArgs e)
+	{
+		if (DataContext is SubmitWorklogViewModel vm && e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+		{
+			_clickTimer.Stop();
+			if (e.ClickCount >= 2)
+			{
+				vm.SelectAllCommand.Execute(null);
+			}
+			else
+			{
+				_clickTimer.Start();
+			}
+			e.Handled = true;
+		}
+	}
+
+	private void OnClickTimerTick(object? sender, EventArgs e)
+	{
+		_clickTimer.Stop();
+		if (DataContext is SubmitWorklogViewModel vm)
+		{
+			vm.InvertSelectionCommand.Execute(null);
 		}
 	}
 

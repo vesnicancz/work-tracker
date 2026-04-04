@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 dotnet build                    # Build entire solution
-dotnet test                     # Run all tests (~198 tests, xUnit + Moq + FluentAssertions)
+dotnet test                     # Run all tests (~567 tests, xUnit + Moq + FluentAssertions)
 dotnet test --filter "FullyQualifiedName~ClassName.MethodName"  # Run single test
 dotnet test tests/WorkTracker.Domain.Tests        # Run one test project
 ```

@@ -101,7 +101,7 @@ public class WorklogSubmissionOrchestrator : IWorklogSubmissionOrchestrator
 	public async Task<SubmissionOutcome> SubmitAsync(
 		IReadOnlyList<WorklogPreviewItem> items, string providerId, string providerName, CancellationToken cancellationToken)
 	{
-		var worklogs = ConvertToWorklogs(items.Where(i => !i.IsDateHeader));
+		var worklogs = ConvertToWorklogs(items.Where(i => !i.IsDateHeader && i.IsSelected));
 
 		var result = await _submissionService.SubmitCustomWorklogsAsync(worklogs, providerId, cancellationToken);
 
@@ -121,7 +121,8 @@ public class WorklogSubmissionOrchestrator : IWorklogSubmissionOrchestrator
 	public async Task<SubmissionOutcome> RetryFailedAsync(
 		IReadOnlyList<WorklogPreviewItem> items, string providerId, string providerName, CancellationToken cancellationToken)
 	{
-		var worklogs = ConvertToWorklogs(items.Where(i => !i.IsDateHeader && i.HasError));
+		var attemptedItems = items.Where(i => !i.IsDateHeader && i.HasError && i.IsSelected).ToList();
+		var worklogs = ConvertToWorklogs(attemptedItems);
 
 		if (worklogs.Count == 0)
 		{
@@ -133,7 +134,8 @@ public class WorklogSubmissionOrchestrator : IWorklogSubmissionOrchestrator
 		if (result.IsSuccess && result.Value != null)
 		{
 			var submission = result.Value;
-			var hasFailedItems = MarkFailedItems(items, submission);
+			MarkFailedItems(attemptedItems, submission);
+			var hasFailedItems = items.Any(i => !i.IsDateHeader && i.HasError);
 			var statusMessage = FormatSubmissionStatus(submission, providerName);
 			return new SubmissionOutcome(!hasFailedItems, hasFailedItems, statusMessage);
 		}
@@ -188,6 +190,22 @@ public class WorklogSubmissionOrchestrator : IWorklogSubmissionOrchestrator
 			item.RestoreOriginalValues();
 			item.HasError = false;
 			item.ErrorMessage = null;
+		}
+	}
+
+	public void InvertSelection(IReadOnlyList<WorklogPreviewItem> items)
+	{
+		foreach (var item in items.Where(i => !i.IsDateHeader))
+		{
+			item.IsSelected = !item.IsSelected;
+		}
+	}
+
+	public void SelectAll(IReadOnlyList<WorklogPreviewItem> items)
+	{
+		foreach (var item in items.Where(i => !i.IsDateHeader))
+		{
+			item.IsSelected = true;
 		}
 	}
 

@@ -15,5 +15,9 @@ public interface IWorklogSubmissionOrchestrator
 
 	void ResetItems(IReadOnlyList<WorklogPreviewItem> items);
 
+	void InvertSelection(IReadOnlyList<WorklogPreviewItem> items);
+
+	void SelectAll(IReadOnlyList<WorklogPreviewItem> items);
+
 	string FormatDuration(int seconds);
 }
