@@ -373,6 +373,83 @@ public sealed class GoranG3WorklogPlugin : WorklogUploadPluginBase, IAsyncDispos
         }
     }
 
+    public override async Task<PluginResult<WorklogSubmissionResult>> UploadWorklogsAsync(IEnumerable<PluginWorklogEntry> worklogs, CancellationToken cancellationToken)
+    {
+        EnsureInitialized();
+
+        var worklogsByDate = worklogs.GroupBy(w => w.StartTime.Date).OrderBy(g => g.Key);
+        var successful = 0;
+        var failed = 0;
+        var errors = new List<WorklogSubmissionError>();
+
+        foreach (var dayGroup in worklogsByDate)
+        {
+            foreach (var worklog in dayGroup)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                var result = await UploadWorklogAsync(worklog, cancellationToken);
+                if (result.IsSuccess)
+                {
+                    successful++;
+                }
+                else
+                {
+                    failed++;
+                    errors.Add(new WorklogSubmissionError
+                    {
+                        Worklog = worklog,
+                        ErrorMessage = result.Error ?? "Unknown error"
+                    });
+                }
+            }
+
+            // Submit (confirm) the timesheet for this day
+            var submitResult = await SubmitTimesheetAsync(dayGroup.Key, cancellationToken);
+            if (submitResult.IsFailure)
+            {
+                Logger?.LogWarning("Failed to submit timesheet for {Date}: {Error}", dayGroup.Key.ToString("yyyy-MM-dd"), submitResult.Error);
+            }
+        }
+
+        var total = successful + failed;
+        return PluginResult<WorklogSubmissionResult>.Success(new WorklogSubmissionResult
+        {
+            TotalEntries = total,
+            SuccessfulEntries = successful,
+            FailedEntries = failed,
+            Errors = errors
+        });
+    }
+
+    private async Task<PluginResult<bool>> SubmitTimesheetAsync(DateTime date, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var arguments = new Dictionary<string, object?>
+            {
+                ["date"] = date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
+            };
+
+            var result = await _mcpClient!.CallToolAsync("submit_my_timesheet", arguments, cancellationToken: cancellationToken);
+
+            if (result.IsError == true)
+            {
+                var errorText = GetResultText(result);
+                Logger?.LogWarning("Failed to submit timesheet for {Date}: {Error}", date.ToString("yyyy-MM-dd"), errorText);
+                return PluginResult<bool>.Failure($"Submit failed: {errorText}");
+            }
+
+            Logger?.LogInformation("Submitted timesheet for {Date}", date.ToString("yyyy-MM-dd"));
+            return PluginResult<bool>.Success(true);
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "Error submitting timesheet for {Date}", date.ToString("yyyy-MM-dd"));
+            return PluginResult<bool>.Failure($"Error: {ex.Message}");
+        }
+    }
+
     public override async Task<PluginResult<IEnumerable<PluginWorklogEntry>>> GetWorklogsAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken)
     {
         EnsureInitialized();
