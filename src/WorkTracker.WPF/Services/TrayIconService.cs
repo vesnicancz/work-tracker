@@ -306,7 +306,7 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 			if (result.IsFailure)
 			{
 				MessageBox.Show(
-					result.Error ?? "Unknown error",
+					_localizationService.GetFormattedString("FailedToStopWork", result.Error ?? "Unknown error"),
 					_localizationService["Error"],
 					MessageBoxButton.OK,
 					MessageBoxImage.Error);
@@ -316,7 +316,7 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 		catch (Exception ex)
 		{
 			MessageBox.Show(
-				ex.Message,
+				_localizationService.GetFormattedString("FailedToStopWork", ex.Message),
 				_localizationService["Error"],
 				MessageBoxButton.OK,
 				MessageBoxImage.Error);

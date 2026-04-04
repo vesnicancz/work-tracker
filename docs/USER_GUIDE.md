@@ -641,14 +641,14 @@ V nástrojové liště nad seznamem pracovních záznamů (vedle tlačítka **+*
 
 ```
 ┌─────────────────────────┐
-│ 📋 Zobrazit             │
-│ ➕ Nový záznam práce     │
-│ ⏹ Zastavit práci        │  ← aktivní jen při běžícím trackingu
+│ Zobrazit                │
+│ Nový záznam práce       │
+│ Zastavit práci          │  ← aktivní jen při běžícím trackingu
 ├─────────────────────────┤
-│ ⭐ Oblíbená položka 1    │  ← oblíbené z nastavení
-│ ✎ Šablona položka 2     │
+│ Oblíbená položka 1      │  ← oblíbené z nastavení
+│ Šablona položka 2       │
 ├─────────────────────────┤
-│ ⏻ Ukončit               │
+│ Ukončit                 │
 └─────────────────────────┘
 ```
 

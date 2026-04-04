@@ -273,11 +273,11 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 
 	// Cache lives for process lifetime; bitmaps are intentionally never disposed
 	// because NativeMenuItems hold references to them.
-	private static readonly ConcurrentDictionary<(MaterialIconKind, uint), Bitmap> s_iconCache = new();
+	private static readonly ConcurrentDictionary<(MaterialIconKind, uint, int), Bitmap> s_iconCache = new();
 
 	private static Bitmap RenderMenuIcon(MaterialIconKind kind, ISolidColorBrush foreground, int size = 16)
 	{
-		var cacheKey = (kind, foreground.Color.ToUInt32());
+		var cacheKey = (kind, foreground.Color.ToUInt32(), size);
 		return s_iconCache.GetOrAdd(cacheKey, _ =>
 		{
 			var pathData = MaterialIconDataProvider.GetData(kind);
