@@ -59,8 +59,8 @@ public partial class SubmitWorklogDialog : Window
 			{
 				_clickTimer.Start();
 			}
+			e.Handled = true;
 		}
-		e.Handled = true;
 	}
 
 	private void OnClickTimerTick(object? sender, EventArgs e)
