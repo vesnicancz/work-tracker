@@ -91,6 +91,7 @@ public class PluginManagerTests : IDisposable
 	{
 		// Arrange
 		_pluginManager.LoadEmbeddedPlugin<TestPlugin>();
+		_pluginManager.SetEnabledPlugins(["test.plugin"]);
 		var config = new Dictionary<string, Dictionary<string, string>>
 		{
 			["test.plugin"] = new Dictionary<string, string>
