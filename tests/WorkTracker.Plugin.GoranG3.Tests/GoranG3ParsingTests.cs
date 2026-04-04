@@ -29,6 +29,7 @@ public class GoranG3ParsingTests
 	[InlineData("")]
 	[InlineData("abc")]
 	[InlineData("1h30m")]
+	[InlineData("-15")]
 	public void TryParseDuration_InvalidInput_ReturnsFalse(string input)
 	{
 		GoranG3WorklogPlugin.TryParseDuration(input, out _).Should().BeFalse();

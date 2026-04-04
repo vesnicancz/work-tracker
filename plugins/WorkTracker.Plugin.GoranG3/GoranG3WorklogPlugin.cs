@@ -227,6 +227,8 @@ public sealed class GoranG3WorklogPlugin : WorklogUploadPluginBase, IAsyncDispos
 
 	public override async Task<PluginResult<bool>> TestConnectionAsync(IProgress<string>? progress, CancellationToken cancellationToken)
 	{
+		EnsureInitialized();
+
 		try
 		{
 			if (_mcpClient == null)
@@ -698,7 +700,7 @@ public sealed class GoranG3WorklogPlugin : WorklogUploadPluginBase, IAsyncDispos
 		// Try direct integer (minutes)
 		if (int.TryParse(text, out minutes))
 		{
-			return true;
+			return minutes >= 0;
 		}
 
 		// Try "h:mm" format (e.g., "2:30")
