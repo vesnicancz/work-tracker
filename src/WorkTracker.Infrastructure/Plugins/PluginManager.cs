@@ -16,7 +16,6 @@ namespace WorkTracker.Infrastructure.Plugins;
 public sealed class PluginManager : IPluginManager
 {
 	private readonly ILogger _logger;
-	private readonly ILoggerFactory _loggerFactory;
 	private readonly ServiceProvider _pluginServiceProvider;
 	private readonly PluginLoader _loader;
 	private readonly Lock _lock = new();
@@ -28,7 +27,6 @@ public sealed class PluginManager : IPluginManager
 
 	public PluginManager(ILoggerFactory loggerFactory, IHttpClientFactory httpClientFactory)
 	{
-		_loggerFactory = loggerFactory;
 		_logger = loggerFactory.CreateLogger<PluginManager>();
 		_pluginServiceProvider = BuildPluginServiceProvider(loggerFactory, httpClientFactory);
 		_loader = new PluginLoader(_pluginServiceProvider, loggerFactory.CreateLogger<PluginLoader>());

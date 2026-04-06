@@ -6,7 +6,6 @@ namespace WorkTracker.Plugin.GoranG3.Tests;
 
 public class GoranG3WorklogPluginTests : IAsyncDisposable
 {
-	private readonly MockHttpHandler _httpHandler = new();
 	private readonly GoranG3WorklogPlugin _plugin;
 
 	private static readonly Dictionary<string, string> ValidConfig = new()
@@ -28,7 +27,6 @@ public class GoranG3WorklogPluginTests : IAsyncDisposable
 	public async ValueTask DisposeAsync()
 	{
 		await _plugin.DisposeAsync();
-		_httpHandler.Dispose();
 	}
 
 	#region Metadata
@@ -177,20 +175,4 @@ internal sealed class MockTokenProviderFactory(string? token = "fake-token") : I
 {
 	public ITokenProvider Create(string tenantId, string clientId, string[] scopes)
 		=> new MockTokenProvider(token);
-}
-
-internal sealed class MockHttpClientFactory(HttpMessageHandler handler) : IHttpClientFactory
-{
-	public HttpClient CreateClient(string name) => new(handler, disposeHandler: false);
-}
-
-internal sealed class MockHttpHandler : HttpMessageHandler
-{
-	protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-	{
-		return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.NotFound)
-		{
-			Content = new StringContent("Not found")
-		});
-	}
 }
