@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using WorkTracker.Avalonia.ViewModels;
 using WorkTracker.Avalonia.Views;
 using WorkTracker.Domain.Entities;
+using WorkTracker.UI.Shared;
 using WorkTracker.UI.Shared.Orchestrators;
 using WorkTracker.UI.Shared.Services;
 using WorkTracker.UI.Shared.ViewModels;
@@ -133,14 +134,8 @@ public sealed class DialogService : IDialogService
 		dialog.BindViewModel(viewModel);
 
 		// Show dialog immediately with loading indicator, load data in background.
-		// ContinueWith ensures exceptions don't go unobserved.
-		_ = viewModel.InitializeAsync(selectedDate).ContinueWith(t =>
-		{
-			if (t.IsFaulted)
-			{
-				System.Diagnostics.Debug.WriteLine($"Suggestions init failed: {t.Exception?.InnerException?.Message}");
-			}
-		}, TaskScheduler.Default);
+		_ = viewModel.InitializeAsync(selectedDate)
+			.SafeFireAndForgetAsync(ex => System.Diagnostics.Debug.WriteLine($"Suggestions init failed: {ex.Message}"));
 
 		var mainWindow = GetVisibleMainWindow();
 		if (mainWindow != null)

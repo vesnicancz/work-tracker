@@ -1,7 +1,7 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
-using WorkTracker.Application.Models;
+using WorkTracker.Domain.Services;
 using WorkTracker.Application.Services;
 using WorkTracker.Domain.Entities;
 using WorkTracker.Domain.Interfaces;

@@ -9,6 +9,11 @@ public sealed class WorklogValidator : IWorklogValidator
 	public const double MaxDurationHours = 24;
 	public const int MaxDurationMinutes = (int)(MaxDurationHours * 60);
 
+	/// <summary>
+	/// Validates a work entry for submission to an external provider (e.g. Tempo).
+	/// Requires TicketId — stricter than <see cref="WorkEntry.IsValid"/> which allows
+	/// either TicketId or Description. Providers need a ticket to associate the worklog with.
+	/// </summary>
 	public ValidationResult ValidateForSubmission(WorkEntry entry)
 	{
 		if (string.IsNullOrWhiteSpace(entry.TicketId))

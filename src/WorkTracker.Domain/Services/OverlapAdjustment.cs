@@ -1,12 +1,4 @@
-namespace WorkTracker.Application.Models;
-
-public enum OverlapAdjustmentKind
-{
-	TrimEnd,
-	TrimStart,
-	Delete,
-	Split
-}
+namespace WorkTracker.Domain.Services;
 
 public sealed record OverlapAdjustment(
 	int WorkEntryId,

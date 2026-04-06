@@ -25,6 +25,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\WorkTracker.Application\WorkTracker.Application.csproj" />
+    <ProjectReference Include="..\WorkTracker.Tests.Common\WorkTracker.Tests.Common.csproj" />
   </ItemGroup>
 
 </Project>

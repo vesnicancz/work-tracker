@@ -1,5 +1,5 @@
 using FluentAssertions;
-using WorkTracker.Application.Models;
+using WorkTracker.Domain.Services;
 
 namespace WorkTracker.Application.Tests.Models;
 
