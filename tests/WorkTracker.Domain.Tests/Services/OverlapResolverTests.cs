@@ -93,9 +93,12 @@ public class OverlapResolverTests
 	[Fact]
 	public void DetermineAdjustment_HeadOverlap_RemainingTooShort_PromotesToDelete()
 	{
-		// Existing: 10:00 - 10:00:30, candidate starts at 10:00:30 → remaining < 1 min
-		var existing = CreateEntry(1, 10, 11);
+		// Existing: 10:00 - 10:00:30, candidate starts at 10:00 → remaining 30s < 1 min
 		var existingEnd = At(10, 0).AddSeconds(30);
+		var existing = new WorkEntryBuilder()
+			.WithId(1).WithTicketId("PROJ-1")
+			.WithTimes(At(10), existingEnd)
+			.Build();
 
 		var result = OverlapResolver.DetermineAdjustment(existing, existingEnd, At(10), At(12));
 
@@ -105,8 +108,12 @@ public class OverlapResolverTests
 	[Fact]
 	public void DetermineAdjustment_TailOverlap_RemainingTooShort_PromotesToDelete()
 	{
-		var existing = CreateEntry(1, 10, 11);
+		// Existing: 10:00 - 10:30, candidate ends at 10:29:30 → remaining 30s < 1 min
 		var existingEnd = At(10, 30);
+		var existing = new WorkEntryBuilder()
+			.WithId(1).WithTicketId("PROJ-1")
+			.WithTimes(At(10), existingEnd)
+			.Build();
 
 		var result = OverlapResolver.DetermineAdjustment(existing, existingEnd, At(9), At(10, 30).AddSeconds(-30));
 
@@ -140,10 +147,13 @@ public class OverlapResolverTests
 	[Fact]
 	public void DetermineAdjustment_Split_BothHalvesTooShort_ReturnsDelete()
 	{
-		var existing = CreateEntry(1, 10, 11);
+		// Existing: 10:00 - 10:01, candidate 10:00:20 - 10:00:40 → both halves < 1 min
 		var existingEnd = At(10, 1);
+		var existing = new WorkEntryBuilder()
+			.WithId(1).WithTicketId("PROJ-1")
+			.WithTimes(At(10), existingEnd)
+			.Build();
 
-		// Candidate 10:00:20 - 10:00:40 → both halves < 1 min
 		var result = OverlapResolver.DetermineAdjustment(existing, existingEnd, At(10).AddSeconds(20), At(10).AddSeconds(40));
 
 		result.Kind.Should().Be(OverlapAdjustmentKind.Delete);
