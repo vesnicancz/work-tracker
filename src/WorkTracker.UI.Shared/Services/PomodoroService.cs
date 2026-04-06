@@ -470,6 +470,10 @@ public sealed class PomodoroService : IPomodoroService, IAsyncDisposable
 		{
 			_logger.LogWarning("Timed out waiting for status indicators to turn off during dispose");
 		}
+		catch (Exception ex)
+		{
+			_logger.LogWarning(ex, "Failed to turn off status indicators during dispose");
+		}
 
 		GC.SuppressFinalize(this);
 	}

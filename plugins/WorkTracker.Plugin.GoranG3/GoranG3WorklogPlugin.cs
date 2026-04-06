@@ -318,7 +318,14 @@ public sealed class GoranG3WorklogPlugin(ILogger<GoranG3WorklogPlugin> logger, I
 		catch (Exception ex)
 		{
 			Logger.LogError(ex, "Error uploading worklog to Goran via MCP");
-			return PluginResult<bool>.Failure($"Error: {ex.Message}");
+			var errorCategory = ex switch
+			{
+				InvalidOperationException => PluginErrorCategory.Authentication,
+				HttpRequestException => PluginErrorCategory.Network,
+				IOException => PluginErrorCategory.Network,
+				_ => PluginErrorCategory.Internal
+			};
+			return PluginResult<bool>.Failure($"Error: {ex.Message}", errorCategory);
 		}
 	}
 
