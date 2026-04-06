@@ -143,7 +143,6 @@ public sealed class LuxaforStatusIndicatorPlugin(ILogger<LuxaforStatusIndicatorP
 			CloseDevice();
 		}
 
-
 		return ValueTask.CompletedTask;
 	}
 

@@ -137,12 +137,12 @@ public class PluginLoadContextTests : IAsyncDisposable
 	}
 
 	[Fact]
-	public void LoadPluginFromFileAsync_InvalidFile_PluginsRemainsEmpty()
+	public async Task LoadPluginFromFileAsync_InvalidFile_PluginsRemainsEmpty()
 	{
 		var fakeDll = Path.Combine(_tempDir, "fake.dll");
 		File.WriteAllBytes(fakeDll, [0x00]);
 
-		_pluginManager.LoadPluginFromFileAsync(fakeDll);
+		await _pluginManager.LoadPluginFromFileAsync(fakeDll);
 
 		_pluginManager.LoadedPlugins.Should().BeEmpty();
 	}

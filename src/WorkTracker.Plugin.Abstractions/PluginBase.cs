@@ -75,6 +75,10 @@ public abstract class PluginBase(ILogger logger) : IPlugin
 		GC.SuppressFinalize(this);
 	}
 
+	/// <summary>
+	/// Override to release plugin resources. Must be idempotent — may be called
+	/// multiple times (via <see cref="ShutdownAsync"/> and direct <see cref="DisposeAsync"/>).
+	/// </summary>
 	protected virtual ValueTask OnDisposeAsync()
 	{
 		return ValueTask.CompletedTask;
