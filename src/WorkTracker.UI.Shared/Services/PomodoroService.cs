@@ -432,7 +432,9 @@ public sealed class PomodoroService : IPomodoroService, IAsyncDisposable
 	{
 		task.ContinueWith(
 			t => _logger.LogError(t.Exception, "Unobserved error in background task"),
-			TaskContinuationOptions.OnlyOnFaulted);
+			CancellationToken.None,
+			TaskContinuationOptions.OnlyOnFaulted,
+			TaskScheduler.Default);
 	}
 
 	private void StartTimer()
@@ -457,7 +459,17 @@ public sealed class PomodoroService : IPomodoroService, IAsyncDisposable
 		_disposed = true;
 
 		StopTimer();
-		await SetStatusIndicatorsForPhaseAsync(PomodoroPhase.Idle);
+
+		// Best-effort: turn off indicators with a timeout to avoid blocking app shutdown
+		try
+		{
+			using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+			await SetStatusIndicatorsForPhaseAsync(PomodoroPhase.Idle).WaitAsync(cts.Token);
+		}
+		catch (OperationCanceledException)
+		{
+			_logger.LogWarning("Timed out waiting for status indicators to turn off during dispose");
+		}
 
 		GC.SuppressFinalize(this);
 	}

@@ -114,7 +114,7 @@ public static class DependencyInjection
 		var pluginManager = serviceProvider.GetRequiredService<PluginManager>();
 
 		// Discover and load plugins from plugin directory
-		pluginManager.DiscoverAndLoadPlugins();
+		await pluginManager.DiscoverAndLoadPluginsAsync();
 
 		// Enable only explicitly enabled plugins — new plugins are disabled by default
 		var enabledPluginIds = enabledPlugins?

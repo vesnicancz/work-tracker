@@ -36,9 +36,9 @@ public class PluginLoadContextTests : IAsyncDisposable
 	#region LoadPluginFromFile
 
 	[Fact]
-	public void LoadPluginFromFile_NonExistentFile_ReturnsFalse()
+	public async Task LoadPluginFromFile_NonExistentFile_ReturnsFalse()
 	{
-		var result = _pluginManager.LoadPluginFromFile(Path.Combine(_tempDir, "nonexistent.dll"));
+		var result = await _pluginManager.LoadPluginFromFile(Path.Combine(_tempDir, "nonexistent.dll"));
 		result.Should().BeFalse();
 	}
 
@@ -46,12 +46,12 @@ public class PluginLoadContextTests : IAsyncDisposable
 	[InlineData(new byte[] { 0x00, 0x01, 0x02, 0x03, 0xFF, 0xFE }, "random_bytes")]
 	[InlineData(new byte[0], "empty")]
 	[InlineData(new byte[] { 0x54, 0x68, 0x69, 0x73 }, "text_content")]
-	public void LoadPluginFromFile_InvalidContent_ReturnsFalse(byte[] content, string label)
+	public async Task LoadPluginFromFile_InvalidContent_ReturnsFalse(byte[] content, string label)
 	{
 		var path = Path.Combine(_tempDir, $"{label}.dll");
 		File.WriteAllBytes(path, content);
 
-		_pluginManager.LoadPluginFromFile(path).Should().BeFalse();
+		(await _pluginManager.LoadPluginFromFile(path)).Should().BeFalse();
 	}
 
 	#endregion LoadPluginFromFile
@@ -59,39 +59,39 @@ public class PluginLoadContextTests : IAsyncDisposable
 	#region DiscoverAndLoadPlugins
 
 	[Fact]
-	public void DiscoverAndLoadPlugins_NoDirectories_ReturnsZero()
+	public async Task DiscoverAndLoadPlugins_NoDirectories_ReturnsZero()
 	{
-		var result = _pluginManager.DiscoverAndLoadPlugins();
+		var result = await _pluginManager.DiscoverAndLoadPluginsAsync();
 		result.Should().Be(0);
 	}
 
 	[Fact]
-	public void DiscoverAndLoadPlugins_EmptyDirectory_ReturnsZero()
+	public async Task DiscoverAndLoadPlugins_EmptyDirectory_ReturnsZero()
 	{
 		_pluginManager.AddPluginDirectory(_tempDir);
 
-		var result = _pluginManager.DiscoverAndLoadPlugins();
+		var result = await _pluginManager.DiscoverAndLoadPluginsAsync();
 		result.Should().Be(0);
 	}
 
 	[Fact]
-	public void DiscoverAndLoadPlugins_DirectoryWithNonDllFiles_ReturnsZero()
+	public async Task DiscoverAndLoadPlugins_DirectoryWithNonDllFiles_ReturnsZero()
 	{
 		File.WriteAllText(Path.Combine(_tempDir, "readme.txt"), "Hello");
 		File.WriteAllText(Path.Combine(_tempDir, "config.json"), "{}");
 		_pluginManager.AddPluginDirectory(_tempDir);
 
-		var result = _pluginManager.DiscoverAndLoadPlugins();
+		var result = await _pluginManager.DiscoverAndLoadPluginsAsync();
 		result.Should().Be(0);
 	}
 
 	[Fact]
-	public void DiscoverAndLoadPlugins_DirectoryWithInvalidDlls_ReturnsZero()
+	public async Task DiscoverAndLoadPlugins_DirectoryWithInvalidDlls_ReturnsZero()
 	{
 		File.WriteAllBytes(Path.Combine(_tempDir, "fake.dll"), [0x00, 0x01, 0x02]);
 		_pluginManager.AddPluginDirectory(_tempDir);
 
-		var result = _pluginManager.DiscoverAndLoadPlugins();
+		var result = await _pluginManager.DiscoverAndLoadPluginsAsync();
 		result.Should().Be(0);
 	}
 
@@ -107,22 +107,22 @@ public class PluginLoadContextTests : IAsyncDisposable
 	}
 
 	[Fact]
-	public void AddPluginDirectory_ExistingDirectory_AddedSuccessfully()
+	public async Task AddPluginDirectory_ExistingDirectory_AddedSuccessfully()
 	{
 		_pluginManager.AddPluginDirectory(_tempDir);
 
-		var act = () => _pluginManager.DiscoverAndLoadPlugins();
-		act.Should().NotThrow();
+		var act = () => _pluginManager.DiscoverAndLoadPluginsAsync();
+		await act.Should().NotThrowAsync();
 	}
 
 	[Fact]
-	public void AddPluginDirectory_NonExistentDirectory_NotAddedToScan()
+	public async Task AddPluginDirectory_NonExistentDirectory_NotAddedToScan()
 	{
 		// Add non-existent directory
 		_pluginManager.AddPluginDirectory(Path.Combine(_tempDir, "ghost"));
 
 		// Should return 0 since directory was not added (doesn't exist)
-		var result = _pluginManager.DiscoverAndLoadPlugins();
+		var result = await _pluginManager.DiscoverAndLoadPluginsAsync();
 		result.Should().Be(0);
 	}
 

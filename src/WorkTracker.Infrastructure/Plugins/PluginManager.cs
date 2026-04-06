@@ -124,7 +124,7 @@ public sealed class PluginManager : IPluginManager
 	/// <summary>
 	/// Discovers and loads all plugins from registered directories
 	/// </summary>
-	public int DiscoverAndLoadPlugins()
+	public async Task<int> DiscoverAndLoadPluginsAsync()
 	{
 		List<string> directoriesSnapshot;
 		lock (_lock)
@@ -139,7 +139,7 @@ public sealed class PluginManager : IPluginManager
 		{
 			try
 			{
-				if (LoadPluginFromFile(pluginFile))
+				if (await LoadPluginFromFile(pluginFile))
 				{
 					loadedCount++;
 				}
@@ -158,7 +158,7 @@ public sealed class PluginManager : IPluginManager
 	/// <summary>
 	/// Loads a plugin from a specific file
 	/// </summary>
-	public bool LoadPluginFromFile(string assemblyPath)
+	public async Task<bool> LoadPluginFromFile(string assemblyPath)
 	{
 		if (!File.Exists(assemblyPath))
 		{
@@ -178,6 +178,7 @@ public sealed class PluginManager : IPluginManager
 			}
 
 			var anyRegistered = false;
+			var skippedPlugins = new List<IPlugin>();
 
 			foreach (var (plugin, context) in results)
 			{
@@ -188,6 +189,7 @@ public sealed class PluginManager : IPluginManager
 					if (_loadedPlugins.ContainsKey(pluginId))
 					{
 						_logger.LogWarning("Plugin {Id} is already loaded, skipping", pluginId);
+						skippedPlugins.Add(plugin);
 						continue;
 					}
 
@@ -198,6 +200,17 @@ public sealed class PluginManager : IPluginManager
 				anyRegistered = true;
 
 				_logger.LogInformation("Loaded plugin: {Name} v{Version} by {Author}", plugin.Metadata.Name, plugin.Metadata.Version, plugin.Metadata.Author);
+			}
+
+			// Dispose skipped plugins and unload context if nothing was registered
+			foreach (var skipped in skippedPlugins)
+			{
+				await skipped.DisposeAsync();
+			}
+
+			if (!anyRegistered && results.Count > 0)
+			{
+				results[0].Context.Unload();
 			}
 
 			return anyRegistered;
