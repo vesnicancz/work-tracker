@@ -5,6 +5,6 @@ namespace Luxafor.HidSharp;
 /// </summary>
 public sealed class LuxaforDeviceFactory : ILuxaforDeviceFactory
 {
-    /// <inheritdoc />
-    public ILuxaforDevice? TryOpen() => LuxaforDevice.TryOpen();
+	/// <inheritdoc />
+	public ILuxaforDevice? TryOpen() => LuxaforDevice.TryOpen();
 }

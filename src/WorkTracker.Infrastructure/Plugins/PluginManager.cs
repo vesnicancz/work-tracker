@@ -37,9 +37,9 @@ public sealed class PluginManager : IPluginManager
 	private static ServiceProvider BuildPluginServiceProvider(ILoggerFactory loggerFactory, IHttpClientFactory httpClientFactory)
 	{
 		var services = new ServiceCollection();
-		services.AddSingleton(loggerFactory);
+		services.AddSingleton<ILoggerFactory>(_ => new NonDisposingLoggerFactory(loggerFactory));
 		services.AddLogging();
-		services.AddSingleton(httpClientFactory);
+		services.AddSingleton<IHttpClientFactory>(_ => new NonDisposingHttpClientFactory(httpClientFactory));
 		services.AddSingleton<ITokenProviderFactory, MsalTokenProviderFactory>();
 		return services.BuildServiceProvider();
 	}
@@ -374,4 +374,15 @@ public sealed class PluginManager : IPluginManager
 		await _pluginServiceProvider.DisposeAsync();
 	}
 
+	private sealed class NonDisposingLoggerFactory(ILoggerFactory inner) : ILoggerFactory
+	{
+		public void AddProvider(ILoggerProvider provider) => inner.AddProvider(provider);
+		public ILogger CreateLogger(string categoryName) => inner.CreateLogger(categoryName);
+		public void Dispose() { } // Host owns the lifetime
+	}
+
+	private sealed class NonDisposingHttpClientFactory(IHttpClientFactory inner) : IHttpClientFactory
+	{
+		public HttpClient CreateClient(string name) => inner.CreateClient(name);
+	}
 }

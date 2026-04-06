@@ -5,6 +5,6 @@ namespace Luxafor.HidSharp;
 /// </summary>
 public interface ILuxaforDeviceFactory
 {
-    /// <inheritdoc cref="LuxaforDevice.TryOpen"/>
-    ILuxaforDevice? TryOpen();
+	/// <inheritdoc cref="LuxaforDevice.TryOpen"/>
+	ILuxaforDevice? TryOpen();
 }
