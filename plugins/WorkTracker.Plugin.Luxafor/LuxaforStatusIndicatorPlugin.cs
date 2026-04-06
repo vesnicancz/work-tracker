@@ -17,6 +17,7 @@ public sealed class LuxaforStatusIndicatorPlugin(ILogger<LuxaforStatusIndicatorP
 	private readonly ILuxaforDeviceFactory _deviceFactory = deviceFactory ?? new LuxaforDeviceFactory();
 	private readonly Lock _deviceLock = new();
 	private ILuxaforDevice? _device;
+	private bool _disposed;
 
 	private LuxaforColor _workColor = LuxaforColor.Red;
 	private LuxaforColor _shortBreakColor = LuxaforColor.Green;
@@ -66,6 +67,11 @@ public sealed class LuxaforStatusIndicatorPlugin(ILogger<LuxaforStatusIndicatorP
 
 	public override Task SetStateAsync(StatusIndicatorState state, CancellationToken cancellationToken)
 	{
+		if (_disposed)
+		{
+			return Task.CompletedTask;
+		}
+
 		lock (_deviceLock)
 		{
 			try
@@ -128,14 +134,16 @@ public sealed class LuxaforStatusIndicatorPlugin(ILogger<LuxaforStatusIndicatorP
 		return Task.CompletedTask;
 	}
 
-	public override ValueTask DisposeAsync()
+	protected override ValueTask OnDisposeAsync()
 	{
+		_disposed = true;
+
 		lock (_deviceLock)
 		{
 			CloseDevice();
 		}
 
-		GC.SuppressFinalize(this);
+
 		return ValueTask.CompletedTask;
 	}
 

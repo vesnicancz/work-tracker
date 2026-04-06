@@ -156,7 +156,7 @@ public sealed class GoranG3WorklogPlugin(ILogger<GoranG3WorklogPlugin> logger, I
 		return true;
 	}
 
-	public override async ValueTask DisposeAsync()
+	protected override async ValueTask OnDisposeAsync()
 	{
 		if (_mcpClient != null)
 		{
@@ -170,7 +170,7 @@ public sealed class GoranG3WorklogPlugin(ILogger<GoranG3WorklogPlugin> logger, I
 		_handler?.Dispose();
 		_handler = null;
 
-		GC.SuppressFinalize(this);
+
 	}
 
 	public override async Task<PluginResult<bool>> TestConnectionAsync(IProgress<string>? progress, CancellationToken cancellationToken)

@@ -10,6 +10,6 @@ public interface IJiraClient : IDisposable
 	string BaseUrl { get; }
 	Task<HttpResponseMessage> GetAsync(string relativeUrl, CancellationToken cancellationToken);
 	Task<JsonElement> GetJsonAsync(string relativeUrl, CancellationToken cancellationToken);
-	Task<(bool Success, string? Error)> TestConnectionAsync(CancellationToken cancellationToken);
+	Task<(bool Success, string? Error, int? StatusCode)> TestConnectionAsync(CancellationToken cancellationToken);
 	Task<string?> GetCurrentUserAccountIdAsync(CancellationToken cancellationToken);
 }

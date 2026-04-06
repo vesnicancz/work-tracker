@@ -33,12 +33,12 @@ public class PluginLoadContextTests : IAsyncDisposable
 		}
 	}
 
-	#region LoadPluginFromFile
+	#region LoadPluginFromFileAsync
 
 	[Fact]
-	public async Task LoadPluginFromFile_NonExistentFile_ReturnsFalse()
+	public async Task LoadPluginFromFileAsync_NonExistentFile_ReturnsFalse()
 	{
-		var result = await _pluginManager.LoadPluginFromFile(Path.Combine(_tempDir, "nonexistent.dll"));
+		var result = await _pluginManager.LoadPluginFromFileAsync(Path.Combine(_tempDir, "nonexistent.dll"));
 		result.Should().BeFalse();
 	}
 
@@ -46,15 +46,15 @@ public class PluginLoadContextTests : IAsyncDisposable
 	[InlineData(new byte[] { 0x00, 0x01, 0x02, 0x03, 0xFF, 0xFE }, "random_bytes")]
 	[InlineData(new byte[0], "empty")]
 	[InlineData(new byte[] { 0x54, 0x68, 0x69, 0x73 }, "text_content")]
-	public async Task LoadPluginFromFile_InvalidContent_ReturnsFalse(byte[] content, string label)
+	public async Task LoadPluginFromFileAsync_InvalidContent_ReturnsFalse(byte[] content, string label)
 	{
 		var path = Path.Combine(_tempDir, $"{label}.dll");
 		File.WriteAllBytes(path, content);
 
-		(await _pluginManager.LoadPluginFromFile(path)).Should().BeFalse();
+		(await _pluginManager.LoadPluginFromFileAsync(path)).Should().BeFalse();
 	}
 
-	#endregion LoadPluginFromFile
+	#endregion LoadPluginFromFileAsync
 
 	#region DiscoverAndLoadPlugins
 
@@ -137,12 +137,12 @@ public class PluginLoadContextTests : IAsyncDisposable
 	}
 
 	[Fact]
-	public void LoadPluginFromFile_InvalidFile_PluginsRemainsEmpty()
+	public void LoadPluginFromFileAsync_InvalidFile_PluginsRemainsEmpty()
 	{
 		var fakeDll = Path.Combine(_tempDir, "fake.dll");
 		File.WriteAllBytes(fakeDll, [0x00]);
 
-		_pluginManager.LoadPluginFromFile(fakeDll);
+		_pluginManager.LoadPluginFromFileAsync(fakeDll);
 
 		_pluginManager.LoadedPlugins.Should().BeEmpty();
 	}

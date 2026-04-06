@@ -69,9 +69,14 @@ public abstract class PluginBase(ILogger logger) : IPlugin
 	}
 
 	/// <inheritdoc />
-	public virtual ValueTask DisposeAsync()
+	public async ValueTask DisposeAsync()
 	{
+		await OnDisposeAsync();
 		GC.SuppressFinalize(this);
+	}
+
+	protected virtual ValueTask OnDisposeAsync()
+	{
 		return ValueTask.CompletedTask;
 	}
 
@@ -81,13 +86,12 @@ public abstract class PluginBase(ILogger logger) : IPlugin
 
 		foreach (var field in GetConfigurationFields().Where(f => f.IsRequired))
 		{
-			if (!configuration.ContainsKey(field.Key) || string.IsNullOrWhiteSpace(configuration[field.Key]))
+			if (!configuration.TryGetValue(field.Key, out var value) || string.IsNullOrWhiteSpace(value))
 			{
 				errors.Add($"Required field '{field.Label}' is missing or empty");
 			}
 			else if (!string.IsNullOrEmpty(field.ValidationPattern))
 			{
-				var value = configuration[field.Key];
 				try
 				{
 					if (!System.Text.RegularExpressions.Regex.IsMatch(value, field.ValidationPattern,

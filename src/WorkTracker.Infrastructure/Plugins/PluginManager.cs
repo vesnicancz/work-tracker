@@ -137,7 +137,7 @@ public sealed class PluginManager : IPluginManager
 		{
 			try
 			{
-				if (await LoadPluginFromFile(pluginFile))
+				if (await LoadPluginFromFileAsync(pluginFile))
 				{
 					loadedCount++;
 				}
@@ -156,7 +156,7 @@ public sealed class PluginManager : IPluginManager
 	/// <summary>
 	/// Loads a plugin from a specific file
 	/// </summary>
-	public async Task<bool> LoadPluginFromFile(string assemblyPath)
+	public async Task<bool> LoadPluginFromFileAsync(string assemblyPath)
 	{
 		if (!File.Exists(assemblyPath))
 		{

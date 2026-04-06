@@ -38,22 +38,22 @@ internal sealed class JiraClient(HttpClient httpClient, string baseUrl) : IJiraC
 		return await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken);
 	}
 
-	public async Task<(bool Success, string? Error)> TestConnectionAsync(CancellationToken cancellationToken)
+	public async Task<(bool Success, string? Error, int? StatusCode)> TestConnectionAsync(CancellationToken cancellationToken)
 	{
 		try
 		{
 			using var response = await GetAsync("/rest/api/3/myself", cancellationToken);
 			if (response.IsSuccessStatusCode)
 			{
-				return (true, null);
+				return (true, null, (int)response.StatusCode);
 			}
 
 			var body = await response.Content.ReadAsStringAsync(cancellationToken);
-			return (false, $"Jira returned {(int)response.StatusCode}: {body}");
+			return (false, $"Jira returned {(int)response.StatusCode}: {body}", (int)response.StatusCode);
 		}
 		catch (Exception ex)
 		{
-			return (false, $"Connection failed: {ex.Message}");
+			return (false, $"Connection failed: {ex.Message}", null);
 		}
 	}
 

@@ -93,10 +93,10 @@ public sealed class Office365CalendarPlugin(
 		return Task.FromResult(true);
 	}
 
-	public override ValueTask DisposeAsync()
+	protected override ValueTask OnDisposeAsync()
 	{
 		_httpClient?.Dispose();
-		GC.SuppressFinalize(this);
+
 		return ValueTask.CompletedTask;
 	}
 

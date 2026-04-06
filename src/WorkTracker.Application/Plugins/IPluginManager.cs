@@ -60,7 +60,7 @@ public interface IPluginManager : IAsyncDisposable
 	/// <summary>
 	/// Loads a plugin from a specific file
 	/// </summary>
-	Task<bool> LoadPluginFromFile(string assemblyPath);
+	Task<bool> LoadPluginFromFileAsync(string assemblyPath);
 
 	/// <summary>
 	/// Loads an embedded plugin (plugin that's part of the main application)

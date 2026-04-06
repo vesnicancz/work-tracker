@@ -159,11 +159,11 @@ public sealed class TempoWorklogPlugin(IHttpClientFactory httpClientFactory, ILo
 		return Task.CompletedTask;
 	}
 
-	public override ValueTask DisposeAsync()
+	protected override ValueTask OnDisposeAsync()
 	{
 		_tempoHttpClient?.Dispose();
 		_jiraClient?.Dispose();
-		GC.SuppressFinalize(this);
+
 		return ValueTask.CompletedTask;
 	}
 
@@ -171,10 +171,16 @@ public sealed class TempoWorklogPlugin(IHttpClientFactory httpClientFactory, ILo
 	{
 		EnsureInitialized();
 
-		var (success, error) = await _jiraClient!.TestConnectionAsync(cancellationToken);
-		return success
-			? PluginResult<bool>.Success(true)
-			: PluginResult<bool>.Failure(error!, PluginErrorCategory.Authentication);
+		var (success, error, statusCode) = await _jiraClient!.TestConnectionAsync(cancellationToken);
+		if (success)
+		{
+			return PluginResult<bool>.Success(true);
+		}
+
+		var category = statusCode is 401 or 403
+			? PluginErrorCategory.Authentication
+			: PluginErrorCategory.Network;
+		return PluginResult<bool>.Failure(error!, category);
 	}
 
 	public override async Task<PluginResult<bool>> UploadWorklogAsync(PluginWorklogEntry worklog, CancellationToken cancellationToken)

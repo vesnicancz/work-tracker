@@ -98,10 +98,10 @@ public sealed class JiraSuggestionsPlugin(IHttpClientFactory httpClientFactory, 
 		return Task.FromResult(true);
 	}
 
-	public override ValueTask DisposeAsync()
+	protected override ValueTask OnDisposeAsync()
 	{
 		_jiraClient?.Dispose();
-		GC.SuppressFinalize(this);
+
 		return ValueTask.CompletedTask;
 	}
 
@@ -109,10 +109,16 @@ public sealed class JiraSuggestionsPlugin(IHttpClientFactory httpClientFactory, 
 	{
 		EnsureInitialized();
 
-		var (success, error) = await _jiraClient!.TestConnectionAsync(cancellationToken);
-		return success
-			? PluginResult<bool>.Success(true)
-			: PluginResult<bool>.Failure(error!, PluginErrorCategory.Authentication);
+		var (success, error, statusCode) = await _jiraClient!.TestConnectionAsync(cancellationToken);
+		if (success)
+		{
+			return PluginResult<bool>.Success(true);
+		}
+
+		var category = statusCode is 401 or 403
+			? PluginErrorCategory.Authentication
+			: PluginErrorCategory.Network;
+		return PluginResult<bool>.Failure(error!, category);
 	}
 
 	public override bool SupportsSearch => true;
