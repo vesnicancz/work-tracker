@@ -1,7 +1,7 @@
 using System.Text;
 using Microsoft.Extensions.Logging;
 using WorkTracker.Application.Common;
-using WorkTracker.Application.Models;
+using WorkTracker.Domain.Services;
 using WorkTracker.UI.Shared.Services;
 
 namespace WorkTracker.UI.Shared.Orchestrators;

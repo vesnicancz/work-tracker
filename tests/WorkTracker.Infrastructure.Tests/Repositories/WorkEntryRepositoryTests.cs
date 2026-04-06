@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using WorkTracker.Domain.Entities;
 using WorkTracker.Infrastructure.Data;
 using WorkTracker.Infrastructure.Repositories;
+using WorkTracker.Infrastructure.Tests.Helpers;
 
 namespace WorkTracker.Infrastructure.Tests.Repositories;
 
@@ -642,27 +643,4 @@ public class WorkEntryRepositoryTests : IDisposable
 	}
 
 	#endregion
-
-	/// <summary>
-	/// Test implementation of IDbContextFactory for in-memory testing
-	/// </summary>
-	private class TestDbContextFactory : IDbContextFactory<WorkTrackerDbContext>
-	{
-		private readonly DbContextOptions<WorkTrackerDbContext> _options;
-
-		public TestDbContextFactory(DbContextOptions<WorkTrackerDbContext> options)
-		{
-			_options = options;
-		}
-
-		public WorkTrackerDbContext CreateDbContext()
-		{
-			return new WorkTrackerDbContext(_options);
-		}
-
-		public async Task<WorkTrackerDbContext> CreateDbContextAsync(CancellationToken cancellationToken = default)
-		{
-			return await Task.FromResult(CreateDbContext());
-		}
-	}
 }

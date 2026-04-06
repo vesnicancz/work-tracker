@@ -4,6 +4,7 @@ using Moq;
 using WorkTracker.Application.Plugins;
 using WorkTracker.Plugin.Abstractions;
 using WorkTracker.UI.Shared.Orchestrators;
+using WorkTracker.Tests.Common.Helpers;
 
 namespace WorkTracker.UI.Shared.Tests.Orchestrators;
 
@@ -35,7 +36,7 @@ public class WorkSuggestionOrchestratorTests
 	public void HasSuggestionPlugins_WithPlugins_ReturnsTrue()
 	{
 		_mockPluginManager.Setup(m => m.WorkSuggestionPlugins)
-			.Returns([CreateMockPlugin("test", "Test").Object]);
+			.Returns([MockPluginFactory.CreateSuggestionPlugin("test", "Test").Object]);
 
 		_orchestrator.HasSuggestionPlugins.Should().BeTrue();
 	}
@@ -58,7 +59,7 @@ public class WorkSuggestionOrchestratorTests
 	[Fact]
 	public async Task GetGroupedSuggestionsAsync_PluginReturnsItems_GroupHasItems()
 	{
-		var plugin = CreateMockPlugin("jira", "Jira");
+		var plugin = MockPluginFactory.CreateSuggestionPlugin("jira", "Jira");
 		plugin.Setup(p => p.GetSuggestionsAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(PluginResult<IReadOnlyList<WorkSuggestion>>.Success(new List<WorkSuggestion>
 			{
@@ -78,7 +79,7 @@ public class WorkSuggestionOrchestratorTests
 	[Fact]
 	public async Task GetGroupedSuggestionsAsync_PluginReturnsFailure_GroupHasError()
 	{
-		var plugin = CreateMockPlugin("jira", "Jira");
+		var plugin = MockPluginFactory.CreateSuggestionPlugin("jira", "Jira");
 		plugin.Setup(p => p.GetSuggestionsAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(PluginResult<IReadOnlyList<WorkSuggestion>>.Failure("API error 401"));
 		_mockPluginManager.Setup(m => m.WorkSuggestionPlugins).Returns([plugin.Object]);
@@ -93,7 +94,7 @@ public class WorkSuggestionOrchestratorTests
 	[Fact]
 	public async Task GetGroupedSuggestionsAsync_PluginThrows_GroupHasError()
 	{
-		var plugin = CreateMockPlugin("jira", "Jira");
+		var plugin = MockPluginFactory.CreateSuggestionPlugin("jira", "Jira");
 		plugin.Setup(p => p.GetSuggestionsAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
 			.ThrowsAsync(new HttpRequestException("Network error"));
 		_mockPluginManager.Setup(m => m.WorkSuggestionPlugins).Returns([plugin.Object]);
@@ -108,7 +109,7 @@ public class WorkSuggestionOrchestratorTests
 	[Fact]
 	public async Task GetGroupedSuggestionsAsync_PluginThrowsOperationCanceled_Rethrows()
 	{
-		var plugin = CreateMockPlugin("jira", "Jira");
+		var plugin = MockPluginFactory.CreateSuggestionPlugin("jira", "Jira");
 		plugin.Setup(p => p.GetSuggestionsAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
 			.ThrowsAsync(new OperationCanceledException());
 		_mockPluginManager.Setup(m => m.WorkSuggestionPlugins).Returns([plugin.Object]);
@@ -121,14 +122,14 @@ public class WorkSuggestionOrchestratorTests
 	[Fact]
 	public async Task GetGroupedSuggestionsAsync_MultiplePlugins_OneFailsOneSucceeds_BothGroupsReturned()
 	{
-		var good = CreateMockPlugin("calendar", "Calendar");
+		var good = MockPluginFactory.CreateSuggestionPlugin("calendar", "Calendar");
 		good.Setup(p => p.GetSuggestionsAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(PluginResult<IReadOnlyList<WorkSuggestion>>.Success(new List<WorkSuggestion>
 			{
 				new() { Title = "Standup", Source = "Calendar", SourceId = "evt1", StartTime = DateTime.Today.AddHours(9) }
 			}));
 
-		var bad = CreateMockPlugin("jira", "Jira");
+		var bad = MockPluginFactory.CreateSuggestionPlugin("jira", "Jira");
 		bad.Setup(p => p.GetSuggestionsAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(PluginResult<IReadOnlyList<WorkSuggestion>>.Failure("Auth failed"));
 
@@ -144,7 +145,7 @@ public class WorkSuggestionOrchestratorTests
 	[Fact]
 	public async Task GetGroupedSuggestionsAsync_ItemsSortedByStartTimeThenTitle()
 	{
-		var plugin = CreateMockPlugin("cal", "Calendar");
+		var plugin = MockPluginFactory.CreateSuggestionPlugin("cal", "Calendar");
 		plugin.Setup(p => p.GetSuggestionsAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(PluginResult<IReadOnlyList<WorkSuggestion>>.Success(new List<WorkSuggestion>
 			{
@@ -179,7 +180,7 @@ public class WorkSuggestionOrchestratorTests
 	[Fact]
 	public async Task SearchPluginAsync_EmptyQuery_CallsGetSuggestions()
 	{
-		var plugin = CreateMockPlugin("jira", "Jira");
+		var plugin = MockPluginFactory.CreateSuggestionPlugin("jira", "Jira");
 		plugin.Setup(p => p.GetSuggestionsAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(PluginResult<IReadOnlyList<WorkSuggestion>>.Success(new List<WorkSuggestion>
 			{
@@ -198,7 +199,7 @@ public class WorkSuggestionOrchestratorTests
 	[Fact]
 	public async Task SearchPluginAsync_NonEmptyQuery_CallsSearch()
 	{
-		var plugin = CreateMockPlugin("jira", "Jira");
+		var plugin = MockPluginFactory.CreateSuggestionPlugin("jira", "Jira");
 		plugin.Setup(p => p.SupportsSearch).Returns(true);
 		plugin.Setup(p => p.SearchAsync("fix", It.IsAny<CancellationToken>()))
 			.ReturnsAsync(PluginResult<IReadOnlyList<WorkSuggestion>>.Success(new List<WorkSuggestion>
@@ -216,7 +217,7 @@ public class WorkSuggestionOrchestratorTests
 	[Fact]
 	public async Task SearchPluginAsync_PluginThrows_ReturnsEmpty()
 	{
-		var plugin = CreateMockPlugin("jira", "Jira");
+		var plugin = MockPluginFactory.CreateSuggestionPlugin("jira", "Jira");
 		plugin.Setup(p => p.SupportsSearch).Returns(true);
 		plugin.Setup(p => p.SearchAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
 			.ThrowsAsync(new HttpRequestException("Timeout"));
@@ -229,17 +230,4 @@ public class WorkSuggestionOrchestratorTests
 
 	#endregion
 
-	private static Mock<IWorkSuggestionPlugin> CreateMockPlugin(string id, string name)
-	{
-		var mock = new Mock<IWorkSuggestionPlugin>();
-		mock.Setup(p => p.Metadata).Returns(new PluginMetadata
-		{
-			Id = id,
-			Name = name,
-			Version = new Version(1, 0),
-			Author = "Test"
-		});
-		mock.Setup(p => p.SupportsSearch).Returns(false);
-		return mock;
-	}
 }

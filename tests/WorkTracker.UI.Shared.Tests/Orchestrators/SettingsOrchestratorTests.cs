@@ -8,6 +8,7 @@ using WorkTracker.Plugin.Abstractions;
 using WorkTracker.UI.Shared.Models;
 using WorkTracker.UI.Shared.Orchestrators;
 using WorkTracker.UI.Shared.Services;
+using WorkTracker.Tests.Common.Helpers;
 using WorkTracker.UI.Shared.ViewModels;
 
 namespace WorkTracker.UI.Shared.Tests.Orchestrators;
@@ -60,7 +61,7 @@ public class SettingsOrchestratorTests
 	[Fact]
 	public void LoadPlugins_WithPlugin_ReturnsPluginViewModels()
 	{
-		var plugin = CreateMockPlugin("test-plugin", "Test Plugin");
+		var plugin = MockPluginFactory.CreatePlugin("test-plugin", "Test Plugin");
 		_mockPluginManager.Setup(p => p.LoadedPlugins)
 			.Returns(new Dictionary<string, IPlugin> { ["test-plugin"] = plugin.Object });
 
@@ -73,7 +74,7 @@ public class SettingsOrchestratorTests
 	[Fact]
 	public void LoadPlugins_LoadsEnabledState()
 	{
-		var plugin = CreateMockPlugin("test-plugin", "Test");
+		var plugin = MockPluginFactory.CreatePlugin("test-plugin", "Test");
 		_mockPluginManager.Setup(p => p.LoadedPlugins)
 			.Returns(new Dictionary<string, IPlugin> { ["test-plugin"] = plugin.Object });
 
@@ -91,7 +92,8 @@ public class SettingsOrchestratorTests
 	[Fact]
 	public void LoadPlugins_LoadsSavedConfiguration()
 	{
-		var worklogPlugin = CreateMockWorklogPlugin("tempo", "Tempo");
+		var worklogPlugin = MockPluginFactory.CreateWorklogPlugin("tempo", "Tempo",
+			new PluginConfigurationField { Key = "ApiUrl", Label = "API URL", IsRequired = true });
 		_mockPluginManager.Setup(p => p.LoadedPlugins)
 			.Returns(new Dictionary<string, IPlugin> { ["tempo"] = worklogPlugin.Object });
 
@@ -113,7 +115,8 @@ public class SettingsOrchestratorTests
 	[Fact]
 	public void LoadPlugins_FallsBackToAppSettings()
 	{
-		var worklogPlugin = CreateMockWorklogPlugin("tempo", "Tempo");
+		var worklogPlugin = MockPluginFactory.CreateWorklogPlugin("tempo", "Tempo",
+			new PluginConfigurationField { Key = "ApiUrl", Label = "API URL", IsRequired = true });
 		_mockPluginManager.Setup(p => p.LoadedPlugins)
 			.Returns(new Dictionary<string, IPlugin> { ["tempo"] = worklogPlugin.Object });
 
@@ -134,7 +137,7 @@ public class SettingsOrchestratorTests
 	[Fact]
 	public async Task SaveSettingsAsync_SavesAndAppliesAllSettings()
 	{
-		var pluginVm = new PluginViewModel(CreateMockPlugin("tempo", "Tempo").Object);
+		var pluginVm = new PluginViewModel(MockPluginFactory.CreatePlugin("tempo", "Tempo").Object);
 		pluginVm.IsEnabled = true;
 		pluginVm.Configuration["key"] = "value";
 
@@ -239,7 +242,7 @@ public class SettingsOrchestratorTests
 	[Fact]
 	public async Task TestConnectionAsync_NonWorklogPlugin_ReturnsNotAvailable()
 	{
-		var plugin = CreateMockPlugin("basic", "Basic");
+		var plugin = MockPluginFactory.CreatePlugin("basic", "Basic");
 		var vm = new PluginViewModel(plugin.Object);
 
 		var result = await _orchestrator.TestConnectionAsync(vm, null, TestContext.Current.CancellationToken);
@@ -250,7 +253,8 @@ public class SettingsOrchestratorTests
 	[Fact]
 	public async Task TestConnectionAsync_Success_ReturnsSuccessMessage()
 	{
-		var worklogPlugin = CreateMockWorklogPlugin("tempo", "Tempo");
+		var worklogPlugin = MockPluginFactory.CreateWorklogPlugin("tempo", "Tempo",
+			new PluginConfigurationField { Key = "ApiUrl", Label = "API URL", IsRequired = true });
 		worklogPlugin.Setup(p => p.TestConnectionAsync(It.IsAny<IProgress<string>?>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(PluginResult<bool>.Success(true));
 
@@ -264,7 +268,8 @@ public class SettingsOrchestratorTests
 	[Fact]
 	public async Task TestConnectionAsync_Failure_ReturnsErrorMessage()
 	{
-		var worklogPlugin = CreateMockWorklogPlugin("tempo", "Tempo");
+		var worklogPlugin = MockPluginFactory.CreateWorklogPlugin("tempo", "Tempo",
+			new PluginConfigurationField { Key = "ApiUrl", Label = "API URL", IsRequired = true });
 		worklogPlugin.Setup(p => p.TestConnectionAsync(It.IsAny<IProgress<string>?>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(PluginResult<bool>.Failure("Auth failed"));
 
@@ -277,46 +282,10 @@ public class SettingsOrchestratorTests
 
 	#endregion TestConnectionAsync
 
-	private static Mock<IPlugin> CreateMockPlugin(string id, string name)
-	{
-		var plugin = new Mock<IPlugin>();
-		plugin.Setup(p => p.Metadata).Returns(new PluginMetadata
-		{
-			Id = id,
-			Name = name,
-			Version = new Version(1, 0),
-			Author = "Test"
-		});
-		plugin.Setup(p => p.GetConfigurationFields()).Returns(new List<PluginConfigurationField>());
-		return plugin;
-	}
-
-	private static Mock<IWorklogUploadPlugin> CreateMockWorklogPlugin(string id, string name)
-	{
-		var plugin = new Mock<IWorklogUploadPlugin>();
-		plugin.Setup(p => p.Metadata).Returns(new PluginMetadata
-		{
-			Id = id,
-			Name = name,
-			Version = new Version(1, 0),
-			Author = "Test"
-		});
-		plugin.Setup(p => p.GetConfigurationFields()).Returns(new List<PluginConfigurationField>
-		{
-			new() { Key = "ApiUrl", Label = "API URL", IsRequired = true }
-		});
-		plugin.Setup(p => p.InitializeAsync(It.IsAny<IDictionary<string, string>>(), It.IsAny<CancellationToken>()))
-			.ReturnsAsync(true);
-		return plugin;
-	}
-
 	private static Mock<IPlugin> CreateMockPluginWithPasswordField(string id, string name, string passwordFieldKey)
 	{
-		var plugin = CreateMockPlugin(id, name);
-		plugin.Setup(p => p.GetConfigurationFields()).Returns(new List<PluginConfigurationField>
-		{
-			new() { Key = passwordFieldKey, Label = "API Token", IsRequired = true, Type = PluginConfigurationFieldType.Password }
-		});
+		var plugin = MockPluginFactory.CreatePlugin(id, name,
+			new PluginConfigurationField { Key = passwordFieldKey, Label = "API Token", IsRequired = true, Type = PluginConfigurationFieldType.Password });
 		plugin.Setup(p => p.InitializeAsync(It.IsAny<IDictionary<string, string>>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(true);
 		return plugin;

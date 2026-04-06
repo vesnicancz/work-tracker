@@ -1,6 +1,6 @@
 using WorkTracker.Application.Common;
-using WorkTracker.Application.Models;
 using WorkTracker.Domain.Entities;
+using WorkTracker.Domain.Services;
 
 namespace WorkTracker.Application.Services;
 

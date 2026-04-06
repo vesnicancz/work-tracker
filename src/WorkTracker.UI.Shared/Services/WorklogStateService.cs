@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using WorkTracker.Application.Common;
-using WorkTracker.Application.Models;
+using WorkTracker.Domain.Services;
 using WorkTracker.Application.Services;
 using WorkTracker.Domain.Entities;
 

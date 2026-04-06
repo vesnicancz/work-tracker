@@ -1,8 +1,8 @@
 using Microsoft.Extensions.Logging;
 using WorkTracker.Application.Common;
-using WorkTracker.Application.Models;
 using WorkTracker.Domain.Entities;
 using WorkTracker.Domain.Interfaces;
+using WorkTracker.Domain.Services;
 
 namespace WorkTracker.Application.Services;
 
@@ -192,116 +192,12 @@ public sealed class WorkEntryService : IWorkEntryService
 			return new OverlapResolutionPlan();
 		}
 
-		// For adjustments: use DateTime.MaxValue for active entries so DetermineAdjustment
+		// For adjustments: use DateTime.MaxValue for active entries so the resolver
 		// correctly produces TrimEnd/Delete (not TrimStart/Split with an artificial +1min boundary)
 		var candidateEnd = roundedEnd ?? DateTime.MaxValue;
-		var adjustments = new List<OverlapAdjustment>();
-
-		foreach (var existing in overlapping)
-		{
-			var existingEnd = existing.EndTime ?? DateTime.MaxValue;
-			var adjustment = DetermineAdjustment(existing, existingEnd, roundedStart, candidateEnd);
-			adjustments.Add(adjustment);
-		}
+		var adjustments = OverlapResolver.Resolve(overlapping, roundedStart, candidateEnd);
 
 		return new OverlapResolutionPlan { Adjustments = adjustments };
-	}
-
-	private static OverlapAdjustment DetermineAdjustment(WorkEntry existing, DateTime existingEnd, DateTime candidateStart, DateTime candidateEnd)
-	{
-		var minDuration = TimeSpan.FromMinutes(1);
-
-		// Complete cover: candidate fully contains existing
-		if (candidateStart <= existing.StartTime && candidateEnd >= existingEnd)
-		{
-			return new OverlapAdjustment(
-				existing.Id, existing.TicketId, existing.Description,
-				OverlapAdjustmentKind.Delete,
-				existing.StartTime, existing.EndTime,
-				null, null);
-		}
-
-		// Split: candidate is inside existing (only for completed entries)
-		// Active entries (no EndTime) are never split — they are trimmed instead,
-		// because splitting would create a new active entry after the candidate.
-		if (candidateStart > existing.StartTime && candidateEnd < existingEnd && existing.EndTime.HasValue)
-		{
-			// Check if either half would be too short
-			var firstHalf = candidateStart - existing.StartTime;
-			var secondHalf = existingEnd - candidateEnd;
-
-			if (firstHalf < minDuration && secondHalf < minDuration)
-			{
-				return new OverlapAdjustment(
-					existing.Id, existing.TicketId, existing.Description,
-					OverlapAdjustmentKind.Delete,
-					existing.StartTime, existing.EndTime,
-					null, null);
-			}
-
-			if (firstHalf < minDuration)
-			{
-				return new OverlapAdjustment(
-					existing.Id, existing.TicketId, existing.Description,
-					OverlapAdjustmentKind.TrimStart,
-					existing.StartTime, existing.EndTime,
-					candidateEnd, null);
-			}
-
-			if (secondHalf < minDuration)
-			{
-				return new OverlapAdjustment(
-					existing.Id, existing.TicketId, existing.Description,
-					OverlapAdjustmentKind.TrimEnd,
-					existing.StartTime, existing.EndTime,
-					null, candidateStart);
-			}
-
-			return new OverlapAdjustment(
-				existing.Id, existing.TicketId, existing.Description,
-				OverlapAdjustmentKind.Split,
-				existing.StartTime, existing.EndTime,
-				candidateEnd, candidateStart);
-		}
-
-		// Head overlap: candidate covers the end of existing
-		if (candidateStart > existing.StartTime)
-		{
-			var remaining = candidateStart - existing.StartTime;
-			if (remaining < minDuration)
-			{
-				return new OverlapAdjustment(
-					existing.Id, existing.TicketId, existing.Description,
-					OverlapAdjustmentKind.Delete,
-					existing.StartTime, existing.EndTime,
-					null, null);
-			}
-
-			return new OverlapAdjustment(
-				existing.Id, existing.TicketId, existing.Description,
-				OverlapAdjustmentKind.TrimEnd,
-				existing.StartTime, existing.EndTime,
-				null, candidateStart);
-		}
-
-		// Tail overlap: candidate covers the beginning of existing
-		{
-			var remaining = existingEnd - candidateEnd;
-			if (remaining < minDuration)
-			{
-				return new OverlapAdjustment(
-					existing.Id, existing.TicketId, existing.Description,
-					OverlapAdjustmentKind.Delete,
-					existing.StartTime, existing.EndTime,
-					null, null);
-			}
-
-			return new OverlapAdjustment(
-				existing.Id, existing.TicketId, existing.Description,
-				OverlapAdjustmentKind.TrimStart,
-				existing.StartTime, existing.EndTime,
-				candidateEnd, null);
-		}
 	}
 
 	public async Task<Result<WorkEntry>> CreateWithOverlapResolutionAsync(

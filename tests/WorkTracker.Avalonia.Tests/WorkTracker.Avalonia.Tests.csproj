@@ -24,8 +24,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\WorkTracker.Domain\WorkTracker.Domain.csproj" />
-    <ProjectReference Include="..\WorkTracker.Tests.Common\WorkTracker.Tests.Common.csproj" />
+    <ProjectReference Include="..\..\src\WorkTracker.Avalonia\WorkTracker.Avalonia.csproj" />
   </ItemGroup>
 
 </Project>

@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using WorkTracker.Application.Services;
 using WorkTracker.Domain.Entities;
+using WorkTracker.UI.Shared;
 using WorkTracker.UI.Shared.Orchestrators;
 using WorkTracker.UI.Shared.Services;
 using WorkTracker.UI.Shared.ViewModels;
@@ -106,13 +107,8 @@ public class MainViewModel : ViewModelBase, IDisposable
 		GoToTodayCommand = new RelayCommand(GoToToday);
 		OpenSuggestionsCommand = new AsyncRelayCommand(OpenSuggestionsAsync);
 
-		_ = InitializeAsync().ContinueWith(t =>
-		{
-			if (t.IsFaulted)
-			{
-				_logger.LogError(t.Exception, "MainViewModel initialization failed");
-			}
-		}, TaskScheduler.Default);
+		_ = InitializeAsync()
+			.SafeFireAndForgetAsync(ex => _logger.LogError(ex, "MainViewModel initialization failed"));
 	}
 
 	#region Properties

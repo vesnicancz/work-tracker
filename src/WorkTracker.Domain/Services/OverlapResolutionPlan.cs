@@ -1,4 +1,4 @@
-namespace WorkTracker.Application.Models;
+namespace WorkTracker.Domain.Services;
 
 public sealed class OverlapResolutionPlan
 {
