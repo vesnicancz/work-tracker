@@ -1,9 +1,11 @@
 using System.Collections.ObjectModel;
-using System.Reflection;
+using System.Net.Http;
 using System.Runtime.Loader;
 using System.Threading;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using WorkTracker.Application.Plugins;
+using WorkTracker.Infrastructure.Auth;
 using WorkTracker.Plugin.Abstractions;
 
 namespace WorkTracker.Infrastructure.Plugins;
@@ -14,7 +16,8 @@ namespace WorkTracker.Infrastructure.Plugins;
 public sealed class PluginManager : IPluginManager
 {
 	private readonly ILogger _logger;
-	private readonly ILoggerFactory _loggerFactory;
+	private readonly ServiceProvider _pluginServiceProvider;
+	private readonly PluginLoader _loader;
 	private readonly Lock _lock = new();
 
 	private readonly Dictionary<string, IPlugin> _loadedPlugins = new();
@@ -22,10 +25,21 @@ public sealed class PluginManager : IPluginManager
 	private readonly List<string> _pluginDirectories = new();
 	private readonly HashSet<string> _enabledPluginIds = new();
 
-	public PluginManager(ILoggerFactory loggerFactory)
+	public PluginManager(ILoggerFactory loggerFactory, IHttpClientFactory httpClientFactory)
 	{
-		_loggerFactory = loggerFactory;
 		_logger = loggerFactory.CreateLogger<PluginManager>();
+		_pluginServiceProvider = BuildPluginServiceProvider(loggerFactory, httpClientFactory);
+		_loader = new PluginLoader(_pluginServiceProvider, loggerFactory.CreateLogger<PluginLoader>());
+	}
+
+	private static ServiceProvider BuildPluginServiceProvider(ILoggerFactory loggerFactory, IHttpClientFactory httpClientFactory)
+	{
+		var services = new ServiceCollection();
+		services.AddSingleton<ILoggerFactory>(_ => new NonDisposingLoggerFactory(loggerFactory));
+		services.AddLogging();
+		services.AddSingleton<IHttpClientFactory>(_ => new NonDisposingHttpClientFactory(httpClientFactory));
+		services.AddSingleton<ITokenProviderFactory, MsalTokenProviderFactory>();
+		return services.BuildServiceProvider();
 	}
 
 	/// <summary>
@@ -108,7 +122,7 @@ public sealed class PluginManager : IPluginManager
 	/// <summary>
 	/// Discovers and loads all plugins from registered directories
 	/// </summary>
-	public int DiscoverAndLoadPlugins()
+	public async Task<int> DiscoverAndLoadPluginsAsync()
 	{
 		List<string> directoriesSnapshot;
 		lock (_lock)
@@ -116,24 +130,21 @@ public sealed class PluginManager : IPluginManager
 			directoriesSnapshot = new List<string>(_pluginDirectories);
 		}
 
+		var pluginFiles = _loader.DiscoverPluginFiles(directoriesSnapshot);
 		var loadedCount = 0;
 
-		foreach (var directory in directoriesSnapshot)
+		foreach (var pluginFile in pluginFiles)
 		{
-			var pluginFiles = Directory.GetFiles(directory, "WorkTracker.Plugin.*.dll", SearchOption.AllDirectories);
-			foreach (var pluginFile in pluginFiles)
+			try
 			{
-				try
+				if (await LoadPluginFromFileAsync(pluginFile))
 				{
-					if (LoadPluginFromFile(pluginFile))
-					{
-						loadedCount++;
-					}
+					loadedCount++;
 				}
-				catch (Exception ex)
-				{
-					_logger.LogError(ex, "Failed to load plugin from {File}", pluginFile);
-				}
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Failed to load plugin from {File}", pluginFile);
 			}
 		}
 
@@ -145,7 +156,7 @@ public sealed class PluginManager : IPluginManager
 	/// <summary>
 	/// Loads a plugin from a specific file
 	/// </summary>
-	public bool LoadPluginFromFile(string assemblyPath)
+	public async Task<bool> LoadPluginFromFileAsync(string assemblyPath)
 	{
 		if (!File.Exists(assemblyPath))
 		{
@@ -157,72 +168,50 @@ public sealed class PluginManager : IPluginManager
 		{
 			_logger.LogDebug("Loading plugin from {Path}", assemblyPath);
 
-			// Create isolated load context for the plugin
-			var context = new PluginLoadContext(assemblyPath);
-			var assembly = context.LoadFromAssemblyName(
-				new AssemblyName(Path.GetFileNameWithoutExtension(assemblyPath))
-			);
+			var results = _loader.LoadFromFile(assemblyPath);
 
-			// Find plugin types
-			var pluginTypes = assembly.GetTypes()
-				.Where(t => typeof(IPlugin).IsAssignableFrom(t) && !t.IsInterface && !t.IsAbstract)
-				.ToList();
-
-			if (pluginTypes.Count == 0)
+			if (results.Count == 0)
 			{
-				_logger.LogWarning("No plugin types found in {Assembly}", assemblyPath);
-				context.Unload();
 				return false;
 			}
 
-			var anyLoaded = false;
+			var anyRegistered = false;
+			var skippedPlugins = new List<IPlugin>();
 
-			foreach (var pluginType in pluginTypes)
+			foreach (var (plugin, context) in results)
 			{
-				try
+				var pluginId = plugin.Metadata.Id;
+
+				lock (_lock)
 				{
-					var plugin = Activator.CreateInstance(pluginType) as IPlugin;
-					if (plugin == null)
+					if (_loadedPlugins.ContainsKey(pluginId))
 					{
-						_logger.LogWarning("Failed to create instance of {Type}", pluginType.FullName);
+						_logger.LogWarning("Plugin {Id} is already loaded, skipping", pluginId);
+						skippedPlugins.Add(plugin);
 						continue;
 					}
 
-					var pluginId = plugin.Metadata.Id;
-
-					lock (_lock)
-					{
-						if (_loadedPlugins.ContainsKey(pluginId))
-						{
-							_logger.LogWarning("Plugin {Id} is already loaded, skipping", pluginId);
-							continue;
-						}
-
-						_loadedPlugins[pluginId] = plugin;
-						_pluginContexts[pluginId] = context;
-					}
-
-					if (plugin is PluginBase pluginBase)
-					{
-						pluginBase.SetLogger(CreatePluginLogger(pluginId));
-					}
-
-					anyLoaded = true;
-
-					_logger.LogInformation("Loaded plugin: {Name} v{Version} by {Author}", plugin.Metadata.Name, plugin.Metadata.Version, plugin.Metadata.Author);
+					_loadedPlugins[pluginId] = plugin;
+					_pluginContexts[pluginId] = context;
 				}
-				catch (Exception ex)
-				{
-					_logger.LogError(ex, "Failed to instantiate plugin type {Type}", pluginType.FullName);
-				}
+
+				anyRegistered = true;
+
+				_logger.LogInformation("Loaded plugin: {Name} v{Version} by {Author}", plugin.Metadata.Name, plugin.Metadata.Version, plugin.Metadata.Author);
 			}
 
-			if (!anyLoaded)
+			// Dispose skipped plugins and unload context if nothing was registered
+			foreach (var skipped in skippedPlugins)
 			{
-				context.Unload();
+				await skipped.DisposeAsync();
 			}
 
-			return anyLoaded;
+			if (!anyRegistered && results.Count > 0)
+			{
+				results[0].Context.Unload();
+			}
+
+			return anyRegistered;
 		}
 		catch (Exception ex)
 		{
@@ -235,17 +224,12 @@ public sealed class PluginManager : IPluginManager
 	/// Loads an embedded plugin (plugin that's part of the main application)
 	/// </summary>
 	public bool LoadEmbeddedPlugin<T>()
-		where T : IPlugin, new()
+		where T : class, IPlugin
 	{
 		try
 		{
-			var plugin = new T();
+			var plugin = _loader.LoadEmbedded<T>();
 			var pluginId = plugin.Metadata.Id;
-
-			if (plugin is PluginBase pluginBase)
-			{
-				pluginBase.SetLogger(CreatePluginLogger(pluginId));
-			}
 
 			lock (_lock)
 			{
@@ -398,8 +382,18 @@ public sealed class PluginManager : IPluginManager
 	public async ValueTask DisposeAsync()
 	{
 		await UnloadAllPluginsAsync();
+		await _pluginServiceProvider.DisposeAsync();
 	}
 
-	private ILogger CreatePluginLogger(string pluginId) =>
-		_loggerFactory.CreateLogger($"WorkTracker.Plugin.{pluginId}");
+	private sealed class NonDisposingLoggerFactory(ILoggerFactory inner) : ILoggerFactory
+	{
+		public void AddProvider(ILoggerProvider provider) => inner.AddProvider(provider);
+		public ILogger CreateLogger(string categoryName) => inner.CreateLogger(categoryName);
+		public void Dispose() { } // Host owns the lifetime
+	}
+
+	private sealed class NonDisposingHttpClientFactory(IHttpClientFactory inner) : IHttpClientFactory
+	{
+		public HttpClient CreateClient(string name) => inner.CreateClient(name);
+	}
 }

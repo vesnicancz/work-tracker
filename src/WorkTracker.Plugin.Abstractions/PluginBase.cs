@@ -5,9 +5,9 @@ namespace WorkTracker.Plugin.Abstractions;
 /// <summary>
 /// Common base class for all plugin types providing configuration, validation, logging, and lifecycle management.
 /// </summary>
-public abstract class PluginBase : IPlugin
+public abstract class PluginBase(ILogger logger) : IPlugin
 {
-	protected ILogger? Logger { get; private set; }
+	protected ILogger Logger { get; } = logger;
 
 	protected IDictionary<string, string> Configuration { get; private set; } = new Dictionary<string, string>();
 
@@ -25,7 +25,7 @@ public abstract class PluginBase : IPlugin
 		var validationResult = await ValidateConfigurationAsync(Configuration, cancellationToken);
 		if (!validationResult.IsValid)
 		{
-			Logger?.LogError(
+			Logger.LogError(
 				"Plugin {Name} configuration validation failed: {Errors}",
 				Metadata.Name,
 				string.Join(", ", validationResult.Errors)
@@ -42,18 +42,18 @@ public abstract class PluginBase : IPlugin
 		if (result)
 		{
 			IsInitialized = true;
-			Logger?.LogInformation("Plugin {Name} initialized successfully", Metadata.Name);
+			Logger.LogInformation("Plugin {Name} initialized successfully", Metadata.Name);
 		}
 		else
 		{
 			if (IsInitialized)
 			{
 				Configuration = previousConfiguration;
-				Logger?.LogWarning("Plugin {Name} re-initialization failed, keeping previous state", Metadata.Name);
+				Logger.LogWarning("Plugin {Name} re-initialization failed, keeping previous state", Metadata.Name);
 			}
 			else
 			{
-				Logger?.LogError("Plugin {Name} initialization failed", Metadata.Name);
+				Logger.LogError("Plugin {Name} initialization failed", Metadata.Name);
 			}
 		}
 
@@ -64,7 +64,24 @@ public abstract class PluginBase : IPlugin
 	{
 		await OnShutdownAsync();
 		IsInitialized = false;
-		Logger?.LogInformation("Plugin {Name} shut down", Metadata.Name);
+		Logger.LogInformation("Plugin {Name} shut down", Metadata.Name);
+		await DisposeAsync();
+	}
+
+	/// <inheritdoc />
+	public async ValueTask DisposeAsync()
+	{
+		await OnDisposeAsync();
+		GC.SuppressFinalize(this);
+	}
+
+	/// <summary>
+	/// Override to release plugin resources. Must be idempotent — may be called
+	/// multiple times (via <see cref="ShutdownAsync"/> and direct <see cref="DisposeAsync"/>).
+	/// </summary>
+	protected virtual ValueTask OnDisposeAsync()
+	{
+		return ValueTask.CompletedTask;
 	}
 
 	public virtual async Task<PluginValidationResult> ValidateConfigurationAsync(IDictionary<string, string> configuration, CancellationToken cancellationToken)
@@ -73,13 +90,12 @@ public abstract class PluginBase : IPlugin
 
 		foreach (var field in GetConfigurationFields().Where(f => f.IsRequired))
 		{
-			if (!configuration.ContainsKey(field.Key) || string.IsNullOrWhiteSpace(configuration[field.Key]))
+			if (!configuration.TryGetValue(field.Key, out var value) || string.IsNullOrWhiteSpace(value))
 			{
 				errors.Add($"Required field '{field.Label}' is missing or empty");
 			}
 			else if (!string.IsNullOrEmpty(field.ValidationPattern))
 			{
-				var value = configuration[field.Key];
 				try
 				{
 					if (!System.Text.RegularExpressions.Regex.IsMatch(value, field.ValidationPattern,
@@ -91,7 +107,7 @@ public abstract class PluginBase : IPlugin
 				}
 				catch (System.Text.RegularExpressions.RegexMatchTimeoutException ex)
 				{
-					Logger?.LogError(ex, "Regex validation for field '{FieldKey}' in plugin {PluginName} timed out.",
+					Logger.LogError(ex, "Regex validation for field '{FieldKey}' in plugin {PluginName} timed out.",
 						field.Key, Metadata.Name);
 					errors.Add($"Field '{field.Label}' validation timed out; the validation pattern may be too complex or the input too long.");
 				}
@@ -104,11 +120,6 @@ public abstract class PluginBase : IPlugin
 		}
 
 		return await OnValidateConfigurationAsync(configuration, cancellationToken);
-	}
-
-	public void SetLogger(ILogger logger)
-	{
-		Logger = logger;
 	}
 
 	protected string? GetConfigValue(string key)

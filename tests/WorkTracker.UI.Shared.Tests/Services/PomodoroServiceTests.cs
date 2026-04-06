@@ -8,7 +8,7 @@ using WorkTracker.UI.Shared.Services;
 
 namespace WorkTracker.UI.Shared.Tests.Services;
 
-public class PomodoroServiceTests : IDisposable
+public class PomodoroServiceTests : IAsyncLifetime
 {
 	private readonly Mock<ISettingsService> _settingsService = new();
 	private readonly Mock<INotificationService> _notificationService = new();
@@ -49,9 +49,11 @@ public class PomodoroServiceTests : IDisposable
 			NullLogger<PomodoroService>.Instance);
 	}
 
-	public void Dispose()
+	public ValueTask InitializeAsync() => ValueTask.CompletedTask;
+
+	public async ValueTask DisposeAsync()
 	{
-		_sut.Dispose();
+		await _sut.DisposeAsync();
 	}
 
 	[Fact]

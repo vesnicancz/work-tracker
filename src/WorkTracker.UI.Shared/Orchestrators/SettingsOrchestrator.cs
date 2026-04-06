@@ -45,7 +45,7 @@ public class SettingsOrchestrator : ISettingsOrchestrator
 		{
 			var pluginViewModel = new PluginViewModel(plugin);
 
-			// Load enabled state (default to true if not found)
+			// Disabled by default — user must explicitly enable in Settings
 			if (_settingsService.Settings.EnabledPlugins.TryGetValue(plugin.Metadata.Id, out var isEnabled))
 			{
 				pluginViewModel.IsEnabled = isEnabled;

@@ -1,6 +1,5 @@
 using System.Globalization;
 using Microsoft.Extensions.Logging;
-using Microsoft.Identity.Client;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
 using WorkTracker.Plugin.Abstractions;
@@ -10,7 +9,8 @@ namespace WorkTracker.Plugin.GoranG3;
 /// <summary>
 /// Plugin for uploading and reading worklogs via Goran G3 MCP server.
 /// </summary>
-public sealed class GoranG3WorklogPlugin : WorklogUploadPluginBase, IAsyncDisposable
+public sealed class GoranG3WorklogPlugin(ILogger<GoranG3WorklogPlugin> logger, ITokenProviderFactory tokenProviderFactory)
+	: WorklogUploadPluginBase(logger)
 {
 	private static class ConfigKeys
 	{
@@ -24,11 +24,10 @@ public sealed class GoranG3WorklogPlugin : WorklogUploadPluginBase, IAsyncDispos
 	}
 
 	private const string NotConnectedMessage = "Not connected to MCP server. Please use Test Connection in Settings to sign in first.";
-	private static readonly Lock _cacheLock = new();
 
-	private IPublicClientApplication? _msalApp;
-	private string? _msalClientId;
-	private string? _msalTenantId;
+	private readonly ITokenProviderFactory _tokenProviderFactory = tokenProviderFactory;
+
+	private ITokenProvider? _tokenProvider;
 	private string[]? _scopes;
 	private string? _baseUrl;
 	private McpClient? _mcpClient;
@@ -134,95 +133,44 @@ public sealed class GoranG3WorklogPlugin : WorklogUploadPluginBase, IAsyncDispos
 
 		if (_scopes.Length == 0)
 		{
-			Logger?.LogError("EntraScopes configuration is empty or contains only whitespace/commas");
+			Logger.LogError("EntraScopes configuration is empty or contains only whitespace/commas");
 			return false;
 		}
 
-		// Recreate MSAL app if credentials changed, reuse otherwise to preserve token cache
-		if (_msalApp == null || _msalClientId != clientId || _msalTenantId != tenantId)
-		{
-			_msalClientId = clientId;
-			_msalTenantId = tenantId;
-			_msalApp = PublicClientApplicationBuilder
-				.Create(clientId)
-				.WithAuthority(AzureCloudInstance.AzurePublic, tenantId)
-				.Build();
-
-			var cacheFilePath = Path.Combine(
-				Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-				"WorkTracker", "msal_gorang3_cache.bin");
-			Directory.CreateDirectory(Path.GetDirectoryName(cacheFilePath)!);
-			_msalApp.UserTokenCache.SetBeforeAccess(args =>
-			{
-				lock (_cacheLock)
-				{
-					try
-					{
-						args.TokenCache.DeserializeMsalV3(File.ReadAllBytes(cacheFilePath));
-					}
-					catch (FileNotFoundException)
-					{
-						// No cache file yet — first run
-					}
-					catch (Exception ex)
-					{
-						Logger?.LogWarning(ex, "Failed to read MSAL token cache");
-					}
-				}
-			});
-			_msalApp.UserTokenCache.SetAfterAccess(args =>
-			{
-				if (!args.HasStateChanged)
-				{
-					return;
-				}
-
-				lock (_cacheLock)
-				{
-					try
-					{
-						File.WriteAllBytes(cacheFilePath, args.TokenCache.SerializeMsalV3());
-					}
-					catch (Exception ex)
-					{
-						Logger?.LogWarning(ex, "Failed to write MSAL token cache");
-					}
-				}
-			});
-		}
+		_tokenProvider = _tokenProviderFactory.Create(tenantId, clientId, _scopes);
 
 		// Try silent auth only — interactive auth happens in TestConnectionAsync where progress is available
-		var accounts = await _msalApp.GetAccountsAsync();
-		var firstAccount = accounts.FirstOrDefault();
-		if (firstAccount != null)
+		var token = await _tokenProvider.AcquireTokenSilentAsync(cancellationToken);
+		if (token != null)
 		{
 			try
 			{
-				await _msalApp.AcquireTokenSilent(_scopes, firstAccount)
-					.ExecuteAsync(cancellationToken);
 				await ConnectMcpAsync(cancellationToken);
-			}
-			catch (MsalUiRequiredException)
-			{
-				Logger?.LogDebug("Cached token expired, interactive auth needed via Test Connection");
 			}
 			catch (Exception ex)
 			{
-				Logger?.LogWarning(ex, "MCP server unavailable during startup, will retry on next operation");
+				Logger.LogWarning(ex, "MCP server unavailable during startup, will retry on next operation");
 			}
 		}
 
 		return true;
 	}
 
-	protected override async Task OnShutdownAsync()
+	protected override async ValueTask OnDisposeAsync()
 	{
-		await DisposeAsync();
-	}
+		if (_mcpClient != null)
+		{
+			await _mcpClient.DisposeAsync();
+			_mcpClient = null;
+		}
 
-	public override async Task<PluginResult<bool>> TestConnectionAsync(CancellationToken cancellationToken)
-	{
-		return await TestConnectionAsync(null, cancellationToken);
+		_httpClient?.Dispose();
+		_httpClient = null;
+
+		_handler?.Dispose();
+		_handler = null;
+
+
 	}
 
 	public override async Task<PluginResult<bool>> TestConnectionAsync(IProgress<string>? progress, CancellationToken cancellationToken)
@@ -235,42 +183,15 @@ public sealed class GoranG3WorklogPlugin : WorklogUploadPluginBase, IAsyncDispos
 			{
 				progress?.Report("Authenticating...");
 
-				var accounts = await _msalApp!.GetAccountsAsync();
-				var firstAccount = accounts.FirstOrDefault();
-				try
+				var token = await _tokenProvider!.AcquireTokenSilentAsync(cancellationToken);
+				if (token == null)
 				{
-					if (firstAccount != null)
-					{
-						await _msalApp.AcquireTokenSilent(_scopes!, firstAccount)
-							.ExecuteAsync(cancellationToken);
-					}
-					else
-					{
-						throw new MsalUiRequiredException("no_account", "No cached account");
-					}
+					token = await _tokenProvider.AcquireTokenInteractiveAsync(progress, cancellationToken);
 				}
-				catch (MsalUiRequiredException)
+
+				if (token == null)
 				{
-					Logger?.LogDebug("No cached token, launching device code flow");
-					await _msalApp.AcquireTokenWithDeviceCode(_scopes!, deviceCodeResult =>
-					{
-						progress?.Report($"⏳ Open browser and enter code: {deviceCodeResult.UserCode}\n{deviceCodeResult.VerificationUrl}");
-
-						try
-						{
-							System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-							{
-								FileName = deviceCodeResult.VerificationUrl.ToString(),
-								UseShellExecute = true
-							});
-						}
-						catch (Exception ex)
-						{
-							Logger?.LogWarning(ex, "Could not open browser automatically");
-						}
-
-						return Task.CompletedTask;
-					}).ExecuteAsync(cancellationToken);
+					return PluginResult<bool>.Failure("Authentication failed — could not acquire token.", PluginErrorCategory.Authentication);
 				}
 
 				progress?.Report("Connecting to MCP server...");
@@ -285,13 +206,8 @@ public sealed class GoranG3WorklogPlugin : WorklogUploadPluginBase, IAsyncDispos
 				return PluginResult<bool>.Failure("MCP server does not expose expected timesheet tools");
 			}
 
-			Logger?.LogInformation("Successfully connected to Goran G3 MCP server ({ToolCount} tools available)", tools.Count);
+			Logger.LogInformation("Successfully connected to Goran G3 MCP server ({ToolCount} tools available)", tools.Count);
 			return PluginResult<bool>.Success(true);
-		}
-		catch (MsalException ex)
-		{
-			Logger?.LogError(ex, "Authentication failed");
-			return PluginResult<bool>.Failure($"Authentication failed: {ex.Message}");
 		}
 		catch (Exception ex)
 		{
@@ -302,8 +218,8 @@ public sealed class GoranG3WorklogPlugin : WorklogUploadPluginBase, IAsyncDispos
 				_mcpClient = null;
 			}
 
-			Logger?.LogError(ex, "Connection test failed");
-			return PluginResult<bool>.Failure($"Connection failed: {ex.Message}");
+			Logger.LogError(ex, "Connection test failed");
+			return PluginResult<bool>.Failure($"Connection failed: {ex.Message}", PluginErrorCategory.Network);
 		}
 	}
 
@@ -318,7 +234,7 @@ public sealed class GoranG3WorklogPlugin : WorklogUploadPluginBase, IAsyncDispos
 		_httpClient?.Dispose();
 		_handler?.Dispose();
 
-		_handler = new TokenInjectingHandler(_msalApp!, _scopes!, Logger);
+		_handler = new TokenInjectingHandler(_tokenProvider!);
 		_httpClient = new HttpClient(_handler, disposeHandler: false);
 
 		var transport = new HttpClientTransport(
@@ -349,7 +265,7 @@ public sealed class GoranG3WorklogPlugin : WorklogUploadPluginBase, IAsyncDispos
 
 		if (_mcpClient == null)
 		{
-			return PluginResult<bool>.Failure(NotConnectedMessage);
+			return PluginResult<bool>.Failure(NotConnectedMessage, PluginErrorCategory.Authentication);
 		}
 
 		try
@@ -390,19 +306,26 @@ public sealed class GoranG3WorklogPlugin : WorklogUploadPluginBase, IAsyncDispos
 			if (result.IsError == true)
 			{
 				var errorText = GetResultText(result);
-				Logger?.LogWarning("Failed to upload worklog: {Error}", errorText);
-				return PluginResult<bool>.Failure($"Upload failed: {errorText}");
+				Logger.LogWarning("Failed to upload worklog: {Error}", errorText);
+				return PluginResult<bool>.Failure($"Upload failed: {errorText}", PluginErrorCategory.Network);
 			}
 
-			Logger?.LogInformation(
+			Logger.LogInformation(
 				"Successfully uploaded worklog: {ProjectCode}, {Duration} minutes on {Date}",
 				_projectCode, worklog.DurationMinutes, worklog.StartTime.Date.ToString("yyyy-MM-dd"));
 			return PluginResult<bool>.Success(true);
 		}
 		catch (Exception ex)
 		{
-			Logger?.LogError(ex, "Error uploading worklog to Goran via MCP");
-			return PluginResult<bool>.Failure($"Error: {ex.Message}");
+			Logger.LogError(ex, "Error uploading worklog to Goran via MCP");
+			var errorCategory = ex switch
+			{
+				InvalidOperationException => PluginErrorCategory.Authentication,
+				HttpRequestException => PluginErrorCategory.Network,
+				IOException => PluginErrorCategory.Network,
+				_ => PluginErrorCategory.Internal
+			};
+			return PluginResult<bool>.Failure($"Error: {ex.Message}", errorCategory);
 		}
 	}
 
@@ -412,7 +335,7 @@ public sealed class GoranG3WorklogPlugin : WorklogUploadPluginBase, IAsyncDispos
 
 		if (_mcpClient == null)
 		{
-			return PluginResult<WorklogSubmissionResult>.Failure(NotConnectedMessage);
+			return PluginResult<WorklogSubmissionResult>.Failure(NotConnectedMessage, PluginErrorCategory.Authentication);
 		}
 
 		var worklogsByDate = worklogs.GroupBy(w => w.StartTime.Date).OrderBy(g => g.Key);
@@ -468,16 +391,16 @@ public sealed class GoranG3WorklogPlugin : WorklogUploadPluginBase, IAsyncDispos
 			if (result.IsError == true)
 			{
 				var errorText = GetResultText(result);
-				Logger?.LogWarning("Failed to submit timesheet for {Date}: {Error}", dateStr, errorText);
-				return PluginResult<bool>.Failure($"Submit failed: {errorText}");
+				Logger.LogWarning("Failed to submit timesheet for {Date}: {Error}", dateStr, errorText);
+				return PluginResult<bool>.Failure($"Submit failed: {errorText}", PluginErrorCategory.Network);
 			}
 
-			Logger?.LogInformation("Submitted timesheet for {Date}", dateStr);
+			Logger.LogInformation("Submitted timesheet for {Date}", dateStr);
 			return PluginResult<bool>.Success(true);
 		}
 		catch (Exception ex)
 		{
-			Logger?.LogError(ex, "Error submitting timesheet for {Date}", dateStr);
+			Logger.LogError(ex, "Error submitting timesheet for {Date}", dateStr);
 			return PluginResult<bool>.Failure($"Error: {ex.Message}");
 		}
 	}
@@ -488,7 +411,7 @@ public sealed class GoranG3WorklogPlugin : WorklogUploadPluginBase, IAsyncDispos
 
 		if (_mcpClient == null)
 		{
-			return PluginResult<IEnumerable<PluginWorklogEntry>>.Failure(NotConnectedMessage);
+			return PluginResult<IEnumerable<PluginWorklogEntry>>.Failure(NotConnectedMessage, PluginErrorCategory.Authentication);
 		}
 
 		try
@@ -504,7 +427,7 @@ public sealed class GoranG3WorklogPlugin : WorklogUploadPluginBase, IAsyncDispos
 			if (result.IsError == true)
 			{
 				var errorText = GetResultText(result);
-				return PluginResult<IEnumerable<PluginWorklogEntry>>.Failure($"Failed to get worklogs: {errorText}");
+				return PluginResult<IEnumerable<PluginWorklogEntry>>.Failure($"Failed to get worklogs: {errorText}", PluginErrorCategory.Network);
 			}
 
 			var responseText = GetResultText(result);
@@ -514,7 +437,7 @@ public sealed class GoranG3WorklogPlugin : WorklogUploadPluginBase, IAsyncDispos
 		}
 		catch (Exception ex)
 		{
-			Logger?.LogError(ex, "Error getting worklogs from Goran via MCP");
+			Logger.LogError(ex, "Error getting worklogs from Goran via MCP");
 			return PluginResult<IEnumerable<PluginWorklogEntry>>.Failure($"Error: {ex.Message}");
 		}
 	}
@@ -537,22 +460,25 @@ public sealed class GoranG3WorklogPlugin : WorklogUploadPluginBase, IAsyncDispos
 	}
 
 	private static string BuildText(PluginWorklogEntry worklog)
+		=> BuildText(worklog.TicketId, worklog.Description);
+
+	internal static string BuildText(string? ticketId, string? description)
 	{
 		var parts = new List<string>();
-		if (!string.IsNullOrWhiteSpace(worklog.TicketId))
+		if (!string.IsNullOrWhiteSpace(ticketId))
 		{
-			parts.Add(worklog.TicketId);
+			parts.Add(ticketId);
 		}
 
-		if (!string.IsNullOrWhiteSpace(worklog.Description))
+		if (!string.IsNullOrWhiteSpace(description))
 		{
-			parts.Add(worklog.Description);
+			parts.Add(description);
 		}
 
 		return string.Join(" - ", parts);
 	}
 
-	private static string[]? ParseTags(string? tagsConfig)
+	internal static string[]? ParseTags(string? tagsConfig)
 	{
 		if (string.IsNullOrWhiteSpace(tagsConfig))
 		{
@@ -563,7 +489,7 @@ public sealed class GoranG3WorklogPlugin : WorklogUploadPluginBase, IAsyncDispos
 		return tags.Length > 0 ? tags : null;
 	}
 
-	private static int? ParseExternalId(string? ticketId)
+	internal static int? ParseExternalId(string? ticketId)
 	{
 		if (string.IsNullOrWhiteSpace(ticketId))
 		{
@@ -588,11 +514,24 @@ public sealed class GoranG3WorklogPlugin : WorklogUploadPluginBase, IAsyncDispos
 
 	private List<PluginWorklogEntry> ParseTimesheetResponse(string responseText)
 	{
+		var (worklogs, failedLines) = ParseTimesheetResponseCore(responseText);
+
+		foreach (var failedLine in failedLines)
+		{
+			Logger.LogWarning("Failed to parse timesheet line: {Line}", failedLine);
+		}
+
+		return worklogs;
+	}
+
+	internal static (List<PluginWorklogEntry> Worklogs, List<string> FailedLines) ParseTimesheetResponseCore(string responseText)
+	{
 		var worklogs = new List<PluginWorklogEntry>();
+		var failedLines = new List<string>();
 
 		if (string.IsNullOrWhiteSpace(responseText))
 		{
-			return worklogs;
+			return (worklogs, failedLines);
 		}
 
 		// The MCP server returns a text table. Parse each line that contains timesheet data.
@@ -630,13 +569,13 @@ public sealed class GoranG3WorklogPlugin : WorklogUploadPluginBase, IAsyncDispos
 					worklogs.Add(entry);
 				}
 			}
-			catch (Exception ex)
+			catch
 			{
-				Logger?.LogWarning(ex, "Failed to parse timesheet line: {Line}", line);
+				failedLines.Add(line);
 			}
 		}
 
-		return worklogs;
+		return (worklogs, failedLines);
 	}
 
 	internal static PluginWorklogEntry? ParseTimesheetLine(string line)
@@ -719,18 +658,4 @@ public sealed class GoranG3WorklogPlugin : WorklogUploadPluginBase, IAsyncDispos
 		return false;
 	}
 
-	public async ValueTask DisposeAsync()
-	{
-		if (_mcpClient != null)
-		{
-			await _mcpClient.DisposeAsync();
-			_mcpClient = null;
-		}
-
-		_httpClient?.Dispose();
-		_httpClient = null;
-
-		_handler?.Dispose();
-		_handler = null;
-	}
 }

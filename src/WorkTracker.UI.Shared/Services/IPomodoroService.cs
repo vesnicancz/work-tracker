@@ -1,6 +1,6 @@
 namespace WorkTracker.UI.Shared.Services;
 
-public interface IPomodoroService
+public interface IPomodoroService : IAsyncDisposable
 {
 	PomodoroPhase CurrentPhase { get; }
 	TimeSpan TimeRemaining { get; }

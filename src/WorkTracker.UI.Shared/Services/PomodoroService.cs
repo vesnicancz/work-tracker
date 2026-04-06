@@ -5,7 +5,7 @@ using WorkTracker.UI.Shared.Models;
 
 namespace WorkTracker.UI.Shared.Services;
 
-public sealed class PomodoroService : IPomodoroService, IDisposable
+public sealed class PomodoroService : IPomodoroService, IAsyncDisposable
 {
 	private readonly ISettingsService _settingsService;
 	private readonly INotificationService _notificationService;
@@ -108,7 +108,7 @@ public sealed class PomodoroService : IPomodoroService, IDisposable
 
 		_logger.LogInformation("Pomodoro started: {Phase}, {Duration}min", newPhase, _activeSettings.WorkMinutes);
 
-		SetStatusIndicatorsForPhase(newPhase);
+		FireAndForget(SetStatusIndicatorsForPhaseAsync(newPhase));
 		AutoStartTracking();
 		PhaseChanged?.Invoke(this, newPhase);
 	}
@@ -135,7 +135,7 @@ public sealed class PomodoroService : IPomodoroService, IDisposable
 
 		_logger.LogInformation("Pomodoro stopped");
 
-		SetStatusIndicatorsForPhase(PomodoroPhase.Idle);
+		FireAndForget(SetStatusIndicatorsForPhaseAsync(PomodoroPhase.Idle));
 		PhaseChanged?.Invoke(this, PomodoroPhase.Idle);
 	}
 
@@ -176,7 +176,7 @@ public sealed class PomodoroService : IPomodoroService, IDisposable
 
 		_logger.LogInformation("Pomodoro reset");
 
-		SetStatusIndicatorsForPhase(PomodoroPhase.Idle);
+		FireAndForget(SetStatusIndicatorsForPhaseAsync(PomodoroPhase.Idle));
 		PhaseChanged?.Invoke(this, PomodoroPhase.Idle);
 	}
 
@@ -274,7 +274,7 @@ public sealed class PomodoroService : IPomodoroService, IDisposable
 		ShowSystemNotificationForPhase(newPhase);
 
 		// Status indicators (LED devices etc.)
-		SetStatusIndicatorsForPhase(newPhase);
+		FireAndForget(SetStatusIndicatorsForPhaseAsync(newPhase));
 
 		// Auto-tracking
 		if (oldPhase == PomodoroPhase.Work && newPhase != PomodoroPhase.Work)
@@ -289,7 +289,7 @@ public sealed class PomodoroService : IPomodoroService, IDisposable
 		PhaseChanged?.Invoke(this, newPhase);
 	}
 
-	private void SetStatusIndicatorsForPhase(PomodoroPhase phase)
+	private async Task SetStatusIndicatorsForPhaseAsync(PomodoroPhase phase)
 	{
 		var state = phase switch
 		{
@@ -299,10 +299,9 @@ public sealed class PomodoroService : IPomodoroService, IDisposable
 			_ => StatusIndicatorState.Idle
 		};
 
-		foreach (var plugin in _pluginManager.StatusIndicatorPlugins)
-		{
-			_ = SetPluginStateSafe(plugin, state, phase);
-		}
+		var tasks = _pluginManager.StatusIndicatorPlugins
+			.Select(plugin => SetPluginStateSafe(plugin, state, phase));
+		await Task.WhenAll(tasks);
 	}
 
 	private async Task SetPluginStateSafe(IStatusIndicatorPlugin plugin, StatusIndicatorState state, PomodoroPhase phase)
@@ -332,7 +331,7 @@ public sealed class PomodoroService : IPomodoroService, IDisposable
 			return;
 		}
 
-		_ = ShowSystemNotificationSafe(message);
+		FireAndForget(ShowSystemNotificationSafe(message));
 	}
 
 	private void RememberCurrentTracking()
@@ -367,7 +366,7 @@ public sealed class PomodoroService : IPomodoroService, IDisposable
 			return;
 		}
 
-		_ = AutoStartTrackingSafe();
+		FireAndForget(AutoStartTrackingSafe());
 	}
 
 	private void AutoStopTracking()
@@ -390,7 +389,7 @@ public sealed class PomodoroService : IPomodoroService, IDisposable
 		// Remember before stopping
 		RememberCurrentTracking();
 
-		_ = AutoStopTrackingSafe();
+		FireAndForget(AutoStopTrackingSafe());
 	}
 
 	private async Task ShowSystemNotificationSafe(string message)
@@ -429,6 +428,15 @@ public sealed class PomodoroService : IPomodoroService, IDisposable
 		}
 	}
 
+	private void FireAndForget(Task task)
+	{
+		task.ContinueWith(
+			t => _logger.LogError(t.Exception, "Unobserved error in background task"),
+			CancellationToken.None,
+			TaskContinuationOptions.OnlyOnFaulted,
+			TaskScheduler.Default);
+	}
+
 	private void StartTimer()
 	{
 		StopTimer();
@@ -441,7 +449,7 @@ public sealed class PomodoroService : IPomodoroService, IDisposable
 		_timer = null;
 	}
 
-	public void Dispose()
+	public async ValueTask DisposeAsync()
 	{
 		if (_disposed)
 		{
@@ -451,6 +459,22 @@ public sealed class PomodoroService : IPomodoroService, IDisposable
 		_disposed = true;
 
 		StopTimer();
-		SetStatusIndicatorsForPhase(PomodoroPhase.Idle);
+
+		// Best-effort: turn off indicators with a timeout to avoid blocking app shutdown
+		try
+		{
+			using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+			await SetStatusIndicatorsForPhaseAsync(PomodoroPhase.Idle).WaitAsync(cts.Token);
+		}
+		catch (OperationCanceledException)
+		{
+			_logger.LogWarning("Timed out waiting for status indicators to turn off during dispose");
+		}
+		catch (Exception ex)
+		{
+			_logger.LogWarning(ex, "Failed to turn off status indicators during dispose");
+		}
+
+		GC.SuppressFinalize(this);
 	}
 }

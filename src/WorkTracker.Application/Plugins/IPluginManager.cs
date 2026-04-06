@@ -55,17 +55,17 @@ public interface IPluginManager : IAsyncDisposable
 	/// <summary>
 	/// Discovers and loads all plugins from registered directories
 	/// </summary>
-	int DiscoverAndLoadPlugins();
+	Task<int> DiscoverAndLoadPluginsAsync();
 
 	/// <summary>
 	/// Loads a plugin from a specific file
 	/// </summary>
-	bool LoadPluginFromFile(string assemblyPath);
+	Task<bool> LoadPluginFromFileAsync(string assemblyPath);
 
 	/// <summary>
 	/// Loads an embedded plugin (plugin that's part of the main application)
 	/// </summary>
-	bool LoadEmbeddedPlugin<T>() where T : IPlugin, new();
+	bool LoadEmbeddedPlugin<T>() where T : class, IPlugin;
 
 	/// <summary>
 	/// Initializes all loaded plugins with their configurations

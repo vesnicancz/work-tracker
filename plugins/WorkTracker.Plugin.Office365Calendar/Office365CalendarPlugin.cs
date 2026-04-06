@@ -2,7 +2,6 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
-using Microsoft.Identity.Client;
 using WorkTracker.Plugin.Abstractions;
 
 namespace WorkTracker.Plugin.Office365Calendar;
@@ -10,7 +9,11 @@ namespace WorkTracker.Plugin.Office365Calendar;
 /// <summary>
 /// Plugin that suggests work items based on Office 365 calendar events
 /// </summary>
-public sealed class Office365CalendarPlugin : WorkSuggestionPluginBase, IDisposable
+public sealed class Office365CalendarPlugin(
+	IHttpClientFactory httpClientFactory,
+	ILogger<Office365CalendarPlugin> logger,
+	ITokenProviderFactory tokenProviderFactory)
+	: WorkSuggestionPluginBase(logger)
 {
 	private static readonly TimeSpan HttpTimeout = TimeSpan.FromSeconds(30);
 	private static readonly string[] GraphScopes = ["Calendars.Read"];
@@ -22,10 +25,12 @@ public sealed class Office365CalendarPlugin : WorkSuggestionPluginBase, IDisposa
 		public const string IncludeAllDayEvents = "IncludeAllDayEvents";
 	}
 
-	private IPublicClientApplication? _msalApp;
+	private readonly IHttpClientFactory _httpClientFactory = httpClientFactory;
+	private readonly ITokenProviderFactory _tokenProviderFactory = tokenProviderFactory;
+
+	private ITokenProvider? _tokenProvider;
 	private HttpClient? _httpClient;
 	private bool _includeAllDayEvents;
-	private bool _disposed;
 
 	public override PluginMetadata Metadata => new()
 	{
@@ -79,81 +84,32 @@ public sealed class Office365CalendarPlugin : WorkSuggestionPluginBase, IDisposa
 		var clientId = GetRequiredConfigValue(ConfigKeys.ClientId);
 		_includeAllDayEvents = string.Equals(GetConfigValue(ConfigKeys.IncludeAllDayEvents), "true", StringComparison.OrdinalIgnoreCase);
 
-		_msalApp = PublicClientApplicationBuilder
-			.Create(clientId)
-			.WithAuthority($"https://login.microsoftonline.com/{tenantId}")
-			.WithDefaultRedirectUri()
-			.Build();
-
-		// Persist token cache to disk so tokens survive plugin re-init and app restarts
-		var cacheFilePath = Path.Combine(
-			Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-			"WorkTracker", "msal_token_cache.bin");
-		Directory.CreateDirectory(Path.GetDirectoryName(cacheFilePath)!);
-		_msalApp.UserTokenCache.SetBeforeAccess(args =>
-		{
-			try
-			{
-				if (File.Exists(cacheFilePath))
-				{
-					args.TokenCache.DeserializeMsalV3(File.ReadAllBytes(cacheFilePath));
-				}
-			}
-			catch (Exception ex)
-			{
-				Logger?.LogWarning(ex, "Failed to read MSAL token cache, proceeding with empty cache");
-			}
-		});
-		_msalApp.UserTokenCache.SetAfterAccess(args =>
-		{
-			if (!args.HasStateChanged)
-			{
-				return;
-			}
-
-			try
-			{
-				File.WriteAllBytes(cacheFilePath, args.TokenCache.SerializeMsalV3());
-			}
-			catch (Exception ex)
-			{
-				Logger?.LogWarning(ex, "Failed to write MSAL token cache");
-			}
-		});
+		_tokenProvider = _tokenProviderFactory.Create(tenantId, clientId, GraphScopes);
 
 		_httpClient?.Dispose();
-		_disposed = false;
-		_httpClient = new HttpClient { Timeout = HttpTimeout };
+		_httpClient = _httpClientFactory.CreateClient();
+		_httpClient.Timeout = HttpTimeout;
 
 		return Task.FromResult(true);
 	}
 
-	protected override Task OnShutdownAsync()
+	protected override ValueTask OnDisposeAsync()
 	{
-		Dispose();
-		return Task.CompletedTask;
+		_httpClient?.Dispose();
+
+		return ValueTask.CompletedTask;
 	}
 
-	public override Task<PluginResult<bool>> TestConnectionAsync(CancellationToken cancellationToken)
-	{
-		return TestConnectionCoreAsync(null, cancellationToken);
-	}
-
-	public override Task<PluginResult<bool>> TestConnectionAsync(IProgress<string>? progress, CancellationToken cancellationToken)
-	{
-		return TestConnectionCoreAsync(progress, cancellationToken);
-	}
-
-	private async Task<PluginResult<bool>> TestConnectionCoreAsync(IProgress<string>? progress, CancellationToken cancellationToken)
+	public override async Task<PluginResult<bool>> TestConnectionAsync(IProgress<string>? progress, CancellationToken cancellationToken)
 	{
 		EnsureInitialized();
 
 		try
 		{
-			var token = await AcquireTokenInteractiveAsync(progress, cancellationToken);
+			var token = await _tokenProvider!.AcquireTokenInteractiveAsync(progress, cancellationToken);
 			if (token == null)
 			{
-				return PluginResult<bool>.Failure("Authentication failed — could not acquire token.");
+				return PluginResult<bool>.Failure("Authentication failed — could not acquire token.", PluginErrorCategory.Authentication);
 			}
 
 			using var response = await SendAuthenticatedAsync(HttpMethod.Get, "https://graph.microsoft.com/v1.0/me", token, cancellationToken);
@@ -164,7 +120,7 @@ public sealed class Office365CalendarPlugin : WorkSuggestionPluginBase, IDisposa
 			}
 
 			var body = await response.Content.ReadAsStringAsync(cancellationToken);
-			return PluginResult<bool>.Failure($"Graph API returned {(int)response.StatusCode}: {body}");
+			return PluginResult<bool>.Failure($"Graph API returned {(int)response.StatusCode}: {body}", PluginErrorCategory.Network);
 		}
 		catch (Exception ex)
 		{
@@ -179,11 +135,11 @@ public sealed class Office365CalendarPlugin : WorkSuggestionPluginBase, IDisposa
 
 		try
 		{
-			var token = await AcquireTokenSilentAsync(cancellationToken);
+			var token = await _tokenProvider!.AcquireTokenSilentAsync(cancellationToken);
 			if (token == null)
 			{
 				return PluginResult<IReadOnlyList<WorkSuggestion>>.Failure(
-					"Not authenticated — please use Test Connection in Settings to sign in first.");
+					"Not authenticated — please use Test Connection in Settings to sign in first.", PluginErrorCategory.Authentication);
 			}
 
 			var endLocal = date.Date.AddDays(1).AddSeconds(-1);
@@ -203,9 +159,9 @@ public sealed class Office365CalendarPlugin : WorkSuggestionPluginBase, IDisposa
 			if (!response.IsSuccessStatusCode)
 			{
 				var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
-				Logger?.LogWarning("Graph API calendarView failed with {StatusCode}: {Body}", (int)response.StatusCode, errorBody);
+				Logger.LogWarning("Graph API calendarView failed with {StatusCode}: {Body}", (int)response.StatusCode, errorBody);
 				return PluginResult<IReadOnlyList<WorkSuggestion>>.Failure(
-					$"Calendar fetch failed ({(int)response.StatusCode}): {errorBody}");
+					$"Calendar fetch failed ({(int)response.StatusCode}): {errorBody}", PluginErrorCategory.Network);
 			}
 
 			var json = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken);
@@ -255,7 +211,7 @@ public sealed class Office365CalendarPlugin : WorkSuggestionPluginBase, IDisposa
 				}
 			}
 
-			Logger?.LogInformation("Fetched {Count} calendar suggestions for {Date}", suggestions.Count, date.ToShortDateString());
+			Logger.LogInformation("Fetched {Count} calendar suggestions for {Date}", suggestions.Count, date.ToShortDateString());
 			return PluginResult<IReadOnlyList<WorkSuggestion>>.Success(suggestions);
 		}
 		catch (OperationCanceledException)
@@ -264,7 +220,7 @@ public sealed class Office365CalendarPlugin : WorkSuggestionPluginBase, IDisposa
 		}
 		catch (Exception ex)
 		{
-			Logger?.LogError(ex, "Failed to fetch calendar suggestions");
+			Logger.LogError(ex, "Failed to fetch calendar suggestions");
 			return PluginResult<IReadOnlyList<WorkSuggestion>>.Failure($"Failed to fetch calendar: {ex.Message}");
 		}
 	}
@@ -278,86 +234,4 @@ public sealed class Office365CalendarPlugin : WorkSuggestionPluginBase, IDisposa
 		return await _httpClient!.SendAsync(request, cancellationToken);
 	}
 
-	/// <summary>
-	/// Acquires token silently from cache. Returns null if no cached token.
-	/// </summary>
-	private async Task<string?> AcquireTokenSilentAsync(CancellationToken cancellationToken)
-	{
-		try
-		{
-			var accounts = await _msalApp!.GetAccountsAsync();
-			var account = accounts.FirstOrDefault();
-
-			if (account != null)
-			{
-				var result = await _msalApp.AcquireTokenSilent(GraphScopes, account)
-					.ExecuteAsync(cancellationToken);
-				return result.AccessToken;
-			}
-		}
-		catch (MsalUiRequiredException)
-		{
-			// Silent acquisition failed
-		}
-		catch (Exception ex)
-		{
-			Logger?.LogError(ex, "Silent token acquisition failed");
-		}
-
-		return null;
-	}
-
-	/// <summary>
-	/// Acquires token interactively — opens browser for device code sign-in.
-	/// Used only during TestConnection in Settings.
-	/// </summary>
-	private async Task<string?> AcquireTokenInteractiveAsync(IProgress<string>? progress, CancellationToken cancellationToken)
-	{
-		var token = await AcquireTokenSilentAsync(cancellationToken);
-		if (token != null)
-		{
-			return token;
-		}
-
-		try
-		{
-			var result = await _msalApp!.AcquireTokenWithDeviceCode(GraphScopes, callback =>
-			{
-				// Show the device code to the user via progress reporting
-				progress?.Report($"⏳ Open browser and enter code: {callback.UserCode}\n{callback.VerificationUrl}");
-
-				// Also try to open the browser automatically
-				try
-				{
-					System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-					{
-						FileName = callback.VerificationUrl.ToString(),
-						UseShellExecute = true
-					});
-				}
-				catch (Exception ex)
-				{
-					Logger?.LogWarning(ex, "Could not open browser automatically");
-				}
-
-				return Task.CompletedTask;
-			}).ExecuteAsync(cancellationToken);
-
-			return result.AccessToken;
-		}
-		catch (Exception ex)
-		{
-			Logger?.LogError(ex, "Interactive token acquisition failed");
-			return null;
-		}
-	}
-
-	public void Dispose()
-	{
-		if (!_disposed)
-		{
-			_httpClient?.Dispose();
-			_disposed = true;
-		}
-	}
 }

@@ -362,16 +362,24 @@
                                        IsVisible="{Binding !HasPlugins}" />
 
                             <!-- Plugin settings -->
-                            <ScrollViewer VerticalScrollBarVisibility="Auto"
-                                          HorizontalScrollBarVisibility="Disabled"
-                                          IsVisible="{Binding HasPlugins}">
-                                <StackPanel Margin="20,12" Spacing="10">
+                            <Grid RowDefinitions="Auto,*"
+                                  IsVisible="{Binding HasPlugins}">
 
-                                    <ComboBox ItemsSource="{Binding Plugins}"
-                                              SelectedItem="{Binding SelectedPlugin}"
-                                              DisplayMemberBinding="{ReflectionBinding Name}"
-                                              HorizontalAlignment="Stretch"
-                                              PlaceholderText="{markup:Localize SelectPlugin}" />
+                                <!-- Plugin picker — fixed, does not scroll -->
+                                <ComboBox Grid.Row="0"
+                                          ItemsSource="{Binding Plugins}"
+                                          SelectedItem="{Binding SelectedPlugin}"
+                                          DisplayMemberBinding="{ReflectionBinding Name}"
+                                          HorizontalAlignment="Stretch"
+                                          PlaceholderText="{markup:Localize SelectPlugin}"
+                                          Margin="20,12,20,0" />
+
+                                <!-- Plugin detail — scrollable -->
+                                <ScrollViewer Grid.Row="1"
+                                              VerticalScrollBarVisibility="Auto"
+                                              HorizontalScrollBarVisibility="Disabled"
+                                              Margin="0,8,0,0">
+                                <StackPanel Margin="20,4,20,12" Spacing="10">
 
                                     <Border Background="{DynamicResource SidebarBackground}"
                                             BorderBrush="{DynamicResource CardBorder}"
@@ -432,7 +440,8 @@
                                     </Border>
 
                                 </StackPanel>
-                            </ScrollViewer>
+                                </ScrollViewer>
+                            </Grid>
                         </Panel>
                     </TabItem>
 

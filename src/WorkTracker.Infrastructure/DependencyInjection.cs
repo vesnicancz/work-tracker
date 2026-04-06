@@ -43,12 +43,16 @@ public static class DependencyInjection
 		// (Windows Credential Manager / macOS Keychain / Linux libsecret)
 		services.AddSingleton<ISecureStorage, CredentialStoreSecureStorage>();
 
+		// HttpClient factory for plugins
+		services.AddHttpClient();
+
 		// Plugin System
 		services.AddSingleton<PluginManager>(serviceProvider =>
 		{
 			var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
+			var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
 			var logger = loggerFactory.CreateLogger<PluginManager>();
-			var pluginManager = new PluginManager(loggerFactory);
+			var pluginManager = new PluginManager(loggerFactory, httpClientFactory);
 
 			// Load plugin directories from configuration, default to "plugins" subfolder next to executable
 			// Relative paths are resolved against AppContext.BaseDirectory (the exe location)
@@ -110,20 +114,14 @@ public static class DependencyInjection
 		var pluginManager = serviceProvider.GetRequiredService<PluginManager>();
 
 		// Discover and load plugins from plugin directory
-		pluginManager.DiscoverAndLoadPlugins();
+		await pluginManager.DiscoverAndLoadPluginsAsync();
 
-		// Set enabled plugins if provided, otherwise enable all plugins by default
-		if (enabledPlugins != null && enabledPlugins.Count > 0)
-		{
-			var enabledPluginIds = enabledPlugins.Where(kvp => kvp.Value).Select(kvp => kvp.Key);
-			pluginManager.SetEnabledPlugins(enabledPluginIds);
-		}
-		else
-		{
-			// First time setup - enable all loaded plugins by default
-			var allPluginIds = pluginManager.LoadedPlugins.Keys;
-			pluginManager.SetEnabledPlugins(allPluginIds);
-		}
+		// Enable only explicitly enabled plugins — new plugins are disabled by default
+		var enabledPluginIds = enabledPlugins?
+			.Where(kvp => kvp.Value)
+			.Select(kvp => kvp.Key)
+			?? [];
+		pluginManager.SetEnabledPlugins(enabledPluginIds);
 
 		// Load plugin configurations - prefer user settings over appsettings.json
 		var pluginConfigs = new Dictionary<string, Dictionary<string, string>>();

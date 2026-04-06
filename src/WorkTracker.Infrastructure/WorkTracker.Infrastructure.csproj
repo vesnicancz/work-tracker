@@ -4,12 +4,17 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="WorkTracker.Infrastructure.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\WorkTracker.Application\WorkTracker.Application.csproj" />
     <ProjectReference Include="..\WorkTracker.Domain\WorkTracker.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Devlooped.CredentialManager" />
+    <PackageReference Include="Microsoft.Identity.Client" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools">
       <PrivateAssets>all</PrivateAssets>

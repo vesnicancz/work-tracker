@@ -9,31 +9,21 @@ namespace WorkTracker.Plugin.Atlassian;
 /// Shared Jira REST API client with Basic authentication.
 /// Used by both TempoWorklogPlugin and JiraSuggestionsPlugin.
 /// </summary>
-internal sealed class JiraClient : IDisposable
+internal sealed class JiraClient(HttpClient httpClient, string baseUrl) : IJiraClient
 {
-	private static readonly TimeSpan HttpTimeout = TimeSpan.FromSeconds(30);
-
-	private readonly HttpClient _httpClient;
+	private readonly HttpClient _httpClient = httpClient;
 	private bool _disposed;
 
-	public string BaseUrl { get; }
+	public string BaseUrl { get; } = baseUrl.TrimEnd('/');
 
-	public JiraClient(string baseUrl, string email, string apiToken)
-		: this(baseUrl, email, apiToken, handler: null)
+	internal static JiraClient Create(IHttpClientFactory httpClientFactory, string baseUrl, string email, string apiToken)
 	{
-	}
-
-	internal JiraClient(string baseUrl, string email, string apiToken, HttpMessageHandler? handler)
-	{
-		BaseUrl = baseUrl.TrimEnd('/');
-
-		_httpClient = handler != null
-			? new HttpClient(handler, disposeHandler: false) { Timeout = HttpTimeout }
-			: new HttpClient { Timeout = HttpTimeout };
-
+		var httpClient = httpClientFactory.CreateClient();
+		httpClient.Timeout = TimeSpan.FromSeconds(30);
 		var credentials = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{email}:{apiToken}"));
-		_httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", credentials);
-		_httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+		httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", credentials);
+		httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+		return new JiraClient(httpClient, baseUrl);
 	}
 
 	public Task<HttpResponseMessage> GetAsync(string relativeUrl, CancellationToken cancellationToken)
@@ -48,22 +38,22 @@ internal sealed class JiraClient : IDisposable
 		return await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken);
 	}
 
-	public async Task<(bool Success, string? Error)> TestConnectionAsync(CancellationToken cancellationToken)
+	public async Task<(bool Success, string? Error, int? StatusCode)> TestConnectionAsync(CancellationToken cancellationToken)
 	{
 		try
 		{
 			using var response = await GetAsync("/rest/api/3/myself", cancellationToken);
 			if (response.IsSuccessStatusCode)
 			{
-				return (true, null);
+				return (true, null, (int)response.StatusCode);
 			}
 
 			var body = await response.Content.ReadAsStringAsync(cancellationToken);
-			return (false, $"Jira returned {(int)response.StatusCode}: {body}");
+			return (false, $"Jira returned {(int)response.StatusCode}: {body}", (int)response.StatusCode);
 		}
 		catch (Exception ex)
 		{
-			return (false, $"Connection failed: {ex.Message}");
+			return (false, $"Connection failed: {ex.Message}", null);
 		}
 	}
 

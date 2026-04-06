@@ -20,10 +20,16 @@ public class PluginResult
 	/// </summary>
 	public string? Error { get; init; }
 
-	protected PluginResult(bool isSuccess, string? error = null)
+	/// <summary>
+	/// Error category for categorized failure handling (only set on failure)
+	/// </summary>
+	public PluginErrorCategory? ErrorCategory { get; init; }
+
+	protected PluginResult(bool isSuccess, string? error = null, PluginErrorCategory? errorCategory = null)
 	{
 		IsSuccess = isSuccess;
 		Error = error;
+		ErrorCategory = errorCategory;
 	}
 
 	/// <summary>
@@ -34,7 +40,7 @@ public class PluginResult
 	/// <summary>
 	/// Creates a failed result with an error message
 	/// </summary>
-	public static PluginResult Failure(string error) => new(false, error);
+	public static PluginResult Failure(string error, PluginErrorCategory category = PluginErrorCategory.Internal) => new(false, error, category);
 }
 
 /// <summary>
@@ -47,8 +53,8 @@ public class PluginResult<T> : PluginResult
 	/// </summary>
 	public T? Value { get; init; }
 
-	private PluginResult(bool isSuccess, T? value = default, string? error = null)
-		: base(isSuccess, error)
+	private PluginResult(bool isSuccess, T? value = default, string? error = null, PluginErrorCategory? errorCategory = null)
+		: base(isSuccess, error, errorCategory)
 	{
 		Value = value;
 	}
@@ -61,5 +67,5 @@ public class PluginResult<T> : PluginResult
 	/// <summary>
 	/// Creates a failed result with an error message
 	/// </summary>
-	public new static PluginResult<T> Failure(string error) => new(false, default, error);
+	public new static PluginResult<T> Failure(string error, PluginErrorCategory category = PluginErrorCategory.Internal) => new(false, default, error, category);
 }

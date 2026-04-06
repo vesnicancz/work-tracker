@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 dotnet build                    # Build entire solution
-dotnet test                     # Run all tests (~567 tests, xUnit + Moq + FluentAssertions)
+dotnet test                     # Run all tests (~675 tests, xUnit + Moq + FluentAssertions)
 dotnet test --filter "FullyQualifiedName~ClassName.MethodName"  # Run single test
 dotnet test tests/WorkTracker.Domain.Tests        # Run one test project
 ```
@@ -46,13 +46,26 @@ Plugin.Abstractions (IPlugin, IWorklogUploadPlugin, IWorkSuggestionPlugin, IStat
 
 ## Plugin System
 
-Plugins load in isolated `AssemblyLoadContext` from `./plugins/` directory. Three plugin interfaces extend `IPlugin`:
+Plugins load in isolated `AssemblyLoadContext` from `./plugins/` directory. Three plugin interfaces extend `IPlugin : IAsyncDisposable`:
 
 - **`IWorklogUploadPlugin`** — Upload/fetch worklogs (e.g., Tempo)
 - **`IWorkSuggestionPlugin`** — Suggest work items (e.g., Jira issues)
 - **`IStatusIndicatorPlugin`** — Physical status indicators (e.g., Luxafor LED)
 
-All plugins extend `PluginBase` which provides configuration management with declarative fields, validation (including regex), and `ILogger` injection. Plugin configuration is primarily persisted in the user settings file, with `appsettings.json` (under the `Plugins` section) used only as an initial fallback.
+**Plugin DI & lifecycle:**
+- Plugins are instantiated via `ActivatorUtilities.CreateInstance` from a plugin-scoped `ServiceCollection` (built in `PluginManager`).
+- Constructor injection provides: `ILogger<T>`, `IHttpClientFactory`, `ITokenProviderFactory`. No `Activator.CreateInstance` or parameterless constructors.
+- `PluginBase(ILogger)` is the abstract base — provides configuration management, validation (regex), lifecycle hooks (`OnInitializeAsync`, `OnShutdownAsync`, `DisposeAsync`).
+- `ShutdownAsync()` calls `OnShutdownAsync()` → `DisposeAsync()` automatically.
+- `PluginResult<T>` includes `PluginErrorCategory` enum (`Validation`, `Network`, `Authentication`, `NotFound`, `Internal`).
+- `ITestablePlugin.TestConnectionAsync(IProgress<string>?, CancellationToken)` — single method with optional progress.
+
+**Infrastructure:**
+- `PluginLoader` — discovers plugin DLLs, loads assemblies, instantiates via DI.
+- `PluginManager` — registration, enabled/disabled state, lifecycle, filtering by type.
+- `MsalTokenProviderFactory` / `MsalTokenProvider` — shared MSAL auth (token cache, device code flow) for plugins needing Azure AD. Lives in `Infrastructure/Auth/`.
+
+**Plugin configuration** is primarily persisted in the user settings file, with `appsettings.json` (under the `Plugins` section) used only as an initial fallback.
 
 Existing plugins: `Plugin.Atlassian` (Tempo + Jira), `Plugin.Office365Calendar`, `Plugin.GoranG3`, `Plugin.Luxafor`.
 

@@ -6,8 +6,6 @@
 
   <ItemGroup>
     <PackageReference Include="FluentAssertions" />
-    <PackageReference Include="Microsoft.Extensions.Http" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit.runner.visualstudio">
       <PrivateAssets>all</PrivateAssets>
@@ -21,7 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\plugins\WorkTracker.Plugin.Atlassian\WorkTracker.Plugin.Atlassian.csproj" />
+    <ProjectReference Include="..\..\plugins\WorkTracker.Plugin.Luxafor\WorkTracker.Plugin.Luxafor.csproj" />
   </ItemGroup>
 
 </Project>

@@ -4,7 +4,8 @@ using WorkTracker.Plugin.Abstractions;
 
 namespace WorkTracker.Plugin.Luxafor;
 
-public sealed class LuxaforStatusIndicatorPlugin : StatusIndicatorPluginBase, IDisposable
+public sealed class LuxaforStatusIndicatorPlugin(ILogger<LuxaforStatusIndicatorPlugin> logger, ILuxaforDeviceFactory? deviceFactory = null)
+	: StatusIndicatorPluginBase(logger)
 {
 	private static class ConfigKeys
 	{
@@ -13,8 +14,9 @@ public sealed class LuxaforStatusIndicatorPlugin : StatusIndicatorPluginBase, ID
 		public const string LongBreakColor = "long_break_color";
 	}
 
+	private readonly ILuxaforDeviceFactory _deviceFactory = deviceFactory ?? new LuxaforDeviceFactory();
 	private readonly Lock _deviceLock = new();
-	private LuxaforDevice? _device;
+	private ILuxaforDevice? _device;
 	private bool _disposed;
 
 	private LuxaforColor _workColor = LuxaforColor.Red;
@@ -98,7 +100,7 @@ public sealed class LuxaforStatusIndicatorPlugin : StatusIndicatorPluginBase, ID
 			}
 			catch (Exception ex)
 			{
-				Logger?.LogWarning(ex, "Failed to set Luxafor state to {State}", state);
+				Logger.LogWarning(ex, "Failed to set Luxafor state to {State}", state);
 				CloseDevice();
 			}
 		}
@@ -127,29 +129,24 @@ public sealed class LuxaforStatusIndicatorPlugin : StatusIndicatorPluginBase, ID
 			{
 				// Best effort
 			}
-
-			CloseDevice();
 		}
 
 		return Task.CompletedTask;
 	}
 
-	public void Dispose()
+	protected override ValueTask OnDisposeAsync()
 	{
-		if (_disposed)
-		{
-			return;
-		}
-
 		_disposed = true;
 
 		lock (_deviceLock)
 		{
 			CloseDevice();
 		}
+
+		return ValueTask.CompletedTask;
 	}
 
-	private LuxaforDevice? GetOrOpenDevice()
+	private ILuxaforDevice? GetOrOpenDevice()
 	{
 		if (_device is { IsConnected: true })
 		{
@@ -160,19 +157,19 @@ public sealed class LuxaforStatusIndicatorPlugin : StatusIndicatorPluginBase, ID
 
 		try
 		{
-			_device = LuxaforDevice.TryOpen();
+			_device = _deviceFactory.TryOpen();
 			if (_device == null)
 			{
-				Logger?.LogDebug("Luxafor device not found");
+				Logger.LogDebug("Luxafor device not found");
 				return null;
 			}
 
-			Logger?.LogInformation("Luxafor device connected");
+			Logger.LogInformation("Luxafor device connected");
 			return _device;
 		}
 		catch (Exception ex)
 		{
-			Logger?.LogWarning(ex, "Failed to connect to Luxafor device");
+			Logger.LogWarning(ex, "Failed to connect to Luxafor device");
 			return null;
 		}
 	}

@@ -1,55 +1,22 @@
-using Microsoft.Extensions.Logging;
-using Microsoft.Identity.Client;
+using System.Net.Http.Headers;
+using WorkTracker.Plugin.Abstractions;
 
 namespace WorkTracker.Plugin.GoranG3;
 
 /// <summary>
-/// DelegatingHandler that injects a fresh Bearer token from MSAL into each HTTP request.
+/// DelegatingHandler that injects a fresh Bearer token from <see cref="ITokenProvider"/> into each HTTP request.
 /// </summary>
-internal sealed class TokenInjectingHandler : DelegatingHandler
+internal sealed class TokenInjectingHandler(ITokenProvider tokenProvider) : DelegatingHandler(new HttpClientHandler())
 {
-	private readonly IPublicClientApplication _msalApp;
-	private readonly string[] _scopes;
-	private readonly ILogger? _logger;
-
-	public TokenInjectingHandler(IPublicClientApplication msalApp, string[] scopes, ILogger? logger)
-		: base(new HttpClientHandler())
-	{
-		_msalApp = msalApp;
-		_scopes = scopes;
-		_logger = logger;
-	}
-
 	protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
 	{
-		var token = await AcquireTokenAsync(cancellationToken);
-		request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+		var token = await tokenProvider.AcquireTokenSilentAsync(cancellationToken);
+		if (token == null)
+		{
+			throw new InvalidOperationException("Authentication token expired — please use Test Connection in Settings to re-authenticate.");
+		}
+
+		request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 		return await base.SendAsync(request, cancellationToken);
-	}
-
-	private async Task<string> AcquireTokenAsync(CancellationToken cancellationToken)
-	{
-		var accounts = await _msalApp.GetAccountsAsync().ConfigureAwait(false);
-		var firstAccount = accounts.FirstOrDefault();
-
-		if (firstAccount == null)
-		{
-			_logger?.LogWarning("No cached MSAL account available");
-			throw new InvalidOperationException("Not authenticated. Please use Test Connection in Settings to sign in first.");
-		}
-
-		try
-		{
-			var silentResult = await _msalApp
-				.AcquireTokenSilent(_scopes, firstAccount)
-				.ExecuteAsync(cancellationToken)
-				.ConfigureAwait(false);
-			return silentResult.AccessToken;
-		}
-		catch (MsalUiRequiredException)
-		{
-			_logger?.LogWarning("MSAL token expired, interactive auth required");
-			throw new InvalidOperationException("Authentication expired. Please use Test Connection in Settings to sign in again.");
-		}
 	}
 }
