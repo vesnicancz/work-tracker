@@ -16,7 +16,7 @@ namespace Luxafor.HidSharp;
 /// All command methods are thread-safe and can be called while monitoring is active.
 /// Events are raised from a background thread — marshalling to the UI thread is the caller's responsibility.
 /// </remarks>
-public sealed class LuxaforDevice : IDisposable
+public sealed class LuxaforDevice : ILuxaforDevice
 {
 	/// <summary>Luxafor USB Vendor ID (Microchip).</summary>
 	public const int VendorId = 0x04D8;

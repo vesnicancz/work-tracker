@@ -1,14 +1,16 @@
 using System.Net;
+using System.Net.Http;
 using System.Text.Json;
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using WorkTracker.Plugin.Abstractions;
 
 namespace WorkTracker.Plugin.Atlassian.Tests;
 
-public class TempoWorklogPluginTests : IDisposable
+public class TempoWorklogPluginTests : IAsyncDisposable
 {
-    private readonly MockHttpHandler _tempoHandler = new();
-    private readonly MockHttpHandler _jiraHandler = new();
+    private readonly MockHttpHandler _httpHandler = new();
     private readonly TempoWorklogPlugin _plugin;
 
     private static readonly Dictionary<string, string> ValidConfig = new()
@@ -23,19 +25,18 @@ public class TempoWorklogPluginTests : IDisposable
 
     public TempoWorklogPluginTests()
     {
-        _plugin = new TempoWorklogPlugin
+        _plugin = new TempoWorklogPlugin(
+            new MockHttpClientFactory(_httpHandler),
+            NullLogger<TempoWorklogPlugin>.Instance)
         {
-            TempoHttpHandler = _tempoHandler,
-            JiraHttpHandler = _jiraHandler,
             RetryDelayStrategy = _ => TimeSpan.Zero
         };
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
-        _plugin.Dispose();
-        _tempoHandler.Dispose();
-        _jiraHandler.Dispose();
+        await _plugin.DisposeAsync();
+        _httpHandler.Dispose();
     }
 
     private async Task InitializePluginAsync()
@@ -67,8 +68,8 @@ public class TempoWorklogPluginTests : IDisposable
     [Fact]
     public async Task UploadWorklogAsync_Success_ReturnsSuccess()
     {
-        _jiraHandler.SetupGet("/rest/api/3/issue/PROJ-123?fields=id", JiraIssueJson("PROJ-123", 10001));
-        _tempoHandler.SetupPost("/4/worklogs", HttpStatusCode.OK, """{"tempoWorklogId": 1}""");
+        _httpHandler.SetupGet("/rest/api/3/issue/PROJ-123?fields=id", JiraIssueJson("PROJ-123", 10001));
+        _httpHandler.SetupPost("/4/worklogs", HttpStatusCode.OK, """{"tempoWorklogId": 1}""");
         await InitializePluginAsync();
 
         var result = await _plugin.UploadWorklogAsync(CreateWorklog(), CancellationToken.None);
@@ -105,7 +106,7 @@ public class TempoWorklogPluginTests : IDisposable
     [Fact]
     public async Task UploadWorklogAsync_ZeroDuration_ReturnsFailure()
     {
-        _jiraHandler.SetupGet("/rest/api/3/issue/PROJ-123?fields=id", JiraIssueJson("PROJ-123", 10001));
+        _httpHandler.SetupGet("/rest/api/3/issue/PROJ-123?fields=id", JiraIssueJson("PROJ-123", 10001));
         await InitializePluginAsync();
 
         var worklog = CreateWorklog(durationMinutes: 0);
@@ -118,7 +119,7 @@ public class TempoWorklogPluginTests : IDisposable
     [Fact]
     public async Task UploadWorklogAsync_NegativeDuration_ReturnsFailure()
     {
-        _jiraHandler.SetupGet("/rest/api/3/issue/PROJ-123?fields=id", JiraIssueJson("PROJ-123", 10001));
+        _httpHandler.SetupGet("/rest/api/3/issue/PROJ-123?fields=id", JiraIssueJson("PROJ-123", 10001));
         await InitializePluginAsync();
 
         var worklog = CreateWorklog(durationMinutes: -5);
@@ -131,7 +132,7 @@ public class TempoWorklogPluginTests : IDisposable
     [Fact]
     public async Task UploadWorklogAsync_IssueNotFound_ReturnsFailure()
     {
-        _jiraHandler.SetupGet("/rest/api/3/issue/UNKNOWN-999?fields=id", HttpStatusCode.NotFound, """{"errorMessages":["Issue not found"]}""");
+        _httpHandler.SetupGet("/rest/api/3/issue/UNKNOWN-999?fields=id", HttpStatusCode.NotFound, """{"errorMessages":["Issue not found"]}""");
         await InitializePluginAsync();
 
         var result = await _plugin.UploadWorklogAsync(CreateWorklog("UNKNOWN-999"), CancellationToken.None);
@@ -141,59 +142,32 @@ public class TempoWorklogPluginTests : IDisposable
     }
 
     [Fact]
-    public async Task UploadWorklogAsync_ServerError_RetriesAndSucceeds()
-    {
-        _jiraHandler.SetupGet("/rest/api/3/issue/PROJ-123?fields=id", JiraIssueJson("PROJ-123", 10001));
-        _tempoHandler.SetupPostSequence("/4/worklogs",
-            (HttpStatusCode.InternalServerError, "Server error"),
-            (HttpStatusCode.OK, """{"tempoWorklogId": 1}"""));
-        await InitializePluginAsync();
-
-        var result = await _plugin.UploadWorklogAsync(CreateWorklog(), CancellationToken.None);
-
-        result.IsSuccess.Should().BeTrue();
-        _tempoHandler.GetPostCallCount("/4/worklogs").Should().Be(2);
-    }
-
-    [Fact]
-    public async Task UploadWorklogAsync_TooManyRequests_RetriesAndSucceeds()
-    {
-        _jiraHandler.SetupGet("/rest/api/3/issue/PROJ-123?fields=id", JiraIssueJson("PROJ-123", 10001));
-        _tempoHandler.SetupPostSequence("/4/worklogs",
-            (HttpStatusCode.TooManyRequests, "Rate limited"),
-            (HttpStatusCode.OK, """{"tempoWorklogId": 1}"""));
-        await InitializePluginAsync();
-
-        var result = await _plugin.UploadWorklogAsync(CreateWorklog(), CancellationToken.None);
-
-        result.IsSuccess.Should().BeTrue();
-    }
-
-    [Fact]
-    public async Task UploadWorklogAsync_RequestTimeout_RetriesAndSucceeds()
-    {
-        _jiraHandler.SetupGet("/rest/api/3/issue/PROJ-123?fields=id", JiraIssueJson("PROJ-123", 10001));
-        _tempoHandler.SetupPostSequence("/4/worklogs",
-            (HttpStatusCode.RequestTimeout, "Request timeout"),
-            (HttpStatusCode.OK, """{"tempoWorklogId": 1}"""));
-        await InitializePluginAsync();
-
-        var result = await _plugin.UploadWorklogAsync(CreateWorklog(), CancellationToken.None);
-
-        result.IsSuccess.Should().BeTrue();
-    }
-
-    [Fact]
     public async Task UploadWorklogAsync_ClientError_NoRetry()
     {
-        _jiraHandler.SetupGet("/rest/api/3/issue/PROJ-123?fields=id", JiraIssueJson("PROJ-123", 10001));
-        _tempoHandler.SetupPost("/4/worklogs", HttpStatusCode.BadRequest, "Bad request");
+        _httpHandler.SetupGet("/rest/api/3/issue/PROJ-123?fields=id", JiraIssueJson("PROJ-123", 10001));
+        _httpHandler.SetupPost("/4/worklogs", HttpStatusCode.BadRequest, "Bad request");
         await InitializePluginAsync();
 
         var result = await _plugin.UploadWorklogAsync(CreateWorklog(), CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
-        _tempoHandler.GetPostCallCount("/4/worklogs").Should().Be(1);
+        _httpHandler.GetPostCallCount("/4/worklogs").Should().Be(1);
+    }
+
+    [Fact]
+    public async Task UploadWorklogAsync_AllRetriesExhausted_ReturnsFailure()
+    {
+        _httpHandler.SetupGet("/rest/api/3/issue/PROJ-123?fields=id", JiraIssueJson("PROJ-123", 10001));
+        _httpHandler.SetupPostSequence("/4/worklogs",
+            (HttpStatusCode.BadGateway, "Bad gateway"),
+            (HttpStatusCode.BadGateway, "Bad gateway"),
+            (HttpStatusCode.BadGateway, "Bad gateway"));
+        await InitializePluginAsync();
+
+        var result = await _plugin.UploadWorklogAsync(CreateWorklog(), CancellationToken.None);
+
+        result.IsFailure.Should().BeTrue();
+        _httpHandler.GetPostCallCount("/4/worklogs").Should().Be(3);
     }
 
     [Fact]
@@ -207,6 +181,28 @@ public class TempoWorklogPluginTests : IDisposable
     #endregion
 
     #region GetWorklogsAsync
+
+    [Fact]
+    public async Task GetWorklogsAsync_NullStartDateInResponse_SkipsEntry()
+    {
+        var json = TempoWorklogsJson(new
+        {
+            issue = new { key = "PROJ-1" },
+            startDate = (string?)null,
+            startTime = "09:00:00",
+            timeSpentSeconds = 3600,
+            description = "Work"
+        });
+
+        _httpHandler.SetupGet("/4/worklogs?from=2026-04-01&to=2026-04-01", json);
+        await InitializePluginAsync();
+
+        var result = await _plugin.GetWorklogsAsync(
+            new DateTime(2026, 4, 1), new DateTime(2026, 4, 1), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().BeEmpty();
+    }
 
     [Fact]
     public async Task GetWorklogsAsync_Success_ReturnsParsedWorklogs()
@@ -229,7 +225,7 @@ public class TempoWorklogPluginTests : IDisposable
                 description = "Review"
             });
 
-        _tempoHandler.SetupGet("/4/worklogs?from=2026-04-01&to=2026-04-01", worklogsJson);
+        _httpHandler.SetupGet("/4/worklogs?from=2026-04-01&to=2026-04-01", worklogsJson);
         await InitializePluginAsync();
 
         var result = await _plugin.GetWorklogsAsync(
@@ -251,7 +247,7 @@ public class TempoWorklogPluginTests : IDisposable
     [Fact]
     public async Task GetWorklogsAsync_EmptyResults_ReturnsEmptyList()
     {
-        _tempoHandler.SetupGet("/4/worklogs?from=2026-04-01&to=2026-04-01", TempoWorklogsJson());
+        _httpHandler.SetupGet("/4/worklogs?from=2026-04-01&to=2026-04-01", TempoWorklogsJson());
         await InitializePluginAsync();
 
         var result = await _plugin.GetWorklogsAsync(
@@ -267,7 +263,7 @@ public class TempoWorklogPluginTests : IDisposable
         var json = TempoWorklogsJson(
             new { startDate = "2026-04-01", startTime = "09:00:00", timeSpentSeconds = 3600 });
 
-        _tempoHandler.SetupGet("/4/worklogs?from=2026-04-01&to=2026-04-01", json);
+        _httpHandler.SetupGet("/4/worklogs?from=2026-04-01&to=2026-04-01", json);
         await InitializePluginAsync();
 
         var result = await _plugin.GetWorklogsAsync(
@@ -283,7 +279,7 @@ public class TempoWorklogPluginTests : IDisposable
         var json = TempoWorklogsJson(
             new { issue = new { id = 123 }, startDate = "2026-04-01", startTime = "09:00:00", timeSpentSeconds = 3600 });
 
-        _tempoHandler.SetupGet("/4/worklogs?from=2026-04-01&to=2026-04-01", json);
+        _httpHandler.SetupGet("/4/worklogs?from=2026-04-01&to=2026-04-01", json);
         await InitializePluginAsync();
 
         var result = await _plugin.GetWorklogsAsync(
@@ -296,7 +292,7 @@ public class TempoWorklogPluginTests : IDisposable
     [Fact]
     public async Task GetWorklogsAsync_HttpError_ReturnsFailure()
     {
-        _tempoHandler.SetupGet("/4/worklogs?from=2026-04-01&to=2026-04-01",
+        _httpHandler.SetupGet("/4/worklogs?from=2026-04-01&to=2026-04-01",
             HttpStatusCode.InternalServerError, "Server error");
         await InitializePluginAsync();
 
@@ -330,7 +326,7 @@ public class TempoWorklogPluginTests : IDisposable
             timeSpentSeconds = 3600
         });
 
-        _tempoHandler.SetupGet("/4/worklogs?from=2026-04-01&to=2026-04-01", worklogsJson);
+        _httpHandler.SetupGet("/4/worklogs?from=2026-04-01&to=2026-04-01", worklogsJson);
         await InitializePluginAsync();
 
         var result = await _plugin.WorklogExistsAsync(CreateWorklog(), CancellationToken.None);
@@ -342,7 +338,7 @@ public class TempoWorklogPluginTests : IDisposable
     [Fact]
     public async Task WorklogExistsAsync_NoMatch_ReturnsFalse()
     {
-        _tempoHandler.SetupGet("/4/worklogs?from=2026-04-01&to=2026-04-01", TempoWorklogsJson());
+        _httpHandler.SetupGet("/4/worklogs?from=2026-04-01&to=2026-04-01", TempoWorklogsJson());
         await InitializePluginAsync();
 
         var result = await _plugin.WorklogExistsAsync(CreateWorklog(), CancellationToken.None);
@@ -362,7 +358,7 @@ public class TempoWorklogPluginTests : IDisposable
             timeSpentSeconds = 3600
         });
 
-        _tempoHandler.SetupGet("/4/worklogs?from=2026-04-01&to=2026-04-01", worklogsJson);
+        _httpHandler.SetupGet("/4/worklogs?from=2026-04-01&to=2026-04-01", worklogsJson);
         await InitializePluginAsync();
 
         var result = await _plugin.WorklogExistsAsync(CreateWorklog(), CancellationToken.None);
@@ -382,7 +378,7 @@ public class TempoWorklogPluginTests : IDisposable
             timeSpentSeconds = 3600
         });
 
-        _tempoHandler.SetupGet("/4/worklogs?from=2026-04-01&to=2026-04-01", worklogsJson);
+        _httpHandler.SetupGet("/4/worklogs?from=2026-04-01&to=2026-04-01", worklogsJson);
         await InitializePluginAsync();
 
         var result = await _plugin.WorklogExistsAsync(CreateWorklog(), CancellationToken.None);
@@ -402,7 +398,7 @@ public class TempoWorklogPluginTests : IDisposable
             timeSpentSeconds = 1800  // 30 min, not 60
         });
 
-        _tempoHandler.SetupGet("/4/worklogs?from=2026-04-01&to=2026-04-01", worklogsJson);
+        _httpHandler.SetupGet("/4/worklogs?from=2026-04-01&to=2026-04-01", worklogsJson);
         await InitializePluginAsync();
 
         var result = await _plugin.WorklogExistsAsync(CreateWorklog(), CancellationToken.None);
@@ -418,10 +414,10 @@ public class TempoWorklogPluginTests : IDisposable
     [Fact]
     public async Task TestConnectionAsync_Success_ReturnsSuccess()
     {
-        _jiraHandler.SetupGet("/rest/api/3/myself", """{"accountId":"abc"}""");
+        _httpHandler.SetupGet("/rest/api/3/myself", """{"accountId":"abc"}""");
         await InitializePluginAsync();
 
-        var result = await _plugin.TestConnectionAsync(CancellationToken.None);
+        var result = await _plugin.TestConnectionAsync(null, CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
     }
@@ -429,10 +425,10 @@ public class TempoWorklogPluginTests : IDisposable
     [Fact]
     public async Task TestConnectionAsync_JiraError_ReturnsFailure()
     {
-        _jiraHandler.SetupGet("/rest/api/3/myself", HttpStatusCode.Unauthorized, "Unauthorized");
+        _httpHandler.SetupGet("/rest/api/3/myself", HttpStatusCode.Unauthorized, "Unauthorized");
         await InitializePluginAsync();
 
-        var result = await _plugin.TestConnectionAsync(CancellationToken.None);
+        var result = await _plugin.TestConnectionAsync(null, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
     }
@@ -440,7 +436,7 @@ public class TempoWorklogPluginTests : IDisposable
     [Fact]
     public async Task TestConnectionAsync_NotInitialized_Throws()
     {
-        var act = () => _plugin.TestConnectionAsync(CancellationToken.None);
+        var act = () => _plugin.TestConnectionAsync(null, CancellationToken.None);
 
         await act.Should().ThrowAsync<InvalidOperationException>();
     }
@@ -452,29 +448,29 @@ public class TempoWorklogPluginTests : IDisposable
     [Fact]
     public async Task UploadWorklogAsync_SecondCall_UsesCachedIssueId()
     {
-        _jiraHandler.SetupGet("/rest/api/3/issue/PROJ-123?fields=id", JiraIssueJson("PROJ-123", 10001));
-        _tempoHandler.SetupPost("/4/worklogs", HttpStatusCode.OK, """{"tempoWorklogId": 1}""");
+        _httpHandler.SetupGet("/rest/api/3/issue/PROJ-123?fields=id", JiraIssueJson("PROJ-123", 10001));
+        _httpHandler.SetupPost("/4/worklogs", HttpStatusCode.OK, """{"tempoWorklogId": 1}""");
         await InitializePluginAsync();
 
         await _plugin.UploadWorklogAsync(CreateWorklog(), CancellationToken.None);
         await _plugin.UploadWorklogAsync(CreateWorklog(), CancellationToken.None);
 
-        _jiraHandler.GetGetCallCount("/rest/api/3/issue/PROJ-123?fields=id").Should().Be(1);
+        _httpHandler.GetGetCallCount("/rest/api/3/issue/PROJ-123?fields=id").Should().Be(1);
     }
 
     [Fact]
     public async Task UploadWorklogAsync_DifferentTickets_FetchesBoth()
     {
-        _jiraHandler.SetupGet("/rest/api/3/issue/PROJ-1?fields=id", JiraIssueJson("PROJ-1", 10001));
-        _jiraHandler.SetupGet("/rest/api/3/issue/PROJ-2?fields=id", JiraIssueJson("PROJ-2", 10002));
-        _tempoHandler.SetupPost("/4/worklogs", HttpStatusCode.OK, """{"tempoWorklogId": 1}""");
+        _httpHandler.SetupGet("/rest/api/3/issue/PROJ-1?fields=id", JiraIssueJson("PROJ-1", 10001));
+        _httpHandler.SetupGet("/rest/api/3/issue/PROJ-2?fields=id", JiraIssueJson("PROJ-2", 10002));
+        _httpHandler.SetupPost("/4/worklogs", HttpStatusCode.OK, """{"tempoWorklogId": 1}""");
         await InitializePluginAsync();
 
         await _plugin.UploadWorklogAsync(CreateWorklog("PROJ-1"), CancellationToken.None);
         await _plugin.UploadWorklogAsync(CreateWorklog("PROJ-2"), CancellationToken.None);
 
-        _jiraHandler.GetGetCallCount("/rest/api/3/issue/PROJ-1?fields=id").Should().Be(1);
-        _jiraHandler.GetGetCallCount("/rest/api/3/issue/PROJ-2?fields=id").Should().Be(1);
+        _httpHandler.GetGetCallCount("/rest/api/3/issue/PROJ-1?fields=id").Should().Be(1);
+        _httpHandler.GetGetCallCount("/rest/api/3/issue/PROJ-2?fields=id").Should().Be(1);
     }
 
     #endregion
@@ -487,19 +483,19 @@ public class TempoWorklogPluginTests : IDisposable
         var configWithoutAccountId = new Dictionary<string, string>(ValidConfig);
         configWithoutAccountId.Remove("JiraAccountId");
 
-        _jiraHandler.SetupGet("/rest/api/3/myself", """{"accountId":"auto-detected-id"}""");
+        _httpHandler.SetupGet("/rest/api/3/myself", """{"accountId":"auto-detected-id"}""");
 
-        var plugin = new TempoWorklogPlugin
+        var plugin = new TempoWorklogPlugin(
+            new MockHttpClientFactory(_httpHandler),
+            NullLogger<TempoWorklogPlugin>.Instance)
         {
-            TempoHttpHandler = _tempoHandler,
-            JiraHttpHandler = _jiraHandler,
             RetryDelayStrategy = _ => TimeSpan.Zero
         };
 
         var result = await plugin.InitializeAsync(configWithoutAccountId, TestContext.Current.CancellationToken);
 
         result.Should().BeTrue();
-        plugin.Dispose();
+        await plugin.DisposeAsync();
     }
 
     [Fact]
@@ -511,8 +507,8 @@ public class TempoWorklogPluginTests : IDisposable
         await InitializePluginAsync();
 
         // Plugin should still be functional
-        _jiraHandler.SetupGet("/rest/api/3/issue/PROJ-123?fields=id", JiraIssueJson("PROJ-123", 10001));
-        _tempoHandler.SetupPost("/4/worklogs", HttpStatusCode.OK, """{"tempoWorklogId": 1}""");
+        _httpHandler.SetupGet("/rest/api/3/issue/PROJ-123?fields=id", JiraIssueJson("PROJ-123", 10001));
+        _httpHandler.SetupPost("/4/worklogs", HttpStatusCode.OK, """{"tempoWorklogId": 1}""");
 
         var result = await _plugin.UploadWorklogAsync(CreateWorklog(), CancellationToken.None);
         result.IsSuccess.Should().BeTrue();
@@ -524,19 +520,19 @@ public class TempoWorklogPluginTests : IDisposable
         var configWithoutAccountId = new Dictionary<string, string>(ValidConfig);
         configWithoutAccountId.Remove("JiraAccountId");
 
-        _jiraHandler.SetupGet("/rest/api/3/myself", """{"displayName":"Test User"}""");
+        _httpHandler.SetupGet("/rest/api/3/myself", """{"displayName":"Test User"}""");
 
-        var plugin = new TempoWorklogPlugin
+        var plugin = new TempoWorklogPlugin(
+            new MockHttpClientFactory(_httpHandler),
+            NullLogger<TempoWorklogPlugin>.Instance)
         {
-            TempoHttpHandler = _tempoHandler,
-            JiraHttpHandler = _jiraHandler,
             RetryDelayStrategy = _ => TimeSpan.Zero
         };
 
         var result = await plugin.InitializeAsync(configWithoutAccountId, TestContext.Current.CancellationToken);
 
         result.Should().BeFalse();
-        plugin.Dispose();
+        await plugin.DisposeAsync();
     }
 
     [Fact]
@@ -546,15 +542,15 @@ public class TempoWorklogPluginTests : IDisposable
         await InitializePluginAsync();
 
         // Upload works
-        _jiraHandler.SetupGet("/rest/api/3/issue/PROJ-123?fields=id", JiraIssueJson("PROJ-123", 10001));
-        _tempoHandler.SetupPost("/4/worklogs", HttpStatusCode.OK, """{"tempoWorklogId": 1}""");
+        _httpHandler.SetupGet("/rest/api/3/issue/PROJ-123?fields=id", JiraIssueJson("PROJ-123", 10001));
+        _httpHandler.SetupPost("/4/worklogs", HttpStatusCode.OK, """{"tempoWorklogId": 1}""");
         var firstResult = await _plugin.UploadWorklogAsync(CreateWorklog(), CancellationToken.None);
         firstResult.IsSuccess.Should().BeTrue();
 
         // Second init fails (auto-detect returns no accountId)
         var badConfig = new Dictionary<string, string>(ValidConfig);
         badConfig.Remove("JiraAccountId");
-        _jiraHandler.SetupGet("/rest/api/3/myself", """{"displayName":"No Account Id"}""");
+        _httpHandler.SetupGet("/rest/api/3/myself", """{"displayName":"No Account Id"}""");
         var initResult = await _plugin.InitializeAsync(badConfig, TestContext.Current.CancellationToken);
         initResult.Should().BeFalse();
 
@@ -573,8 +569,8 @@ public class TempoWorklogPluginTests : IDisposable
     [InlineData(HttpStatusCode.GatewayTimeout)]
     public async Task UploadWorklogAsync_TransientErrors_RetriesAndSucceeds(HttpStatusCode transientCode)
     {
-        _jiraHandler.SetupGet("/rest/api/3/issue/PROJ-123?fields=id", JiraIssueJson("PROJ-123", 10001));
-        _tempoHandler.SetupPostSequence("/4/worklogs",
+        _httpHandler.SetupGet("/rest/api/3/issue/PROJ-123?fields=id", JiraIssueJson("PROJ-123", 10001));
+        _httpHandler.SetupPostSequence("/4/worklogs",
             (transientCode, "Transient error"),
             (HttpStatusCode.OK, """{"tempoWorklogId": 1}"""));
         await InitializePluginAsync();
@@ -582,10 +578,15 @@ public class TempoWorklogPluginTests : IDisposable
         var result = await _plugin.UploadWorklogAsync(CreateWorklog(), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
-        _tempoHandler.GetPostCallCount("/4/worklogs").Should().Be(2);
+        _httpHandler.GetPostCallCount("/4/worklogs").Should().Be(2);
     }
 
     #endregion
+}
+
+internal sealed class MockHttpClientFactory(HttpMessageHandler handler) : IHttpClientFactory
+{
+    public HttpClient CreateClient(string name) => new(handler, disposeHandler: false);
 }
 
 /// <summary>
@@ -595,6 +596,7 @@ internal sealed class MockHttpHandler : HttpMessageHandler
 {
     private readonly Dictionary<string, string> _getResponses = new();
     private readonly Dictionary<string, HttpStatusCode> _getStatusCodes = new();
+    private readonly List<(string Prefix, string Body, HttpStatusCode Status)> _getPrefixResponses = new();
     private readonly Dictionary<string, Queue<(HttpStatusCode Status, string Body)>> _postSequences = new();
     private readonly HashSet<string> _postRepeatLast = new();
     private readonly Dictionary<string, int> _getCallCounts = new();
@@ -609,6 +611,16 @@ internal sealed class MockHttpHandler : HttpMessageHandler
     public void SetupGet(string pathAndQuery, HttpStatusCode statusCode, string responseBody)
     {
         SetupGet(pathAndQuery, responseBody, statusCode);
+    }
+
+    public void SetupGetPrefix(string pathPrefix, string responseBody, HttpStatusCode statusCode = HttpStatusCode.OK)
+    {
+        _getPrefixResponses.Add((pathPrefix, responseBody, statusCode));
+    }
+
+    public void SetupGetPrefix(string pathPrefix, HttpStatusCode statusCode, string responseBody)
+    {
+        _getPrefixResponses.Add((pathPrefix, responseBody, statusCode));
     }
 
     public void SetupPost(string pathAndQuery, HttpStatusCode statusCode, string responseBody)
@@ -643,6 +655,15 @@ internal sealed class MockHttpHandler : HttpMessageHandler
                 return Task.FromResult(new HttpResponseMessage(statusCode)
                 {
                     Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json")
+                });
+            }
+
+            var prefixMatch = _getPrefixResponses.FirstOrDefault(p => pathAndQuery.StartsWith(p.Prefix, StringComparison.Ordinal));
+            if (prefixMatch != default)
+            {
+                return Task.FromResult(new HttpResponseMessage(prefixMatch.Status)
+                {
+                    Content = new StringContent(prefixMatch.Body, System.Text.Encoding.UTF8, "application/json")
                 });
             }
 

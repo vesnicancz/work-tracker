@@ -3,7 +3,7 @@ namespace WorkTracker.Plugin.Abstractions;
 /// <summary>
 /// Base interface for all WorkTracker plugins
 /// </summary>
-public interface IPlugin
+public interface IPlugin : IAsyncDisposable
 {
 	/// <summary>
 	/// Gets the plugin metadata

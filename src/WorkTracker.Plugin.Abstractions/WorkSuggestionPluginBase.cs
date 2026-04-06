@@ -1,16 +1,13 @@
+using Microsoft.Extensions.Logging;
+
 namespace WorkTracker.Plugin.Abstractions;
 
 /// <summary>
 /// Base class for work suggestion plugins. Inherits configuration, validation, and lifecycle from <see cref="PluginBase"/>.
 /// </summary>
-public abstract class WorkSuggestionPluginBase : PluginBase, IWorkSuggestionPlugin
+public abstract class WorkSuggestionPluginBase(ILogger logger) : PluginBase(logger), IWorkSuggestionPlugin
 {
-	public abstract Task<PluginResult<bool>> TestConnectionAsync(CancellationToken cancellationToken);
-
-	public virtual Task<PluginResult<bool>> TestConnectionAsync(IProgress<string>? progress, CancellationToken cancellationToken)
-	{
-		return TestConnectionAsync(cancellationToken);
-	}
+	public abstract Task<PluginResult<bool>> TestConnectionAsync(IProgress<string>? progress, CancellationToken cancellationToken);
 
 	public abstract Task<PluginResult<IReadOnlyList<WorkSuggestion>>> GetSuggestionsAsync(DateTime date, CancellationToken cancellationToken);
 

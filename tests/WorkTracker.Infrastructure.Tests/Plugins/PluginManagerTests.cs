@@ -1,3 +1,4 @@
+using System.Net.Http;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -7,7 +8,7 @@ using WorkTracker.Plugin.Abstractions;
 
 namespace WorkTracker.Infrastructure.Tests.Plugins;
 
-public class PluginManagerTests : IDisposable
+public class PluginManagerTests : IAsyncDisposable
 {
 	private readonly Mock<ILoggerFactory> _mockLoggerFactory;
 	private readonly PluginManager _pluginManager;
@@ -17,7 +18,7 @@ public class PluginManagerTests : IDisposable
 		_mockLoggerFactory = new Mock<ILoggerFactory>();
 		_mockLoggerFactory.Setup(f => f.CreateLogger(It.IsAny<string>()))
 			.Returns(Mock.Of<ILogger>());
-		_pluginManager = new PluginManager(_mockLoggerFactory.Object);
+		_pluginManager = new PluginManager(_mockLoggerFactory.Object, Mock.Of<IHttpClientFactory>());
 	}
 
 	[Fact]
@@ -159,19 +160,139 @@ public class PluginManagerTests : IDisposable
 	}
 
 	[Fact]
-	public void LoadEmbeddedPlugin_WithPluginBaseDerived_ShouldSetPluginSpecificLogger()
+	public void LoadEmbeddedPlugin_WithPluginBaseDerived_ShouldInjectLogger()
 	{
 		// Act
 		var result = _pluginManager.LoadEmbeddedPlugin<TestPluginBaseDerived>();
 
-		// Assert
+		// Assert — plugin gets ILogger<T> via DI, which calls CreateLogger with the full type name
 		result.Should().BeTrue();
 		_mockLoggerFactory.Verify(
-			f => f.CreateLogger("WorkTracker.Plugin.test.pluginbase"),
+			f => f.CreateLogger(typeof(TestPluginBaseDerived).FullName!),
 			Times.Once);
 	}
 
-	public async void Dispose()
+	#region SetEnabledPlugins filtering
+
+	[Fact]
+	public void SetEnabledPlugins_FiltersWorklogPlugins()
+	{
+		_pluginManager.LoadEmbeddedPlugin<TestPlugin>();
+		_pluginManager.LoadEmbeddedPlugin<TestWorklogPlugin>();
+
+		_pluginManager.SetEnabledPlugins(["test.plugin"]);
+
+		_pluginManager.WorklogUploadPlugins.Should().BeEmpty();
+		_pluginManager.AllWorklogUploadPlugins.Should().HaveCount(1);
+	}
+
+	[Fact]
+	public void SetEnabledPlugins_EmptyList_DisablesAll()
+	{
+		_pluginManager.LoadEmbeddedPlugin<TestPlugin>();
+		_pluginManager.LoadEmbeddedPlugin<TestWorklogPlugin>();
+
+		_pluginManager.SetEnabledPlugins([]);
+
+		_pluginManager.WorklogUploadPlugins.Should().BeEmpty();
+	}
+
+	[Fact]
+	public void SetEnabledPlugins_UpdateReplacesOldSelection()
+	{
+		_pluginManager.LoadEmbeddedPlugin<TestPlugin>();
+		_pluginManager.LoadEmbeddedPlugin<TestWorklogPlugin>();
+		_pluginManager.SetEnabledPlugins(["test.plugin", "test.worklog.plugin"]);
+
+		_pluginManager.SetEnabledPlugins(["test.worklog.plugin"]);
+
+		_pluginManager.WorklogUploadPlugins.Should().HaveCount(1);
+		_pluginManager.GetPlugin("test.plugin").Should().NotBeNull();
+	}
+
+	#endregion
+
+	#region InitializePluginsAsync — disabled skipping
+
+	[Fact]
+	public async Task InitializePluginsAsync_SkipsDisabledPlugins()
+	{
+		_pluginManager.LoadEmbeddedPlugin<TestPlugin>();
+		_pluginManager.SetEnabledPlugins([]);
+
+		await _pluginManager.InitializePluginsAsync(null, TestContext.Current.CancellationToken);
+
+		var plugin = _pluginManager.GetPlugin("test.plugin") as TestPlugin;
+		plugin!.IsInitialized.Should().BeFalse();
+	}
+
+	#endregion
+
+	#region DI propagation
+
+	[Fact]
+	public void LoadEmbeddedPlugin_PluginBasePlugin_ReceivesLogger()
+	{
+		_pluginManager.LoadEmbeddedPlugin<TestPluginBaseDerived>();
+
+		// Verify ILoggerFactory.CreateLogger was called for the plugin type
+		_mockLoggerFactory.Verify(
+			f => f.CreateLogger(typeof(TestPluginBaseDerived).FullName!),
+			Times.Once);
+	}
+
+	[Fact]
+	public void LoadEmbeddedPlugin_PluginWithHttpClientFactory_ReceivesFactory()
+	{
+		// TestPluginWithHttpClientFactory has IHttpClientFactory in constructor
+		var result = _pluginManager.LoadEmbeddedPlugin<TestPluginWithHttpClientFactory>();
+
+		result.Should().BeTrue();
+		var plugin = _pluginManager.GetPlugin("test.httpclient.plugin") as TestPluginWithHttpClientFactory;
+		plugin!.HasHttpClientFactory.Should().BeTrue();
+	}
+
+	[Fact]
+	public void LoadEmbeddedPlugin_PluginWithTokenProviderFactory_ReceivesFactory()
+	{
+		var result = _pluginManager.LoadEmbeddedPlugin<TestPluginWithTokenProviderFactory>();
+
+		result.Should().BeTrue();
+		var plugin = _pluginManager.GetPlugin("test.tokenprovider.plugin") as TestPluginWithTokenProviderFactory;
+		plugin!.HasTokenProviderFactory.Should().BeTrue();
+	}
+
+	#endregion
+
+	#region Unload + Shutdown lifecycle
+
+	[Fact]
+	public async Task UnloadPluginAsync_CallsShutdownOnPlugin()
+	{
+		_pluginManager.LoadEmbeddedPlugin<TestPlugin>();
+		_pluginManager.SetEnabledPlugins(["test.plugin"]);
+		await _pluginManager.InitializePluginsAsync(null, TestContext.Current.CancellationToken);
+
+		await _pluginManager.UnloadPluginAsync("test.plugin");
+
+		// Plugin was removed — we can't access it anymore, but Shutdown was called
+		_pluginManager.LoadedPlugins.Should().NotContainKey("test.plugin");
+	}
+
+	[Fact]
+	public async Task DisposeAsync_UnloadsAllPlugins()
+	{
+		_pluginManager.LoadEmbeddedPlugin<TestPlugin>();
+		_pluginManager.LoadEmbeddedPlugin<TestWorklogPlugin>();
+
+		await _pluginManager.DisposeAsync();
+
+		_pluginManager.LoadedPlugins.Should().BeEmpty();
+	}
+
+	#endregion
+
+	public async ValueTask DisposeAsync()
 	{
 		if (_pluginManager != null)
 		{
@@ -213,6 +334,8 @@ public class TestPlugin : IPlugin
 	{
 		return Task.FromResult(PluginValidationResult.Success());
 	}
+
+	public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 }
 
 public class TestWorklogPlugin : IWorklogUploadPlugin
@@ -245,14 +368,9 @@ public class TestWorklogPlugin : IWorklogUploadPlugin
 		return new List<PluginConfigurationField>();
 	}
 
-	public Task<PluginResult<bool>> TestConnectionAsync(CancellationToken cancellationToken)
-	{
-		return Task.FromResult(PluginResult<bool>.Success(true));
-	}
-
 	public Task<PluginResult<bool>> TestConnectionAsync(IProgress<string>? progress, CancellationToken cancellationToken)
 	{
-		return TestConnectionAsync(cancellationToken);
+		return Task.FromResult(PluginResult<bool>.Success(true));
 	}
 
 	public Task<PluginResult<bool>> UploadWorklogAsync(PluginWorklogEntry worklog, CancellationToken cancellationToken)
@@ -280,9 +398,43 @@ public class TestWorklogPlugin : IWorklogUploadPlugin
 	{
 		return Task.FromResult(PluginResult<bool>.Success(false));
 	}
+
+	public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 }
 
-public class TestPluginBaseDerived : PluginBase
+public class TestPluginWithHttpClientFactory(IHttpClientFactory httpClientFactory, ILogger<TestPluginWithHttpClientFactory> logger)
+	: PluginBase(logger)
+{
+	public bool HasHttpClientFactory => httpClientFactory != null;
+
+	public override PluginMetadata Metadata => new()
+	{
+		Id = "test.httpclient.plugin",
+		Name = "Test HttpClient Plugin",
+		Version = new Version(1, 0, 0),
+		Author = "Test Author"
+	};
+
+	public override IReadOnlyList<PluginConfigurationField> GetConfigurationFields() => [];
+}
+
+public class TestPluginWithTokenProviderFactory(ITokenProviderFactory tokenProviderFactory, ILogger<TestPluginWithTokenProviderFactory> logger)
+	: PluginBase(logger)
+{
+	public bool HasTokenProviderFactory => tokenProviderFactory != null;
+
+	public override PluginMetadata Metadata => new()
+	{
+		Id = "test.tokenprovider.plugin",
+		Name = "Test TokenProvider Plugin",
+		Version = new Version(1, 0, 0),
+		Author = "Test Author"
+	};
+
+	public override IReadOnlyList<PluginConfigurationField> GetConfigurationFields() => [];
+}
+
+public class TestPluginBaseDerived(ILogger<TestPluginBaseDerived> logger) : PluginBase(logger)
 {
 	public override PluginMetadata Metadata => new()
 	{

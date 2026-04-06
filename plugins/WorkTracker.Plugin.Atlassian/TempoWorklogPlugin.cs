@@ -11,9 +11,9 @@ namespace WorkTracker.Plugin.Atlassian;
 /// <summary>
 /// Plugin for uploading worklogs to Tempo (Jira time tracking)
 /// </summary>
-public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
+public sealed class TempoWorklogPlugin(IHttpClientFactory httpClientFactory, ILogger<TempoWorklogPlugin> logger)
+	: WorklogUploadPluginBase(logger)
 {
-	private static readonly TimeSpan HttpTimeout = TimeSpan.FromSeconds(30);
 	private static readonly TimeSpan CacheTtl = TimeSpan.FromHours(1);
 	private const int MaxRetries = 2;
 
@@ -34,13 +34,11 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 		public const string JiraAccountId = "JiraAccountId";
 	}
 
-	private HttpClient? _tempoHttpClient;
-	private JiraClient? _jiraClient;
-	private string? _jiraAccountId;
-	private bool _disposed;
+	private readonly IHttpClientFactory _httpClientFactory = httpClientFactory;
 
-	internal HttpMessageHandler? TempoHttpHandler { get; set; }
-	internal HttpMessageHandler? JiraHttpHandler { get; set; }
+	private HttpClient? _tempoHttpClient;
+	private IJiraClient? _jiraClient;
+	private string? _jiraAccountId;
 	internal Func<int, TimeSpan>? RetryDelayStrategy { get; set; }
 
 	private readonly ConcurrentDictionary<string, (int Id, DateTime CachedAt)> _issueIdCache = new();
@@ -104,11 +102,11 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 
 		// Create new clients before disposing old ones — if creation fails, the old state stays valid
 		var newTempoClient = CreateTempoHttpClient(tempoBaseUrl, tempoApiToken);
-		var newJiraClient = new JiraClient(
+		var newJiraClient = JiraClient.Create(
+			_httpClientFactory,
 			GetRequiredConfigValue(JiraConfigFields.JiraBaseUrl),
 			GetRequiredConfigValue(JiraConfigFields.JiraEmail),
-			GetRequiredConfigValue(JiraConfigFields.JiraApiToken),
-			JiraHttpHandler);
+			GetRequiredConfigValue(JiraConfigFields.JiraApiToken));
 
 		// Validate account ID before committing to the new clients
 		if (string.IsNullOrWhiteSpace(jiraAccountId))
@@ -119,12 +117,12 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 			}
 			catch (Exception ex)
 			{
-				Logger?.LogError(ex, "Failed to retrieve Jira account ID");
+				Logger.LogError(ex, "Failed to retrieve Jira account ID");
 			}
 
 			if (string.IsNullOrWhiteSpace(jiraAccountId))
 			{
-				Logger?.LogError("Jira account ID auto-detection returned null or empty");
+				Logger.LogError("Jira account ID auto-detection returned null or empty");
 				newTempoClient.Dispose();
 				newJiraClient.Dispose();
 				return false;
@@ -139,7 +137,6 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 		var oldJiraClient = _jiraClient;
 		_tempoHttpClient = newTempoClient;
 		_jiraClient = newJiraClient;
-		_disposed = false;
 		oldTempoClient?.Dispose();
 		oldJiraClient?.Dispose();
 
@@ -148,10 +145,9 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 
 	private HttpClient CreateTempoHttpClient(string baseUrl, string apiToken)
 	{
-		var client = TempoHttpHandler != null
-			? new HttpClient(TempoHttpHandler, disposeHandler: false) { BaseAddress = new Uri(baseUrl), Timeout = HttpTimeout }
-			: new HttpClient { BaseAddress = new Uri(baseUrl), Timeout = HttpTimeout };
-
+		var client = _httpClientFactory.CreateClient();
+		client.BaseAddress = new Uri(baseUrl);
+		client.Timeout = TimeSpan.FromSeconds(30);
 		client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiToken);
 		client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 		return client;
@@ -160,18 +156,25 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 	protected override Task OnShutdownAsync()
 	{
 		_issueIdCache.Clear();
-		Dispose();
 		return Task.CompletedTask;
 	}
 
-	public override async Task<PluginResult<bool>> TestConnectionAsync(CancellationToken cancellationToken)
+	public override ValueTask DisposeAsync()
+	{
+		_tempoHttpClient?.Dispose();
+		_jiraClient?.Dispose();
+		GC.SuppressFinalize(this);
+		return ValueTask.CompletedTask;
+	}
+
+	public override async Task<PluginResult<bool>> TestConnectionAsync(IProgress<string>? progress, CancellationToken cancellationToken)
 	{
 		EnsureInitialized();
 
 		var (success, error) = await _jiraClient!.TestConnectionAsync(cancellationToken);
 		return success
 			? PluginResult<bool>.Success(true)
-			: PluginResult<bool>.Failure(error!);
+			: PluginResult<bool>.Failure(error!, PluginErrorCategory.Authentication);
 	}
 
 	public override async Task<PluginResult<bool>> UploadWorklogAsync(PluginWorklogEntry worklog, CancellationToken cancellationToken)
@@ -180,7 +183,7 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 
 		if (string.IsNullOrWhiteSpace(worklog.TicketId))
 		{
-			return PluginResult<bool>.Failure("Ticket ID is required for Tempo upload");
+			return PluginResult<bool>.Failure("Ticket ID is required for Tempo upload", PluginErrorCategory.Validation);
 		}
 
 		try
@@ -188,13 +191,13 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 			var issueId = await GetIssueIdFromKeyAsync(worklog.TicketId, cancellationToken);
 			if (!issueId.HasValue)
 			{
-				return PluginResult<bool>.Failure($"Could not resolve issue ID for {worklog.TicketId}");
+				return PluginResult<bool>.Failure($"Could not resolve issue ID for {worklog.TicketId}", PluginErrorCategory.NotFound);
 			}
 
 			var timeSpentSeconds = worklog.DurationMinutes * 60;
 			if (timeSpentSeconds <= 0)
 			{
-				return PluginResult<bool>.Failure("Invalid duration: must be greater than 0");
+				return PluginResult<bool>.Failure("Invalid duration: must be greater than 0", PluginErrorCategory.Validation);
 			}
 
 			var tempoWorklog = new
@@ -214,7 +217,7 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 
 				if (response.IsSuccessStatusCode)
 				{
-					Logger?.LogInformation("Successfully uploaded worklog for {Ticket} ({Duration} minutes)",
+					Logger.LogInformation("Successfully uploaded worklog for {Ticket} ({Duration} minutes)",
 						worklog.TicketId, worklog.DurationMinutes);
 					return PluginResult<bool>.Success(true);
 				}
@@ -226,7 +229,7 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 				{
 					var delay = RetryDelayStrategy?.Invoke(attempt)
 						?? TimeSpan.FromSeconds(Math.Pow(2, attempt + 1));
-					Logger?.LogWarning("Tempo API returned {StatusCode}, retrying in {Delay}s (attempt {Attempt}/{MaxAttempts})",
+					Logger.LogWarning("Tempo API returned {StatusCode}, retrying in {Delay}s (attempt {Attempt}/{MaxAttempts})",
 						response.StatusCode, delay.TotalSeconds, attempt + 1, MaxRetries + 1);
 					await Task.Delay(delay, cancellationToken);
 					continue;
@@ -235,11 +238,11 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 				break;
 			}
 
-			return PluginResult<bool>.Failure(lastError ?? "Upload failed");
+			return PluginResult<bool>.Failure(lastError ?? "Upload failed", PluginErrorCategory.Network);
 		}
 		catch (Exception ex)
 		{
-			Logger?.LogError(ex, "Error uploading worklog to Tempo");
+			Logger.LogError(ex, "Error uploading worklog to Tempo");
 			return PluginResult<bool>.Failure($"Error: {ex.Message}");
 		}
 	}
@@ -259,7 +262,7 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 			{
 				var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
 				return PluginResult<IEnumerable<PluginWorklogEntry>>.Failure(
-					$"Failed to get worklogs: {response.StatusCode} - {errorContent}");
+					$"Failed to get worklogs: {response.StatusCode} - {errorContent}", PluginErrorCategory.Network);
 			}
 
 			var content = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -311,7 +314,7 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 				}
 				catch (Exception ex)
 				{
-					Logger?.LogWarning(ex, "Failed to parse worklog entry from Tempo API response");
+					Logger.LogWarning(ex, "Failed to parse worklog entry from Tempo API response");
 				}
 			}
 
@@ -319,7 +322,7 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 		}
 		catch (Exception ex)
 		{
-			Logger?.LogError(ex, "Error getting worklogs from Tempo");
+			Logger.LogError(ex, "Error getting worklogs from Tempo");
 			return PluginResult<IEnumerable<PluginWorklogEntry>>.Failure($"Error: {ex.Message}");
 		}
 	}
@@ -365,23 +368,14 @@ public sealed class TempoWorklogPlugin : WorklogUploadPluginBase, IDisposable
 				return id;
 			}
 
-			Logger?.LogWarning("Could not parse issue ID from response for {IssueKey}", issueKey);
+			Logger.LogWarning("Could not parse issue ID from response for {IssueKey}", issueKey);
 			return null;
 		}
 		catch (Exception ex)
 		{
-			Logger?.LogError(ex, "Failed to fetch issue ID for {IssueKey}", issueKey);
+			Logger.LogError(ex, "Failed to fetch issue ID for {IssueKey}", issueKey);
 			return null;
 		}
 	}
 
-	public void Dispose()
-	{
-		if (!_disposed)
-		{
-			_tempoHttpClient?.Dispose();
-			_jiraClient?.Dispose();
-			_disposed = true;
-		}
-	}
 }

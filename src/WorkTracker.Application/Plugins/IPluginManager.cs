@@ -65,7 +65,7 @@ public interface IPluginManager : IAsyncDisposable
 	/// <summary>
 	/// Loads an embedded plugin (plugin that's part of the main application)
 	/// </summary>
-	bool LoadEmbeddedPlugin<T>() where T : IPlugin, new();
+	bool LoadEmbeddedPlugin<T>() where T : class, IPlugin;
 
 	/// <summary>
 	/// Initializes all loaded plugins with their configurations

@@ -8,7 +8,8 @@ namespace WorkTracker.Plugin.Atlassian;
 /// <summary>
 /// Plugin that suggests work items based on Jira issues matching a JQL filter
 /// </summary>
-public sealed class JiraSuggestionsPlugin : WorkSuggestionPluginBase, IDisposable
+public sealed class JiraSuggestionsPlugin(IHttpClientFactory httpClientFactory, ILogger<JiraSuggestionsPlugin> logger)
+	: WorkSuggestionPluginBase(logger)
 {
 	private static class ConfigKeys
 	{
@@ -17,13 +18,12 @@ public sealed class JiraSuggestionsPlugin : WorkSuggestionPluginBase, IDisposabl
 		public const string MaxResults = "MaxResults";
 	}
 
-	private JiraClient? _jiraClient;
+	private readonly IHttpClientFactory _httpClientFactory = httpClientFactory;
+
+	private IJiraClient? _jiraClient;
 	private string? _jqlFilter;
 	private string? _searchJqlFilter;
 	private int _maxResults;
-	private bool _disposed;
-
-	internal HttpMessageHandler? JiraHttpHandler { get; set; }
 
 	public override PluginMetadata Metadata => new()
 	{
@@ -85,34 +85,34 @@ public sealed class JiraSuggestionsPlugin : WorkSuggestionPluginBase, IDisposabl
 		_searchJqlFilter = string.IsNullOrWhiteSpace(searchJqlConfig) ? null : searchJqlConfig;
 		_maxResults = int.TryParse(GetConfigValue(ConfigKeys.MaxResults), out var max) ? max : 20;
 
-		var newClient = new JiraClient(
+		var newClient = JiraClient.Create(
+			_httpClientFactory,
 			GetRequiredConfigValue(JiraConfigFields.JiraBaseUrl),
 			GetRequiredConfigValue(JiraConfigFields.JiraEmail),
-			GetRequiredConfigValue(JiraConfigFields.JiraApiToken),
-			JiraHttpHandler);
+			GetRequiredConfigValue(JiraConfigFields.JiraApiToken));
 
 		var oldClient = _jiraClient;
 		_jiraClient = newClient;
-		_disposed = false;
 		oldClient?.Dispose();
 
 		return Task.FromResult(true);
 	}
 
-	protected override Task OnShutdownAsync()
+	public override ValueTask DisposeAsync()
 	{
-		Dispose();
-		return Task.CompletedTask;
+		_jiraClient?.Dispose();
+		GC.SuppressFinalize(this);
+		return ValueTask.CompletedTask;
 	}
 
-	public override async Task<PluginResult<bool>> TestConnectionAsync(CancellationToken cancellationToken)
+	public override async Task<PluginResult<bool>> TestConnectionAsync(IProgress<string>? progress, CancellationToken cancellationToken)
 	{
 		EnsureInitialized();
 
 		var (success, error) = await _jiraClient!.TestConnectionAsync(cancellationToken);
 		return success
 			? PluginResult<bool>.Success(true)
-			: PluginResult<bool>.Failure(error!);
+			: PluginResult<bool>.Failure(error!, PluginErrorCategory.Authentication);
 	}
 
 	public override bool SupportsSearch => true;
@@ -184,9 +184,9 @@ public sealed class JiraSuggestionsPlugin : WorkSuggestionPluginBase, IDisposabl
 			if (!response.IsSuccessStatusCode)
 			{
 				var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
-				Logger?.LogWarning("Jira search failed with {StatusCode}: {Body}", (int)response.StatusCode, errorBody);
+				Logger.LogWarning("Jira search failed with {StatusCode}: {Body}", (int)response.StatusCode, errorBody);
 				return PluginResult<IReadOnlyList<WorkSuggestion>>.Failure(
-					$"Jira search failed ({(int)response.StatusCode}): {errorBody}");
+					$"Jira search failed ({(int)response.StatusCode}): {errorBody}", PluginErrorCategory.Network);
 			}
 
 			var json = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken);
@@ -211,7 +211,7 @@ public sealed class JiraSuggestionsPlugin : WorkSuggestionPluginBase, IDisposabl
 				}
 			}
 
-			Logger?.LogInformation("Fetched {Count} Jira suggestions for JQL: {Jql}", suggestions.Count, jql);
+			Logger.LogInformation("Fetched {Count} Jira suggestions for JQL: {Jql}", suggestions.Count, jql);
 			return PluginResult<IReadOnlyList<WorkSuggestion>>.Success(suggestions);
 		}
 		catch (OperationCanceledException)
@@ -220,17 +220,9 @@ public sealed class JiraSuggestionsPlugin : WorkSuggestionPluginBase, IDisposabl
 		}
 		catch (Exception ex)
 		{
-			Logger?.LogError(ex, "Failed to fetch Jira suggestions");
+			Logger.LogError(ex, "Failed to fetch Jira suggestions");
 			return PluginResult<IReadOnlyList<WorkSuggestion>>.Failure($"Failed to fetch suggestions: {ex.Message}");
 		}
 	}
 
-	public void Dispose()
-	{
-		if (!_disposed)
-		{
-			_jiraClient?.Dispose();
-			_disposed = true;
-		}
-	}
 }

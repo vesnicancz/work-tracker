@@ -1,16 +1,13 @@
+using Microsoft.Extensions.Logging;
+
 namespace WorkTracker.Plugin.Abstractions;
 
 /// <summary>
 /// Base class for worklog upload plugins. Inherits configuration, validation, and lifecycle from <see cref="PluginBase"/>.
 /// </summary>
-public abstract class WorklogUploadPluginBase : PluginBase, IWorklogUploadPlugin
+public abstract class WorklogUploadPluginBase(ILogger logger) : PluginBase(logger), IWorklogUploadPlugin
 {
-	public abstract Task<PluginResult<bool>> TestConnectionAsync(CancellationToken cancellationToken);
-
-	public virtual Task<PluginResult<bool>> TestConnectionAsync(IProgress<string>? progress, CancellationToken cancellationToken)
-	{
-		return TestConnectionAsync(cancellationToken);
-	}
+	public abstract Task<PluginResult<bool>> TestConnectionAsync(IProgress<string>? progress, CancellationToken cancellationToken);
 
 	public abstract Task<PluginResult<bool>> UploadWorklogAsync(PluginWorklogEntry worklog, CancellationToken cancellationToken);
 

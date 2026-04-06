@@ -1,3 +1,4 @@
+using System.Net.Http;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -20,7 +21,7 @@ public class PluginLoadContextTests : IAsyncDisposable
 		Directory.CreateDirectory(_tempDir);
 		var mockLoggerFactory = new Mock<ILoggerFactory>();
 		mockLoggerFactory.Setup(f => f.CreateLogger(It.IsAny<string>())).Returns(Mock.Of<ILogger>());
-		_pluginManager = new PluginManager(mockLoggerFactory.Object);
+		_pluginManager = new PluginManager(mockLoggerFactory.Object, Mock.Of<IHttpClientFactory>());
 	}
 
 	public async ValueTask DisposeAsync()

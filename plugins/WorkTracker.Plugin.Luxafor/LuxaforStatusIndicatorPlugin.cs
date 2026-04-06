@@ -4,7 +4,8 @@ using WorkTracker.Plugin.Abstractions;
 
 namespace WorkTracker.Plugin.Luxafor;
 
-public sealed class LuxaforStatusIndicatorPlugin : StatusIndicatorPluginBase, IDisposable
+public sealed class LuxaforStatusIndicatorPlugin(ILogger<LuxaforStatusIndicatorPlugin> logger, ILuxaforDeviceFactory? deviceFactory = null)
+	: StatusIndicatorPluginBase(logger)
 {
 	private static class ConfigKeys
 	{
@@ -13,9 +14,9 @@ public sealed class LuxaforStatusIndicatorPlugin : StatusIndicatorPluginBase, ID
 		public const string LongBreakColor = "long_break_color";
 	}
 
+	private readonly ILuxaforDeviceFactory _deviceFactory = deviceFactory ?? new LuxaforDeviceFactory();
 	private readonly Lock _deviceLock = new();
-	private LuxaforDevice? _device;
-	private bool _disposed;
+	private ILuxaforDevice? _device;
 
 	private LuxaforColor _workColor = LuxaforColor.Red;
 	private LuxaforColor _shortBreakColor = LuxaforColor.Green;
@@ -65,11 +66,6 @@ public sealed class LuxaforStatusIndicatorPlugin : StatusIndicatorPluginBase, ID
 
 	public override Task SetStateAsync(StatusIndicatorState state, CancellationToken cancellationToken)
 	{
-		if (_disposed)
-		{
-			return Task.CompletedTask;
-		}
-
 		lock (_deviceLock)
 		{
 			try
@@ -98,7 +94,7 @@ public sealed class LuxaforStatusIndicatorPlugin : StatusIndicatorPluginBase, ID
 			}
 			catch (Exception ex)
 			{
-				Logger?.LogWarning(ex, "Failed to set Luxafor state to {State}", state);
+				Logger.LogWarning(ex, "Failed to set Luxafor state to {State}", state);
 				CloseDevice();
 			}
 		}
@@ -127,29 +123,23 @@ public sealed class LuxaforStatusIndicatorPlugin : StatusIndicatorPluginBase, ID
 			{
 				// Best effort
 			}
-
-			CloseDevice();
 		}
 
 		return Task.CompletedTask;
 	}
 
-	public void Dispose()
+	public override ValueTask DisposeAsync()
 	{
-		if (_disposed)
-		{
-			return;
-		}
-
-		_disposed = true;
-
 		lock (_deviceLock)
 		{
 			CloseDevice();
 		}
+
+		GC.SuppressFinalize(this);
+		return ValueTask.CompletedTask;
 	}
 
-	private LuxaforDevice? GetOrOpenDevice()
+	private ILuxaforDevice? GetOrOpenDevice()
 	{
 		if (_device is { IsConnected: true })
 		{
@@ -160,19 +150,19 @@ public sealed class LuxaforStatusIndicatorPlugin : StatusIndicatorPluginBase, ID
 
 		try
 		{
-			_device = LuxaforDevice.TryOpen();
+			_device = _deviceFactory.TryOpen();
 			if (_device == null)
 			{
-				Logger?.LogDebug("Luxafor device not found");
+				Logger.LogDebug("Luxafor device not found");
 				return null;
 			}
 
-			Logger?.LogInformation("Luxafor device connected");
+			Logger.LogInformation("Luxafor device connected");
 			return _device;
 		}
 		catch (Exception ex)
 		{
-			Logger?.LogWarning(ex, "Failed to connect to Luxafor device");
+			Logger.LogWarning(ex, "Failed to connect to Luxafor device");
 			return null;
 		}
 	}
