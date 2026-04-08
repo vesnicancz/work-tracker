@@ -35,6 +35,9 @@ public static class WorkTrackerPaths
 	private static readonly Lazy<string> _cliLogFilePath = new(() =>
 		Path.Combine(AppDataDirectory, "logs", "worktracker-cli-.log"));
 
+	private static readonly Lazy<string> _msalCacheDirectory = new(() =>
+		Path.Combine(AppDataDirectory, "keys"));
+
 	private static readonly Lazy<string> _defaultPluginsPath = new(() =>
 		Path.Combine(AppContext.BaseDirectory, "plugins"));
 
@@ -65,12 +68,13 @@ public static class WorkTrackerPaths
 	public static string CliLogFilePath => _cliLogFilePath.Value;
 
 	/// <summary>
+	/// Directory for MSAL token cache files.
+	/// </summary>
+	public static string MsalCacheDirectory => _msalCacheDirectory.Value;
+
+	/// <summary>
 	/// Default plugins directory (relative to executable).
 	/// </summary>
 	public static string DefaultPluginsPath => _defaultPluginsPath.Value;
 
-	/// <summary>
-	/// MSAL token cache file path for the given tenant/client combination.
-	/// </summary>
-	public static string MsalCachePath(string safeKey) => Path.Combine(AppDataDirectory, "keys", $"msal_{safeKey}.bin");
 }

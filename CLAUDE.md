@@ -63,7 +63,7 @@ Plugins load in isolated `AssemblyLoadContext` from `./plugins/` directory. Thre
 **Infrastructure:**
 - `PluginLoader` — discovers plugin DLLs, loads assemblies, instantiates via DI.
 - `PluginManager` — registration, enabled/disabled state, lifecycle, filtering by type.
-- `MsalTokenProviderFactory` / `MsalTokenProvider` — shared MSAL auth (token cache, device code flow) for plugins needing Azure AD. Lives in `Infrastructure/Auth/`.
+- `MsalTokenProviderFactory` / `MsalTokenProvider` — shared MSAL auth (cross-platform encrypted token cache via `Microsoft.Identity.Client.Extensions.Msal`, device code flow) for plugins needing Azure AD. Lives in `Infrastructure/Auth/`.
 
 **Plugin configuration** is primarily persisted in the user settings file, with `appsettings.json` (under the `Plugins` section) used only as an initial fallback.
 

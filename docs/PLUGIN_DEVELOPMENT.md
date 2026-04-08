@@ -604,14 +604,14 @@ public class MyCalendarPlugin(
 {
     private ITokenProvider? _tokenProvider;
 
-    protected override Task<bool> OnInitializeAsync(
+    protected override async Task<bool> OnInitializeAsync(
         IDictionary<string, string> configuration, CancellationToken cancellationToken)
     {
         var tenantId = GetRequiredConfigValue("TenantId");
         var clientId = GetRequiredConfigValue("ClientId");
-        _tokenProvider = tokenProviderFactory.Create(tenantId, clientId,
+        _tokenProvider = await tokenProviderFactory.CreateAsync(tenantId, clientId,
             ["Calendars.Read", "User.Read"]);
-        return Task.FromResult(true);
+        return true;
     }
 }
 ```
