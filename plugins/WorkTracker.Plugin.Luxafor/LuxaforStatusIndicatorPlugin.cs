@@ -95,6 +95,10 @@ public sealed class LuxaforStatusIndicatorPlugin(ILogger<LuxaforStatusIndicatorP
 					break;
 			}
 		}
+		catch (OperationCanceledException)
+		{
+			throw;
+		}
 		catch (Exception ex)
 		{
 			Logger.LogWarning(ex, "Failed to set Luxafor state to {State}", state);
