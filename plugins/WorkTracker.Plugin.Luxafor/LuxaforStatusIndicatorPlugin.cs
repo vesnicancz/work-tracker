@@ -37,20 +37,8 @@ public sealed class LuxaforStatusIndicatorPlugin(ILogger<LuxaforStatusIndicatorP
 	{
 		get
 		{
-			if (_disposed)
-			{
-				return false;
-			}
-
-			_deviceLock.Wait();
-			try
-			{
-				return _device is { IsConnected: true };
-			}
-			finally
-			{
-				_deviceLock.Release();
-			}
+			var device = _device;
+			return device is { IsConnected: true };
 		}
 	}
 
@@ -155,16 +143,16 @@ public sealed class LuxaforStatusIndicatorPlugin(ILogger<LuxaforStatusIndicatorP
 		}
 	}
 
-	protected override ValueTask OnDisposeAsync()
+	protected override async ValueTask OnDisposeAsync()
 	{
 		if (_disposed)
 		{
-			return ValueTask.CompletedTask;
+			return;
 		}
 
 		_disposed = true;
 
-		_deviceLock.Wait();
+		await _deviceLock.WaitAsync();
 		try
 		{
 			CloseDevice();
@@ -173,10 +161,6 @@ public sealed class LuxaforStatusIndicatorPlugin(ILogger<LuxaforStatusIndicatorP
 		{
 			_deviceLock.Release();
 		}
-
-		_deviceLock.Dispose();
-
-		return ValueTask.CompletedTask;
 	}
 
 	private ILuxaforDevice? GetOrOpenDevice()
