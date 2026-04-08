@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Logging;
 using Microsoft.Identity.Client;
+using WorkTracker.Application;
 using WorkTracker.Plugin.Abstractions;
 
 namespace WorkTracker.Infrastructure.Auth;
@@ -25,9 +26,7 @@ public sealed class MsalTokenProviderFactory(ILoggerFactory loggerFactory) : ITo
 		// Use hash-based filename to prevent path traversal via user-provided tenantId/clientId
 		var safeKey = Convert.ToHexString(
 			SHA256.HashData(Encoding.UTF8.GetBytes($"{tenantId}:{clientId}")));
-		var cacheFilePath = Path.Combine(
-			Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-			"WorkTracker", $"msal_{safeKey}.bin");
+		var cacheFilePath = WorkTrackerPaths.MsalCachePath(safeKey);
 
 		Directory.CreateDirectory(Path.GetDirectoryName(cacheFilePath)!);
 

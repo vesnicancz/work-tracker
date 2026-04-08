@@ -16,7 +16,7 @@ public sealed class Office365CalendarPlugin(
 	: WorkSuggestionPluginBase(logger)
 {
 	private static readonly TimeSpan HttpTimeout = TimeSpan.FromSeconds(30);
-	private static readonly string[] GraphScopes = ["Calendars.Read"];
+	private static readonly string[] GraphScopes = ["Calendars.Read", "User.Read"];
 
 	private static class ConfigKeys
 	{
@@ -61,7 +61,7 @@ public sealed class Office365CalendarPlugin(
 			{
 				Key = ConfigKeys.ClientId,
 				Label = "Client ID",
-				Description = "Azure AD App Registration Client ID (requires Calendars.Read permission)",
+				Description = "Azure AD App Registration Client ID (requires Calendars.Read and User.Read permissions)",
 				Type = PluginConfigurationFieldType.Text,
 				IsRequired = true,
 				Placeholder = "00000000-0000-0000-0000-000000000000"

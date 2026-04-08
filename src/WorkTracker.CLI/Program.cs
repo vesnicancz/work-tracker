@@ -1,8 +1,9 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
+using Serilog;
 using Spectre.Console;
+using WorkTracker.Application;
 using WorkTracker.CLI.Commands;
 using WorkTracker.Infrastructure;
 
@@ -16,9 +17,18 @@ builder.Configuration
 	.AddEnvironmentVariables();
 
 // Logging
-builder.Logging.ClearProviders();
-builder.Logging.AddConsole();
-builder.Logging.SetMinimumLevel(LogLevel.Warning);
+builder.Services.AddSerilog(loggerConfiguration =>
+{
+	loggerConfiguration
+		.MinimumLevel.Information()
+		.MinimumLevel.Override("Microsoft", Serilog.Events.LogEventLevel.Warning)
+		.MinimumLevel.Override("System", Serilog.Events.LogEventLevel.Warning)
+		.WriteTo.Console(restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Warning)
+		.WriteTo.File(WorkTrackerPaths.CliLogFilePath,
+			rollingInterval: RollingInterval.Day,
+			retainedFileCountLimit: 14,
+			outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}");
+});
 
 // Services
 builder.Services.AddInfrastructure(builder.Configuration);
@@ -28,10 +38,10 @@ builder.Services.AddTransient<CommandHandler>();
 var host = builder.Build();
 
 // Initialize database
-await DependencyInjection.InitializeDatabaseAsync(host.Services);
+await WorkTracker.Infrastructure.DependencyInjection.InitializeDatabaseAsync(host.Services);
 
 // Initialize plugins (loads embedded + external plugins, initializes all with configuration)
-await DependencyInjection.InitializePluginsAsync(host.Services, builder.Configuration);
+await WorkTracker.Infrastructure.DependencyInjection.InitializePluginsAsync(host.Services, builder.Configuration);
 
 // Parse command line arguments
 if (args.Length == 0)

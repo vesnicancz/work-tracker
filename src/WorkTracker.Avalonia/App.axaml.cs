@@ -8,6 +8,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Serilog;
+using WorkTracker.Application;
 using WorkTracker.Application.Plugins;
 using WorkTracker.Avalonia.Services;
 using WorkTracker.Avalonia.ViewModels;
@@ -105,11 +107,16 @@ public partial class App : global::Avalonia.Application
 						services.AddTransient<SubmitWorklogViewModel>();
 						services.AddTransient<SettingsViewModel>();
 					})
-					.ConfigureLogging(logging =>
+					.UseSerilog((context, loggerConfiguration) =>
 					{
-						logging.ClearProviders();
-						logging.AddDebug();
-						logging.AddConsole();
+						loggerConfiguration
+							.MinimumLevel.Information()
+							.MinimumLevel.Override("Microsoft", Serilog.Events.LogEventLevel.Warning)
+							.MinimumLevel.Override("System", Serilog.Events.LogEventLevel.Warning)
+							.WriteTo.File(WorkTrackerPaths.LogFilePath,
+								rollingInterval: RollingInterval.Day,
+								retainedFileCountLimit: 14,
+								outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}");
 					})
 					.Build();
 
@@ -119,7 +126,7 @@ public partial class App : global::Avalonia.Application
 			await _host.StartAsync();
 
 			// DB migration + worklog state (needed before showing data)
-			await DependencyInjection.InitializeDatabaseAsync(_host.Services);
+			await Infrastructure.DependencyInjection.InitializeDatabaseAsync(_host.Services);
 			var worklogStateService = _host.Services.GetRequiredService<IWorklogStateService>();
 			await worklogStateService.InitializeAsync();
 
@@ -170,7 +177,7 @@ public partial class App : global::Avalonia.Application
 			{
 				try
 				{
-					await DependencyInjection.InitializePluginsAsync(
+					await Infrastructure.DependencyInjection.InitializePluginsAsync(
 						_host.Services, configuration,
 						settingsService.Settings.EnabledPlugins,
 						settingsService.Settings.PluginConfigurations);
@@ -213,17 +220,7 @@ public partial class App : global::Avalonia.Application
 	{
 		try
 		{
-			var appDataFolder = "WorkTracker";
-			var env = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT")
-				?? Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
-			if (!string.IsNullOrEmpty(env) && env != "Production")
-			{
-				appDataFolder += $"_{env}";
-			}
-
-			var settingsPath = Path.Combine(
-				Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-				appDataFolder, "settings.json");
+			var settingsPath = WorkTrackerPaths.SettingsFilePath;
 
 			if (!File.Exists(settingsPath))
 			{

@@ -610,7 +610,7 @@ public class MyCalendarPlugin(
         var tenantId = GetRequiredConfigValue("TenantId");
         var clientId = GetRequiredConfigValue("ClientId");
         _tokenProvider = tokenProviderFactory.Create(tenantId, clientId,
-            ["Calendars.Read"]);
+            ["Calendars.Read", "User.Read"]);
         return Task.FromResult(true);
     }
 }
