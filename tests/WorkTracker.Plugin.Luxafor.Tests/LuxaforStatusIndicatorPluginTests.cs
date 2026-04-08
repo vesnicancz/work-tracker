@@ -1,5 +1,5 @@
+using DotLuxafor;
 using FluentAssertions;
-using Luxafor.HidSharp;
 using Microsoft.Extensions.Logging.Abstractions;
 using WorkTracker.Plugin.Abstractions;
 using WorkTracker.Plugin.Luxafor;
@@ -21,7 +21,7 @@ public class LuxaforStatusIndicatorPluginTests : IAsyncDisposable
 	{
 		_plugin = new LuxaforStatusIndicatorPlugin(
 			NullLogger<LuxaforStatusIndicatorPlugin>.Instance,
-			deviceFactory: new MockLuxaforDeviceFactory(() => null));
+			deviceManager: new MockLuxaforDeviceManager(() => null));
 	}
 
 	public async ValueTask DisposeAsync()
@@ -39,7 +39,7 @@ public class LuxaforStatusIndicatorPluginTests : IAsyncDisposable
 	{
 		return new LuxaforStatusIndicatorPlugin(
 			NullLogger<LuxaforStatusIndicatorPlugin>.Instance,
-			deviceFactory: new MockLuxaforDeviceFactory(() => device));
+			deviceManager: new MockLuxaforDeviceManager(() => device));
 	}
 
 	#region Metadata
@@ -262,7 +262,7 @@ public class LuxaforStatusIndicatorPluginTests : IAsyncDisposable
 		var callCount = 0;
 		await using var plugin = new LuxaforStatusIndicatorPlugin(
 			NullLogger<LuxaforStatusIndicatorPlugin>.Instance,
-			deviceFactory: new MockLuxaforDeviceFactory(() => callCount++ == 0 ? failingDevice : newDevice));
+			deviceManager: new MockLuxaforDeviceManager(() => callCount++ == 0 ? failingDevice : newDevice));
 		await plugin.InitializeAsync(ValidConfig, TestContext.Current.CancellationToken);
 
 		await plugin.SetStateAsync(StatusIndicatorState.Work, TestContext.Current.CancellationToken);
@@ -279,7 +279,7 @@ public class LuxaforStatusIndicatorPluginTests : IAsyncDisposable
 		var device = new MockLuxaforDevice();
 		await using var plugin = new LuxaforStatusIndicatorPlugin(
 			NullLogger<LuxaforStatusIndicatorPlugin>.Instance,
-			deviceFactory: new MockLuxaforDeviceFactory(() => { factoryCallCount++; return device; }));
+			deviceManager: new MockLuxaforDeviceManager(() => { factoryCallCount++; return device; }));
 		await plugin.InitializeAsync(ValidConfig, TestContext.Current.CancellationToken);
 
 		await plugin.SetStateAsync(StatusIndicatorState.Work, TestContext.Current.CancellationToken);
@@ -326,16 +326,16 @@ public class LuxaforStatusIndicatorPluginTests : IAsyncDisposable
 	#endregion
 }
 
-internal sealed class MockLuxaforDeviceFactory(Func<ILuxaforDevice?> factory) : ILuxaforDeviceFactory
+internal sealed class MockLuxaforDeviceManager(Func<ILuxaforDevice?> factory) : ILuxaforDeviceManager
 {
 	public ILuxaforDevice? TryOpen() => factory();
+	public IReadOnlyList<ILuxaforDevice> OpenAll() => [];
+	public bool IsDevicePresent() => false;
 }
 
-#pragma warning disable CS0067
 internal sealed class MockLuxaforDevice : ILuxaforDevice
 {
 	public bool IsConnected { get; set; } = true;
-	public bool IsMonitoring => false;
 	public DeviceInfo? DeviceInfo => null;
 
 	public LuxaforColor? LastColor { get; private set; }
@@ -344,7 +344,7 @@ internal sealed class MockLuxaforDevice : ILuxaforDevice
 	public bool Disposed { get; private set; }
 	public bool ThrowOnSetColor { get; set; }
 
-	public void SetColor(LuxaforColor color)
+	public Task SetColorAsync(LuxaforColor color, LedTarget target, CancellationToken cancellationToken)
 	{
 		if (ThrowOnSetColor)
 		{
@@ -353,39 +353,30 @@ internal sealed class MockLuxaforDevice : ILuxaforDevice
 
 		LastColor = color;
 		SetColorCallCount++;
+		return Task.CompletedTask;
 	}
 
-	public void SetColor(byte r, byte g, byte b) => SetColor(new LuxaforColor(r, g, b));
-	public void SetColor(Led target, byte r, byte g, byte b) => SetColor(r, g, b);
-	public void SetColor(Led target, LuxaforColor color) => SetColor(color);
+	public Task TurnOffAsync(CancellationToken cancellationToken)
+	{
+		TurnedOff = true;
+		return Task.CompletedTask;
+	}
 
-	public void TurnOff() => TurnedOff = true;
+	public Task FadeToAsync(LuxaforColor color, byte speed, LedTarget target, CancellationToken cancellationToken) => Task.CompletedTask;
+	public Task StrobeAsync(LuxaforColor color, byte speed, byte repeat, LedTarget target, CancellationToken cancellationToken) => Task.CompletedTask;
+	public Task WaveAsync(WaveType type, LuxaforColor color, byte speed, byte repeat, CancellationToken cancellationToken) => Task.CompletedTask;
+	public Task PlayPatternAsync(BuiltInPattern pattern, byte repeat, CancellationToken cancellationToken) => Task.CompletedTask;
 
-	public void FadeTo(byte r, byte g, byte b, byte speed) { }
-	public void FadeTo(LuxaforColor color, byte speed) { }
-	public void FadeTo(Led target, byte r, byte g, byte b, byte speed) { }
-	public void FadeTo(Led target, LuxaforColor color, byte speed) { }
+	public Task RequestDeviceInfoAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
-	public void Strobe(byte r, byte g, byte b, byte speed, byte repeat) { }
-	public void Strobe(LuxaforColor color, byte speed, byte repeat) { }
-	public void Strobe(Led target, byte r, byte g, byte b, byte speed, byte repeat) { }
-	public void Strobe(Led target, LuxaforColor color, byte speed, byte repeat) { }
+	public IAsyncEnumerable<LuxaforEvent> ObserveAsync(CancellationToken cancellationToken) =>
+		AsyncEnumerable.Empty<LuxaforEvent>();
 
-	public void Wave(WaveType type, byte r, byte g, byte b, byte speed, byte repeat) { }
-	public void Wave(WaveType type, LuxaforColor color, byte speed, byte repeat) { }
-
-	public void PlayPattern(BuiltInPattern pattern, byte repeat) { }
-
-	public void StartMonitoring() { }
-	public void StopMonitoring() { }
-	public void RequestDeviceInfo() { }
-
-	public event EventHandler<DeviceInfo>? DeviceIdentified;
-	public event EventHandler<DongleInfo>? DongleDataReceived;
-	public event EventHandler<bool>? MuteButtonStateChanged;
-	public event EventHandler? PatternCompleted;
-	public event EventHandler? Disconnected;
-	public event EventHandler<Exception>? ReadError;
+	public ValueTask DisposeAsync()
+	{
+		Dispose();
+		return ValueTask.CompletedTask;
+	}
 
 	public void Dispose()
 	{
@@ -393,4 +384,3 @@ internal sealed class MockLuxaforDevice : ILuxaforDevice
 		IsConnected = false;
 	}
 }
-#pragma warning restore CS0067

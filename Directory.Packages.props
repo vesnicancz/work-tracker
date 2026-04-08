@@ -48,10 +48,8 @@
     <PackageVersion Include="ModelContextProtocol" Version="1.2.0" />
     <!-- Other -->
     <PackageVersion Include="Devlooped.CredentialManager" Version="2.7.0" />
-    <PackageVersion Include="HidSharp" Version="2.6.4" />
-    <PackageVersion Include="Microsoft.Bcl.HashCode" Version="6.0.0" />
+    <PackageVersion Include="DotLuxafor" Version="0.1.0" />
     <PackageVersion Include="Microsoft.Identity.Client" Version="4.83.3" />
     <PackageVersion Include="Spectre.Console" Version="0.55.0" />
-    <PackageVersion Include="System.Memory" Version="4.6.3" />
   </ItemGroup>
 </Project>

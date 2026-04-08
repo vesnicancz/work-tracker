@@ -5,7 +5,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\WorkTracker.Plugin.Abstractions\WorkTracker.Plugin.Abstractions.csproj" />
-    <ProjectReference Include="..\..\src\Luxafor.HidSharp\Luxafor.HidSharp.csproj" />
+    <PackageReference Include="DotLuxafor" />
   </ItemGroup>
 
 </Project>
