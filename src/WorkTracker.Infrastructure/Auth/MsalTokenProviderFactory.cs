@@ -42,7 +42,7 @@ public sealed class MsalTokenProviderFactory(ILoggerFactory loggerFactory) : ITo
 		{
 			logger.LogWarning(ex, "Encrypted token cache not available, falling back to unprotected file");
 
-			var fallbackProperties = new StorageCreationPropertiesBuilder(cacheFileName, WorkTrackerPaths.MsalCacheDirectory)
+			var fallbackProperties = new StorageCreationPropertiesBuilder($"msal_{safeKey}_plain.bin", WorkTrackerPaths.MsalCacheDirectory)
 				.WithLinuxUnprotectedFile()
 				.Build();
 
