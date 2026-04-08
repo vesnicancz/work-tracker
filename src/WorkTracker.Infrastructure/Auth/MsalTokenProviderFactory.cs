@@ -23,6 +23,8 @@ public sealed class MsalTokenProviderFactory(ILoggerFactory loggerFactory) : ITo
 			SHA256.HashData(Encoding.UTF8.GetBytes($"{tenantId}:{clientId}")));
 		var cacheFileName = $"msal_{safeKey}.bin";
 
+		var logger = loggerFactory.CreateLogger<MsalTokenProvider>();
+
 		var storageProperties = new StorageCreationPropertiesBuilder(cacheFileName, WorkTrackerPaths.MsalCacheDirectory)
 			.WithMacKeyChain("WorkTracker", $"msal-{safeKey}")
 			.WithLinuxKeyring("worktracker", "default", "MSAL token cache",
@@ -31,9 +33,23 @@ public sealed class MsalTokenProviderFactory(ILoggerFactory loggerFactory) : ITo
 			.Build();
 
 		var cacheHelper = await MsalCacheHelper.CreateAsync(storageProperties);
-		cacheHelper.RegisterCache(msalApp.UserTokenCache);
 
-		var logger = loggerFactory.CreateLogger<MsalTokenProvider>();
+		try
+		{
+			cacheHelper.VerifyPersistence();
+		}
+		catch (MsalCachePersistenceException ex)
+		{
+			logger.LogWarning(ex, "Encrypted token cache not available, falling back to unprotected file");
+
+			var fallbackProperties = new StorageCreationPropertiesBuilder(cacheFileName, WorkTrackerPaths.MsalCacheDirectory)
+				.WithLinuxUnprotectedFile()
+				.Build();
+
+			cacheHelper = await MsalCacheHelper.CreateAsync(fallbackProperties);
+		}
+
+		cacheHelper.RegisterCache(msalApp.UserTokenCache);
 		return new MsalTokenProvider(msalApp, scopes, logger);
 	}
 }
