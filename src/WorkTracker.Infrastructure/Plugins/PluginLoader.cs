@@ -66,7 +66,8 @@ internal sealed class PluginLoader(IServiceProvider pluginServiceProvider, ILogg
 
 		foreach (var directory in directories)
 		{
-			var pluginFiles = Directory.GetFiles(directory, "WorkTracker.Plugin.*.dll", SearchOption.AllDirectories);
+			var pluginFiles = Directory.GetFiles(directory, "WorkTracker.Plugin.*.dll", SearchOption.AllDirectories)
+				.Where(f => !Path.GetFileName(f).Equals("WorkTracker.Plugin.Abstractions.dll", StringComparison.OrdinalIgnoreCase));
 			results.AddRange(pluginFiles);
 		}
 
