@@ -24,7 +24,9 @@ public sealed class SettingsService : ISettingsService
 		_logger = logger;
 		_secureStorage = secureStorage;
 
-		var directory = settingsDirectoryOverride ?? WorkTrackerPaths.AppDataDirectory;
+		var directory = string.IsNullOrWhiteSpace(settingsDirectoryOverride)
+			? WorkTrackerPaths.AppDataDirectory
+			: settingsDirectoryOverride;
 		Directory.CreateDirectory(directory);
 		_settingsFilePath = Path.Combine(directory, "settings.json");
 
