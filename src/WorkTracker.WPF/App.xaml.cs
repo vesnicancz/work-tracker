@@ -6,6 +6,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Serilog;
+using WorkTracker.Application;
 using WorkTracker.Application.Plugins;
 using WorkTracker.Infrastructure;
 using WorkTracker.UI.Shared;
@@ -88,11 +90,16 @@ public partial class App : System.Windows.Application
 				// Views - MainWindow as Singleton
 				services.AddSingleton<MainWindow>();
 			})
-			.ConfigureLogging(logging =>
+			.UseSerilog((context, loggerConfiguration) =>
 			{
-				logging.ClearProviders();
-				logging.AddDebug();
-				logging.AddConsole();
+				loggerConfiguration
+					.MinimumLevel.Information()
+					.MinimumLevel.Override("Microsoft", Serilog.Events.LogEventLevel.Warning)
+					.MinimumLevel.Override("System", Serilog.Events.LogEventLevel.Warning)
+					.WriteTo.File(WorkTrackerPaths.LogFilePath,
+						rollingInterval: RollingInterval.Day,
+						retainedFileCountLimit: 14,
+						outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}");
 			})
 			.Build();
 	}
@@ -134,8 +141,8 @@ public partial class App : System.Windows.Application
 
 			await AppBootstrapper.InitializeAsync(
 				_host.Services,
-				DependencyInjection.InitializeDatabaseAsync,
-				DependencyInjection.InitializePluginsAsync);
+				Infrastructure.DependencyInjection.InitializeDatabaseAsync,
+				Infrastructure.DependencyInjection.InitializePluginsAsync);
 
 			// Get singleton MainWindow (no scope needed with Factory pattern)
 			_mainWindow = _host.Services.GetRequiredService<MainWindow>();

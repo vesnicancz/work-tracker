@@ -1,6 +1,5 @@
 using System.Text.Json;
 using FluentAssertions;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Moq;
 using WorkTracker.Application.Services;
@@ -13,18 +12,11 @@ public class SettingsServiceTests : IDisposable
 {
 	private readonly Mock<ILogger<SettingsService>> _mockLogger = new();
 	private readonly Mock<ISecureStorage> _mockSecureStorage = new();
-	private readonly Mock<IHostEnvironment> _mockHostEnvironment = new();
-	private readonly string _envName;
 	private readonly string _settingsDir;
 
 	public SettingsServiceTests()
 	{
-		_envName = $"Test_{Guid.NewGuid():N}";
-		_mockHostEnvironment.Setup(h => h.EnvironmentName).Returns(_envName);
-
-		_settingsDir = Path.Combine(
-			Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-			$"WorkTracker_{_envName}");
+		_settingsDir = Application.WorkTrackerPaths.AppDataDirectory;
 
 		// Default: pass-through for Unprotect
 		_mockSecureStorage.Setup(s => s.Unprotect(It.IsAny<string>())).Returns((string v) => v);
@@ -32,14 +24,17 @@ public class SettingsServiceTests : IDisposable
 
 	public void Dispose()
 	{
-		if (Directory.Exists(_settingsDir))
+		// Clean up settings file created during test, but keep the directory
+		// (it may be shared with other components using the same environment)
+		var settingsFile = Path.Combine(_settingsDir, "settings.json");
+		if (File.Exists(settingsFile))
 		{
-			Directory.Delete(_settingsDir, recursive: true);
+			File.Delete(settingsFile);
 		}
 	}
 
 	private SettingsService CreateSut() =>
-		new(_mockLogger.Object, _mockSecureStorage.Object, _mockHostEnvironment.Object);
+		new(_mockLogger.Object, _mockSecureStorage.Object);
 
 	private void WriteSettingsFile(ApplicationSettings settings)
 	{

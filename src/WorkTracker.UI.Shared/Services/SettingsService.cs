@@ -1,7 +1,7 @@
 using System.Runtime.InteropServices;
 using System.Text.Json;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using WorkTracker.Application;
 using WorkTracker.Application.Services;
 using WorkTracker.UI.Shared.Models;
 
@@ -19,21 +19,13 @@ public sealed class SettingsService : ISettingsService
 
 	private static readonly JsonSerializerOptions WriteOptions = new() { WriteIndented = true };
 
-	public SettingsService(ILogger<SettingsService> logger, ISecureStorage secureStorage, IHostEnvironment hostEnvironment)
+	public SettingsService(ILogger<SettingsService> logger, ISecureStorage secureStorage)
 	{
 		_logger = logger;
 		_secureStorage = secureStorage;
 
-		// Store settings in AppData/Local/WorkTracker
-		var appDataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WorkTracker");
-
-		if (!hostEnvironment.IsProduction())
-		{
-			appDataPath += $"_{hostEnvironment.EnvironmentName}";
-		}
-
-		Directory.CreateDirectory(appDataPath);
-		_settingsFilePath = Path.Combine(appDataPath, "settings.json");
+		Directory.CreateDirectory(WorkTrackerPaths.AppDataDirectory);
+		_settingsFilePath = WorkTrackerPaths.SettingsFilePath;
 
 		_settings = LoadSettings();
 	}
