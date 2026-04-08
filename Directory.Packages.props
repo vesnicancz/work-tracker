@@ -54,6 +54,7 @@
     <PackageVersion Include="Devlooped.CredentialManager" Version="2.7.0" />
     <PackageVersion Include="DotLuxafor" Version="0.1.0" />
     <PackageVersion Include="Microsoft.Identity.Client" Version="4.83.3" />
+    <PackageVersion Include="Microsoft.Identity.Client.Extensions.Msal" Version="4.83.3" />
     <PackageVersion Include="Spectre.Console" Version="0.55.0" />
   </ItemGroup>
 </Project>

@@ -78,19 +78,19 @@ public sealed class Office365CalendarPlugin(
 		];
 	}
 
-	protected override Task<bool> OnInitializeAsync(IDictionary<string, string> configuration, CancellationToken cancellationToken)
+	protected override async Task<bool> OnInitializeAsync(IDictionary<string, string> configuration, CancellationToken cancellationToken)
 	{
 		var tenantId = GetRequiredConfigValue(ConfigKeys.TenantId);
 		var clientId = GetRequiredConfigValue(ConfigKeys.ClientId);
 		_includeAllDayEvents = string.Equals(GetConfigValue(ConfigKeys.IncludeAllDayEvents), "true", StringComparison.OrdinalIgnoreCase);
 
-		_tokenProvider = _tokenProviderFactory.Create(tenantId, clientId, GraphScopes);
+		_tokenProvider = await _tokenProviderFactory.CreateAsync(tenantId, clientId, GraphScopes);
 
 		_httpClient?.Dispose();
 		_httpClient = _httpClientFactory.CreateClient();
 		_httpClient.Timeout = HttpTimeout;
 
-		return Task.FromResult(true);
+		return true;
 	}
 
 	protected override ValueTask OnDisposeAsync()

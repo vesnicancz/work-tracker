@@ -439,8 +439,8 @@ internal sealed class MockTokenProvider(string? token) : ITokenProvider
 
 internal sealed class MockTokenProviderFactory(string? token = "fake-token") : ITokenProviderFactory
 {
-	public ITokenProvider Create(string tenantId, string clientId, string[] scopes)
-		=> new MockTokenProvider(token);
+	public Task<ITokenProvider> CreateAsync(string tenantId, string clientId, string[] scopes)
+		=> Task.FromResult<ITokenProvider>(new MockTokenProvider(token));
 }
 
 internal sealed class MockHttpClientFactory(HttpMessageHandler handler) : IHttpClientFactory
