@@ -16,7 +16,7 @@ public class SettingsServiceTests : IDisposable
 
 	public SettingsServiceTests()
 	{
-		_settingsDir = Application.WorkTrackerPaths.AppDataDirectory;
+		_settingsDir = Path.Combine(Path.GetTempPath(), $"WorkTracker_Test_{Guid.NewGuid():N}");
 
 		// Default: pass-through for Unprotect
 		_mockSecureStorage.Setup(s => s.Unprotect(It.IsAny<string>())).Returns((string v) => v);
@@ -24,17 +24,14 @@ public class SettingsServiceTests : IDisposable
 
 	public void Dispose()
 	{
-		// Clean up settings file created during test, but keep the directory
-		// (it may be shared with other components using the same environment)
-		var settingsFile = Path.Combine(_settingsDir, "settings.json");
-		if (File.Exists(settingsFile))
+		if (Directory.Exists(_settingsDir))
 		{
-			File.Delete(settingsFile);
+			Directory.Delete(_settingsDir, recursive: true);
 		}
 	}
 
 	private SettingsService CreateSut() =>
-		new(_mockLogger.Object, _mockSecureStorage.Object);
+		new(_mockLogger.Object, _mockSecureStorage.Object, _settingsDir);
 
 	private void WriteSettingsFile(ApplicationSettings settings)
 	{

@@ -19,13 +19,14 @@ public sealed class SettingsService : ISettingsService
 
 	private static readonly JsonSerializerOptions WriteOptions = new() { WriteIndented = true };
 
-	public SettingsService(ILogger<SettingsService> logger, ISecureStorage secureStorage)
+	public SettingsService(ILogger<SettingsService> logger, ISecureStorage secureStorage, string? settingsDirectoryOverride = null)
 	{
 		_logger = logger;
 		_secureStorage = secureStorage;
 
-		Directory.CreateDirectory(WorkTrackerPaths.AppDataDirectory);
-		_settingsFilePath = WorkTrackerPaths.SettingsFilePath;
+		var directory = settingsDirectoryOverride ?? WorkTrackerPaths.AppDataDirectory;
+		Directory.CreateDirectory(directory);
+		_settingsFilePath = Path.Combine(directory, "settings.json");
 
 		_settings = LoadSettings();
 	}
