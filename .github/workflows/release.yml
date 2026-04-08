@@ -17,12 +17,12 @@ jobs:
     name: Run tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
@@ -51,12 +51,12 @@ jobs:
           - rid: osx-arm64
             artifact: WorkTracker-CLI-osx-arm64
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
@@ -77,7 +77,7 @@ jobs:
           zip -r ../${{ matrix.artifact }}.zip .
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: ${{ matrix.artifact }}
           path: publish/${{ matrix.artifact }}.zip
@@ -87,12 +87,12 @@ jobs:
     needs: test
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
@@ -111,7 +111,7 @@ jobs:
         run: Compress-Archive -Path publish/WorkTracker-WPF-win-x64/* -DestinationPath publish/WorkTracker-WPF-win-x64.zip
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: WorkTracker-WPF-win-x64
           path: publish/WorkTracker-WPF-win-x64.zip
@@ -139,12 +139,12 @@ jobs:
             os: windows-latest
             artifact: WorkTracker-Avalonia-win-arm64
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
@@ -170,7 +170,7 @@ jobs:
         run: Compress-Archive -Path publish/${{ matrix.artifact }}/* -DestinationPath publish/${{ matrix.artifact }}.zip
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: ${{ matrix.artifact }}
           path: publish/${{ matrix.artifact }}.zip
@@ -195,12 +195,12 @@ jobs:
             project: plugins/WorkTracker.Plugin.Office365Calendar/WorkTracker.Plugin.Office365Calendar.csproj
             artifact: WorkTracker.Plugin.Office365Calendar
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
@@ -217,7 +217,7 @@ jobs:
           zip -r ${{ matrix.artifact }}.zip ${{ matrix.artifact }}
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: ${{ matrix.artifact }}
           path: publish/${{ matrix.artifact }}.zip
@@ -227,10 +227,10 @@ jobs:
     needs: [publish-cli, publish-wpf, publish-avalonia, publish-plugins]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           path: artifacts
           merge-multiple: true
