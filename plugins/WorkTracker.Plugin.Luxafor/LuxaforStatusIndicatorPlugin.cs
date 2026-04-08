@@ -1,10 +1,10 @@
-using Luxafor.HidSharp;
+using DotLuxafor;
 using Microsoft.Extensions.Logging;
 using WorkTracker.Plugin.Abstractions;
 
 namespace WorkTracker.Plugin.Luxafor;
 
-public sealed class LuxaforStatusIndicatorPlugin(ILogger<LuxaforStatusIndicatorPlugin> logger, ILuxaforDeviceFactory? deviceFactory = null)
+public sealed class LuxaforStatusIndicatorPlugin(ILogger<LuxaforStatusIndicatorPlugin> logger, ILuxaforDeviceManager? deviceManager = null)
 	: StatusIndicatorPluginBase(logger)
 {
 	private static class ConfigKeys
@@ -14,8 +14,8 @@ public sealed class LuxaforStatusIndicatorPlugin(ILogger<LuxaforStatusIndicatorP
 		public const string LongBreakColor = "long_break_color";
 	}
 
-	private readonly ILuxaforDeviceFactory _deviceFactory = deviceFactory ?? new LuxaforDeviceFactory();
-	private readonly Lock _deviceLock = new();
+	private readonly ILuxaforDeviceManager _deviceManager = deviceManager ?? new LuxaforDeviceManager();
+	private readonly SemaphoreSlim _deviceLock = new(1, 1);
 	private ILuxaforDevice? _device;
 	private bool _disposed;
 
@@ -37,9 +37,19 @@ public sealed class LuxaforStatusIndicatorPlugin(ILogger<LuxaforStatusIndicatorP
 	{
 		get
 		{
-			lock (_deviceLock)
+			if (_disposed)
+			{
+				return false;
+			}
+
+			_deviceLock.Wait();
+			try
 			{
 				return _device is { IsConnected: true };
+			}
+			finally
+			{
+				_deviceLock.Release();
 			}
 		}
 	}
@@ -65,47 +75,47 @@ public sealed class LuxaforStatusIndicatorPlugin(ILogger<LuxaforStatusIndicatorP
 		ValidationMessage = "Must be a hex color (e.g. #FF0000)"
 	};
 
-	public override Task SetStateAsync(StatusIndicatorState state, CancellationToken cancellationToken)
+	public override async Task SetStateAsync(StatusIndicatorState state, CancellationToken cancellationToken)
 	{
 		if (_disposed)
 		{
-			return Task.CompletedTask;
+			return;
 		}
 
-		lock (_deviceLock)
+		await _deviceLock.WaitAsync(cancellationToken);
+		try
 		{
-			try
+			var device = GetOrOpenDevice();
+			if (device == null)
 			{
-				var device = GetOrOpenDevice();
-				if (device == null)
-				{
-					return Task.CompletedTask;
-				}
-
-				switch (state)
-				{
-					case StatusIndicatorState.Work:
-						device.SetColor(_workColor);
-						break;
-					case StatusIndicatorState.ShortBreak:
-						device.SetColor(_shortBreakColor);
-						break;
-					case StatusIndicatorState.LongBreak:
-						device.SetColor(_longBreakColor);
-						break;
-					default:
-						device.TurnOff();
-						break;
-				}
+				return;
 			}
-			catch (Exception ex)
+
+			switch (state)
 			{
-				Logger.LogWarning(ex, "Failed to set Luxafor state to {State}", state);
-				CloseDevice();
+				case StatusIndicatorState.Work:
+					await device.SetColorAsync(_workColor, cancellationToken: cancellationToken);
+					break;
+				case StatusIndicatorState.ShortBreak:
+					await device.SetColorAsync(_shortBreakColor, cancellationToken: cancellationToken);
+					break;
+				case StatusIndicatorState.LongBreak:
+					await device.SetColorAsync(_longBreakColor, cancellationToken: cancellationToken);
+					break;
+				default:
+					await device.TurnOffAsync(cancellationToken);
+					break;
 			}
 		}
-
-		return Task.CompletedTask;
+		catch (Exception ex)
+		{
+			Logger.LogWarning(ex, "Failed to set Luxafor state to {State}", state);
+			CloseDevice();
+		}
+		finally
+		{
+			_deviceLock.Release();
+		}
 	}
 
 	protected override Task<bool> OnInitializeAsync(IDictionary<string, string> configuration, CancellationToken cancellationToken)
@@ -117,31 +127,54 @@ public sealed class LuxaforStatusIndicatorPlugin(ILogger<LuxaforStatusIndicatorP
 		return Task.FromResult(true);
 	}
 
-	protected override Task OnShutdownAsync()
+	protected override async Task OnShutdownAsync()
 	{
-		lock (_deviceLock)
+		if (_disposed)
 		{
-			try
-			{
-				_device?.TurnOff();
-			}
-			catch
-			{
-				// Best effort
-			}
+			return;
 		}
 
-		return Task.CompletedTask;
+		await _deviceLock.WaitAsync();
+		try
+		{
+			if (_device != null)
+			{
+				try
+				{
+					await _device.TurnOffAsync();
+				}
+				catch
+				{
+					// Best effort
+				}
+			}
+		}
+		finally
+		{
+			_deviceLock.Release();
+		}
 	}
 
 	protected override ValueTask OnDisposeAsync()
 	{
+		if (_disposed)
+		{
+			return ValueTask.CompletedTask;
+		}
+
 		_disposed = true;
 
-		lock (_deviceLock)
+		_deviceLock.Wait();
+		try
 		{
 			CloseDevice();
 		}
+		finally
+		{
+			_deviceLock.Release();
+		}
+
+		_deviceLock.Dispose();
 
 		return ValueTask.CompletedTask;
 	}
@@ -157,7 +190,7 @@ public sealed class LuxaforStatusIndicatorPlugin(ILogger<LuxaforStatusIndicatorP
 
 		try
 		{
-			_device = _deviceFactory.TryOpen();
+			_device = _deviceManager.TryOpen();
 			if (_device == null)
 			{
 				Logger.LogDebug("Luxafor device not found");

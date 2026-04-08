@@ -19,7 +19,7 @@
     <File Path="README.md" />
   </Folder>
   <Folder Name="/src/">
-    <Project Path="src/Luxafor.HidSharp/Luxafor.HidSharp.csproj" />
+
     <Project Path="src/WorkTracker.Application/WorkTracker.Application.csproj" />
     <Project Path="src/WorkTracker.Avalonia/WorkTracker.Avalonia.csproj" />
     <Project Path="src/WorkTracker.CLI/WorkTracker.CLI.csproj" />
