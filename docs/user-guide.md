@@ -163,7 +163,7 @@ WorkTracker.CLI start "Standup meeting" "2026-04-09 09:00"
 
 Logika:
 
-- Pokud první token odpovídá regex vzoru `[A-Z][A-Z0-9_]+-\d+`, považuje se za **ticket ID** (např. `PROJ-123`, `WORK_TRACKER-42`).
+- Pokud první token odpovídá regex vzoru `^([a-zA-Z0-9]+-[0-9]+)` (z `JiraPatterns.TicketId()`), považuje se za **ticket ID**. Prefix může mít písmena i číslice, je case‑insensitive, ale **nepovoluje underscore** — `PROJ-123` i `proj-123` fungují, `WORK_TRACKER-42` ne.
 - Poslední token je zkontrolován, zda nejde o čas (`HH:mm`, `HH:mm:ss`, nebo `yyyy-MM-dd HH:mm`). Pokud ano, je to `start time`. Jinak je součástí popisu.
 - Zbytek je popis práce.
 - Validace: **musí být zadán alespoň ticket ID nebo popis.**
@@ -245,7 +245,7 @@ Cross‑platform desktopová aplikace. Hlavní okno je rozdělené na **levý po
 
 **Levý postranní panel** (shora dolů):
 
-- **Karta rychlého startu** — jednořádkový textbox s placeholderem ve tvaru `PROJ-123 Práce na funkci` a tlačítko **Zahájit práci**. Stejná parsovací logika jako v CLI `start`: pokud text začíná Jira kódem (`[A-Z][A-Z0-9_]+-\d+`), rozpozná se jako ticket; zbytek je popis. Tlačítko je aktivní, když je textbox neprázdný. Pokud už jiný záznam běží, automaticky se na začátku nového zastaví.
+- **Karta rychlého startu** — jednořádkový textbox s placeholderem ve tvaru `PROJ-123 Práce na funkci` a tlačítko **Zahájit práci**. Stejná parsovací logika jako v CLI `start`: pokud text začíná Jira kódem (`^([a-zA-Z0-9]+-[0-9]+)` — písmena/číslice, bez underscore), rozpozná se jako ticket; zbytek je popis. Tlačítko je aktivní, když je textbox neprázdný. Pokud už jiný záznam běží, automaticky se na začátku nového zastaví.
 - **Karta Pomodoro** — tlačítko **Spustit Pomodoro** (když neběží) / **Zastavit Pomodoro** a zbývající čas (když běží). Konfigurace fází je v **Nastavení → Pomodoro**.
 - **Karta Dnes** — celkový čas odpracovaný za dnešek ve formátu `HH:MM:SS`, aktualizovaný v reálném čase.
 - **Spodní sekce** (oddělená linkou):

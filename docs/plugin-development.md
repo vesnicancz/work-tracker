@@ -591,7 +591,7 @@ Plugin se instanciuje přes `ActivatorUtilities.CreateInstance` ze scoped `Servi
 |--------|-------|
 | `ILogger<T>` | Typed logger pro plugin třídu |
 | `ILoggerFactory` | Když potřebuješ loggery pro podkomponenty |
-| `IHttpClientFactory` | **Vždy** použij tuto factory, nikdy nenew HttpClient přímo |
+| `IHttpClientFactory` | Preferuj tuto factory pro běžné HTTP požadavky — stará se o poolování `HttpMessageHandler`. Pro speciální scénáře (custom `DelegatingHandler`, vlastní transport, knihovny, které přijímají `HttpClient` konstruktorem) je v pořádku vytvořit `new HttpClient(handler, disposeHandler: false)` a spravovat jeho lifetime ručně — viz `GoranG3WorklogPlugin` pro ukázku. |
 | `ITokenProviderFactory` | MSAL device code flow |
 
 Plugin je vždy instancovaný přes `ActivatorUtilities.CreateInstance`, takže všechny parametry konstruktoru musí být resolvovatelné ze service provideru. Bezparametrický konstruktor technicky funguje (pokud plugin žádné služby nepotřebuje), ale obvykle je vhodnější používat explicitní DI konstruktor — budeš aspoň mít přístup k loggeru.

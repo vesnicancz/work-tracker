@@ -75,7 +75,7 @@ Od tohoto okamžiku plugin vždy zkusí `AcquireTokenSilentAsync` — tokeny se 
 Plugin volá Microsoft Graph:
 
 ```
-GET https://graph.microsoft.com/v1.0/me/calendarview?
+GET https://graph.microsoft.com/v1.0/me/calendarView?
     startDateTime={date}T00:00:00&
     endDateTime={date}T23:59:59
 ```
@@ -88,7 +88,7 @@ Plugin volá Graph s explicitním `$select=subject,start,end,webLink,id,isAllDay
 | `Description` | — (plugin `bodyPreview` ani `body` nenačítá) |
 | `StartTime` | `start.dateTime` (konvertováno na local time) |
 | `EndTime` | `end.dateTime` (konvertováno na local time) |
-| `Source` | `”O365 Calendar”` |
+| `Source` | `"O365 Calendar"` |
 | `SourceId` | `id` (unikátní event ID v kalendáři) |
 | `SourceUrl` | `webLink` (odkaz do Outlook Web) |
 

@@ -455,9 +455,9 @@ public class MyPlugin : WorkSuggestionPluginBase
 
 ### Token cache
 
-- Cache soubor je v `%LocalAppData%\WorkTracker\keys\` s názvem `{SHA256(tenantId:clientId)}.bin`.
+- Cache soubor je v `%LocalAppData%\WorkTracker\keys\` s názvem `msal_{safeKey}.bin`, kde `safeKey = Convert.ToHexString(SHA256(tenantId:clientId))`.
 - Šifrování: **DPAPI** (Windows), **Keychain** (macOS), **libsecret** (Linux) přes `Microsoft.Identity.Client.Extensions.Msal`.
-- Fallback: pokud encrypted cache není dostupná (headless Linux bez secret service), MSAL použije unencrypted cache — plugin zaloguje warning.
+- Fallback: pokud encrypted cache není dostupná (headless Linux bez secret service), MSAL použije nechráněný soubor `msal_{safeKey}_plain.bin` — plugin zaloguje warning.
 
 ---
 
