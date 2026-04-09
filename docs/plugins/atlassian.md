@@ -63,7 +63,7 @@ Při volání `UploadWorklogAsync(entry)`:
      "description": "Bug fix v autentizaci"
    }
    ```
-4. **Retry** — na 408/429/500–504 až 2× s exponenciálním backoffem. První retry čeká ~2 s, druhý ~4 s (formule `2^(attempt+1)` sekund). Ostatní chyby (401, 403, 404, 400) propagují okamžitě s odpovídající `PluginErrorCategory`.
+4. **Retry** — na 408/429/500–504 až 2× s exponenciálním backoffem. První retry čeká ~2 s, druhý ~4 s (formule `2^(attempt+1)` sekund). Ostatní HTTP chyby (401, 403, 404, 400…) se neretryují a propagují se okamžitě. **Pozor:** aktuální `TempoWorklogPlugin.UploadWorklogAsync` kategorizuje všechny neúspěšné HTTP statusy obecně jako `PluginErrorCategory.Network`, ne podle jednotlivých status code (401 tedy nedostane kategorii `Authentication`, jak by leckoho napadlo).
 
 ### Test connection
 
