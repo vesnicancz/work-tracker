@@ -127,7 +127,7 @@ public class WorkEntryEditViewModel : ViewModelBase
 				else if (EndDate == null)
 				{
 					var now = DateTimeHelper.RoundToMinute(_timeProvider.GetLocalNow().DateTime);
-					EndDate = now.Date;
+					EndDate = StartDate.Date;
 					EndTime = new TimeSpan(now.Hour, now.Minute, 0);
 				}
 				ValidateInput();
