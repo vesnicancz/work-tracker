@@ -47,7 +47,7 @@ Stejně jako Office 365 Calendar plugin. Po vyplnění konfigurace:
 4. Progress dialog ukáže user code + URL `https://microsoft.com/devicelogin`.
 5. Po úspěšném přihlášení plugin otestuje MCP connection.
 
-Tokeny jsou v šifrované cache (`%LocalAppData%\WorkTracker\keys\`), obnova přes refresh token je automatická.
+Tokeny jsou v šifrované cache (v release buildu typicky `%LocalAppData%\WorkTracker\keys\`), obnova přes refresh token je automatická. V non‑Production prostředích používá `WorkTrackerPaths` suffix podle `DOTNET_ENVIRONMENT`, takže při `dotnet run` může být reálná cesta `%LocalAppData%\WorkTracker_Development\keys\`. Při ručním mazání cache (reset) smaž složku odpovídající aktuálnímu prostředí.
 
 ---
 
@@ -155,7 +155,14 @@ Stejné jako [Office 365 Calendar](office365-calendar.md#odhlášení--reset-tok
 
 ---
 
-## Fallback: appsettings.json pro CLI
+## Plugin config schéma (`appsettings.json`)
+
+> **Pozor — dvě klíčová omezení pro CLI:**
+>
+> 1. **CLI pluginy neenable-uje.** `WorkTracker.CLI` volá `InitializePluginsAsync` bez enable mapy, takže i správně vyplněné `appsettings.json` pluginy nespustí. Plugin konfiguruj v GUI (**Nastavení → Pluginy → Goran G3**).
+> 2. **GoranG3 vyžaduje předchozí GUI login.** `TokenInjectingHandler` v pluginu používá **pouze** `AcquireTokenSilentAsync` — při uploadu se nikdy neotevře device code flow. Musíš nejdřív spustit **Test connection** v GUI Settings, která interaktivně získá token a uloží ho do cache. Teprve pak bude plugin fungovat v jakémkoli hostu.
+>
+> Schéma níže je referenční a uplatní se pouze ve vlastním hostu, který předá `enabledPlugins` mapu do `InitializePluginsAsync`.
 
 ```json
 {

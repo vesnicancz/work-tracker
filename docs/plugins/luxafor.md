@@ -158,9 +158,9 @@ Tímhle postupem ověříš obě důležité věci v jednom kroku:
 
 ---
 
-## Fallback: appsettings.json pro CLI
+## Plugin config schéma (`appsettings.json`)
 
-CLI samo Luxafor nepoužívá (nemá Pomodoro), ale pokud bys napsal/a vlastní skript, který volá `IPluginManager.StatusIndicatorPlugins`, konfigurace by vypadala:
+CLI samotné Luxafor nepoužívá (nemá Pomodoro), takže aktuálně nemá smysl plugin konfigurovat mimo GUI. Pokud bys psal/a vlastní host, který volá `IPluginManager.StatusIndicatorPlugins`, schéma vypadá takto:
 
 ```json
 {
@@ -173,3 +173,5 @@ CLI samo Luxafor nepoužívá (nemá Pomodoro), ale pokud bys napsal/a vlastní 
   }
 }
 ```
+
+> **Pozor:** Samotná přítomnost configu v `appsettings.json` plugin **nezapne**. `IPluginManager.StatusIndicatorPlugins` vrací jen **enabled** pluginy; enabled stav se předává při bootstrapu přes `InitializePluginsAsync(..., enabledPlugins: new Dictionary<string, bool> { ["luxafor.status-indicator"] = true })`. Aktuální `WorkTracker.CLI` tuto mapu nepředává, takže ani s configem v souboru by Luxafor z CLI nefungoval. Plugin konfiguruj v GUI.

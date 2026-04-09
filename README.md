@@ -125,7 +125,11 @@ Jira ticket se detekuje automaticky z prvního tokenu, který odpovídá regex v
 
 ### Umístění dat
 
-Aplikace ukládá všechna perzistentní data do `%LocalAppData%\WorkTracker\` (Windows), resp. `~/.local/share/WorkTracker/` (Linux) nebo `~/Library/Application Support/WorkTracker/` (macOS):
+Aplikace ukládá všechna perzistentní data do `%LocalAppData%\WorkTracker\` (Windows), resp. `~/.local/share/WorkTracker/` (Linux) nebo `~/Library/Application Support/WorkTracker/` (macOS).
+
+> **Environment suffix:** Pokud běží v non‑Production prostředí (proměnná `DOTNET_ENVIRONMENT` nebo `ASPNETCORE_ENVIRONMENT` != `Production`), přidá se k názvu složky suffix — `WorkTracker_Development` pro development a podobně. Při `dotnet run` z vývojového stromu je výchozí prostředí `Development`, takže reálná cesta bývá `%LocalAppData%\WorkTracker_Development\`. V release buildu (publikovaná binárka bez přepisu env proměnné) se používá čisté `WorkTracker`.
+
+Obsah složky:
 
 ```
 WorkTracker/
@@ -157,9 +161,9 @@ Citlivé údaje (API tokeny, hesla) aplikace ukládá přes `ISecureStorage` do 
 
 V souboru `settings.json` je na jejich místě uložený pouze placeholder `CS:{pluginId}:{fieldKey}`, nikdy plaintext. OAuth tokeny pro pluginy používající MSAL (Office 365 Calendar, Goran G3) jsou v zašifrované cache v `keys/` a při vypršení se obnovují přes **device code flow**.
 
-Pro CLI, které nemá UI pro zadání konfigurace, je možné jako fallback použít sekci `Plugins` v `appsettings.json` — viz [docs/plugins/](docs/plugins/) pro detaily konkrétních pluginů.
+> **Pluginy v CLI:** Aktuální `WorkTracker.CLI` volá `InitializePluginsAsync` bez enabled‑plugin mapy, takže v CLI **zůstanou všechny pluginy vypnuté** a příkaz `send` skončí s „No worklog upload plugin available". Konfigurace pluginů se tedy reálně dělá jen v GUI (Avalonia / WPF → **Nastavení → Pluginy**). Jednotlivé plugin docs v [docs/plugins/](docs/plugins/) obsahují ukázkové `appsettings.json` schéma pluginu jako referenci pro integrátory s vlastním hostem, ne jako funkční CLI fallback.
 
-> **Bezpečnost:** Necommituj API tokeny do Gitu. Pro vývoj v CLI použij [User Secrets](https://learn.microsoft.com/en-us/aspnet/core/security/app-secrets).
+> **Bezpečnost:** Necommituj API tokeny do Gitu.
 
 ---
 

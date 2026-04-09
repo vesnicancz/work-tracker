@@ -150,9 +150,9 @@ Stejně jako Tempo plugin volá **jen** `_jiraClient.TestConnectionAsync` (pingn
 
 ---
 
-## Fallback: appsettings.json pro CLI
+## Plugin config schéma (`appsettings.json`)
 
-CLI nemá Settings UI, takže pro něj můžeš plugin konfiguraci vložit do `appsettings.json` (sekce `Plugins`):
+> **Pozor:** Tohle je **referenční schéma** struktury plugin configu, jakou přijímá metoda `InitializePluginsAsync`. **Není to funkční CLI fallback** — aktuální `WorkTracker.CLI` volá `InitializePluginsAsync` bez enabled‑plugin mapy, takže i když hodnoty vložíš do `appsettings.json`, pluginy zůstanou vypnuté a `send` skončí s „No worklog upload plugin available". Primárně konfiguruj Atlassian plugin v GUI (**Nastavení → Pluginy**). Schéma níže je užitečné, pokud si píšeš vlastního hosta nad `WorkTracker.Infrastructure` a voláš `InitializePluginsAsync(host.Services, configuration, enabledPlugins: {...})` sám.
 
 ```json
 {
@@ -176,7 +176,7 @@ CLI nemá Settings UI, takže pro něj můžeš plugin konfiguraci vložit do `a
 }
 ```
 
-> **Pro vývoj použij User Secrets**, ne `appsettings.json`:
+> **Nikdy necommituj API tokeny** do Gitu. Pokud testuješ s reálnými hodnotami mimo GUI, použij [User Secrets](https://learn.microsoft.com/en-us/aspnet/core/security/app-secrets):
 > ```bash
 > cd src/WorkTracker.CLI
 > dotnet user-secrets init

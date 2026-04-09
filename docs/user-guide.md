@@ -91,6 +91,8 @@ WorkTracker používá pro všechna perzistentní data jednu složku podle OS:
 | Linux | `$XDG_DATA_HOME/WorkTracker/` nebo `~/.local/share/WorkTracker/` |
 | macOS | `~/Library/Application Support/WorkTracker/` |
 
+> **Environment suffix:** V non‑Production prostředí (proměnná `DOTNET_ENVIRONMENT` nebo `ASPNETCORE_ENVIRONMENT` != `Production`) se k názvu složky přidá suffix, takže místo `WorkTracker` může být `WorkTracker_Development`. Při `dotnet run` z vývojového stromu je default `Development`, takže reálná cesta je např. `%LocalAppData%\WorkTracker_Development\`. Release build bez přepisu env proměnné používá čisté `WorkTracker`. Pokud nevíš, jaká cesta se použije, zkontroluj `logs/` — najdeš je ve správné složce podle aktuálního prostředí.
+
 Obsah:
 
 ```

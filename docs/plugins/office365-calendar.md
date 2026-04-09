@@ -63,7 +63,7 @@ Po vyplnění `TenantId` a `ClientId` klikni v Settings → Plugins → Office 3
 2. Aplikace se současně pokusí otevřít browser na této URL (`Process.Start`). Pokud ne, otevři ji ručně.
 3. V browseru zadej kód, přihlaš se pracovním účtem, potvrď consent (pokud se zobrazí).
 4. MSAL mezitím pollne Entra a jakmile tvůj login prošel, vrátí access + refresh token.
-5. Tokeny se uloží do šifrované cache v `%LocalAppData%\WorkTracker\keys\` (DPAPI/Keychain/libsecret dle OS).
+5. Tokeny se uloží do šifrované cache v `%LocalAppData%\WorkTracker\keys\` (DPAPI/Keychain/libsecret dle OS). V non‑Production prostředích se adresář aplikace suffixuje podle `DOTNET_ENVIRONMENT`, takže přesná cesta může být např. `%LocalAppData%\WorkTracker_Development\keys\`.
 6. Progress dialog zobrazí „OK“ a plugin je ready.
 
 Od tohoto okamžiku plugin vždy zkusí `AcquireTokenSilentAsync` — tokeny se obnovují automaticky přes refresh token (typicky platnost refresh tokenu je 90 dnů nebo dle konfigurace tenanta). Jakmile refresh token expiruje, plugin spustí device code flow znovu.
@@ -146,7 +146,15 @@ Nebo rovnou smaž celou složku `keys/` — způsobí reset všech MSAL pluginů
 
 ---
 
-## Fallback: appsettings.json pro CLI
+## Plugin config schéma (`appsettings.json`)
+
+> **Pozor — tři omezení:**
+>
+> 1. **CLI pluginy neenable-uje.** `WorkTracker.CLI` volá `InitializePluginsAsync` bez enable mapy, takže i správně vyplněné `appsettings.json` pluginy nespustí.
+> 2. **CLI suggestions vůbec nepoužívá.** Office 365 Calendar je `IWorkSuggestionPlugin` a žádný CLI příkaz suggestions nenačítá — tento plugin se dá prakticky využít jen v GUI.
+> 3. **Plugin vyžaduje předchozí GUI login.** `GetSuggestionsAsync` volá **pouze** `AcquireTokenSilentAsync` — při `null` rovnou vrátí chybu „Not authenticated — please use Test Connection in Settings to sign in first." Interaktivní device code flow běží **jen** v `TestConnectionAsync`, kterou musí uživatel spustit z GUI Settings (to je shodné s Goran G3 pluginem).
+>
+> Plugin tedy konfiguruj v GUI (**Nastavení → Pluginy → Office 365 Calendar**). Schéma níže je referenční pro integrátory, kteří si píšou vlastního hosta nad `WorkTracker.Infrastructure`.
 
 ```json
 {
@@ -159,5 +167,3 @@ Nebo rovnou smaž celou složku `keys/` — způsobí reset všech MSAL pluginů
   }
 }
 ```
-
-Pozn.: device code flow v CLI fungovat bude, ale uživatel musí kód zkopírovat z konzole (`progress` se v CLI vypíše jako běžný `stdout`).
