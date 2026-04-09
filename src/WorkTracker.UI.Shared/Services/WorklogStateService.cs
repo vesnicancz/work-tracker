@@ -126,7 +126,7 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 			result =>
 			{
 				UpdateState(result.Value, true);
-				_logger.LogDebug("Work tracking started successfully with ID {WorkEntryId}", result.Value.Id);
+				_logger.LogDebug("Work tracking started successfully with ID {Id}", result.Value.Id);
 				return Task.CompletedTask;
 			},
 			"StartTracking",
@@ -153,7 +153,7 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 				return Result.Success();
 			}
 
-			_logger.LogDebug("Stopping work tracking for entry {WorkEntryId}", _activeWork?.Id);
+			_logger.LogDebug("Stopping work tracking for entry {Id}", _activeWork?.Id);
 
 			using var scope = _scopeFactory.CreateScope();
 			var workEntryService = scope.ServiceProvider.GetRequiredService<IWorkEntryService>();
@@ -232,7 +232,7 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 			(svc, ct) => svc.StartWorkAsync(ticketId, startTime, description, endTime, ct),
 			async result =>
 			{
-				_logger.LogDebug("Work entry created with ID {WorkEntryId}", result.Value.Id);
+				_logger.LogDebug("Work entry created with ID {Id}", result.Value.Id);
 				await RefreshFromDatabaseCoreAsync(cancellationToken);
 			},
 			"CreateWorkEntry",
@@ -257,7 +257,7 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 			async (svc, ct) => (Result)await svc.UpdateWorkEntryAsync(id, ticketId, startTime, endTime, description, ct),
 			async _ =>
 			{
-				_logger.LogDebug("Work entry {WorkEntryId} updated successfully", id);
+				_logger.LogDebug("Work entry {Id} updated successfully", id);
 				await RefreshFromDatabaseCoreAsync(cancellationToken);
 			},
 			"UpdateWorkEntry",
@@ -272,7 +272,7 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 			(svc, ct) => svc.DeleteWorkEntryAsync(id, ct),
 			async _ =>
 			{
-				_logger.LogDebug("Work entry {WorkEntryId} deleted successfully", id);
+				_logger.LogDebug("Work entry {Id} deleted successfully", id);
 				await RefreshFromDatabaseCoreAsync(cancellationToken);
 			},
 			"DeleteWorkEntry",
@@ -334,7 +334,7 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 			(svc, ct) => svc.CreateWithOverlapResolutionAsync(ticketId, startTime, description, endTime, plan, ct),
 			async result =>
 			{
-				_logger.LogDebug("Work entry created with resolution, ID {WorkEntryId}", result.Value.Id);
+				_logger.LogDebug("Work entry created with resolution, ID {Id}", result.Value.Id);
 				await RefreshFromDatabaseCoreAsync(cancellationToken);
 			},
 			"CreateWorkEntryWithResolution",
@@ -353,7 +353,7 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 			async (svc, ct) => (Result)await svc.UpdateWithOverlapResolutionAsync(id, ticketId, startTime, endTime, description, plan, ct),
 			async _ =>
 			{
-				_logger.LogDebug("Work entry {WorkEntryId} updated with resolution", id);
+				_logger.LogDebug("Work entry {Id} updated with resolution", id);
 				await RefreshFromDatabaseCoreAsync(cancellationToken);
 			},
 			"UpdateWorkEntryWithResolution",
