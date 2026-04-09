@@ -51,7 +51,7 @@ Při volání `UploadWorklogAsync(entry)`:
      "timeSpentSeconds": 3600,
      "startDate": "2026-04-09",
      "startTime": "09:00:00",
-     "description": "Bug fix v authentifikaci"
+     "description": "Bug fix v autentizaci"
    }
    ```
 4. **Retry** — na 408/429/500–504 až 2× s exponenciálním backoffem (~500 ms, 2 s). Ostatní chyby (401, 403, 404, 400) propagují okamžitě s odpovídající `PluginErrorCategory`.

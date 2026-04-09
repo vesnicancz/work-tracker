@@ -77,7 +77,7 @@ V `.csproj`:
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\WorkTracker.Plugin.Abstractions\WorkTracker.Plugin.Abstractions.csproj">
-      <!-- Plugin nenesé Abstractions.dll — je sdílená s hlavní aplikací -->
+      <!-- Plugin nenese Abstractions.dll — je sdílená s hlavní aplikací -->
       <Private>false</Private>
       <ExcludeAssets>runtime</ExcludeAssets>
     </ProjectReference>
@@ -362,7 +362,7 @@ protected override async Task<bool> OnInitializeAsync(CancellationToken ct)
     var jql = GetConfigValue("JqlFilter") ?? DefaultJql;
     var maxResults = int.Parse(GetConfigValue("MaxResults") ?? "20");
 
-    // …použij je k iniciaalizaci HTTP klienta…
+    // …použij je k inicializaci HTTP klienta…
     return true;
 }
 ```

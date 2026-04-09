@@ -187,9 +187,11 @@ Projekt záměrně udržuje **tři paralelní frontendy**. Důvody:
 - **WPF** — nejlepší integrace s Windows (tray, taskbar, notifikace přes `NotifyIcon`, jump lists).
 - **Avalonia** — cross‑platform, stejná funkčnost jako WPF, do budoucna preferovaný frontend.
 
-### ViewModely jsou per‑platform
+### ViewModely: hybridní přístup
 
-WPF a Avalonia nemají sdílené ViewModely — každý framework má svoje. **To je záměr.** Drobné rozdíly v threadingu, messaging a styling bindings způsobí, že pokus o sdílený base class končí kompromisy na obou stranách. Sdílíme pouze bezstavové služby, orchestrátory a settings v `UI.Shared`.
+**Root ViewModely** (například `MainViewModel`, `SettingsViewModel`) jsou v každém frontendu vlastní — WPF a Avalonia je nesdílejí. **To je záměr.** Drobné rozdíly v threadingu, messaging a styling bindings způsobí, že pokus o sdílený base class pro celé obrazovky končí kompromisy na obou stranách.
+
+**Sub‑ViewModely**, které nemají framework‑specifickou vazbu, ale jsou naopak znovupoužitelné (například `SuggestionsViewModel`, pomodoro komponenty, plugin konfigurační VM), žijí v `WorkTracker.UI.Shared.ViewModels` a jsou **skládané** do root ViewModelů v obou frontendech. Vedle nich jsou v `UI.Shared` bezstavové služby, orchestrátory a settings.
 
 ### Dispatch mezi UI a služby
 

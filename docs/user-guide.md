@@ -147,7 +147,7 @@ Příkaz `start` je volnější — akceptuje různé kombinace:
 
 ```bash
 WorkTracker.CLI start PROJ-123
-WorkTracker.CLI start PROJ-123 "Bug fix v authentifikaci"
+WorkTracker.CLI start PROJ-123 "Bug fix v autentizaci"
 WorkTracker.CLI start PROJ-123 "Bug fix" 09:00
 WorkTracker.CLI start "Standup meeting"
 WorkTracker.CLI start "Standup meeting" "2026-04-09 09:00"

@@ -76,7 +76,7 @@ Tokeny jsou v šifrované cache (`%LocalAppData%\WorkTracker\keys\`), obnova př
   "date": "2026-04-09",
   "startTime": "09:00",
   "durationMinutes": 60,
-  "description": "Bug fix v authentifikaci",
+  "description": "Bug fix v autentizaci",
   "ticketId": "PROJ-123",
   "tags": ["dev", "bugfix"]
 }

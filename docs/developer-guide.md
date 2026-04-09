@@ -47,7 +47,7 @@ dotnet build
 dotnet test
 ```
 
-První build stáhne ~700 MB závislostí do `e:\.nuget\packages\` (cesta je nakonfigurovaná v `nuget.config`).
+První build stáhne ~700 MB závislostí do standardní NuGet cache (typicky `~/.nuget/packages` na Linux/macOS nebo `%UserProfile%\.nuget\packages` na Windows). Konkrétní cesta závisí na tvé lokální konfiguraci NuGetu.
 
 Build by měl projít **bez warningů** — projekt má `TreatWarningsAsErrors = true` v `Directory.Build.props`. Pokud něco bliká warningem, je to CI failure.
 
