@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using WorkTracker.Application.Interfaces;
 using WorkTracker.Application.Plugins;
 using WorkTracker.Application.Services;
 using WorkTracker.Infrastructure.Plugins;
@@ -104,6 +105,36 @@ public class DependencyInjectionTests : IAsyncDisposable
 		var repository = _serviceProvider.GetService<IWorkEntryRepository>();
 		repository.Should().NotBeNull();
 		repository.Should().BeOfType<WorkEntryRepository>();
+	}
+
+	[Fact]
+	public void AddInfrastructure_ShouldRegisterUnitOfWorkFactory()
+	{
+		// Act
+		_services.AddInfrastructure(_configuration);
+		_serviceProvider = _services.BuildServiceProvider();
+
+		// Assert
+		var factory = _serviceProvider.GetService<IUnitOfWorkFactory>();
+		factory.Should().NotBeNull();
+		factory.Should().BeOfType<UnitOfWorkFactory>();
+	}
+
+	[Fact]
+	public async Task UnitOfWorkFactory_ShouldCreateWorkingUnitOfWork()
+	{
+		// Arrange
+		_services.AddInfrastructure(_configuration);
+		_serviceProvider = _services.BuildServiceProvider();
+		await DependencyInjection.InitializeDatabaseAsync(_serviceProvider, TestContext.Current.CancellationToken);
+
+		// Act
+		var factory = _serviceProvider.GetRequiredService<IUnitOfWorkFactory>();
+		await using var uow = factory.Create();
+
+		// Assert
+		uow.Should().NotBeNull();
+		uow.WorkEntries.Should().NotBeNull();
 	}
 
 	[Fact]

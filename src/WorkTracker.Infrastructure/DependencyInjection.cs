@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using WorkTracker.Application;
+using WorkTracker.Application.Interfaces;
 using WorkTracker.Application.Plugins;
 using WorkTracker.Application.Services;
 using WorkTracker.Infrastructure.Plugins;
@@ -38,6 +39,9 @@ public static class DependencyInjection
 
 		// Repositories - Transient (stateless, uses factory)
 		services.AddTransient<IWorkEntryRepository, WorkEntryRepository>();
+
+		// Unit of Work - Transient (stateless factory; each Create() produces a new transactional scope)
+		services.AddTransient<IUnitOfWorkFactory, UnitOfWorkFactory>();
 
 		// Secure storage — secrets stored in native OS credential store
 		// (Windows Credential Manager / macOS Keychain / Linux libsecret)

@@ -143,6 +143,7 @@ WorkTracker follows **Clean Architecture** (Onion Architecture) principles:
 | Pattern | Usage | Location |
 |---------|-------|----------|
 | **Repository** | Data access abstraction | `IWorkEntryRepository` |
+| **Unit of Work** | Atomic multi-operation transactions (overlap resolution, auto-stop + start) | `IUnitOfWork`, `IUnitOfWorkFactory` |
 | **Dependency Injection** | Loose coupling | Throughout |
 | **Result Pattern** | Functional error handling | `Result<T>` |
 | **Strategy** | Plugin system | `IWorklogUploadPlugin`, `IStatusIndicatorPlugin`, `IWorkSuggestionPlugin` |

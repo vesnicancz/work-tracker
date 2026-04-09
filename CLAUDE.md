@@ -77,6 +77,7 @@ Existing plugins: `Plugin.Atlassian` (Tempo + Jira), `Plugin.Office365Calendar`,
 - **ViewModels are platform-specific** — WPF and Avalonia each have their own ViewModels. Shared logic goes in `UI.Shared/ViewModels/` or `UI.Shared/Orchestrators/`.
 - **DI registration** is centralized: `Application/DependencyInjection.cs` and `Infrastructure/DependencyInjection.cs`. Infrastructure's `AddInfrastructure()` is the single entry point for non-UI services.
 - **Database** uses `IDbContextFactory<WorkTrackerDbContext>` (not scoped DbContext). SQLite stored in `%LocalAppData%\WorkTracker\`.
+- **Unit of Work** (`IUnitOfWork` / `IUnitOfWorkFactory` in `Application/Interfaces/`) wraps multi-step write operations (auto-stop + start, overlap resolution) in a single transaction. Single-operation methods use the transient repository directly. `WorkEntryRepository` has two modes: factory mode (standalone, each op auto-saves) and shared-context mode (inside UoW, SaveChanges deferred to `IUnitOfWork.SaveChangesAsync`). Disposing a UoW without calling `SaveChangesAsync` discards all pending changes.
 - **Secure storage** for API tokens via `ISecureStorage` (OS credential manager).
 
 ## CI/CD
