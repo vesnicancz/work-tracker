@@ -351,7 +351,7 @@ public virtual async Task<bool> InitializeAsync(
     var validation = await ValidateConfigurationAsync(Configuration, ct);
     if (!validation.IsValid) { /* log, return false */ }
 
-    var ok = await OnInitializeAsync(ct);    // hook
+    var ok = await OnInitializeAsync(Configuration, ct);    // hook
     IsInitialized = ok;
     return ok;
 }

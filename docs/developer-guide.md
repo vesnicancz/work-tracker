@@ -418,7 +418,9 @@ public class MyPlugin : WorkSuggestionPluginBase
         _tokenProviderFactory = tokenProviderFactory;
     }
 
-    protected override async Task<bool> OnInitializeAsync(CancellationToken ct)
+    protected override async Task<bool> OnInitializeAsync(
+        IDictionary<string, string> configuration,
+        CancellationToken cancellationToken)
     {
         var tenantId = GetRequiredConfigValue("TenantId");
         var clientId = GetRequiredConfigValue("ClientId");

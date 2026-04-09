@@ -218,7 +218,7 @@ public abstract class PluginBase(ILogger logger) : IPlugin
     protected virtual Task OnShutdownAsync() => Task.CompletedTask;
     protected virtual Task<PluginValidationResult> OnValidateConfigurationAsync(
         IDictionary<string, string> configuration,
-        CancellationToken cancellationToken) => /* default: kontroluje IsRequired a regex */;
+        CancellationToken cancellationToken) => /* default: vrací Success(); hook pro dodatečná pravidla nad rámec základní IsRequired + regex validace, kterou dělá ValidateConfigurationAsync před zavoláním tohoto hooku */;
     protected virtual ValueTask OnDisposeAsync() => ValueTask.CompletedTask;
 
     // Helpery:

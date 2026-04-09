@@ -156,6 +156,9 @@ CLI nemá Settings UI, takže pro něj můžeš plugin konfiguraci vložit do `a
     "tempo.worklog": {
       "TempoBaseUrl": "https://api.eu.tempo.io/4",
       "TempoApiToken": "vas-tempo-token",
+      "JiraBaseUrl": "https://vase-firma.atlassian.net",
+      "JiraEmail": "vas@email.cz",
+      "JiraApiToken": "vas-jira-api-token",
       "JiraAccountId": "5b10a2844c20165700ede21g"
     },
     "jira.suggestions": {

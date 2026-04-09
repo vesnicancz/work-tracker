@@ -155,6 +155,7 @@ Stejné jako [Office 365 Calendar](office365-calendar.md#odhlášení--reset-tok
       "ProjectCode": "000.GOR",
       "EntraClientId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
       "EntraTenantId": "yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy",
+      "EntraScopes": "api://{goran-api-client-id}/Mcp.Access",
       "Tags": "dev"
     }
   }
