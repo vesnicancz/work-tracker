@@ -260,6 +260,7 @@ public sealed class WorkEntryService : IWorkEntryService
 
 		if (!workEntry.IsValid())
 		{
+			_logger.LogWarning("Invalid work entry data after update with resolution for entry {Id}, ticket {TicketId} ({StartTime} - {EndTime})", id, ticketId, workEntry.StartTime, workEntry.EndTime);
 			return Result.Failure<WorkEntry>(InvalidEntryAfterUpdateError);
 		}
 
