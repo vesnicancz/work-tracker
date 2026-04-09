@@ -112,6 +112,11 @@ WorkTracker.CLI send week
 WorkTracker.CLI edit 5 --ticket=PROJ-456 --end=17:30 --desc="Nový popis"
 ```
 
+> **Jak spustit binárku:** Příklady výše ukazují jen název programu. Ve skutečnosti záleží na platformě a na tom, jestli máš složku s binárkou v `PATH`:
+>
+> - **Windows**: `WorkTracker.CLI.exe start …` (z PowerShellu / CMD), nebo `.\WorkTracker.CLI.exe start …` z lokální složky
+> - **Linux / macOS**: `./WorkTracker.CLI start …` z lokální složky, nebo `WorkTracker.CLI start …` pokud je v `PATH`
+
 Jira ticket se detekuje automaticky z prvního tokenu, který odpovídá regex vzoru `[A-Z][A-Z0-9_]+-\d+`. Časy lze zadávat ve formátech `HH:mm`, `HH:mm:ss` nebo `yyyy-MM-dd HH:mm`.
 
 ---

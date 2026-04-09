@@ -128,6 +128,11 @@ Pro CLI lze cestu k databázi přepsat v `appsettings.json`:
 
 CLI klient se jmenuje `WorkTracker.CLI` (při vývoji spouštěn jako `dotnet run --project src/WorkTracker.CLI --`).
 
+> **Poznámka k zápisu příkazů:** Příklady v této kapitole píšou jen `WorkTracker.CLI` pro čitelnost. Podle platformy a nastavení `PATH` potřebuješ:
+>
+> - **Windows** (PowerShell/CMD): `WorkTracker.CLI.exe …`, nebo `.\WorkTracker.CLI.exe …` z lokální složky.
+> - **Linux / macOS**: `./WorkTracker.CLI …` z lokální složky, nebo `WorkTracker.CLI …` pokud binárku přidáš do `PATH` (`export PATH=$PATH:/cesta/k/worktracker`).
+
 ### Přehled příkazů
 
 ```
