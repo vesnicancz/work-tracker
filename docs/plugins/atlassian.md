@@ -26,7 +26,7 @@ Oba pluginy se instalují jako jeden `.dll` soubor, ale jsou nezávisle enable/d
 **Tempo API Token:**
 
 1. V Jira/Tempo otevři **Settings → Apps → Tempo → API Integration**.
-2. Klikni **New Token**, pojmenuj ho např. „WorkTracker".
+2. Klikni **New Token**, pojmenuj ho např. „WorkTracker“.
 3. Zkopíruj vygenerovaný token (zobrazí se jen jednou!) a vlož do pole `TempoApiToken`.
 
 **Jira Account ID:**
@@ -62,7 +62,7 @@ Stiskem **Test connection** v Settings plugin:
 
 1. Pingne Tempo `GET /worklogs?accountId={JiraAccountId}&limit=1` s tokenem.
 2. Pokud odpoví 200, pingne Jira `GET /rest/api/3/myself` (pro ověření, že issue key lookup bude fungovat).
-3. Reportuje do `IProgress<string>` stavy „Checking Tempo…", „Checking Jira…", „OK".
+3. Reportuje do `IProgress<string>` stavy „Checking Tempo…“, „Checking Jira…“, „OK“.
 
 ### Časté chyby
 
@@ -94,7 +94,7 @@ Stiskem **Test connection** v Settings plugin:
 2. **Create API token** → pojmenuj → zkopíruj.
 3. Vlož do `ApiToken` (uloží se do secure storage).
 
-Autentizace je **Basic** = `base64(email:token)` v `Authorization` hlavičce. Jira to tak vyžaduje i pro API token; neplé se to s OAuth.
+Autentizace je **Basic** = `base64(email:token)` v `Authorization` hlavičce. Jira to tak vyžaduje i pro API token; nepleť si to s OAuth.
 
 ### Použití JQL
 
@@ -117,7 +117,7 @@ assignee = currentUser() AND updated >= startOfDay()
 text ~ "{query}" AND project in (PROJ, WORK) ORDER BY updated DESC
 ```
 
-Pokud `SearchJqlFilter` nenastavíš, search je pro tento plugin zakázaný (dialog ukáže „Search není podporovaný").
+Pokud `SearchJqlFilter` nenastavíš, search je pro tento plugin zakázaný (dialog ukáže „Search není podporovaný“).
 
 ### Jak se vrácené issues mapují na `WorkSuggestion`
 

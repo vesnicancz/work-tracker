@@ -300,10 +300,10 @@ if (result.IsFailure) return result;
 
 Projekt striktně odmítá:
 
-- Speculative abstractions „pro případ, že by to někdo chtěl".
+- Speculative abstractions „pro případ, že by to někdo chtěl“.
 - Backwards‑compatibility shims pro necommitnuté/nereleasnuté věci.
 - Feature flags, když stačí změnit kód.
-- Wrapping trivialit do „služeb" a `IXyzFactory` jen pro snadnější testování — pokud to nemá víc implementací, interface většinou nemusí existovat.
+- Wrapping trivialit do „služeb“ a `IXyzFactory` jen pro snadnější testování — pokud to nemá víc implementací, interface většinou nemusí existovat.
 
 Když máš pochybnosti, volíme **menší, přímočařejší řešení**.
 
@@ -611,7 +611,7 @@ EF Tools potřebují startup projekt s DI bootstrap, který vytvoří `DbContext
 
 Aktualizuj na Rider 2024.2+, nebo otevři jednotlivé projekty přes `File → Open` a vybrat `.csproj`.
 
-### Avalonia XAML: „Binding path is not type‑safe"
+### Avalonia XAML: „Binding path is not type‑safe“
 
 Avalonia compiled bindings odhalí type mismatch už v XAML parseru. Pokud komponenta má složitější DataContext, extrahuj ji do samostatného `UserControl` s explicitním `x:DataType` — jinak si scope naleje typy z parenta a kompilátor řve.
 

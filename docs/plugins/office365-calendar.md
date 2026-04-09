@@ -30,13 +30,13 @@ Plugin potřebuje aplikační registraci v Microsoft Entra ID. Pokud nejsi admin
 ### Postup (admin)
 
 1. **Azure Portal → Microsoft Entra ID → App registrations → New registration**.
-2. **Name** — libovolný, např. „WorkTracker Desktop".
+2. **Name** — libovolný, např. „WorkTracker Desktop“.
 3. **Supported account types** — **Accounts in this organizational directory only** (single tenant) nebo **Any organizational directory** podle potřeby.
 4. **Redirect URI** — nech prázdné. Device code flow ho nepoužívá.
 5. **Register**.
 6. Na stránce registrace si zkopíruj **Application (client) ID** a **Directory (tenant) ID** — ty půjdou do pluginu.
 7. **Authentication** → **Advanced settings** → **Allow public client flows** → **Yes**. **Save**.
-   - Bez tohoto device code flow selže s „AADSTS9002331: Application is configured for use by …".
+   - Bez tohoto device code flow selže s „AADSTS9002331: Application is configured for use by …“.
 8. **API permissions** → **Add a permission** → **Microsoft Graph** → **Delegated permissions**:
    - ✅ `Calendars.Read`
    - ✅ `User.Read` (obvykle už je)
@@ -48,7 +48,7 @@ Sděl uživatelům:
 
 - **Tenant ID**: `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`
 - **Client ID**: `yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy`
-- **Instrukce**: *„V Settings → Plugins → Office 365 Calendar vlož tyto dvě GUID a klikni **Test connection**. Aplikace ti dá odkaz a kód — otevři odkaz, zadej kód a přihlas se svým pracovním účtem. Hotovo."*
+- **Instrukce**: *„V Settings → Plugins → Office 365 Calendar vlož tyto dvě GUID a klikni **Test connection**. Aplikace ti dá odkaz a kód — otevři odkaz, zadej kód a přihlas se svým pracovním účtem. Hotovo.“*
 
 ---
 
@@ -64,7 +64,7 @@ Po vyplnění `TenantId` a `ClientId` klikni v Settings → Plugins → Office 3
 3. V browseru zadej kód, přihlaš se pracovním účtem, potvrď consent (pokud se zobrazí).
 4. MSAL mezitím pollne Entra a jakmile tvůj login prošel, vrátí access + refresh token.
 5. Tokeny se uloží do šifrované cache v `%LocalAppData%\WorkTracker\keys\` (DPAPI/Keychain/libsecret dle OS).
-6. Progress dialog zobrazí „OK" a plugin je ready.
+6. Progress dialog zobrazí „OK“ a plugin je ready.
 
 Od tohoto okamžiku plugin vždy zkusí `AcquireTokenSilentAsync` — tokeny se obnovují automaticky přes refresh token (typicky platnost refresh tokenu je 90 dnů nebo dle konfigurace tenanta). Jakmile refresh token expiruje, plugin spustí device code flow znovu.
 
@@ -96,7 +96,7 @@ Každý event se mapuje:
 
 - `IncludeAllDayEvents = false` → události s `isAllDay: true` jsou přeskočené.
 - Cancelled eventy jsou přeskočené.
-- Tentative eventy (user má status „tentatively accepted") jsou **zahrnuté** — možná na nich pracoval/a.
+- Tentative eventy (user má status „tentatively accepted“) jsou **zahrnuté** — možná na nich pracoval/a.
 
 ---
 
@@ -119,7 +119,7 @@ Pokud chceš ticket zadat, uprav záznam před uložením.
 1. Získá token (silent nebo device code flow).
 2. Zavolá `GET /me` — ověří, že token funguje a má scope `User.Read`.
 3. Zavolá `GET /me/calendarview?startDateTime={dnes}&endDateTime={dnes}` — ověří, že scope `Calendars.Read` funguje.
-4. Reportuje průběh do `IProgress<string>`: „Získávám token…", „Ověřuji identitu…", „Ověřuji přístup ke kalendáři…", „OK".
+4. Reportuje průběh do `IProgress<string>`: „Získávám token…“, „Ověřuji identitu…“, „Ověřuji přístup ke kalendáři…“, „OK“.
 
 ---
 
@@ -127,7 +127,7 @@ Pokud chceš ticket zadat, uprav záznam před uložením.
 
 | Symptom | Příčina | Řešení |
 |---------|---------|--------|
-| `AADSTS9002331: Application is configured for use by X` | „Allow public client flows" není zapnuté v Entra registraci | Azure Portal → App → Authentication → zapni |
+| `AADSTS9002331: Application is configured for use by X` | „Allow public client flows“ není zapnuté v Entra registraci | Azure Portal → App → Authentication → zapni |
 | `AADSTS65001: The user or administrator has not consented` | Chybí consent pro `Calendars.Read` | V API permissions klikni **Grant admin consent** |
 | `Token cache file cannot be encrypted, falling back to plaintext` | Linux bez libsecret (headless) | Nainstaluj `libsecret-1-0` nebo přijmi plaintext cache (logován jako warning) |
 | Device code flow skončí timeoutem | Uživatel nepotvrdil login do ~15 min | Klikni **Test connection** znovu |

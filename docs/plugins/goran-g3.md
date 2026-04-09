@@ -92,7 +92,7 @@ Tokeny jsou v šifrované cache (`%LocalAppData%\WorkTracker\keys\`), obnova př
 2. **MCP handshake** — pošle `initialize` zprávu na `{GoranBaseUrl}/mcp` a ověří, že server odpoví validním MCP response.
 3. **Project lookup** — zavolá `project.get { code: "{ProjectCode}" }` pro ověření, že kód projektu existuje a máš k němu přístup.
 4. **Pokud je nastavený `ProjectPhaseCode`**, ověří i ten.
-5. Reportuje stavy: „Získávám token…", „Připojuji k MCP…", „Ověřuji projekt {ProjectCode}…", „OK".
+5. Reportuje stavy: „Získávám token…“, „Připojuji k MCP…“, „Ověřuji projekt {ProjectCode}…“, „OK“.
 
 ---
 

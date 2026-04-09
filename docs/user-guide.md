@@ -170,7 +170,7 @@ WorkTracker.CLI stop 17:30       # konec = dnes 17:30
 WorkTracker.CLI stop "2026-04-09 17:30"
 ```
 
-Pokud žádný záznam není aktivní, vypíše upozornění a vrátí exit code `0`.
+Pokud žádný záznam není aktivní, vypíše upozornění a vrátí exit code `1` (tedy ho můžeš ve skriptu detekovat jako „nic se nestalo").
 
 ### `status`
 
@@ -220,7 +220,7 @@ Postup:
 1. Aplikace načte záznamy z databáze pro zvolený rozsah.
 2. Ukáže náhled v tabulce (ticket, start, konec, délka).
 3. Požádá o potvrzení — **`y/N`**.
-4. Zavolá první nakonfigurovaný `IWorklogUploadPlugin`. Pokud máš více worklog pluginů, vybere se ten s prvním Id v abecedním pořadí; pro výběr konkrétního pluginu použij GUI nebo custom skript.
+4. Zavolá první nakonfigurovaný `IWorklogUploadPlugin`. Pokud máš více worklog pluginů, použije se první podle **interního pořadí načtení / povolení** (ne abecedně); pro výběr konkrétního pluginu použij GUI.
 5. U týdenního odesílání se při částečném úspěchu vypíše seznam selhaných dnů a důvody.
 
 Neúplné záznamy (bez ticketu i popisu, nebo s nulovou délkou) jsou pluginem validátorem automaticky odfiltrovány s upozorněním.
@@ -297,7 +297,7 @@ Otevírá se kliknutím na **Nastavení** v levém dolním rohu hlavního okna. 
   - Checkbox **Enabled** / **Disabled**.
   - **Konfigurační formulář** — dynamicky generovaný z `PluginConfigurationField` daného pluginu. Pole typu `Password` se ukládají do secure storage.
   - Tlačítko **Test connection** (u pluginů implementujících `ITestablePlugin`) s textovým výstupem výsledku.
-- Pokud nejsou nalezené žádné pluginy, záložka zobrazí zprávu „No plugins available".
+- Pokud nejsou nalezené žádné pluginy, záložka zobrazí zprávu „No plugins available“.
 
 **O aplikaci**:
 
@@ -328,7 +328,7 @@ Stejný dialog se používá pro **vytvoření nového záznamu** (tlačítko `+
 - **Zrušit** — zavře dialog bez uložení.
 - **Uložit** (s ikonou diskety, primary) — spustí validaci, a pokud projde, uloží záznam a zavře dialog.
 
-Validace „alespoň ticket nebo popis" platí i tady — prázdný záznam bez ticketu a popisu projde textboxy, ale `WorkEntryService` ho při uložení odmítne a chybu dialog zobrazí jako validační hlášku.
+Validace „alespoň ticket nebo popis“ platí i tady — prázdný záznam bez ticketu a popisu projde textboxy, ale `WorkEntryService` ho při uložení odmítne a chybu dialog zobrazí jako validační hlášku.
 
 ### Dialog návrhů práce (Suggestions)
 
@@ -343,8 +343,8 @@ Otevře se po stisku **Odeslat záznamy práce** (v levém panelu dole).
 **Horní panel s volbami** (tři kontroly vedle sebe):
 
 - **Date picker** — vybrané datum (výchozí: dnes).
-- **Checkbox „Odeslat celý týden"** — přepne mezi denním a týdenním režimem. V týdenním režimu dialog zobrazí záznamy seskupené podle dnů s barevně zvýrazněnými date headery.
-- **Dropdown s pluginem** (vpravo) — vybere provider, kam se záznamy odešlou (např. „Tempo Timesheets"). Placeholder „Submit to…" se zobrazí, dokud nic nevybereš.
+- **Checkbox „Odeslat celý týden“** — přepne mezi denním a týdenním režimem. V týdenním režimu dialog zobrazí záznamy seskupené podle dnů s barevně zvýrazněnými date headery.
+- **Dropdown s pluginem** (vpravo) — vybere provider, kam se záznamy odešlou (např. „Tempo Timesheets“). Placeholder „Submit to…“ se zobrazí, dokud nic nevybereš.
 
 **Seznam záznamů k odeslání** je editovatelný — můžeš upravit hodnoty předtím, než je předáš pluginu. Každý řádek obsahuje:
 
@@ -355,7 +355,7 @@ Otevře se po stisku **Odeslat záznamy práce** (v levém panelu dole).
 
 > **Změny v dialogu se do databáze nepropisují.** Upravené hodnoty putují jen do pluginu při stisku **Odeslat** — původní záznamy v hlavním seznamu zůstanou beze změn. Tlačítkem **Obnovit** kdykoli vrátíš všechny úpravy zpátky na původní hodnoty z DB. Pokud chceš změnit záznam trvale, uprav ho v hlavním okně (ikona ✎ v akcích nebo dvojklikem na řádek).
 
-Během načítání preview je místo seznamu vidět progress bar s textem „Načítám náhled…".
+Během načítání preview je místo seznamu vidět progress bar s textem „Načítám náhled…“.
 
 **Status bar** pod seznamem:
 
@@ -364,10 +364,10 @@ Během načítání preview je místo seznamu vidět progress bar s textem „Na
 
 **Tlačítka dole:**
 
-- **Obnovit** (vlevo, s ikonou undo) — vrátí všechny editace zpátky na původní hodnoty (tooltip: „Obnovit původní hodnoty").
+- **Obnovit** (vlevo, s ikonou undo) — vrátí všechny editace zpátky na původní hodnoty (tooltip: „Obnovit původní hodnoty“).
 - **Zavřít** — zruší dialog bez odeslání.
 - **Opakovat neúspěšné** — zobrazí se **pouze** tehdy, když po prvním odeslání část záznamů selhala. Retryne upload jen pro neúspěšné položky.
-- **Odeslat** (primary tlačítko s ikonou cloud upload) — zahájí upload. Během odesílání se mění na „Odesílám…" s progress barem.
+- **Odeslat** (primary tlačítko s ikonou cloud upload) — zahájí upload. Během odesílání se mění na „Odesílám…“ s progress barem.
 
 ---
 
@@ -416,7 +416,7 @@ Při čtení se placeholder transparentně nahradí skutečnou hodnotou. Když p
 | OS | Kde najdeš uložené tokeny |
 |----|--------------------------|
 | Windows | Credential Manager → Windows Credentials → položky s prefixem `worktracker://` |
-| macOS | Keychain Access → přihlašovací klíčenka → hledat „worktracker" |
+| macOS | Keychain Access → přihlašovací klíčenka → hledat „worktracker“ |
 | Linux | Seahorse / `secret-tool search service worktracker` |
 
 ### OAuth pluginy (MSAL device code flow)
@@ -459,7 +459,7 @@ Hlavička skupiny obsahuje:
 
 - Šipku **▶ / ▼** indikující, jestli je skupina sbalená nebo rozbalená.
 - Ikonu pluginu (z `PluginMetadata.IconName`, fallback žárovka).
-- Název pluginu (např. „Jira Suggestions", „Office 365 Calendar").
+- Název pluginu (např. „Jira Suggestions“, „Office 365 Calendar“).
 - **Badge s počtem** nalezených návrhů.
 - Malý progress bar, když plugin právě zpracovává search dotaz.
 
@@ -472,7 +472,7 @@ Kliknutím na hlavičku skupinu rozbalíš nebo sbalíš (`ToggleGroupCommand`).
     - Pro kalendářové události — **čas** ve formátu `HH:mm–HH:mm` (monospace, muted).
     - Pro Jira issues — **ticket key** (bold, akcentově modrý).
   - **Title** návrhu (s ellipsis, když je delší než šířka dialogu).
-- **„Žádné návrhy"** — prázdný stav, když plugin nevrátil žádné položky.
+- **„Žádné návrhy“** — prázdný stav, když plugin nevrátil žádné položky.
 
 **Kliknutí na položku** zavolá `SelectCommand` s daným návrhem a dialog ho předá dál — otevře se dialog [vytvoření záznamu](#dialog-vytvoření-a-úpravy-záznamu) s předvyplněnými poli z `WorkSuggestion`:
 
@@ -529,7 +529,7 @@ Volitelný Pomodoro timer. Nastavení v **Settings → Pomodoro**:
 1. Stiskni **Start Pomodoro** (v toolbaru nebo v tray menu).
 2. `IPomodoroService` začne odpočítávat. Aktuální fáze (`Work`, `ShortBreak`, `LongBreak`) je k dispozici přes `PomodoroSnapshot`.
 3. Při přechodu do další fáze:
-   - OS notifikace („Pomodoro dokončeno! Krátká pauza začíná.").
+   - OS notifikace („Pomodoro dokončeno! Krátká pauza začíná.“).
    - Pokud je enabled Luxafor plugin, LED změní barvu dle fáze.
    - Pokud je aktivní `AutoStartWorkTracking`/`AutoStopWorkTracking`, tracking se automaticky spustí/zastaví.
 4. Po uplynutí `PomodorosBeforeLongBreak` cyklů začne dlouhá pauza.
@@ -560,11 +560,11 @@ Luxafor integrace je dokumentovaná v [docs/plugins/luxafor.md](plugins/luxafor.
 
 WorkTracker je navržený jako **rezidentní aplikace v system tray** (oznamovací oblasti). Po spuštění přidá ikonu do trayové lišty a žije tam po celou dobu, dokud aplikaci explicitně neukončíš. Zavření hlavního okna aplikaci standardně neukončí — jen ji schová do tray (nastavitelné v **Nastavení → Obecné → Chování okna**).
 
-Díky tomu je WorkTracker vždy „po ruce": stav běžícího záznamu vidíš v ikoně, novou práci nebo favorite spustíš jedním klikem, a hlavní okno otvíráš jen když potřebuješ detailní přehled.
+Díky tomu je WorkTracker vždy „po ruce“: stav běžícího záznamu vidíš v ikoně, novou práci nebo favorite spustíš jedním klikem, a hlavní okno otvíráš jen když potřebuješ detailní přehled.
 
 **Vzhled tray ikony:**
 
-- Ikona má **dvě varianty** — jinou pro stav „nic neběží" a jinou pro aktivní tracking (když běží nějaký záznam).
+- Ikona má **dvě varianty** — jinou pro stav „nic neběží“ a jinou pro aktivní tracking (když běží nějaký záznam).
 - **Tooltip** (bublina po najetí myší) odpovídá stavu: buď neutrální název aplikace, nebo text oznamující, že tracking běží.
 
 **Kliknutí levým tlačítkem:**
@@ -580,7 +580,7 @@ Díky tomu je WorkTracker vždy „po ruce": stav běžícího záznamu vidíš 
 4. *(separátor — jen pokud máš alespoň jednu oblíbenou položku)*
 5. **Oblíbené položky** — dynamicky vložené položky z **Nastavení → Oblíbené**, každá se svou ikonou podle režimu:
    - ⭐ **Zlatá hvězda** — oblíbená je nastavená jako přímá akce. Klik rovnou zahájí tracking se zadaným ticketem a popisem.
-   - ✎ **Modrá ikona úpravy** — oblíbená je nastavená jako **šablona** (checkbox „Zobrazit jako šablonu" v nastavení). Klik otevře dialog vytvoření záznamu s předvyplněnými hodnotami, abys je mohl/a upravit, než práci spustíš.
+   - ✎ **Modrá ikona úpravy** — oblíbená je nastavená jako **šablona** (checkbox „Zobrazit jako šablonu“ v nastavení). Klik otevře dialog vytvoření záznamu s předvyplněnými hodnotami, abys je mohl/a upravit, než práci spustíš.
 6. *(separátor)*
 7. **Ukončit** — definitivně ukončí aplikaci (jediný způsob, jak WorkTracker skutečně zavřít).
 
@@ -600,7 +600,7 @@ Zobrazují se při:
 
 - Úspěšném startu / stopu trackingu
 - Vytvoření, úpravě nebo smazání záznamu
-- Úspěšném restartu záznamu (přes tlačítko „Spustit znovu" v akcích)
+- Úspěšném restartu záznamu (přes tlačítko „Spustit znovu“ v akcích)
 - Úspěšném odeslání worklogů
 - Chybě při načítání záznamů z databáze
 - Selhání inicializace pluginu
@@ -710,4 +710,4 @@ Pro hlášení bugu přilož poslední log + verzi aplikace (`WorkTracker.CLI ve
 
 ### Reset všeho
 
-Ukončí aplikaci, smaž celý adresář `%LocalAppData%\WorkTracker\`, smaž položky z OS credential storu s prefixem `worktracker://`, spusť aplikaci znovu. Začne „na zelené louce".
+Ukončí aplikaci, smaž celý adresář `%LocalAppData%\WorkTracker\`, smaž položky z OS credential storu s prefixem `worktracker://`, spusť aplikaci znovu. Začne „na zelené louce“.

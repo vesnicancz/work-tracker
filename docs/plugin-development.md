@@ -55,7 +55,7 @@ Jeden plugin může implementovat **víc** rozhraní (například `Plugin.Atlass
 
 ## Quick start: minimální plugin
 
-Vytvoříme jednoduchý worklog upload plugin, který „odešle" záznamy do souboru na disku.
+Vytvoříme jednoduchý worklog upload plugin, který „odešle“ záznamy do souboru na disku.
 
 ### 1. Projekt
 
@@ -188,7 +188,7 @@ dotnet publish plugins/WorkTracker.Plugin.FileDump -c Release \
   -o src/WorkTracker.Avalonia/bin/Debug/net10.0/plugins/FileDump
 ```
 
-Spusť Avalonia aplikaci — plugin se objeví v **Settings → Plugins** jako „File Dump". Zadej cestu k souboru, stiskni **Test connection**, povolí a klikni na **Send today**.
+Spusť Avalonia aplikaci — plugin se objeví v **Settings → Plugins** jako „File Dump“. Zadej cestu k souboru, stiskni **Test connection**, povolí a klikni na **Send today**.
 
 ---
 
@@ -410,7 +410,7 @@ Task<PluginResult<bool>> TestConnectionAsync(
 Tato metoda:
 
 - Je volaná **ručně** z UI (tlačítko **Test connection** v Settings).
-- Má **pravdivě ověřit**, že plugin se dokáže připojit k externímu systému s aktuální konfigurací — ne jen „plugin je nainstalovaný".
+- Má **pravdivě ověřit**, že plugin se dokáže připojit k externímu systému s aktuální konfigurací — ne jen „plugin je nainstalovaný“.
 - Pro OAuth pluginy obvykle **triggeruje device code flow** (pokud není platný cached token).
 - Má **`IProgress<string>` pro hlášení stavu uživateli** — na co se čeká, co se děje. Bez toho uživatel u device code flow netuší, co se děje.
 
@@ -498,7 +498,7 @@ public sealed class PluginResult<T>
 
 Aplikace používá kategorie pro:
 
-- **UI** — zobrazí ikonu a doporučení podle kategorie (u `Authentication` nabídne „Přihlásit znovu").
+- **UI** — zobrazí ikonu a doporučení podle kategorie (u `Authentication` nabídne „Přihlásit znovu“).
 - **Retry logika** — u `Network` nabídne retry; u `Validation` ne.
 - **Logging** — kategorie je v metadatech logu, takže se dá snadno filtrovat.
 
@@ -568,7 +568,7 @@ private async Task<string?> AcquireTokenAsync(IProgress<string>? progress, Cance
 
 Aby fungovalo device code flow, aplikační registrace v Entra (Azure Portal → App registrations) musí:
 
-- Mít povolené **„Allow public client flows"** → **Yes**.
+- Mít povolené **„Allow public client flows“** → **Yes**.
 - Mít nakonfigurované **scopes** (delegated permissions), které plugin požaduje — a uděleny user nebo admin consentem.
 - Nepoužívat client secret (public client).
 
@@ -585,7 +585,7 @@ Plugin se instanciuje přes `ActivatorUtilities.CreateInstance` ze scoped `Servi
 | `IHttpClientFactory` | **Vždy** použij tuto factory, nikdy nenew HttpClient přímo |
 | `ITokenProviderFactory` | MSAL device code flow |
 
-Parameterless konstruktory **nejsou podporované** — `PluginLoader` vyžaduje DI instantiation.
+Plugin je vždy instancovaný přes `ActivatorUtilities.CreateInstance`, takže všechny parametry konstruktoru musí být resolvovatelné ze service provideru. Bezparametrický konstruktor technicky funguje (pokud plugin žádné služby nepotřebuje), ale obvykle je vhodnější používat explicitní DI konstruktor — budeš aspoň mít přístup k loggeru.
 
 ### Správné použití HttpClient
 

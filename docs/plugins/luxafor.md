@@ -7,7 +7,7 @@
 | Hardware | Luxafor Bluetooth Pro / Flag / Orb |
 | Komunikace | HID přes `Luxafor.HidSharp` |
 
-Plugin ovládá fyzický LED indikátor Luxafor a přepíná jeho barvu podle aktuální fáze Pomodoro timeru. Cílem je okamžité vizuální signalizování stavu pro sebe i okolí („jsem v zóně, nerušit" vs. „mám pauzu").
+Plugin ovládá fyzický LED indikátor Luxafor a přepíná jeho barvu podle aktuální fáze Pomodoro timeru. Cílem je okamžité vizuální signalizování stavu pro sebe i okolí („jsem v zóně, nerušit“ vs. „mám pauzu“).
 
 ---
 
@@ -125,7 +125,7 @@ Při selhání HID operace plugin zkusí reconnectovat při dalším `SetStateAs
 
 ## Test connection
 
-`StatusIndicatorPluginBase` **nedědí** `ITestablePlugin` (indicator pluginy nemají „externí službu" na otestování). Místo toho Settings UI nabízí tlačítko **Preview** (pokud je plugin enabled), které postupně rozsvítí LED ve všech třech fázových barvách + idle, každou na ~1 sekundu, a umožní ti tak ověřit:
+`StatusIndicatorPluginBase` **nedědí** `ITestablePlugin` (indicator pluginy nemají „externí službu“ na otestování). Místo toho Settings UI nabízí tlačítko **Preview** (pokud je plugin enabled), které postupně rozsvítí LED ve všech třech fázových barvách + idle, každou na ~1 sekundu, a umožní ti tak ověřit:
 
 - Že zařízení je připojené.
 - Že barvy v tvé konfiguraci vypadají tak, jak chceš.

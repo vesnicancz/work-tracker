@@ -363,7 +363,7 @@ Autor pluginu override‑uje jen `OnInitializeAsync`, nemusí řešit validaci a
 
 ## Datový tok: příklad odeslání worklogu
 
-Jako konkrétní ilustraci vezmeme tok **„Send today"** z Avalonia GUI do Tempa:
+Jako konkrétní ilustraci vezmeme tok **„Send today“** z Avalonia GUI do Tempa:
 
 1. **UI** — Uživatel v `MainWindow` klikne na **Send today**. View zavolá `SubmitTodayCommand` ve `MainWindowViewModel`.
 2. **ViewModel** — Deleguje na `WorklogSubmissionOrchestrator.SubmitDayAsync(DateTime.Today)`.
