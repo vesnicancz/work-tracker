@@ -245,7 +245,7 @@ Plugin se pak instanciuje přes `ActivatorUtilities.CreateInstance` z tohoto sco
 
 `PluginLoader.DiscoverPluginFiles` skenuje adresáře a hledá soubory vyhovující `WorkTracker.Plugin.*.dll` (kromě `WorkTracker.Plugin.Abstractions.dll`, která je vyloučená v `DependencyInjection.InitializePluginsAsync`). Výchozí adresář: `{AppContext.BaseDirectory}/plugins`.
 
-Kromě toho existují **embedded pluginy** — plugin knihovna přímo referencovaná z hlavní aplikace (bez dynamic loadu). Používá se to například v CLI, kde nechceme plugin adresář vedle binárky.
+`PluginManager` interně podporuje i registraci zabudovaného pluginu přes `LoadEmbeddedPlugin<T>()`, ale aktuální bootstrap v `InitializePluginsAsync` tuto cestu nepoužívá — všechny pluginy jsou načítané dynamickým discovery z adresáře.
 
 ### Lifecycle
 

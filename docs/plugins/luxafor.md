@@ -5,9 +5,10 @@
 | Třída | `LuxaforStatusIndicatorPlugin` |
 | Rozhraní | `IStatusIndicatorPlugin` |
 | Hardware | Luxafor Bluetooth Pro / Flag / Orb |
-| Komunikace | HID přes `Luxafor.HidSharp` |
+| Knihovna | `DotLuxafor` (NuGet) |
+| API | `ILuxaforDeviceManager` → `ILuxaforDevice` (`SetColorAsync`, `TurnOffAsync`) |
 
-Plugin ovládá fyzický LED indikátor Luxafor a přepíná jeho barvu podle aktuální fáze Pomodoro timeru. Cílem je okamžité vizuální signalizování stavu pro sebe i okolí („jsem v zóně, nerušit“ vs. „mám pauzu“).
+Plugin ovládá fyzický LED indikátor Luxafor a přepíná jeho barvu podle aktuální fáze Pomodoro timeru. Cílem je okamžité vizuální signalizování stavu pro sebe i okolí („jsem v zóně, nerušit” vs. „mám pauzu”).
 
 ---
 
@@ -44,7 +45,7 @@ Podporovaná zařízení:
 - **Luxafor Flag** (USB) — pohodlné pro stacionární setup.
 - **Luxafor Orb** (USB).
 
-Všechna zařízení komunikují přes **HID API**. Plugin používá knihovnu `Luxafor.HidSharp`, která je ve stromě jako samostatný projekt `src/Luxafor.HidSharp/`.
+Všechna zařízení komunikují přes **HID API**. Plugin používá NuGet knihovnu [`DotLuxafor`](https://www.nuget.org/packages/DotLuxafor/), která nabízí vysokoúrovňové API `ILuxaforDeviceManager` / `ILuxaforDevice` specifické pro Luxafor protokol — plugin sám žádnou HID logiku neimplementuje.
 
 ### Ovladače
 
@@ -66,9 +67,9 @@ Všechna zařízení komunikují přes **HID API**. Plugin používá knihovnu `
 
 ### Inicializace
 
-1. `OnInitializeAsync` zkusí otevřít HID connection přes `Luxafor.HidSharp`.
-2. Pokud zařízení **není** připojené, plugin zůstane inicializovaný, ale `IsDeviceAvailable => false`. Aplikace bude volat `SetStateAsync` jako no‑op.
-3. Pokud zařízení je připojené, načte barvy z konfigurace (s fallbackem na defaulty) a je připraven.
+1. `OnInitializeAsync` načte barvy z konfigurace (s fallbackem na defaulty) a provede validaci hex formátu. Zařízení se v tomto kroku **neotevírá**.
+2. Teprve při prvním volání `SetStateAsync` plugin zavolá interní helper `GetOrOpenDevice()`, který přes `ILuxaforDeviceManager.TryOpen()` otevře HID connection k aktuálně připojenému Luxaforu.
+3. Pokud zařízení v tu chvíli **není** připojené, `_device` zůstane `null` a volání je no‑op; další pokus proběhne při příštím `SetStateAsync`.
 
 ### Reakce na Pomodoro
 
@@ -97,9 +98,9 @@ void OnPhaseChanged(PomodoroPhase newPhase)
 
 `LuxaforStatusIndicatorPlugin.SetStateAsync`:
 
-1. Přeloží `StatusIndicatorState` na hex barvu podle konfigurace.
-2. Zamkne `SemaphoreSlim` (HID operace **nesmí** běžet paralelně — zařízení zamrzne).
-3. Pošle HID command s RGB payloadem.
+1. Zamkne `SemaphoreSlim` (operace se zařízením **nesmí** běžet paralelně — DotLuxafor i HID obecně očekávají sériový přístup).
+2. Přes `GetOrOpenDevice()` získá otevřený `ILuxaforDevice` (nebo ho lazy otevře, pokud jím plugin ještě nedisponuje).
+3. Podle stavu zavolá buď `device.SetColorAsync(color)` s barvou odpovídající fázi, nebo `device.TurnOffAsync()` pro `Idle`.
 4. Uvolní semafor.
 
 ### Thread safety
@@ -113,13 +114,9 @@ Ačkoli WorkTracker v běžném provozu nevolá `SetStateAsync` z více vláken,
 
 ## `IsDeviceAvailable`
 
-Property `IsDeviceAvailable` vrací `true`, když:
+Property `IsDeviceAvailable` vrací `true`, když má plugin otevřené spojení s reálným zařízením (`_device` je non-null a `IsConnected`).
 
-- Plugin je inicializovaný.
-- HID connection je otevřená.
-- Poslední `SetStateAsync` neselhal s fatal I/O chybou.
-
-Při selhání HID operace plugin zkusí reconnectovat při dalším `SetStateAsync`. Pokud reconnect 3× selže, zůstane v `IsDeviceAvailable => false` až do restartu aplikace.
+Při selhání operace v `SetStateAsync` plugin zařízení zavře a další volání se pokusí o znovupřipojení přes `GetOrOpenDevice()`. V aktuální implementaci **není počítaný limit** reconnect pokusů — plugin bude při každém dalším volání zkoušet reconnect znovu, dokud se nepodaří nebo dokud zařízení nezmizí nadobro.
 
 ---
 
@@ -158,18 +155,6 @@ Tímhle postupem ověříš obě důležité věci v jednom kroku:
 - **Neukládá barvy mimo `settings.json`** — žádná vlastní cache.
 - **Nepoužívá síť** — čistě lokální HID.
 - **Nereaguje na work entries přímo** — jen na Pomodoro fáze. Pokud chceš jinou logiku (např. červená, když běží tracking, zelená, když ne), by to vyžadovalo úpravu pluginu nebo další plugin s vlastním event hookem.
-
----
-
-## Knihovna `Luxafor.HidSharp`
-
-`src/Luxafor.HidSharp/` je vlastní knihovna projektu, která obaluje `HidSharp` (NuGet) s vyšším API specifickým pro Luxafor protokol. Cíle: `netstandard2.0` + `net8.0` pro použití i mimo WorkTracker.
-
-Plugin knihovnu referencuje přes `<ProjectReference>` a kopíruje její DLL do své publish složky. Hlavní aplikace `HidSharp` nevidí (je v plugin izolaci).
-
-### Vlastnost: standalone použití
-
-Protože knihovna je multi‑target (`netstandard2.0`), dá se použít i z jiných projektů — například .NET Framework 4.8. Uvažujeme o jejím vyčlenění do samostatného repozitáře a publikaci na NuGet. Do té doby je její verze vázaná na WorkTracker release cyklus.
 
 ---
 

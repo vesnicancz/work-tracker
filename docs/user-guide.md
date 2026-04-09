@@ -68,7 +68,7 @@ Při prvním startu aplikace:
 
 1. Vytvoří se adresář s uživatelskými daty (`%LocalAppData%\WorkTracker\` na Windows).
 2. Proběhne migrace SQLite databáze (`worktracker.db`).
-3. Načtou se zabudované pluginy + pluginy ze složky `./plugins/` vedle binárky.
+3. Načtou se pluginy ze složky `plugins/` vedle spustitelného souboru (typicky `{AppContext.BaseDirectory}/plugins`).
 4. Pokud některý plugin nemá nastavenou konfiguraci, zůstane v seznamu, ale nebude aktivní.
 
 Doporučený postup pro nového uživatele:
@@ -435,7 +435,7 @@ Pluginy, které autentizují uživatele přes Microsoft Entra ID (Office 365 Cal
 
 > **Proč device code, a ne interaktivní popup?** MSAL `AcquireTokenInteractive` má v Avalonia známý deadlock v UI vlákně. Device code flow běží v pozadí a nevyžaduje embedded browser — spolehlivě funguje napříč platformami.
 
-Detaily pro jednotlivé pluginy viz [docs/plugins/](plugins/).
+Detaily pro jednotlivé pluginy viz [plugins/](plugins/).
 
 ---
 
@@ -539,7 +539,7 @@ Volitelný Pomodoro timer. Nastavení v **Settings → Pomodoro**:
 
 Events `PhaseChanged`, `Tick`, `PomodoroCompleted` jsou dostupné pro ViewModely, takže UI se aktualizuje bez pollingu.
 
-Luxafor integrace je dokumentovaná v [docs/plugins/luxafor.md](plugins/luxafor.md).
+Luxafor integrace je dokumentovaná v [plugins/luxafor.md](plugins/luxafor.md).
 
 ---
 

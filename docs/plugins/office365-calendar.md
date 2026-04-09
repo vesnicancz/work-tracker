@@ -80,23 +80,22 @@ GET https://graph.microsoft.com/v1.0/me/calendarview?
     endDateTime={date}T23:59:59
 ```
 
-Každý event se mapuje:
+Plugin volá Graph s explicitním `$select=subject,start,end,webLink,id,isAllDay` — a pouze tato pole se mapují na `WorkSuggestion`. Popis události (body / bodyPreview) plugin **nenačítá**.
 
 | `WorkSuggestion` | Zdroj z Graph |
 |------------------|---------------|
 | `Title` | `subject` |
-| `Description` | `bodyPreview` (textový náhled) |
+| `Description` | — (plugin `bodyPreview` ani `body` nenačítá) |
 | `StartTime` | `start.dateTime` (konvertováno na local time) |
 | `EndTime` | `end.dateTime` (konvertováno na local time) |
-| `Source` | `"Office 365 Calendar"` |
+| `Source` | `”O365 Calendar”` |
 | `SourceId` | `id` (unikátní event ID v kalendáři) |
 | `SourceUrl` | `webLink` (odkaz do Outlook Web) |
 
 **Filtrace:**
 
 - `IncludeAllDayEvents = false` → události s `isAllDay: true` jsou přeskočené.
-- Cancelled eventy jsou přeskočené.
-- Tentative eventy (user má status „tentatively accepted“) jsou **zahrnuté** — možná na nich pracoval/a.
+- Aktuální implementace samostatně **nefiltruje** eventy podle `showAs` / stavu (Cancelled, Tentative, Free, …) — do suggestions se propíší všechny nenulové ne‑all‑day eventy vrácené Graph API.
 
 ---
 
@@ -116,10 +115,11 @@ Pokud chceš ticket zadat, uprav záznam před uložením.
 
 ## Test connection — co testuje
 
-1. Získá token (silent nebo device code flow).
-2. Zavolá `GET /me` — ověří, že token funguje a má scope `User.Read`.
-3. Zavolá `GET /me/calendarview?startDateTime={dnes}&endDateTime={dnes}` — ověří, že scope `Calendars.Read` funguje.
-4. Reportuje průběh do `IProgress<string>`: „Získávám token…“, „Ověřuji identitu…“, „Ověřuji přístup ke kalendáři…“, „OK“.
+1. Získá token přes `AcquireTokenInteractiveAsync` (spustí device code flow, pokud není platná silent cache).
+2. Zavolá `GET https://graph.microsoft.com/v1.0/me` — ověří, že token funguje a že je možné načíst identitu přihlášeného uživatele.
+3. Reportuje průběh do `IProgress<string>` (stavy typu „Získávám token…”, „Ověřuji identitu…”, „OK”).
+
+> **Pozor:** Test connection **neověřuje** scope `Calendars.Read` ani endpoint `calendarView`. Pokud by oprávnění chybělo, chyba se projeví až při prvním skutečném načítání návrhů v Suggestions dialogu. Pokud v Entra registraci zapomeneš delegated permission `Calendars.Read`, Test connection projde, ale načtení eventů selže s 403.
 
 ---
 

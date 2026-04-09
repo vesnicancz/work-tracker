@@ -753,7 +753,7 @@ Dokumentace: [plugins/atlassian.md](plugins/atlassian.md).
 ### `WorkTracker.Plugin.Office365Calendar`
 
 - **MSAL device code flow** přes `ITokenProviderFactory`.
-- **Microsoft Graph API** — volání `GET /me/calendarview`.
+- **Microsoft Graph API** — `TestConnectionAsync` ověřuje připojení a identitu přes `GET /me`; samotné načítání eventů v `GetSuggestionsAsync` pak volá `GET /me/calendarView`.
 - **Filtrace all‑day eventů** konfigurovatelná přes checkbox.
 - Ukazuje, jak propagovat `IProgress<string>` z `TestConnectionAsync` až do MSAL callbacku.
 
@@ -762,8 +762,8 @@ Dokumentace: [plugins/office365-calendar.md](plugins/office365-calendar.md).
 ### `WorkTracker.Plugin.GoranG3`
 
 - **Entra ID autentizace** + MCP client.
-- **`TokenInjectingHandler`** — vlastní `DelegatingHandler` pro HttpClient, který automaticky vkládá Bearer token.
-- **`ITestablePlugin`** implementace, která prochází celý řetěz: auth → connect MCP → ping.
+- **`TokenInjectingHandler`** — vlastní `DelegatingHandler` pro HttpClient, který do requestů vkládá Bearer token přes `AcquireTokenSilentAsync`. Interaktivní získání tokenu uvnitř handleru **neprobíhá** — pokud silent auth selže, handler vyhodí výjimku a uživatel musí spustit **Test connection** v Settings, kde se interaktivní device code flow rozběhne.
+- **`ITestablePlugin`** implementace, která po připojení k MCP serveru listuje dostupné tools a kontroluje přítomnost očekávaného toolu (`create_my_timesheet_item`).
 - Ukazuje, jak plugin může komunikovat s nestandardním protokolem (MCP), ne jen REST.
 
 Dokumentace: [plugins/goran-g3.md](plugins/goran-g3.md).
@@ -771,9 +771,10 @@ Dokumentace: [plugins/goran-g3.md](plugins/goran-g3.md).
 ### `WorkTracker.Plugin.Luxafor`
 
 - **`IStatusIndicatorPlugin`** (ne worklog).
-- **HID komunikace** přes `Luxafor.HidSharp` (vlastní knihovna v `src/`).
+- **Komunikace se zařízením** přes knihovnu **`DotLuxafor`** (NuGet package), která poskytuje `ILuxaforDeviceManager` / `ILuxaforDevice` API s metodami jako `SetColorAsync` a `TurnOffAsync`.
+- **Lazy device open** — `OnInitializeAsync` jen naparsuje barvy z konfigurace, zařízení se otevírá až při prvním `SetStateAsync`.
 - **Konfigurovatelné barvy per Pomodoro fázi** — hex color pole s regex validací `^#[0-9A-Fa-f]{6}$`.
-- **Thread‑safe** s `SemaphoreSlim` — HID operace nesmí běžet paralelně.
+- **Thread‑safe** s `SemaphoreSlim` — operace se zařízením nesmí běžet paralelně.
 
 Dokumentace: [plugins/luxafor.md](plugins/luxafor.md).
 

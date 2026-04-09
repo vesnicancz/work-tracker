@@ -65,8 +65,7 @@ work-tracker/
 │   ├── WorkTracker.CLI/                  # Spectre.Console klient
 │   ├── WorkTracker.WPF/                  # WPF GUI (Windows)
 │   ├── WorkTracker.Avalonia/             # Avalonia GUI (cross-platform)
-│   ├── WorkTracker.Plugin.Abstractions/  # Plugin API
-│   └── Luxafor.HidSharp/                 # HID knihovna pro Luxafor
+│   └── WorkTracker.Plugin.Abstractions/  # Plugin API
 ├── plugins/
 │   ├── WorkTracker.Plugin.Atlassian/
 │   ├── WorkTracker.Plugin.Office365Calendar/
@@ -115,7 +114,7 @@ Pozn.: `--` odděluje argumenty pro `dotnet run` od argumentů pro samotnou apli
 dotnet run --project src/WorkTracker.Avalonia
 ```
 
-Při prvním spuštění se vytvoří databáze a načtou embedded pluginy. Externí pluginy se hledají v `src/WorkTracker.Avalonia/bin/Debug/net10.0/plugins/` — ty se tam během debugování dostanou buď přes `dotnet publish` plugin projektu, nebo ručně.
+Při prvním spuštění se vytvoří databáze. Pluginy se discoverují z adresáře vedle binárky — při debugování je to `src/WorkTracker.Avalonia/bin/Debug/net10.0/plugins/`, kam se plugin dostane buď přes `dotnet publish` plugin projektu do té složky, nebo ručním zkopírováním DLL.
 
 ### WPF
 

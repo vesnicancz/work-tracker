@@ -63,15 +63,16 @@ Při volání `UploadWorklogAsync(entry)`:
      "description": "Bug fix v autentizaci"
    }
    ```
-4. **Retry** — na 408/429/500–504 až 2× s exponenciálním backoffem (~500 ms, 2 s). Ostatní chyby (401, 403, 404, 400) propagují okamžitě s odpovídající `PluginErrorCategory`.
+4. **Retry** — na 408/429/500–504 až 2× s exponenciálním backoffem. První retry čeká ~2 s, druhý ~4 s (formule `2^(attempt+1)` sekund). Ostatní chyby (401, 403, 404, 400) propagují okamžitě s odpovídající `PluginErrorCategory`.
 
 ### Test connection
 
-Stiskem **Test connection** v Settings plugin:
+Stiskem **Test connection** v Settings plugin aktuálně:
 
-1. Pingne Tempo `GET /worklogs?accountId={JiraAccountId}&limit=1` s tokenem.
-2. Pokud odpoví 200, pingne Jira `GET /rest/api/3/myself` (pro ověření, že issue key lookup bude fungovat).
-3. Reportuje do `IProgress<string>` stavy „Checking Tempo…“, „Checking Jira…“, „OK“.
+1. Zavolá Jira přes interní `_jiraClient.TestConnectionAsync` (pingne `GET /rest/api/3/myself` s Basic auth).
+2. Pokud Jira odpoví úspěšně, plugin vrátí success; při 401/403 kategorizuje chybu jako `Authentication`, jinak jako `Network`.
+
+> **Pozor:** Tempo endpoint **ani platnost `TempoApiToken`** se tímto testem neověřuje. Tempo autorizace se projeví až při skutečném volání (upload worklogu). Pokud tedy máš špatný Tempo token, ale Jira funguje, Test connection projde a chyba se objeví až při `Odeslat záznamy práce`.
 
 ### Časté chyby
 
@@ -88,11 +89,13 @@ Stiskem **Test connection** v Settings plugin:
 
 ### Konfigurační pole
 
+Plugin sdílí konfigurační pole Jira s Tempo plugin (`JiraConfigFields` v kódu), takže klíče začínají prefixem `Jira`:
+
 | Pole | Typ | Povinné | Default | Popis |
 |------|-----|---------|---------|-------|
-| `BaseUrl` | `Url` | ✅ | — | Jira base URL, např. `https://vase-firma.atlassian.net` |
-| `Email` | `Email` | ✅ | — | Login email pro Basic auth |
-| `ApiToken` | `Password` | ✅ | — | Jira API token (viz níže) |
+| `JiraBaseUrl` | `Url` | ✅ | — | Jira base URL, např. `https://vase-firma.atlassian.net` |
+| `JiraEmail` | `Email` | ✅ | — | Login email pro Basic auth |
+| `JiraApiToken` | `Password` | ✅ | — | Jira API token (viz níže) |
 | `JqlFilter` | `MultilineText` | ❌ | `assignee = currentUser() AND status != Done ORDER BY updated DESC` | JQL pro list úkolů v Suggestions dialogu |
 | `SearchJqlFilter` | `MultilineText` | ❌ | — | JQL pro search pole; použij `{query}` jako placeholder |
 | `MaxResults` | `Number` | ❌ | `20` | Max počet výsledků |
@@ -101,7 +104,7 @@ Stiskem **Test connection** v Settings plugin:
 
 1. Jdi na <https://id.atlassian.com/manage-profile/security/api-tokens>.
 2. **Create API token** → pojmenuj → zkopíruj.
-3. Vlož do `ApiToken` (uloží se do secure storage).
+3. Vlož do `JiraApiToken` (uloží se do secure storage).
 
 Autentizace je **Basic** = `base64(email:token)` v `Authorization` hlavičce. Jira to tak vyžaduje i pro API token; nepleť si to s OAuth.
 
@@ -130,19 +133,20 @@ Pokud `SearchJqlFilter` nenastavíš, search je pro tento plugin zakázaný (dia
 
 ### Jak se vrácené issues mapují na `WorkSuggestion`
 
+Plugin fetchuje issues přes `GET /rest/api/3/search/jql?jql=…&maxResults=…&fields=summary,status,issuetype,priority`. Z výsledku ale při mapování na `WorkSuggestion` používá jen `key` a `summary`:
+
 | `WorkSuggestion` | Zdroj z Jira |
 |------------------|--------------|
 | `Title` | `fields.summary` |
 | `TicketId` | `key` (např. `PROJ-123`) |
-| `Description` | `fields.description` (plaintext extract) |
+| `Description` | — (plugin `Description` nenastavuje) |
 | `Source` | `"Jira"` |
 | `SourceId` | `key` |
 | `SourceUrl` | `{BaseUrl}/browse/{key}` |
 
 ### Test connection
 
-1. Volá `GET /rest/api/3/myself`.
-2. Pokud jsou vyplněné JQL, zkusí i `GET /rest/api/3/search?jql=…&maxResults=1`, aby zjistil, že JQL je validní.
+Stejně jako Tempo plugin volá **jen** `_jiraClient.TestConnectionAsync` (pingne `GET /rest/api/3/myself` s Basic auth). **JQL validace při testu neprobíhá** — pokud máš syntakticky nevalidní `JqlFilter`, test projde, ale Suggestions dialog vrátí chybu až při pokusu o načtení návrhů.
 
 ---
 
@@ -162,9 +166,9 @@ CLI nemá Settings UI, takže pro něj můžeš plugin konfiguraci vložit do `a
       "JiraAccountId": "5b10a2844c20165700ede21g"
     },
     "jira.suggestions": {
-      "BaseUrl": "https://vase-firma.atlassian.net",
-      "Email": "vas@email.cz",
-      "ApiToken": "vas-jira-api-token",
+      "JiraBaseUrl": "https://vase-firma.atlassian.net",
+      "JiraEmail": "vas@email.cz",
+      "JiraApiToken": "vas-jira-api-token",
       "JqlFilter": "assignee = currentUser() AND status != Done",
       "MaxResults": "20"
     }

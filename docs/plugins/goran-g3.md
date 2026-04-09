@@ -53,44 +53,52 @@ Tokeny jsou v šifrované cache (`%LocalAppData%\WorkTracker\keys\`), obnova př
 
 ## MCP client
 
-`GoranG3WorklogPlugin` obsahuje vlastní `McpClient`, který:
+`GoranG3WorklogPlugin` používá `McpClient` z NuGet balíčku `ModelContextProtocol`, který:
 
-1. Hostí HTTP spojení na `GoranBaseUrl/mcp` (konkrétní endpoint je specifikovaný MCP protokolem).
+1. Hostí HTTP spojení na `{GoranBaseUrl}/mcp`.
 2. Všechny requesty procházejí `TokenInjectingHandler` — vlastní `DelegatingHandler`, který:
    - Před každým requestem zavolá `_tokenProvider.AcquireTokenSilentAsync`.
-   - Pokud token chybí nebo selže, fallback na `AcquireTokenInteractiveAsync` (spustí device code flow).
+   - Pokud silent auth selže a token je `null`, handler vyhodí `InvalidOperationException` — **žádný interaktivní fallback uvnitř handleru neprobíhá**. Uživatel musí spustit **Test connection** v Settings, která interaktivní device code flow rozběhne explicitně.
    - Do `Authorization` hlavičky vloží `Bearer {token}`.
-3. Serializuje MCP zprávy podle protokolu (JSON‑RPC 2.0 over HTTP).
-4. Volá dvě hlavní operace:
-   - `worklog.create` — upload jednoho záznamu
-   - `worklog.search` — query existujících worklogů (pro `GetWorklogsAsync`, `WorklogExistsAsync`)
+3. Volá MCP tools (snake_case název, argumenty v JSON objektu):
+   - **`create_my_timesheet_item`** — upload jednoho záznamu.
+   - **`submit_my_timesheet`** — finální submit sady záznamů (při `UploadWorklogsAsync`).
+   - **`get_my_timesheet_items_list`** — query existujících worklogů (`GetWorklogsAsync`, `WorklogExistsAsync`).
 
-### Struktura worklog payloadu
+### Struktura argumentů pro `create_my_timesheet_item`
+
+Plugin předá nástroji tento dictionary (klíče **snake_case** podle MCP schématu Goran G3):
 
 ```json
 {
-  "projectCode": "000.GOR",
-  "projectPhaseCode": null,
-  "date": "2026-04-09",
-  "startTime": "09:00",
-  "durationMinutes": 60,
-  "description": "Bug fix v autentizaci",
-  "ticketId": "PROJ-123",
-  "tags": ["dev", "bugfix"]
+  “project_code”: “000.GOR”,
+  “project_phase_code”: “SP”,
+  “date”: “2026-04-09”,
+  “start_time”: “09:00”,
+  “duration_minutes”: 60,
+  “text”: “PROJ-123 Bug fix v autentizaci”,
+  “tags”: [“dev”, “bugfix”],
+  “external_id”: 123
 }
 ```
 
-`TicketId` z `PluginWorklogEntry` se mapuje na `ticketId` pole. Tagy se parsují z konfiguračního pole `Tags` (split po `,` a trim).
+**Mapování polí:**
+
+- `text` — kombinace ticketu (pokud je) a popisu z `PluginWorklogEntry` (plugin používá interní `BuildText` helper).
+- `external_id` — plugin se pokusí z `PluginWorklogEntry.TicketId` vyparsovat numerické ID (viz `ParseExternalId`). Pokud ticket nelze převést na číslo, pole se do argumentů nepřidá.
+- `project_phase_code` — přidá se jen tehdy, když je pole `ProjectPhaseCode` v konfiguraci vyplněné.
+- `tags` — přidá se jen tehdy, když je pole `Tags` vyplněné; rozparsuje se split po `,` + trim.
 
 ---
 
 ## Test connection — co testuje
 
-1. **Získání tokenu** — silent nebo device code flow. Reportuje do `IProgress<string>`.
-2. **MCP handshake** — pošle `initialize` zprávu na `{GoranBaseUrl}/mcp` a ověří, že server odpoví validním MCP response.
-3. **Project lookup** — zavolá `project.get { code: "{ProjectCode}" }` pro ověření, že kód projektu existuje a máš k němu přístup.
-4. **Pokud je nastavený `ProjectPhaseCode`**, ověří i ten.
-5. Reportuje stavy: „Získávám token…“, „Připojuji k MCP…“, „Ověřuji projekt {ProjectCode}…“, „OK“.
+1. **Získání tokenu** — plugin nejdřív zkusí `AcquireTokenSilentAsync`, a pokud je cache prázdná/expirovaná, přejde na `AcquireTokenInteractiveAsync` (device code flow). Průběh reportuje do `IProgress<string>`.
+2. **Připojení k MCP** — naváže spojení na `{GoranBaseUrl}/mcp`.
+3. **Ověření dostupnosti required toolu** — zavolá MCP `list_tools` a kontroluje, jestli server nabízí `create_my_timesheet_item`.
+4. Reportuje stavy typu: „Získávám token…”, „Připojuji k MCP…”, „Ověřuji dostupné tools…”, „OK”.
+
+> **Pozor:** `Test connection` aktuálně **neprovádí** validaci `ProjectCode` ani `ProjectPhaseCode`. Jejich správnost se projeví až při skutečném uploadu worklogu (kdy MCP server případně vrátí chybu).
 
 ---
 
@@ -98,11 +106,12 @@ Tokeny jsou v šifrované cache (`%LocalAppData%\WorkTracker\keys\`), obnova př
 
 1. `UploadWorklogsAsync` přijme kolekci `PluginWorklogEntry`.
 2. Pro každý záznam:
-   - Sestaví MCP request z konfigurace + entry + tagů.
-   - Pošle přes `McpClient.CallAsync("worklog.create", payload)`.
+   - Sestaví argumenty pro MCP tool `create_my_timesheet_item` (snake_case pole viz výše).
+   - Pošle přes `_mcpClient.CallToolAsync(“create_my_timesheet_item”, arguments, ct)`.
    - Pokud server vrátí success, inkrementuje `SuccessfulEntries`.
    - Pokud fail, přidá do `Errors` s `ErrorMessage` a `Worklog`.
-3. Vrátí `PluginResult<WorklogSubmissionResult>`.
+3. Po zpracování všech záznamů plugin zavolá `submit_my_timesheet` pro finální uložení celé sady.
+4. Vrátí `PluginResult<WorklogSubmissionResult>`.
 
 **Retry** — plugin **neretryne** automaticky. Pokud dojde k síťové chybě, záznam skončí v `Errors` a uživatel může kliknout **Retry failed** v dialogu.
 

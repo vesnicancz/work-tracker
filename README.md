@@ -22,7 +22,7 @@ WorkTracker je desktopová aplikace pro sledování času stráveného na pracov
 - **WPF GUI** — nativní Windows aplikace s Material Design
 - **CLI** — terminálový klient (Spectre.Console) pro rychlé ovládání z příkazové řádky
 
-Jádro aplikace je rozšiřitelné pomocí pluginů, které jsou načítané z izolovaných `AssemblyLoadContext`. Ve výchozí distribuci jsou čtyři pluginy pro integraci s Jirou, Tempem, Office 365 kalendářem, Goran G3 a Luxafor LED indikátorem.
+Jádro aplikace je rozšiřitelné pomocí pluginů, které jsou načítané z izolovaných `AssemblyLoadContext`. Pluginy pro integraci s Jirou, Tempem, Office 365 kalendářem, Goran G3 a Luxafor LED indikátorem jsou publikované jako samostatné `WorkTracker.Plugin.*.zip` balíčky — nejsou součástí runtime ZIPu aplikace, stáhni si je podle potřeby a rozbal do adresáře `plugins/` vedle spustitelného souboru.
 
 ### Hlavní funkce
 
@@ -244,8 +244,7 @@ work-tracker/
 │   ├── WorkTracker.CLI/                  # Spectre.Console klient
 │   ├── WorkTracker.WPF/                  # WPF GUI (Windows)
 │   ├── WorkTracker.Avalonia/             # Avalonia GUI (cross-platform)
-│   ├── WorkTracker.Plugin.Abstractions/  # Plugin API
-│   └── Luxafor.HidSharp/                 # HID knihovna pro Luxafor zařízení
+│   └── WorkTracker.Plugin.Abstractions/  # Plugin API
 ├── plugins/
 │   ├── WorkTracker.Plugin.Atlassian/         # Tempo + Jira Suggestions
 │   ├── WorkTracker.Plugin.Office365Calendar/ # O365 Calendar suggestions
