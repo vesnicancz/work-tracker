@@ -142,8 +142,14 @@ public class WorkEntryEditViewModel : ViewModelBase
 				else if (EndDate == null)
 				{
 					var now = DateTimeHelper.RoundToMinute(_timeProvider.GetLocalNow().DateTime);
-					EndDate = StartDate.Date;
-					EndTime = new TimeSpan(now.Hour, now.Minute, 0);
+					var candidateEndDateTime = StartDate.Date + new TimeSpan(now.Hour, now.Minute, 0);
+					if (candidateEndDateTime <= StartDateTime)
+					{
+						candidateEndDateTime = StartDateTime.AddHours(1);
+					}
+
+					EndDate = candidateEndDateTime.Date;
+					EndTime = candidateEndDateTime.TimeOfDay;
 				}
 				ValidateInput();
 			}
