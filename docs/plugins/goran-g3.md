@@ -179,4 +179,4 @@ Stejné jako [Office 365 Calendar](office365-calendar.md#odhlášení--reset-tok
 }
 ```
 
-Stejně jako u ostatních MSAL pluginů: device code flow v CLI funguje, ale kód a URL se vypíší do terminálu jako stdout.
+Ve vlastním hostu, který explicitně volá `TestConnectionAsync` a reportuje progress do konzole, může device code flow fungovat tak, že kód a URL vypíše do terminálu jako stdout. To ale **neplatí** pro běžné `WorkTracker.CLI`, kde pluginy nejsou povolené a upload pipeline stejně neumí spustit interaktivní auth.
