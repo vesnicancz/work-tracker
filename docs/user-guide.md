@@ -100,12 +100,15 @@ WorkTracker/
 ├── logs/
 │   ├── worktracker-YYYYMMDD.log     Logy GUI aplikace
 │   └── worktracker-cli-YYYYMMDD.log Logy CLI
-└── keys/                       MSAL token cache (šifrovaná OS keystoreem)
+└── keys/                       MSAL token cache (standardně šifrovaná OS keystoreem; na některých Linux instalacích může spadnout na nešifrovanou cache — viz warning v logu)
 ```
 
 Logy se rotují denně, uchovává se posledních **14 souborů**. Citlivá data (API tokeny) v `settings.json` **nejsou** v plaintextu — jsou nahrazena placeholderem `CS:{pluginId}:{fieldKey}` a skutečná hodnota je v systémovém credential storu.
 
-Pokud potřebuješ data přenést na jiný stroj, zkopíruj celou tuto složku. Pozor: tokeny uložené v OS credential storu se **nekopírují** — bude potřeba je znovu zadat (nebo se znovu přihlásit přes device code flow).
+Pokud potřebuješ data přenést na jiný stroj, obvykle stačí zkopírovat `worktracker.db`, `settings.json` a případně `logs/`. Pozor na dvě věci, které **se přenést nedají**:
+
+- **Tokeny v OS credential storu** (šifrovaná pole z `settings.json`) — leží mimo tuto složku a bude nutné je na cílovém stroji znovu zadat v Nastavení.
+- **MSAL cache v `keys/`** — je vázaná na konkrétní OS účet a stroj přes DPAPI (Windows), Keychain (macOS) nebo libsecret (Linux), takže po zkopírování jinam typicky nebude čitelná. Na některých Linux instalacích navíc může být uložená méně chráněně. Při migraci je bezpečnější `keys/` **nekopírovat** a na cílovém stroji se znovu přihlásit přes device code flow.
 
 ### Přepis cesty k databázi
 

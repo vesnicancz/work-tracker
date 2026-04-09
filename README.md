@@ -127,7 +127,7 @@ WorkTracker/
 ├── worktracker.db          # SQLite databáze (automaticky migrováno)
 ├── settings.json           # Uživatelské nastavení (pluginy, téma, Pomodoro…)
 ├── logs/                   # Serilog (rolling denně, 14 souborů)
-└── keys/                   # MSAL token cache (zašifrovaná OS keystoreem)
+└── keys/                   # MSAL token cache (standardně šifrovaná OS keystoreem; na některých Linux instalacích může spadnout na nešifrovanou cache — viz warning v logu)
 ```
 
 Vlastní cestu k databázi lze přepsat v `appsettings.json`:

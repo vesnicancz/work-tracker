@@ -123,12 +123,21 @@ Při selhání HID operace plugin zkusí reconnectovat při dalším `SetStateAs
 
 ---
 
-## Test connection
+## Ověření funkčnosti
 
-`StatusIndicatorPluginBase` **nedědí** `ITestablePlugin` (indicator pluginy nemají „externí službu“ na otestování). Místo toho Settings UI nabízí tlačítko **Preview** (pokud je plugin enabled), které postupně rozsvítí LED ve všech třech fázových barvách + idle, každou na ~1 sekundu, a umožní ti tak ověřit:
+`StatusIndicatorPluginBase` **nedědí** `ITestablePlugin`, takže se pro Luxafor v Settings UI nezobrazí tlačítko **Test connection** (to je dostupné jen pro worklog a suggestion pluginy). Žádná samostatná Preview akce v aktuálním UI také není.
 
-- Že zařízení je připojené.
-- Že barvy v tvé konfiguraci vypadají tak, jak chceš.
+Funkčnost pluginu proto ověř prakticky:
+
+1. Ujisti se, že je plugin **enabled** a konfigurace je uložená.
+2. Připoj Luxafor zařízení (USB nebo Bluetooth Pro).
+3. Spusť Pomodoro a sleduj, jestli LED přepíná barvy podle aktuální fáze: **Work**, **Short Break**, **Long Break**. Mimo běh Pomodora plugin LED zhasne (idle).
+4. Pokud se LED nemění, zkontroluj v `logs/worktracker-YYYYMMDD.log` hlášky z `LuxaforStatusIndicatorPlugin` a stav property `IsDeviceAvailable`.
+
+Tímhle postupem ověříš obě důležité věci v jednom kroku:
+
+- Že zařízení je připojené a plugin s ním umí komunikovat (jinak by `IsDeviceAvailable` zůstal `false`).
+- Že barvy v konfiguraci vypadají tak, jak očekáváš při reálném přechodu fází.
 
 ---
 
