@@ -96,7 +96,7 @@ Detailní průvodce prvním spuštěním a ovládáním najdeš v [docs/user-gui
 | `list [datum]` | Výpis záznamů pro zadaný den (výchozí: dnes) |
 | `edit <id> [--ticket=] [--start=] [--end=] [--desc=]` | Úprava existujícího záznamu |
 | `delete <id>` | Smazání záznamu |
-| `send [week] [datum]` | Odeslání worklogu do externího systému (náhled + potvrzení) |
+| `send [week] [datum]` | Odeslání worklogu do externího systému (náhled + potvrzení). **Pozor:** aktuální `WorkTracker.CLI` pluginy neenable-uje, takže tento příkaz v praxi skončí chybou „No worklog upload plugin available". Pro reálné odesílání použij GUI. |
 | `version`, `help` | Verze a nápověda |
 
 Příklady:

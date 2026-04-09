@@ -162,7 +162,7 @@ Nebo rovnou smaž celou složku `keys/` — způsobí reset všech MSAL pluginů
     "o365.calendar": {
       "TenantId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
       "ClientId": "yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy",
-      "IncludeAllDayEvents": "false"
+      "IncludeAllDayEvents": false
     }
   }
 }
