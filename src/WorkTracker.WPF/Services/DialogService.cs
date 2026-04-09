@@ -1,5 +1,6 @@
 using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using WorkTracker.Domain.Entities;
 using WorkTracker.UI.Shared;
 using WorkTracker.UI.Shared.Orchestrators;
@@ -17,10 +18,12 @@ namespace WorkTracker.WPF.Services;
 public sealed class DialogService : IDialogService
 {
 	private readonly IServiceScopeFactory _scopeFactory;
+	private readonly ILogger<DialogService> _logger;
 
-	public DialogService(IServiceScopeFactory scopeFactory)
+	public DialogService(IServiceScopeFactory scopeFactory, ILogger<DialogService> logger)
 	{
 		_scopeFactory = scopeFactory;
+		_logger = logger;
 	}
 
 	public Task<bool> ShowEditWorkEntryDialogAsync(WorkEntry workEntry)
@@ -105,7 +108,7 @@ public sealed class DialogService : IDialogService
 		dialog.BindViewModel(viewModel);
 
 		_ = viewModel.InitializeAsync(selectedDate)
-			.SafeFireAndForgetAsync(ex => System.Diagnostics.Debug.WriteLine($"Suggestions init failed: {ex.Message}"));
+			.SafeFireAndForgetAsync(ex => _logger.LogWarning(ex, "Suggestions initialization failed"));
 		dialog.Owner = System.Windows.Application.Current.MainWindow;
 		dialog.ShowDialog();
 

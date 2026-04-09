@@ -51,7 +51,7 @@ public sealed class AutostartManager : IAutostartManager
 			using var key = Registry.CurrentUser.OpenSubKey(RunKeyPath, true);
 			if (key == null)
 			{
-				_logger.LogError("Failed to open registry key for autostart");
+				_logger.LogWarning("Failed to open registry key for autostart");
 				return;
 			}
 
@@ -65,7 +65,7 @@ public sealed class AutostartManager : IAutostartManager
 				}
 				else
 				{
-					_logger.LogError("Failed to get executable path for autostart");
+					_logger.LogWarning("Failed to get executable path for autostart");
 				}
 			}
 			else

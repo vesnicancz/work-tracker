@@ -235,7 +235,7 @@ public sealed class PluginManager : IPluginManager
 			{
 				if (_loadedPlugins.ContainsKey(pluginId))
 				{
-					_logger.LogWarning("Plugin {Id} is already loaded", pluginId);
+					_logger.LogWarning("Plugin {Id} is already loaded, skipping", pluginId);
 					return false;
 				}
 

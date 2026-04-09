@@ -51,7 +51,7 @@ public sealed class SettingsService : ISettingsService
 
 			if (settings == null)
 			{
-				_logger.LogWarning("Failed to deserialize settings, using defaults");
+				_logger.LogWarning("Failed to deserialize settings from {Path}, using defaults", _settingsFilePath);
 				_settings = new ApplicationSettings();
 				return _settings;
 			}
@@ -85,7 +85,7 @@ public sealed class SettingsService : ISettingsService
 
 			if (settings == null)
 			{
-				_logger.LogWarning("Failed to deserialize settings, using defaults");
+				_logger.LogWarning("Failed to deserialize settings from {Path}, using defaults", _settingsFilePath);
 				_settings = new ApplicationSettings();
 				return _settings;
 			}
