@@ -99,8 +99,9 @@ public class WorkEntryServiceTests
 		_mockRepository.Verify(r => r.UpdateAsync(It.Is<WorkEntry>(e =>
 			e.Id == 1 && e.IsActive == false && e.EndTime.HasValue), It.IsAny<CancellationToken>()), Times.Once);
 		_mockRepository.Verify(r => r.AddAsync(It.IsAny<WorkEntry>(), It.IsAny<CancellationToken>()), Times.Once);
-		// Verify the overlap check explicitly excludes the active entry — otherwise the stale DB
-		// state would falsely report it as overlapping (bug reported in PR review).
+		// The overlap check must explicitly exclude the active entry — its Stop() update is only
+		// in the EF change tracker, not flushed to DB, so without the exclusion the stale DB
+		// state (EndTime=null) would falsely report it as overlapping.
 		_mockRepository.Verify(r => r.HasOverlappingEntriesAsync(1, It.IsAny<DateTime>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()), Times.Once);
 	}
 
