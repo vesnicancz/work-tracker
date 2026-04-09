@@ -21,9 +21,7 @@ Plugin odesílá worklogy do interního systému **Goran G3** přes jeho MCP ser
 | `Tags` | `Text` | ❌ | — | Čárkami oddělený seznam tagů |
 | `EntraClientId` | `Text` | ✅ | — | Client ID aplikace registrované v Entra |
 | `EntraTenantId` | `Text` | ✅ | — | Tenant ID |
-| `EntraScopes` | `Text` | ❌ | (viz níže) | Scopes pro token, čárkami oddělené |
-
-Výchozí scopes (pokud `EntraScopes` zůstane prázdné) jsou specifické pro Goran G3 API — získáš je od administrátora Goran G3.
+| `EntraScopes` | `Text` | ✅ | — | API scope pro přístup na Goran G3 MCP, ve tvaru `api://{goran-api-client-id}/Mcp.Access`. Konkrétní hodnotu získáš od administrátora Goran G3. |
 
 ---
 

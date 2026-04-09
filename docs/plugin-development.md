@@ -198,10 +198,10 @@ Neimplementuj `IPlugin` přímo. Použij **base class** — ušetří ti práci 
 
 ### `PluginBase`
 
-Abstraktní třída pro **všechny** pluginy. Klíčové members:
+Abstraktní třída pro **všechny** pluginy. `IPlugin` sám dědí `IAsyncDisposable`, takže `PluginBase` dostává `DisposeAsync` automaticky. Klíčové members:
 
 ```csharp
-public abstract class PluginBase : IPlugin, IAsyncDisposable
+public abstract class PluginBase(ILogger logger) : IPlugin
 {
     protected ILogger Logger { get; }
     protected IDictionary<string, string> Configuration { get; }
@@ -212,10 +212,13 @@ public abstract class PluginBase : IPlugin, IAsyncDisposable
     public abstract IReadOnlyList<PluginConfigurationField> GetConfigurationFields();
 
     // Hooks — přepiš jen to, co potřebuješ:
-    protected virtual Task<bool> OnInitializeAsync(CancellationToken ct) => Task.FromResult(true);
+    protected virtual Task<bool> OnInitializeAsync(
+        IDictionary<string, string> configuration,
+        CancellationToken cancellationToken) => Task.FromResult(true);
     protected virtual Task OnShutdownAsync() => Task.CompletedTask;
     protected virtual Task<PluginValidationResult> OnValidateConfigurationAsync(
-        IDictionary<string, string> config, CancellationToken ct) => /* default: kontroluje IsRequired a regex */;
+        IDictionary<string, string> configuration,
+        CancellationToken cancellationToken) => /* default: kontroluje IsRequired a regex */;
     protected virtual ValueTask OnDisposeAsync() => ValueTask.CompletedTask;
 
     // Helpery:
@@ -224,6 +227,8 @@ public abstract class PluginBase : IPlugin, IAsyncDisposable
     protected void EnsureInitialized();  // throws if not
 }
 ```
+
+> `OnInitializeAsync` dostává `configuration` dict jako parametr. V rámci hooků můžeš použít buď tento parametr, nebo `base.Configuration` (jsou identické — base class si dict uloží před voláním hooku). Používej `GetRequiredConfigValue` / `GetConfigValue`, které čtou z `Configuration` a dávají konzistentní error reporting.
 
 **Výchozí validace** kontroluje:
 - `IsRequired = true` → hodnota je přítomná a neprázdná.
@@ -354,7 +359,9 @@ public override IReadOnlyList<PluginConfigurationField> GetConfigurationFields()
 ### Načítání hodnot v pluginu
 
 ```csharp
-protected override async Task<bool> OnInitializeAsync(CancellationToken ct)
+protected override async Task<bool> OnInitializeAsync(
+    IDictionary<string, string> configuration,
+    CancellationToken cancellationToken)
 {
     var baseUrl = GetRequiredConfigValue("BaseUrl");       // throws, pokud chybí
     var email = GetRequiredConfigValue("Email");
@@ -526,7 +533,9 @@ public class MyPlugin : WorkSuggestionPluginBase
         _tokenProviderFactory = tokenProviderFactory;
     }
 
-    protected override async Task<bool> OnInitializeAsync(CancellationToken ct)
+    protected override async Task<bool> OnInitializeAsync(
+        IDictionary<string, string> configuration,
+        CancellationToken cancellationToken)
     {
         var tenantId = GetRequiredConfigValue("TenantId");
         var clientId = GetRequiredConfigValue("ClientId");

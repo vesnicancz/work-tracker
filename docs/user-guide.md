@@ -503,7 +503,7 @@ Interně pipeline:
 
 ### Opakování selhání
 
-Pokud některé záznamy selžou (typicky kvůli síti nebo dočasnému 5xx), v dialogu se zobrazí tlačítko **Opakovat neúspěšné**. Retry se provede jen pro záznamy, které předtím selhaly. Pluginy implementují vlastní retry logiku s exponenciálním backoffem u retry‑able HTTP kódů (408, 429, 500–504).
+Pokud některé záznamy selžou (typicky kvůli síti nebo dočasnému 5xx), v dialogu se zobrazí tlačítko **Opakovat neúspěšné**. Po jeho stisku aplikace znovu odešle jen záznamy, které předtím selhaly. Navíc některé pluginy mohou mít **vlastní interní retry logiku** na úrovni jednoho odeslání — například `tempo.worklog` retryne automaticky 408/429/500–504 s exponenciálním backoffem (max 2 pokusy). Chování je plně plugin‑specifické a není garantované u všech dodávaných pluginů (např. `gorang3.worklog` automatický retry nedělá kvůli chybějící server‑side idempotenci).
 
 ### Z CLI
 

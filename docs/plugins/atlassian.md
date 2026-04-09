@@ -19,23 +19,32 @@ Oba pluginy se instalují jako jeden `.dll` soubor, ale jsou nezávisle enable/d
 |------|-----|---------|---------|-------|
 | `TempoBaseUrl` | `Url` | ✅ | `https://api.eu.tempo.io/4` | Base URL Tempo REST API. Pro US klienty použij `https://api.tempo.io/4`. |
 | `TempoApiToken` | `Password` | ✅ | — | API token z Tempo. Uložený v secure storage. |
-| `JiraAccountId` | `Text` | ✅ | — | Jira account ID (24‑znakové GUID). Uživatele identifikuje pro Tempo. |
+| `JiraBaseUrl` | `Url` | ✅ | — | Jira base URL (např. `https://vase-firma.atlassian.net`). Plugin ho používá pro překlad issue key → numerické issue ID, které Tempo vyžaduje. |
+| `JiraEmail` | `Email` | ✅ | — | Login email pro Jira Basic auth. |
+| `JiraApiToken` | `Password` | ✅ | — | Jira API token pro Basic auth. Uložený v secure storage. |
+| `JiraAccountId` | `Text` | ❌ | (auto‑detekce) | Jira account ID (24‑znakové GUID). Když necháš prázdné, plugin si ho při inicializaci sám zjistí přes `GET /rest/api/3/myself`. |
 
-### Získání tokenu a account ID
+### Získání tokenů
 
 **Tempo API Token:**
 
 1. V Jira/Tempo otevři **Settings → Apps → Tempo → API Integration**.
-2. Klikni **New Token**, pojmenuj ho např. „WorkTracker“.
+2. Klikni **New Token**, pojmenuj ho např. „WorkTracker".
 3. Zkopíruj vygenerovaný token (zobrazí se jen jednou!) a vlož do pole `TempoApiToken`.
 
-**Jira Account ID:**
+**Jira API Token:**
+
+1. Otevři <https://id.atlassian.com/manage-profile/security/api-tokens>.
+2. **Create API token** → pojmenuj → zkopíruj.
+3. Vlož do pole `JiraApiToken`.
+
+**Jira Account ID** (volitelné):
+
+Plugin si ho umí zjistit sám — stačí nechat pole prázdné. Pokud ho chceš zadat ručně (například pro troubleshooting nebo aby init byl o jedno HTTP volání rychlejší):
 
 1. V Jira otevři svůj profil (ikona vpravo nahoře → **Profile**).
 2. V URL je tvůj account ID: `https://vase-firma.atlassian.net/jira/people/{accountId}`.
 3. Zkopíruj 24‑znakový řetězec a vlož do pole `JiraAccountId`.
-
-Alternativně API: `GET https://vase-firma.atlassian.net/rest/api/3/myself` s Basic auth (email + Jira API token) vrátí `accountId` v JSON response.
 
 ### Jak plugin pracuje
 
