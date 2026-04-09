@@ -71,7 +71,7 @@ public sealed class WorkEntryService : IWorkEntryService
 	{
 		_logger.LogInformation("Auto-stopping previous work on ticket {PreviousTicketId}", activeEntry.TicketId);
 
-		await using var uow = _unitOfWorkFactory.Create();
+		await using var uow = await _unitOfWorkFactory.CreateAsync(cancellationToken);
 
 		activeEntry.Stop(DateTimeHelper.RoundToMinute(startTime ?? now), DateTimeHelper.RoundToMinute(now));
 		await uow.WorkEntries.UpdateAsync(activeEntry, cancellationToken);
@@ -284,7 +284,7 @@ public sealed class WorkEntryService : IWorkEntryService
 		}
 
 		// All adjustments + new entry in a single transaction
-		await using var uow = _unitOfWorkFactory.Create();
+		await using var uow = await _unitOfWorkFactory.CreateAsync(cancellationToken);
 
 		var applyResult = await ApplyAdjustmentsAsync(uow.WorkEntries, plan, now, cancellationToken);
 		if (applyResult.IsFailure)
@@ -310,7 +310,7 @@ public sealed class WorkEntryService : IWorkEntryService
 		// UoW is opened before validation because we need GetByIdAsync to load the tracked entity
 		// within the transactional scope — validation runs against the updated state below.
 		// If validation or adjustment application fails, disposing the UoW rolls everything back.
-		await using var uow = _unitOfWorkFactory.Create();
+		await using var uow = await _unitOfWorkFactory.CreateAsync(cancellationToken);
 
 		var workEntry = await uow.WorkEntries.GetByIdAsync(id, cancellationToken);
 		if (workEntry == null)

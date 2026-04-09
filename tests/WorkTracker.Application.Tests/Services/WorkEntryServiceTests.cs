@@ -26,7 +26,7 @@ public class WorkEntryServiceTests
 		_mockUnitOfWork.Setup(u => u.WorkEntries).Returns(_mockRepository.Object);
 		_mockUnitOfWork.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 		_mockUnitOfWorkFactory = new Mock<IUnitOfWorkFactory>();
-		_mockUnitOfWorkFactory.Setup(f => f.Create()).Returns(_mockUnitOfWork.Object);
+		_mockUnitOfWorkFactory.Setup(f => f.CreateAsync(It.IsAny<CancellationToken>())).ReturnsAsync(_mockUnitOfWork.Object);
 		_mockLogger = new Mock<ILogger<WorkEntryService>>();
 		_service = new WorkEntryService(_mockRepository.Object, _mockUnitOfWorkFactory.Object, TimeProvider.System, _mockLogger.Object);
 	}
@@ -710,7 +710,7 @@ public class WorkEntryServiceTests
 
 		// Assert
 		result.IsSuccess.Should().BeTrue();
-		_mockUnitOfWorkFactory.Verify(f => f.Create(), Times.Once);
+		_mockUnitOfWorkFactory.Verify(f => f.CreateAsync(It.IsAny<CancellationToken>()), Times.Once);
 		_mockUnitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
 	}
 
@@ -728,7 +728,7 @@ public class WorkEntryServiceTests
 
 		// Assert
 		result.IsFailure.Should().BeTrue();
-		_mockUnitOfWorkFactory.Verify(f => f.Create(), Times.Never);
+		_mockUnitOfWorkFactory.Verify(f => f.CreateAsync(It.IsAny<CancellationToken>()), Times.Never);
 		_mockUnitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
 	}
 
@@ -752,7 +752,7 @@ public class WorkEntryServiceTests
 		// Assert — UoW was opened but SaveChanges must NOT be called (transaction rolled back via dispose)
 		result.IsFailure.Should().BeTrue();
 		result.Error.Should().Contain("no longer exists");
-		_mockUnitOfWorkFactory.Verify(f => f.Create(), Times.Once);
+		_mockUnitOfWorkFactory.Verify(f => f.CreateAsync(It.IsAny<CancellationToken>()), Times.Once);
 		_mockUnitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
 		_mockUnitOfWork.Verify(u => u.DisposeAsync(), Times.Once);
 	}
@@ -781,7 +781,7 @@ public class WorkEntryServiceTests
 
 		// Assert
 		result.IsSuccess.Should().BeTrue();
-		_mockUnitOfWorkFactory.Verify(f => f.Create(), Times.Once);
+		_mockUnitOfWorkFactory.Verify(f => f.CreateAsync(It.IsAny<CancellationToken>()), Times.Once);
 		_mockUnitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
 	}
 
@@ -827,7 +827,7 @@ public class WorkEntryServiceTests
 
 		// Assert
 		result.IsSuccess.Should().BeTrue();
-		_mockUnitOfWorkFactory.Verify(f => f.Create(), Times.Once);
+		_mockUnitOfWorkFactory.Verify(f => f.CreateAsync(It.IsAny<CancellationToken>()), Times.Once);
 		_mockUnitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
 	}
 
@@ -850,7 +850,7 @@ public class WorkEntryServiceTests
 
 		// Assert
 		result.IsSuccess.Should().BeTrue();
-		_mockUnitOfWorkFactory.Verify(f => f.Create(), Times.Never);
+		_mockUnitOfWorkFactory.Verify(f => f.CreateAsync(It.IsAny<CancellationToken>()), Times.Never);
 	}
 
 	[Fact]
@@ -875,7 +875,7 @@ public class WorkEntryServiceTests
 		result.IsFailure.Should().BeTrue();
 		result.Error.Should().Contain("overlap");
 		// UoW was opened (auto-stop path taken) but SaveChanges must NOT be called
-		_mockUnitOfWorkFactory.Verify(f => f.Create(), Times.Once);
+		_mockUnitOfWorkFactory.Verify(f => f.CreateAsync(It.IsAny<CancellationToken>()), Times.Once);
 		_mockUnitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
 		_mockUnitOfWork.Verify(u => u.DisposeAsync(), Times.Once);
 	}
@@ -896,7 +896,7 @@ public class WorkEntryServiceTests
 		// Assert
 		result.IsFailure.Should().BeTrue();
 		result.Error.Should().Contain("Both ticket ID and description cannot be empty");
-		_mockUnitOfWorkFactory.Verify(f => f.Create(), Times.Once);
+		_mockUnitOfWorkFactory.Verify(f => f.CreateAsync(It.IsAny<CancellationToken>()), Times.Once);
 		_mockUnitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
 		_mockUnitOfWork.Verify(u => u.DisposeAsync(), Times.Once);
 	}

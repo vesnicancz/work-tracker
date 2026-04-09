@@ -130,7 +130,7 @@ public class DependencyInjectionTests : IAsyncDisposable
 
 		// Act
 		var factory = _serviceProvider.GetRequiredService<IUnitOfWorkFactory>();
-		await using var uow = factory.Create();
+		await using var uow = await factory.CreateAsync(TestContext.Current.CancellationToken);
 
 		// Assert
 		uow.Should().NotBeNull();
