@@ -1,36 +1,41 @@
 # WorkTracker
 
-**Aplikace pro sledování pracovní doby s plugin systémem pro integraci s externími systémy.**
+**Desktopová aplikace pro sledování pracovní doby s rozšiřitelným plugin systémem.**
 
 [![Build](https://github.com/vesnicancz/work-tracker/actions/workflows/dotnet.yml/badge.svg)](https://github.com/vesnicancz/work-tracker/actions/workflows/dotnet.yml)
 [![Release](https://img.shields.io/github/v/release/vesnicancz/work-tracker)](https://github.com/vesnicancz/work-tracker/releases/latest)
 [![.NET 10](https://img.shields.io/badge/.NET-10.0-purple)](https://dotnet.microsoft.com/)
 [![C# 13](https://img.shields.io/badge/C%23-13-blue)](https://learn.microsoft.com/en-us/dotnet/csharp/)
-[![Architecture](https://img.shields.io/badge/architecture-Clean%20Architecture-green)](ARCHITECTURE_REVIEW.md)
 ![Platform](https://img.shields.io/badge/platform-Windows%20|%20Linux%20|%20macOS-lightgrey)
 [![EF Core](https://img.shields.io/badge/EF%20Core-10.0-blueviolet)](https://learn.microsoft.com/en-us/ef/core/)
 [![Avalonia](https://img.shields.io/badge/Avalonia-11.3-blue)](https://avaloniaui.net/)
-[![WPF](https://img.shields.io/badge/WPF-Material%20Design-orange)](https://github.com/MaterialDesignInXAML/MaterialDesignInXamlToolkit)
 
 ---
 
+![WorkTracker — hlavní okno](docs/images/main-window.png)
+
 ## O projektu
 
-WorkTracker je desktopová aplikace pro sledování pracovní doby postavená na .NET 10 s Clean Architecture. Nabízí CLI, WPF i Avalonia rozhraní a plugin systém pro integraci s externími systémy (Jira Tempo aj.). Díky Avalonia UI je aplikace dostupná napříč platformami (Windows, Linux, macOS).
+WorkTracker je desktopová aplikace pro sledování času stráveného na pracovních úkolech. Je postavená na .NET 10 s Clean Architecture a nabízí tři způsoby ovládání:
 
-**Hlavní funkce:**
-- Sledování času na projektech a úkolech (start/stop/edit/delete)
-- Automatická detekce Jira ticket ID
-- Export worklogs do Jira Tempo
-- Návrhy práce z Jira issues a kalendářových událostí
-- Pomodoro timer s OS notifikacemi a Luxafor LED indikací
-- Detekce překrývajících se časových intervalů
-- Denní a týdenní přehledy
-- System tray notifikace a toggle okna klikem na ikonu (WPF, Avalonia)
-- Oblíbené položky jako šablony
-- Navigace "Přejít na dnešek"
-- Opakované odeslání neúspěšných worklogů
+- **Avalonia GUI** — moderní cross‑platform rozhraní (Windows, Linux, macOS)
+- **WPF GUI** — nativní Windows aplikace s Material Design
+- **CLI** — terminálový klient (Spectre.Console) pro rychlé ovládání z příkazové řádky
+
+Jádro aplikace je rozšiřitelné pomocí pluginů, které jsou načítané z izolovaných `AssemblyLoadContext`. Ve výchozí distribuci jsou čtyři pluginy pro integraci s Jirou, Tempem, Office 365 kalendářem, Goran G3 a Luxafor LED indikátorem.
+
+### Hlavní funkce
+
+- Start / stop / edit / delete pracovních záznamů s automatickou detekcí Jira ticket kódu
+- Denní a týdenní přehledy, navigace „Přejít na dnešek"
+- Odesílání worklogů do externích systémů s náhledem a opakovaným pokusem u selhání
+- Návrhy práce (Work Suggestions) z Jira issues a kalendářových událostí
+- Detekce a řešení překrývajících se časových intervalů (Unit of Work transakce)
+- Pomodoro timer s OS notifikacemi a volitelnou indikací na Luxafor LED
+- Oblíbené položky jako šablony pro rychlé spuštění
+- System tray ikona s toggle okna klikem, notifikacemi a rychlým menu
 - Automatická kontrola aktualizací
+- Lokalizace (čeština, angličtina)
 
 ---
 
@@ -39,10 +44,12 @@ WorkTracker je desktopová aplikace pro sledování pracovní doby postavená na
 ### Prerekvizity
 
 - [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
-- Windows 10/11 (pro WPF aplikaci), Linux/macOS (pro Avalonia aplikaci)
 - Git
+- Jedna z podporovaných platforem:
+  - Windows 10/11 — všechny tři frontendy (CLI, WPF, Avalonia)
+  - Linux / macOS — CLI a Avalonia
 
-### Instalace
+### Naklonování a build
 
 ```bash
 git clone https://github.com/vesnicancz/work-tracker.git
@@ -53,346 +60,221 @@ dotnet build
 dotnet test
 ```
 
-### Spuštění
+### Spuštění z vývojového stromu
 
 ```bash
-# CLI
-dotnet run --project src/WorkTracker.CLI
-
-# WPF (Windows only)
-dotnet run --project src/WorkTracker.WPF
+# CLI (cross-platform)
+dotnet run --project src/WorkTracker.CLI -- help
 
 # Avalonia (cross-platform)
 dotnet run --project src/WorkTracker.Avalonia
-```
 
-### První použití
-
-```bash
-# Začít sledovat práci
-dotnet run --project src/WorkTracker.CLI -- start PROJ-123 "Implementace nové funkce"
-
-# Zastavit sledování
-dotnet run --project src/WorkTracker.CLI -- stop
-
-# Zobrazit dnešní práci
-dotnet run --project src/WorkTracker.CLI -- list
-
-# Odeslat do Tempo
-dotnet run --project src/WorkTracker.CLI -- send
-```
-
----
-
-## CLI příkazy
-
-| Příkaz | Popis | Příklad |
-|--------|-------|---------|
-| `start` | Začít sledovat práci | `worktracker start PROJ-123 "Popis práce" 09:00` |
-| `stop` | Zastavit aktivní práci | `worktracker stop 17:30` |
-| `status` | Zobrazit aktivní záznam | `worktracker status` |
-| `list` | Výpis záznamů (default: dnes) | `worktracker list`, `worktracker list week` |
-| `edit` | Upravit záznam | `worktracker edit 5 --ticket=PROJ-456 --end=17:30` |
-| `delete` | Smazat záznam | `worktracker delete 5` |
-| `send` | Odeslat do Tempo (default: dnes) | `worktracker send`, `worktracker send week` |
-| `help` | Nápověda | `worktracker help` |
-
-### Příklady
-
-```bash
-# Start s ticket ID, popisem a časem
-worktracker start PROJ-123 "Bug fix" 09:00
-
-# Stop se specifickým časem
-worktracker stop 17:30
-
-# Editace záznamu
-worktracker edit 5 --ticket=PROJ-456 --start=09:00 --end=17:00 --desc="Nový popis"
-
-# Odeslat celý týden do Tempo
-worktracker send week
-```
-
-**Chování:**
-- `start` automaticky zastaví předchozí aktivní záznam
-- Časy se zaokrouhlují na minuty
-- Validace: alespoň ticket ID nebo popis musí být zadán
-- Detekce překrývajících se intervalů
-
----
-
-## WPF aplikace
-
-Moderní desktopová aplikace s Material Design (Windows only):
-
-- Dashboard s přehledem práce a real-time timer
-- Start/Stop tracking s automatickou detekcí Jira kódu
-- Editace a mazání záznamů v dialogu
-- Odeslání worklogs do Tempo (denní/týdenní) s opakovaným odesláním neúspěšných
-- System tray ikona s rychlým menu, notifikacemi a toggle okna klikem
-- Oblíbené položky jako šablony pro rychlé spuštění
-- Navigace "Přejít na dnešek"
-- Lokalizace (CZ/EN)
-
-```bash
+# WPF (pouze Windows)
 dotnet run --project src/WorkTracker.WPF
 ```
 
----
-
-## Avalonia aplikace
-
-Cross-platform desktopová aplikace (Windows, Linux, macOS) s Fluent theme:
-
-- Stejná funkcionalita jako WPF aplikace
-- 5 barevných motivů: Dark, Light, Midnight, Modern Blue, Purple
-- Material.Icons.Avalonia pro ikony
-- CommunityToolkit.Mvvm pro MVVM
-- System tray ikona s notifikacemi a toggle okna klikem
-- Lokalizace (CZ/EN)
+### První záznam
 
 ```bash
-dotnet run --project src/WorkTracker.Avalonia
+dotnet run --project src/WorkTracker.CLI -- start PROJ-123 "Implementace nové funkce"
+dotnet run --project src/WorkTracker.CLI -- status
+dotnet run --project src/WorkTracker.CLI -- stop
+dotnet run --project src/WorkTracker.CLI -- list
 ```
+
+Detailní průvodce prvním spuštěním a ovládáním najdeš v [docs/user-guide.md](docs/user-guide.md).
+
+---
+
+## CLI přehled
+
+| Příkaz | Popis |
+|--------|-------|
+| `start [ticket] [popis] [čas]` | Začít sledovat práci (auto‑stop předchozího záznamu) |
+| `stop [čas]` | Ukončit aktivní záznam |
+| `status` | Zobrazit aktuálně běžící záznam |
+| `list [datum]` | Výpis záznamů pro zadaný den (výchozí: dnes) |
+| `edit <id> [--ticket=] [--start=] [--end=] [--desc=]` | Úprava existujícího záznamu |
+| `delete <id>` | Smazání záznamu |
+| `send [week] [datum]` | Odeslání worklogu do externího systému (náhled + potvrzení) |
+| `version`, `help` | Verze a nápověda |
+
+Příklady:
+
+```bash
+# Start s Jira kódem, popisem a explicitním časem
+WorkTracker.CLI start PROJ-123 "Bug fix" 09:00
+
+# Odeslání celého aktuálního týdne
+WorkTracker.CLI send week
+
+# Úprava záznamu č. 5
+WorkTracker.CLI edit 5 --ticket=PROJ-456 --end=17:30 --desc="Nový popis"
+```
+
+Jira ticket se detekuje automaticky z prvního tokenu, který odpovídá regex vzoru `[A-Z][A-Z0-9_]+-\d+`. Časy lze zadávat ve formátech `HH:mm`, `HH:mm:ss` nebo `yyyy-MM-dd HH:mm`.
 
 ---
 
 ## Konfigurace
 
-### Databáze
+### Umístění dat
 
-Databáze se automaticky vytvoří při prvním spuštění:
+Aplikace ukládá všechna perzistentní data do `%LocalAppData%\WorkTracker\` (Windows), resp. `~/.local/share/WorkTracker/` (Linux) nebo `~/Library/Application Support/WorkTracker/` (macOS):
+
 ```
-%LocalAppData%\WorkTracker\worktracker.db
+WorkTracker/
+├── worktracker.db          # SQLite databáze (automaticky migrováno)
+├── settings.json           # Uživatelské nastavení (pluginy, téma, Pomodoro…)
+├── logs/                   # Serilog (rolling denně, 14 souborů)
+└── keys/                   # MSAL token cache (zašifrovaná OS keystoreem)
 ```
 
-Vlastní umístění v `appsettings.json`:
+Vlastní cestu k databázi lze přepsat v `appsettings.json`:
+
 ```json
 {
   "Database": {
-    "Path": "C:\\MojeCesta\\worktracker.db"
+    "Path": "D:\\moje-data\\worktracker.db"
   }
 }
 ```
 
-### Tempo/Jira integrace
+### Nastavení pluginů
 
-Přidejte do `appsettings.json`:
-```json
-{
-  "Plugins": {
-    "tempo.worklog": {
-      "TempoBaseUrl": "https://api.tempo.io/core/3",
-      "TempoApiToken": "vas-tempo-token",
-      "JiraBaseUrl": "https://vase-firma.atlassian.net",
-      "JiraEmail": "vas-email@firma.com",
-      "JiraApiToken": "vas-jira-token",
-      "JiraAccountId": ""
-    },
-    "jira.suggestions": {
-      "JiraBaseUrl": "https://vase-firma.atlassian.net",
-      "JiraEmail": "vas-email@firma.com",
-      "JiraApiToken": "vas-jira-token"
-    }
-  }
-}
-```
+Pluginy se konfigurují přímo v GUI aplikaci (**Settings → Plugins**). Každý plugin vystavuje seznam polí (`PluginConfigurationField`), pro která UI vygeneruje odpovídající formulář a validuje vstup.
 
-**Jak získat tokeny:**
-1. **Tempo API Token** - Tempo > Settings > API Integration > New Token
-2. **Jira API Token** - https://id.atlassian.com/manage-profile/security/api-tokens
+Citlivé údaje (API tokeny, hesla) aplikace ukládá přes `ISecureStorage` do systémového credential storu:
 
-> **Bezpečnost:** Necommitujte API tokeny do Gitu! Pro development použijte [User Secrets](https://learn.microsoft.com/en-us/aspnet/core/security/app-secrets):
-> ```bash
-> cd src/WorkTracker.CLI
-> dotnet user-secrets init
-> dotnet user-secrets set "Plugins:tempo.worklog:TempoApiToken" "vas-token"
-> dotnet user-secrets set "Plugins:tempo.worklog:JiraApiToken" "vas-jira-token"
-> ```
+- **Windows** — Credential Manager (DPAPI)
+- **macOS** — Keychain
+- **Linux** — libsecret / GNOME Keyring
+
+V souboru `settings.json` je na jejich místě uložený pouze placeholder `CS:{pluginId}:{fieldKey}`, nikdy plaintext. OAuth tokeny pro pluginy používající MSAL (Office 365 Calendar, Goran G3) jsou v zašifrované cache v `keys/` a při vypršení se obnovují přes **device code flow**.
+
+Pro CLI, které nemá UI pro zadání konfigurace, je možné jako fallback použít sekci `Plugins` v `appsettings.json` — viz [docs/plugins/](docs/plugins/) pro detaily konkrétních pluginů.
+
+> **Bezpečnost:** Necommituj API tokeny do Gitu. Pro vývoj v CLI použij [User Secrets](https://learn.microsoft.com/en-us/aspnet/core/security/app-secrets).
 
 ---
 
 ## Plugin systém
 
-WorkTracker podporuje pluginy pro rozšíření funkcionality. Pluginy se načítají v izolovaném `AssemblyLoadContext`.
+WorkTracker podporuje tři typy pluginů:
 
-### Typy pluginů
-
-| Typ | Popis | Příklad |
-|-----|-------|---------|
-| **Worklog Upload** | Odesílání worklogs do externích systémů | Tempo/Jira |
-| **Work Suggestion** | Návrhy práce z externích zdrojů (issues, kalendáře) | Jira, O365 Calendar |
-| **Status Indicator** | Ovládání fyzických indikátorů stavu (LED) | Luxafor |
+| Typ | Rozhraní | Účel |
+|-----|----------|------|
+| **Worklog Upload** | `IWorklogUploadPlugin` | Odesílání a načítání worklogů z externích systémů |
+| **Work Suggestion** | `IWorkSuggestionPlugin` | Návrhy úkolů (issues, kalendářové události) |
+| **Status Indicator** | `IStatusIndicatorPlugin` | Ovládání fyzických indikátorů stavu (LED apod.) |
 
 ### Dodávané pluginy
 
-- **Atlassian** — Automatické nahrávání worklogs do Jira Tempo (překlad issue key na ID, detekce account ID, validace duplicit) + návrhy práce z Jira issues (JQL)
-- **Office 365 Calendar** — Návrhy práce z kalendářových událostí (MSAL autentizace)
-- **Luxafor LED** — Zobrazení aktuální Pomodoro fáze na Luxafor Bluetooth Pro (konfigurovatelné barvy per fáze)
-- **GoranG3** — Automatické nahrávání worklogs do GoranG3
+| Plugin | Popis | Dokumentace |
+|--------|-------|-------------|
+| **Atlassian** | Tempo upload worklogů + Jira suggestions (sdílený `JiraClient`) | [docs/plugins/atlassian.md](docs/plugins/atlassian.md) |
+| **Office 365 Calendar** | Work suggestions z kalendářových událostí (MSAL device code) | [docs/plugins/office365-calendar.md](docs/plugins/office365-calendar.md) |
+| **Goran G3** | Upload worklogů přes MCP server s Entra ID autentizací | [docs/plugins/goran-g3.md](docs/plugins/goran-g3.md) |
+| **Luxafor** | Zobrazení Pomodoro fáze na Luxafor Bluetooth Pro LED | [docs/plugins/luxafor.md](docs/plugins/luxafor.md) |
 
 ### Vlastní plugin
 
 ```csharp
+using Microsoft.Extensions.Logging;
 using WorkTracker.Plugin.Abstractions;
 
-public class MujPlugin : WorklogUploadPluginBase
+public sealed class MujPlugin : WorklogUploadPluginBase
 {
+    public MujPlugin(ILogger<MujPlugin> logger) : base(logger) { }
+
     public override PluginMetadata Metadata => new()
     {
-        Id = "muj-plugin",
-        Name = "Muj Plugin",
-        Version = "1.0.0",
-        Author = "Autor"
+        Id = "muj.worklog",
+        Name = "Můj Plugin",
+        Version = new Version(1, 0, 0),
+        Author = "Já",
     };
 
-    protected override async Task<PluginResult<bool>> UploadWorklogInternalAsync(
-        PluginWorklogEntry worklog)
+    public override IReadOnlyList<PluginConfigurationField> GetConfigurationFields() => [];
+
+    public override Task<PluginResult<bool>> TestConnectionAsync(
+        IProgress<string>? progress, CancellationToken ct) =>
+        Task.FromResult(PluginResult<bool>.Success(true));
+
+    public override Task<PluginResult<bool>> UploadWorklogAsync(
+        PluginWorklogEntry worklog, CancellationToken ct)
     {
-        // Upload logika
-        return PluginResult<bool>.Success(true);
+        // …vlastní logika nahrání…
+        return Task.FromResult(PluginResult<bool>.Success(true));
     }
+
+    // GetWorklogsAsync, WorklogExistsAsync…
 }
 ```
 
-Kompletní návod viz [Plugin Development Guide](docs/PLUGIN_DEVELOPMENT.md).
+Kompletní návod: [docs/plugin-development.md](docs/plugin-development.md).
 
 ---
 
 ## Architektura
 
-Clean Architecture s těmito vrstvami:
+Clean Architecture s jednosměrnými závislostmi:
 
 ```
 Presentation (CLI, WPF, Avalonia)
-    |
-UI.Shared (Models, Service Interfaces, Framework-agnostic Services)
-    |
-Infrastructure (EF Core, SQLite, Plugins)
-    |
-Application (Services, Use Cases, Plugin Manager)
-    |
-Domain (WorkEntry, Business Rules)
+      └─ UI.Shared (ViewModels, Orchestrátory, ISettingsService, ILocalizationService)
+            └─ Application (IWorkEntryService, IUnitOfWork, Result<T>, DTOs)
+                  └─ Domain (WorkEntry, IWorkEntryRepository, business pravidla)
+
+Plugin.Abstractions (IPlugin, *PluginBase) — společné API pro všechny pluginy
+      └─ referencováno z Application, Infrastructure a jednotlivých plugin projektů
 ```
 
-### Projekty
+Viz [docs/architecture.md](docs/architecture.md) pro detailní diagram, popis vrstev a vzorů (Result pattern, Unit of Work, plugin DI scope).
 
-| Projekt | Popis | Target |
-|---------|-------|--------|
-| `WorkTracker.Domain` | Business entity a validace | net10.0 |
-| `WorkTracker.Application` | Use cases, services, Result pattern | net10.0 |
-| `WorkTracker.Infrastructure` | EF Core, SQLite, DI konfigurace | net10.0 |
-| `WorkTracker.UI.Shared` | Sdílená UI knihovna (modely, service interfaces, SettingsService, WorklogStateService, LocalizationService) | net10.0 |
-| `WorkTracker.CLI` | Konzolové rozhraní (Spectre.Console) | net10.0 |
-| `WorkTracker.WPF` | Desktop GUI - Windows (Material Design, MVVM) | net10.0-windows |
-| `WorkTracker.Avalonia` | Desktop GUI - cross-platform (Avalonia 11.3, Fluent theme, MVVM) | net10.0 |
-| `WorkTracker.Plugin.Abstractions` | Plugin API | net10.0 |
-| `WorkTracker.Plugin.Atlassian` | Tempo worklog upload + Jira work suggestions | net10.0 |
-| `WorkTracker.Plugin.Office365Calendar` | Office 365 Calendar work suggestions | net10.0 |
-| `WorkTracker.Plugin.Luxafor` | Luxafor LED status indikátor | net10.0 |
-| `WorkTracker.Plugin.GoranG3` | GoranG3 worklog upload | net10.0 |
-| `Luxafor.HidSharp` | Luxafor HID knihovna (standalone) | netstandard2.0, net8.0 |
-
-### Struktura repozitáře
+### Projekty v repozitáři
 
 ```
 work-tracker/
 ├── src/
-│   ├── WorkTracker.Domain/              # Business entities
-│   ├── WorkTracker.Application/         # Use cases, interfaces
-│   ├── WorkTracker.Infrastructure/      # Data access, DI
-│   ├── WorkTracker.UI.Shared/            # Shared UI library
-│   ├── WorkTracker.CLI/                 # Console app
-│   ├── WorkTracker.WPF/                 # Desktop GUI (Windows)
-│   ├── WorkTracker.Avalonia/            # Desktop GUI (cross-platform)
-│   ├── WorkTracker.Plugin.Abstractions/ # Plugin API
-│   └── Luxafor.HidSharp/               # Luxafor HID library
+│   ├── WorkTracker.Domain/               # Business entity a pravidla
+│   ├── WorkTracker.Application/          # Use cases, služby, interfaces
+│   ├── WorkTracker.Infrastructure/       # EF Core, SQLite, PluginManager, MSAL
+│   ├── WorkTracker.UI.Shared/            # Sdílené ViewModely a služby
+│   ├── WorkTracker.CLI/                  # Spectre.Console klient
+│   ├── WorkTracker.WPF/                  # WPF GUI (Windows)
+│   ├── WorkTracker.Avalonia/             # Avalonia GUI (cross-platform)
+│   ├── WorkTracker.Plugin.Abstractions/  # Plugin API
+│   └── Luxafor.HidSharp/                 # HID knihovna pro Luxafor zařízení
 ├── plugins/
-│   ├── WorkTracker.Plugin.Atlassian/        # Atlassian plugin (Tempo + Jira)
-│   ├── WorkTracker.Plugin.Office365Calendar/ # Office 365 Calendar plugin
-│   ├── WorkTracker.Plugin.GoranG3/           # GoranG3 plugin
-│   └── WorkTracker.Plugin.Luxafor/          # Luxafor LED plugin
-├── tests/
-│   ├── WorkTracker.Domain.Tests/
-│   ├── WorkTracker.Application.Tests/
-│   ├── WorkTracker.Infrastructure.Tests/
-│   ├── WorkTracker.Plugin.Atlassian.Tests/
-│   └── WorkTracker.UI.Shared.Tests/
-└── docs/                                # Dokumentace
+│   ├── WorkTracker.Plugin.Atlassian/         # Tempo + Jira Suggestions
+│   ├── WorkTracker.Plugin.Office365Calendar/ # O365 Calendar suggestions
+│   ├── WorkTracker.Plugin.GoranG3/           # Goran G3 worklog upload
+│   └── WorkTracker.Plugin.Luxafor/           # Luxafor LED status
+├── tests/                                # xUnit + Moq + FluentAssertions
+└── docs/                                 # Dokumentace (tento soubor je odkazy sem)
 ```
-
-### Technologie
-
-- **.NET 10.0**, C# 13, nullable reference types
-- **Entity Framework Core 10** + SQLite
-- **Spectre.Console** (CLI)
-- **WPF** + MaterialDesignThemes 5.3 + CommunityToolkit.Mvvm (GUI, Windows)
-- **Avalonia 11.3** + Fluent theme + Material.Icons.Avalonia 3.0 + CommunityToolkit.Mvvm (GUI, cross-platform)
-- **HidSharp** (Luxafor HID komunikace)
-- **Avalonia.Labs.Notifications** / **DesktopNotifications** (OS toast notifikace)
-- **xUnit** + Moq + FluentAssertions (testy)
-
-### Design Patterns
-
-Repository, Dependency Injection, Result Pattern, Strategy (plugins), MVVM (WPF, Avalonia), Template Method (plugin base), Factory
-
----
-
-## Pro vývojáře
-
-### Build a testy
-
-```bash
-dotnet restore
-dotnet build
-dotnet test
-
-# S code coverage
-dotnet test /p:CollectCoverage=true /p:CoverletOutputFormat=opencover
-```
-
-### Migrace databáze
-
-```bash
-dotnet ef migrations add NazevMigrace \
-  --project src/WorkTracker.Infrastructure \
-  --startup-project src/WorkTracker.CLI
-
-dotnet ef database update \
-  --project src/WorkTracker.Infrastructure \
-  --startup-project src/WorkTracker.CLI
-```
-
-### Coding Standards
-
-- C# 13, nullable reference types, async/await
-- SOLID principy, Clean Code
-- Result pattern pro error handling (ne exceptions pro business logiku)
-- Structured logging (`ILogger`)
 
 ---
 
 ## Dokumentace
 
-- [Uživatelská příručka](docs/USER_GUIDE.md)
-- [Vývojářská příručka](docs/DEVELOPER_GUIDE.md)
-- [Plugin Development](docs/PLUGIN_DEVELOPMENT.md)
-- [API Reference](docs/API_DOCUMENTATION.md)
-- [Architektonické review](ARCHITECTURE_REVIEW.md)
+- **[Uživatelská příručka](docs/user-guide.md)** — CLI i GUI tutoriál, první spuštění, troubleshooting
+- **[Architektura](docs/architecture.md)** — vrstvy, DI, Result pattern, Unit of Work
+- **[Vývojářská příručka](docs/developer-guide.md)** — setup, build, testy, migrace, konvence
+- **[Plugin Development](docs/plugin-development.md)** — jak napsat vlastní plugin
+- **[Pluginy](docs/plugins/)** — konfigurační reference pro dodávané pluginy
 
 ---
 
 ## Přispívání
 
-1. Fork repozitáře
-2. Vytvořte feature branch (`git checkout -b feature/nova-funkce`)
-3. Dodržujte coding standards a přidejte testy
-4. Commit (`git commit -m 'feat: popis změny'`)
-5. Push a otevřete Pull Request
+1. Forkni repozitář
+2. Vytvoř feature branch (`git checkout -b feature/nova-funkce`)
+3. Dodržuj coding standards ([docs/developer-guide.md](docs/developer-guide.md)), přidej testy
+4. Commit + push, otevři Pull Request proti `master`
 
-Při hlášení bugů uveďte: popis problému, kroky k reprodukci, .NET verzi a OS.
-
----
+Při hlášení bugu uveď verzi aplikace (`WorkTracker.CLI version`), OS, .NET verzi, kroky k reprodukci a přiložené logy z `%LocalAppData%\WorkTracker\logs\`.
 
 ## Kontakt
 

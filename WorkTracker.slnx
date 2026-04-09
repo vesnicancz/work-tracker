@@ -5,10 +5,11 @@
     <Platform Name="x86" />
   </Configurations>
   <Folder Name="/docs/">
-    <File Path="docs/API_DOCUMENTATION.md" />
-    <File Path="docs/DEVELOPER_GUIDE.md" />
-    <File Path="docs/PLUGIN_DEVELOPMENT.md" />
-    <File Path="docs/USER_GUIDE.md" />
+    <File Path="docs/architecture.md" />
+    <File Path="docs/developer-guide.md" />
+    <File Path="docs/plugin-development.md" />
+    <File Path="docs/user-guide.md" />
+    <File Path="README.md" />
   </Folder>
   <Folder Name="/Solution Items/">
     <File Path=".editorconfig" />
@@ -21,7 +22,6 @@
     <File Path="README.md" />
   </Folder>
   <Folder Name="/src/">
-
     <Project Path="src/WorkTracker.Application/WorkTracker.Application.csproj" />
     <Project Path="src/WorkTracker.Avalonia/WorkTracker.Avalonia.csproj" />
     <Project Path="src/WorkTracker.CLI/WorkTracker.CLI.csproj" />
@@ -31,6 +31,12 @@
     <Project Path="src/WorkTracker.UI.Shared/WorkTracker.UI.Shared.csproj" />
     <Project Path="src/WorkTracker.WPF/WorkTracker.WPF.csproj" />
   </Folder>
+  <Folder Name="/docs/plugins/">
+    <File Path="docs/plugins/atlassian.md" />
+    <File Path="docs/plugins/goran-g3.md" />
+    <File Path="docs/plugins/luxafor.md" />
+    <File Path="docs/plugins/office365-calendar.md" />
+  </Folder>
   <Folder Name="/plugins/">
     <Project Path="plugins/WorkTracker.Plugin.Atlassian/WorkTracker.Plugin.Atlassian.csproj" />
     <Project Path="plugins/WorkTracker.Plugin.GoranG3/WorkTracker.Plugin.GoranG3.csproj" />
@@ -39,6 +45,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/WorkTracker.Application.Tests/WorkTracker.Application.Tests.csproj" />
+    <Project Path="tests/WorkTracker.Avalonia.Tests/WorkTracker.Avalonia.Tests.csproj" />
     <Project Path="tests/WorkTracker.Domain.Tests/WorkTracker.Domain.Tests.csproj" />
     <Project Path="tests/WorkTracker.Infrastructure.Tests/WorkTracker.Infrastructure.Tests.csproj" />
     <Project Path="tests/WorkTracker.Plugin.Atlassian.Tests/WorkTracker.Plugin.Atlassian.Tests.csproj" />
@@ -46,7 +53,6 @@
     <Project Path="tests/WorkTracker.Plugin.Luxafor.Tests/WorkTracker.Plugin.Luxafor.Tests.csproj" />
     <Project Path="tests/WorkTracker.Plugin.Office365Calendar.Tests/WorkTracker.Plugin.Office365Calendar.Tests.csproj" />
     <Project Path="tests/WorkTracker.Tests.Common/WorkTracker.Tests.Common.csproj" />
-    <Project Path="tests/WorkTracker.Avalonia.Tests/WorkTracker.Avalonia.Tests.csproj" />
     <Project Path="tests/WorkTracker.UI.Shared.Tests/WorkTracker.UI.Shared.Tests.csproj" />
   </Folder>
 </Solution>
