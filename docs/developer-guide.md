@@ -544,7 +544,7 @@ Push + PR na `master`:
 4. `dotnet build --no-restore`
 5. `dotnet test --no-build --verbosity normal`
 
-Běží na `ubuntu-latest`. WPF projekt se **neúčastní** build matrixu — je `net10.0-windows` a ubuntu image ho přeskočí.
+Běží na `ubuntu-latest`. WPF projekt (`net10.0-windows`) se **na Linuxu kompilované builduje** díky globálnímu nastavení `<EnableWindowsTargeting>true</EnableWindowsTargeting>` v `Directory.Build.props` — kompilace projde, ale runtime scénář (spuštění WPF aplikace) je jen Windows.
 
 ### `.github/workflows/release.yml`
 

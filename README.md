@@ -116,6 +116,8 @@ WorkTracker.CLI edit 5 --ticket=PROJ-456 --end=17:30 --desc="Nový popis"
 >
 > - **Windows**: `WorkTracker.CLI.exe start …` (z PowerShellu / CMD), nebo `.\WorkTracker.CLI.exe start …` z lokální složky
 > - **Linux / macOS**: `./WorkTracker.CLI start …` z lokální složky, nebo `WorkTracker.CLI start …` pokud je v `PATH`
+>
+> **Poznámka k nápovědě:** Vestavěný help (`WorkTracker.CLI help`) používá v usage stringách historický název `worklog` (např. `Usage: worklog start [ticket-id] ...`). Je to stará relikvie — skutečná binárka se jmenuje `WorkTracker.CLI`, takže při volání nahraď `worklog` za `WorkTracker.CLI` (s `.exe`/`./` dle platformy).
 
 Jira ticket se detekuje automaticky z prvního tokenu, který odpovídá regex vzoru `^([a-zA-Z0-9]+-[0-9]+)` (ověřeno v `JiraPatterns.TicketId()`). Prefix před pomlčkou může obsahovat písmena i číslice, je case‑insensitive, ale **nepovoluje underscore** — např. `PROJ-123` nebo `proj-123` fungují, `WORK_TRACKER-42` ne. Časy lze zadávat ve formátech `HH:mm`, `HH:mm:ss` nebo `yyyy-MM-dd HH:mm`.
 

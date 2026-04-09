@@ -184,7 +184,7 @@ public sealed class FileDumpWorklogPlugin : WorklogUploadPluginBase
 ### 3. Build a nasazení
 
 ```bash
-dotnet publish plugins/WorkTracker.Plugin.FileDump -c Release \
+dotnet publish plugins/WorkTracker.Plugin.FileDump -c Debug \
   -o src/WorkTracker.Avalonia/bin/Debug/net10.0/plugins/FileDump
 ```
 

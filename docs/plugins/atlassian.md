@@ -22,7 +22,7 @@ Oba pluginy se instalují jako jeden `.dll` soubor, ale jsou nezávisle enable/d
 | `JiraBaseUrl` | `Url` | ✅ | — | Jira base URL (např. `https://vase-firma.atlassian.net`). Plugin ho používá pro překlad issue key → numerické issue ID, které Tempo vyžaduje. |
 | `JiraEmail` | `Email` | ✅ | — | Login email pro Jira Basic auth. |
 | `JiraApiToken` | `Password` | ✅ | — | Jira API token pro Basic auth. Uložený v secure storage. |
-| `JiraAccountId` | `Text` | ❌ | (auto‑detekce) | Jira account ID (24‑znakové GUID). Když necháš prázdné, plugin si ho při inicializaci sám zjistí přes `GET /rest/api/3/myself`. |
+| `JiraAccountId` | `Text` | ❌ | (auto‑detekce) | Atlassian accountId (typicky 24znakový opaque řetězec, **ne GUID**). Když necháš prázdné, plugin si ho při inicializaci sám zjistí přes `GET /rest/api/3/myself`. |
 
 ### Získání tokenů
 

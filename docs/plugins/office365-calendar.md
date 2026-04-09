@@ -15,7 +15,7 @@ Plugin čte události z uživatelova Outlook/Office 365 kalendáře a nabízí j
 
 | Pole | Typ | Povinné | Default | Popis |
 |------|-----|---------|---------|-------|
-| `TenantId` | `Text` | ✅ | — | GUID tvé Entra ID organizace |
+| `TenantId` | `Text` | ✅ | — | GUID tvé Entra ID organizace, nebo `organizations` pro multi‑tenant scénář |
 | `ClientId` | `Text` | ✅ | — | GUID aplikace zaregistrované v Entra |
 | `IncludeAllDayEvents` | `Checkbox` | ❌ | `false` | Zahrnout celodenní události (typicky dovolené, narozeniny) |
 
