@@ -114,18 +114,7 @@ public sealed class WorkEntryService : IWorkEntryService
 			return Result.Failure<WorkEntry>(InvalidEntryError);
 		}
 
-		bool hasOverlap;
-		if (excludeEntryId.HasValue)
-		{
-			var overlapping = await repository.GetOverlappingEntriesAsync(excludeEntryId.Value, workEntry.StartTime, workEntry.EndTime, cancellationToken);
-			hasOverlap = overlapping.Count > 0;
-		}
-		else
-		{
-			hasOverlap = await repository.HasOverlappingEntriesAsync(workEntry, cancellationToken);
-		}
-
-		if (hasOverlap)
+		if (await repository.HasOverlappingEntriesAsync(excludeEntryId, workEntry.StartTime, workEntry.EndTime, cancellationToken))
 		{
 			_logger.LogWarning("Work entry overlaps with existing entry for ticket {TicketId} ({StartTime} - {EndTime})", workEntry.TicketId, workEntry.StartTime, workEntry.EndTime);
 			return Result.Failure<WorkEntry>(OverlapError);

@@ -35,6 +35,12 @@ public sealed class UnitOfWork : IUnitOfWork
 			var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
 			return new UnitOfWork(context, transaction, logger);
 		}
+		catch (OperationCanceledException)
+		{
+			// Cancellation is normal control flow, not an error worth logging.
+			await context.DisposeAsync();
+			throw;
+		}
 		catch (Exception ex)
 		{
 			logger.LogError(ex, "Failed to begin Unit of Work transaction");
@@ -52,6 +58,11 @@ public sealed class UnitOfWork : IUnitOfWork
 			await _context.SaveChangesAsync(cancellationToken);
 			await _transaction.CommitAsync(cancellationToken);
 			_committed = true;
+		}
+		catch (OperationCanceledException)
+		{
+			// Cancellation is normal control flow; dispose will roll back.
+			throw;
 		}
 		catch (Exception ex)
 		{

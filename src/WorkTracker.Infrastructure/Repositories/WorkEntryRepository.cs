@@ -127,6 +127,13 @@ public sealed class WorkEntryRepository : IWorkEntryRepository
 			.AnyAsync(cancellationToken);
 	}
 
+	public async Task<bool> HasOverlappingEntriesAsync(int? excludeEntryId, DateTime startTime, DateTime? endTime, CancellationToken cancellationToken)
+	{
+		await using var scope = await GetContextAsync(cancellationToken);
+		return await BuildOverlapQuery(scope.Context.WorkEntries, excludeEntryId, startTime, endTime)
+			.AnyAsync(cancellationToken);
+	}
+
 	public async Task<IReadOnlyList<WorkEntry>> GetOverlappingEntriesAsync(int? excludeEntryId, DateTime startTime, DateTime? endTime, CancellationToken cancellationToken)
 	{
 		await using var scope = await GetContextAsync(cancellationToken);
