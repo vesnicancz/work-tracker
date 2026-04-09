@@ -53,7 +53,7 @@ public sealed class WorkEntryService : IWorkEntryService
 			description,
 			DateTimeHelper.RoundToMinute(now));
 
-		var validation = await ValidateNewEntryAsync(workEntry, _repository, cancellationToken);
+		var validation = await ValidateNewEntryAsync(workEntry, _repository, excludeEntryId: null, cancellationToken);
 		if (validation.IsFailure)
 		{
 			return validation;
@@ -83,7 +83,10 @@ public sealed class WorkEntryService : IWorkEntryService
 			description,
 			DateTimeHelper.RoundToMinute(now));
 
-		var validation = await ValidateNewEntryAsync(workEntry, uow.WorkEntries, cancellationToken);
+		// Exclude the auto-stopped entry from the overlap check: its Stop() update is only in the
+		// EF change tracker, not yet flushed to DB. LINQ queries run against DB state and would
+		// otherwise still see it as EndTime=null (ongoing) and falsely report an overlap.
+		var validation = await ValidateNewEntryAsync(workEntry, uow.WorkEntries, excludeEntryId: activeEntry.Id, cancellationToken);
 		if (validation.IsFailure)
 		{
 			return validation;
@@ -99,8 +102,11 @@ public sealed class WorkEntryService : IWorkEntryService
 	/// <summary>
 	/// Validates a freshly-created entry (structural + overlap check) against the given repository.
 	/// The repository parameter allows callers to share a UoW scope when needed.
+	/// When <paramref name="excludeEntryId"/> is set, that entry is excluded from the overlap query —
+	/// used e.g. in the auto-stop path where the active entry has pending-but-unflushed changes
+	/// that would otherwise cause a false-positive overlap against stale DB state.
 	/// </summary>
-	private async Task<Result<WorkEntry>> ValidateNewEntryAsync(WorkEntry workEntry, IWorkEntryRepository repository, CancellationToken cancellationToken)
+	private async Task<Result<WorkEntry>> ValidateNewEntryAsync(WorkEntry workEntry, IWorkEntryRepository repository, int? excludeEntryId, CancellationToken cancellationToken)
 	{
 		if (!workEntry.IsValid())
 		{
@@ -108,7 +114,18 @@ public sealed class WorkEntryService : IWorkEntryService
 			return Result.Failure<WorkEntry>(InvalidEntryError);
 		}
 
-		if (await repository.HasOverlappingEntriesAsync(workEntry, cancellationToken))
+		bool hasOverlap;
+		if (excludeEntryId.HasValue)
+		{
+			var overlapping = await repository.GetOverlappingEntriesAsync(excludeEntryId.Value, workEntry.StartTime, workEntry.EndTime, cancellationToken);
+			hasOverlap = overlapping.Count > 0;
+		}
+		else
+		{
+			hasOverlap = await repository.HasOverlappingEntriesAsync(workEntry, cancellationToken);
+		}
+
+		if (hasOverlap)
 		{
 			_logger.LogWarning("Work entry overlaps with existing entry for ticket {TicketId} ({StartTime} - {EndTime})", workEntry.TicketId, workEntry.StartTime, workEntry.EndTime);
 			return Result.Failure<WorkEntry>(OverlapError);

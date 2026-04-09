@@ -84,9 +84,10 @@ public class WorkEntryServiceTests
 		_mockRepository
 			.Setup(r => r.GetActiveWorkEntryAsync(It.IsAny<CancellationToken>()))
 			.ReturnsAsync(existingEntry);
+		// Auto-stop path uses GetOverlappingEntriesAsync with explicit excludeEntryId (activeEntry.Id)
 		_mockRepository
-			.Setup(r => r.HasOverlappingEntriesAsync(It.IsAny<WorkEntry>(), It.IsAny<CancellationToken>()))
-			.ReturnsAsync(false);
+			.Setup(r => r.GetOverlappingEntriesAsync(It.IsAny<int?>(), It.IsAny<DateTime>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(new List<WorkEntry>());
 		_mockRepository
 			.Setup(r => r.AddAsync(It.IsAny<WorkEntry>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync((WorkEntry entry, CancellationToken _) => entry);
@@ -99,6 +100,9 @@ public class WorkEntryServiceTests
 		_mockRepository.Verify(r => r.UpdateAsync(It.Is<WorkEntry>(e =>
 			e.Id == 1 && e.IsActive == false && e.EndTime.HasValue), It.IsAny<CancellationToken>()), Times.Once);
 		_mockRepository.Verify(r => r.AddAsync(It.IsAny<WorkEntry>(), It.IsAny<CancellationToken>()), Times.Once);
+		// Verify the overlap check explicitly excludes the active entry — otherwise the stale DB
+		// state would falsely report it as overlapping (bug reported in PR review).
+		_mockRepository.Verify(r => r.GetOverlappingEntriesAsync(1, It.IsAny<DateTime>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()), Times.Once);
 	}
 
 	[Fact]
@@ -812,8 +816,8 @@ public class WorkEntryServiceTests
 			.Setup(r => r.GetActiveWorkEntryAsync(It.IsAny<CancellationToken>()))
 			.ReturnsAsync(existingEntry);
 		_mockRepository
-			.Setup(r => r.HasOverlappingEntriesAsync(It.IsAny<WorkEntry>(), It.IsAny<CancellationToken>()))
-			.ReturnsAsync(false);
+			.Setup(r => r.GetOverlappingEntriesAsync(It.IsAny<int?>(), It.IsAny<DateTime>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(new List<WorkEntry>());
 		_mockRepository
 			.Setup(r => r.AddAsync(It.IsAny<WorkEntry>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync((WorkEntry entry, CancellationToken _) => entry);
@@ -856,12 +860,13 @@ public class WorkEntryServiceTests
 		// Without UoW, the auto-stop would be committed before the overlap check fails,
 		// leaving the previous entry incorrectly stopped. With UoW, dispose rolls everything back.
 		var existingEntry = WorkEntry.Reconstitute(1, "PROJ-100", DateTime.Now.AddHours(-2), null, null, true, DateTime.MinValue);
+		var conflict = WorkEntry.Reconstitute(2, "OTHER", DateTime.Now, DateTime.Now.AddHours(1), null, false, DateTime.MinValue);
 		_mockRepository
 			.Setup(r => r.GetActiveWorkEntryAsync(It.IsAny<CancellationToken>()))
 			.ReturnsAsync(existingEntry);
 		_mockRepository
-			.Setup(r => r.HasOverlappingEntriesAsync(It.IsAny<WorkEntry>(), It.IsAny<CancellationToken>()))
-			.ReturnsAsync(true); // new entry overlaps
+			.Setup(r => r.GetOverlappingEntriesAsync(It.IsAny<int?>(), It.IsAny<DateTime>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(new List<WorkEntry> { conflict });
 
 		// Act
 		var result = await _service.StartWorkAsync("PROJ-123", null, "Conflicting work", cancellationToken: TestContext.Current.CancellationToken);
