@@ -33,7 +33,7 @@ Validační regex: `^#[0-9A-Fa-f]{6}$` — přesně 6 hex znaků s úvodním `#`
 | Fialová | `#8000FF` |
 | Bílá | `#FFFFFF` |
 
-Fáze `Idle` (Pomodoro neběží) LED **zhasne** — plugin pošle `#000000`.
+Fáze `Idle` (Pomodoro neběží) LED **zhasne** — plugin zavolá `device.TurnOffAsync()`.
 
 ---
 
