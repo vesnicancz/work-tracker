@@ -129,7 +129,7 @@ assignee = currentUser() AND updated >= startOfDay()
 text ~ "{query}" AND project in (PROJ, WORK) ORDER BY updated DESC
 ```
 
-Pokud `SearchJqlFilter` nenastavíš, search je pro tento plugin zakázaný (dialog ukáže „Search není podporovaný“).
+Search je dostupný **vždy** — `JiraSuggestionsPlugin.SupportsSearch` je pevně `true`. Pokud `SearchJqlFilter` nenastavíš, plugin pro search zfabrikuje defaultní text matching nad `JqlFilter`: přidá klauzuli typu `(key ~ "{query}*" OR summary ~ "{query}*" OR text ~ "{query}*")` k tvému základnímu filtru (zachová i `ORDER BY`, pokud tam je). Vlastní `SearchJqlFilter` se hodí, když chceš nad search pole něco přesnějšího (např. scope na konkrétní projekt nebo status).
 
 ### Jak se vrácené issues mapují na `WorkSuggestion`
 

@@ -66,7 +66,7 @@ Po vyplnění `TenantId` a `ClientId` klikni v Settings → Plugins → Office 3
 5. Tokeny se uloží do šifrované cache v `%LocalAppData%\WorkTracker\keys\` (DPAPI/Keychain/libsecret dle OS). V non‑Production prostředích se adresář aplikace suffixuje podle `DOTNET_ENVIRONMENT`, takže přesná cesta může být např. `%LocalAppData%\WorkTracker_Development\keys\`.
 6. Progress dialog zobrazí „OK“ a plugin je ready.
 
-Od tohoto okamžiku plugin vždy zkusí `AcquireTokenSilentAsync` — tokeny se obnovují automaticky přes refresh token (typicky platnost refresh tokenu je 90 dnů nebo dle konfigurace tenanta). Jakmile refresh token expiruje, plugin spustí device code flow znovu.
+Od tohoto okamžiku plugin při běžném použití zkouší jen `AcquireTokenSilentAsync` — tokeny se tiše obnovují přes refresh token (platnost refresh tokenu bývá kolem 90 dnů nebo dle konfigurace tenanta). Jakmile ale refresh token expiruje nebo silent auth selže z jiného důvodu, `GetSuggestionsAsync` **nespustí device code flow automaticky** — rovnou vrátí chybu `Not authenticated — please use Test Connection in Settings to sign in first.` Uživatel musí ručně otevřít **Nastavení → Pluginy → Office 365 Calendar → Test connection**, která interaktivní device code flow spustí a obnoví cache.
 
 ---
 
