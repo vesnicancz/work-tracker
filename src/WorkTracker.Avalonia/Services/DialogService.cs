@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using WorkTracker.Avalonia.ViewModels;
 using WorkTracker.Avalonia.Views;
 using WorkTracker.Domain.Entities;
@@ -14,10 +15,12 @@ namespace WorkTracker.Avalonia.Services;
 public sealed class DialogService : IDialogService
 {
 	private readonly IServiceScopeFactory _scopeFactory;
+	private readonly ILogger<DialogService> _logger;
 
-	public DialogService(IServiceScopeFactory scopeFactory)
+	public DialogService(IServiceScopeFactory scopeFactory, ILogger<DialogService> logger)
 	{
 		_scopeFactory = scopeFactory;
+		_logger = logger;
 	}
 
 	public Task<bool> ShowEditWorkEntryDialogAsync(WorkEntry workEntry)
@@ -135,7 +138,7 @@ public sealed class DialogService : IDialogService
 
 		// Show dialog immediately with loading indicator, load data in background.
 		_ = viewModel.InitializeAsync(selectedDate)
-			.SafeFireAndForgetAsync(ex => System.Diagnostics.Debug.WriteLine($"Suggestions init failed: {ex.Message}"));
+			.SafeFireAndForgetAsync(ex => _logger.LogWarning(ex, "Suggestions initialization failed"));
 
 		var mainWindow = GetVisibleMainWindow();
 		if (mainWindow != null)
