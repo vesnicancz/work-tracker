@@ -152,7 +152,7 @@ Nebo rovnou smaž celou složku `keys/` — způsobí reset všech MSAL pluginů
 >
 > 1. **CLI pluginy neenable-uje.** `WorkTracker.CLI` volá `InitializePluginsAsync` bez enable mapy, takže i správně vyplněné `appsettings.json` pluginy nespustí.
 > 2. **CLI suggestions vůbec nepoužívá.** Office 365 Calendar je `IWorkSuggestionPlugin` a žádný CLI příkaz suggestions nenačítá — tento plugin se dá prakticky využít jen v GUI.
-> 3. **Plugin vyžaduje předchozí GUI login.** `GetSuggestionsAsync` volá **pouze** `AcquireTokenSilentAsync` — při `null` rovnou vrátí chybu „Not authenticated — please use Test Connection in Settings to sign in first." Interaktivní device code flow běží **jen** v `TestConnectionAsync`, kterou musí uživatel spustit z GUI Settings (to je shodné s Goran G3 pluginem).
+> 3. **Plugin vyžaduje předchozí GUI login.** `GetSuggestionsAsync` volá **pouze** `AcquireTokenSilentAsync` — při `null` rovnou vrátí chybu „Not authenticated — please use Test Connection in Settings to sign in first.“ Interaktivní device code flow běží **jen** v `TestConnectionAsync`, kterou musí uživatel spustit z GUI Settings (to je shodné s Goran G3 pluginem).
 >
 > Plugin tedy konfiguruj v GUI (**Nastavení → Pluginy → Office 365 Calendar**). Schéma níže je referenční pro integrátory, kteří si píšou vlastního hosta nad `WorkTracker.Infrastructure`.
 

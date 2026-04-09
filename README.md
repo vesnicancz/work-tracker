@@ -96,7 +96,7 @@ Detailní průvodce prvním spuštěním a ovládáním najdeš v [docs/user-gui
 | `list [datum]` | Výpis záznamů pro zadaný den (výchozí: dnes) |
 | `edit <id> [--ticket=] [--start=] [--end=] [--desc=]` | Úprava existujícího záznamu |
 | `delete <id>` | Smazání záznamu |
-| `send [week] [datum]` | Odeslání worklogu do externího systému (náhled + potvrzení). **Pozor:** aktuální `WorkTracker.CLI` pluginy neenable-uje, takže tento příkaz v praxi skončí chybou „No worklog upload plugin available". Pro reálné odesílání použij GUI. |
+| `send [week] [datum]` | Odeslání worklogu do externího systému (náhled + potvrzení). **Pozor:** aktuální `WorkTracker.CLI` pluginy neenable-uje, takže tento příkaz v praxi skončí chybou „No worklog upload plugin available“. Pro reálné odesílání použij GUI. |
 | `version`, `help` | Verze a nápověda |
 
 Příklady:
@@ -105,7 +105,7 @@ Příklady:
 # Start s Jira kódem, popisem a explicitním časem
 WorkTracker.CLI start PROJ-123 "Bug fix" 09:00
 
-# Odeslání celého aktuálního týdne
+# Odeslání celého aktuálního týdne (syntaxe — aktuálně v CLI nefunkční kvůli vypnutým pluginům, použij GUI)
 WorkTracker.CLI send week
 
 # Úprava záznamu č. 5
@@ -163,7 +163,7 @@ Citlivé údaje (API tokeny, hesla) aplikace ukládá přes `ISecureStorage` do 
 
 V souboru `settings.json` je na jejich místě uložený pouze placeholder `CS:{pluginId}:{fieldKey}`, nikdy plaintext. OAuth tokeny pro pluginy používající MSAL (Office 365 Calendar, Goran G3) jsou v zašifrované cache v `keys/` a při vypršení se obnovují přes **device code flow**.
 
-> **Pluginy v CLI:** Aktuální `WorkTracker.CLI` volá `InitializePluginsAsync` bez enabled‑plugin mapy, takže v CLI **zůstanou všechny pluginy vypnuté** a příkaz `send` skončí s „No worklog upload plugin available". Konfigurace pluginů se tedy reálně dělá jen v GUI (Avalonia / WPF → **Nastavení → Pluginy**). Jednotlivé plugin docs v [docs/plugins/](docs/plugins/) obsahují ukázkové `appsettings.json` schéma pluginu jako referenci pro integrátory s vlastním hostem, ne jako funkční CLI fallback.
+> **Pluginy v CLI:** Aktuální `WorkTracker.CLI` volá `InitializePluginsAsync` bez enabled‑plugin mapy, takže v CLI **zůstanou všechny pluginy vypnuté** a příkaz `send` skončí s „No worklog upload plugin available“. Konfigurace pluginů se tedy reálně dělá jen v GUI (Avalonia / WPF → **Nastavení → Pluginy**). Jednotlivé plugin docs v [docs/plugins/](docs/plugins/) obsahují ukázkové `appsettings.json` schéma pluginu jako referenci pro integrátory s vlastním hostem, ne jako funkční CLI fallback.
 
 > **Bezpečnost:** Necommituj API tokeny do Gitu.
 

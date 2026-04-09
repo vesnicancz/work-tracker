@@ -112,7 +112,7 @@ public sealed class FileDumpWorklogPlugin : WorklogUploadPluginBase
         Name = "File Dump",
         Version = new Version(1, 0, 0),
         Author = "Jan Novák",
-        Description = "Zapisuje worklogy do JSON souboru na disku.",
+        Description = "Zapisuje worklogy do NDJSON souboru (jeden JSON objekt na řádek).",
         Tags = ["file", "export", "worklog"],
     };
 
@@ -124,7 +124,7 @@ public sealed class FileDumpWorklogPlugin : WorklogUploadPluginBase
             Label = "Cesta k souboru",
             Type = PluginConfigurationFieldType.Text,
             IsRequired = true,
-            Placeholder = @"C:\temp\worklogs.json",
+            Placeholder = @"C:\temp\worklogs.ndjson",
         },
     ];
 
@@ -142,8 +142,11 @@ public sealed class FileDumpWorklogPlugin : WorklogUploadPluginBase
                     PluginErrorCategory.Validation);
             }
 
-            // Zkusíme zapsat prázdný soubor
-            await File.WriteAllTextAsync(path, "[]", ct);
+            // Ověříme, že do cílového souboru můžeme zapisovat (prázdný NDJSON soubor je validní — nic se nepřidává).
+            await using (File.Open(path, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite))
+            {
+                // no-op — otevři/zavři jen pro ověření zápisu
+            }
             return PluginResult<bool>.Success(true);
         }
         catch (Exception ex)
@@ -159,6 +162,8 @@ public sealed class FileDumpWorklogPlugin : WorklogUploadPluginBase
         var path = GetRequiredConfigValue("OutputPath");
         try
         {
+            // NDJSON — každý záznam je samostatný JSON objekt na svém řádku,
+            // takže append-only zápis je bezpečný a soubor zůstane line-delimited.
             var line = System.Text.Json.JsonSerializer.Serialize(worklog) + Environment.NewLine;
             await File.AppendAllTextAsync(path, line, ct);
             return PluginResult<bool>.Success(true);

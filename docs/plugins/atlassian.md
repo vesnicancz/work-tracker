@@ -29,7 +29,7 @@ Oba pluginy se instalují jako jeden `.dll` soubor, ale jsou nezávisle enable/d
 **Tempo API Token:**
 
 1. V Jira/Tempo otevři **Settings → Apps → Tempo → API Integration**.
-2. Klikni **New Token**, pojmenuj ho např. „WorkTracker".
+2. Klikni **New Token**, pojmenuj ho např. „WorkTracker“.
 3. Zkopíruj vygenerovaný token (zobrazí se jen jednou!) a vlož do pole `TempoApiToken`.
 
 **Jira API Token:**
@@ -152,7 +152,7 @@ Stejně jako Tempo plugin volá **jen** `_jiraClient.TestConnectionAsync` (pingn
 
 ## Plugin config schéma (`appsettings.json`)
 
-> **Pozor:** Tohle je **referenční schéma** struktury plugin configu, jakou přijímá metoda `InitializePluginsAsync`. **Není to funkční CLI fallback** — aktuální `WorkTracker.CLI` volá `InitializePluginsAsync` bez enabled‑plugin mapy, takže i když hodnoty vložíš do `appsettings.json`, pluginy zůstanou vypnuté a `send` skončí s „No worklog upload plugin available". Primárně konfiguruj Atlassian plugin v GUI (**Nastavení → Pluginy**). Schéma níže je užitečné, pokud si píšeš vlastního hosta nad `WorkTracker.Infrastructure` a voláš `InitializePluginsAsync(host.Services, configuration, enabledPlugins: {...})` sám.
+> **Pozor:** Tohle je **referenční schéma** struktury plugin configu, jakou přijímá metoda `InitializePluginsAsync`. **Není to funkční CLI fallback** — aktuální `WorkTracker.CLI` volá `InitializePluginsAsync` bez enabled‑plugin mapy, takže i když hodnoty vložíš do `appsettings.json`, pluginy zůstanou vypnuté a `send` skončí s „No worklog upload plugin available“. Primárně konfiguruj Atlassian plugin v GUI (**Nastavení → Pluginy**). Schéma níže je užitečné, pokud si píšeš vlastního hosta nad `WorkTracker.Infrastructure` a voláš `InitializePluginsAsync(host.Services, configuration, enabledPlugins: {...})` sám.
 
 ```json
 {

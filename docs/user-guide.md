@@ -180,7 +180,7 @@ WorkTracker.CLI stop 17:30       # konec = dnes 17:30
 WorkTracker.CLI stop "2026-04-09 17:30"
 ```
 
-Pokud žádný záznam není aktivní, vypíše upozornění a vrátí exit code `1` (tedy ho můžeš ve skriptu detekovat jako „nic se nestalo").
+Pokud žádný záznam není aktivní, vypíše upozornění a vrátí exit code `1` (tedy ho můžeš ve skriptu detekovat jako „nic se nestalo“).
 
 ### `status`
 
