@@ -90,7 +90,7 @@ public sealed class WorkEntryService : IWorkEntryService
 
 		if (!activeEntry.IsValid())
 		{
-			_logger.LogWarning("Invalid end time for ticket {TicketId} - must be after start time {StartTime}", activeEntry.TicketId, activeEntry.StartTime);
+			_logger.LogWarning("Invalid end time for ticket {TicketId} - start time {StartTime}, attempted end time {EndTime}", activeEntry.TicketId, activeEntry.StartTime, activeEntry.EndTime);
 			return Result.Failure<WorkEntry>("Invalid end time - must be after start time");
 		}
 

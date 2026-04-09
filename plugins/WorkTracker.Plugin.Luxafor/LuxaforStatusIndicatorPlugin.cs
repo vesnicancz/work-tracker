@@ -137,7 +137,7 @@ public sealed class LuxaforStatusIndicatorPlugin(ILogger<LuxaforStatusIndicatorP
 				}
 				catch (Exception ex)
 				{
-					Logger.LogDebug(ex, "Failed to turn off Luxafor device during shutdown");
+					Logger.LogWarning(ex, "Failed to turn off Luxafor device during shutdown");
 				}
 			}
 		}
