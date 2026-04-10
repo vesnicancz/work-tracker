@@ -313,7 +313,7 @@
                             <material:MaterialIcon Kind="LightbulbOutline"
                                                   Width="{DynamicResource ToolbarIconSize}"
                                                   Height="{DynamicResource ToolbarIconSize}"
-                                                  Foreground="{DynamicResource TextMuted}" />
+                                                  Foreground="{DynamicResource TextPrimary}" />
                         </Button>
                         <Button Command="{Binding AddWorkEntryCommand}"
                                 ToolTip.Tip="{markup:Localize AddNewWorkEntry}" Padding="7"
