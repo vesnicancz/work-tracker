@@ -102,7 +102,8 @@ public sealed class DialogService : IDialogService
 	{
 		using var scope = _scopeFactory.CreateScope();
 		var orchestrator = scope.ServiceProvider.GetRequiredService<IWorkSuggestionOrchestrator>();
-		using var viewModel = new SuggestionsViewModel(orchestrator);
+		var cache = scope.ServiceProvider.GetRequiredService<IWorkSuggestionCache>();
+		using var viewModel = new SuggestionsViewModel(orchestrator, cache);
 
 		var dialog = new SuggestionsWindow();
 		dialog.BindViewModel(viewModel);

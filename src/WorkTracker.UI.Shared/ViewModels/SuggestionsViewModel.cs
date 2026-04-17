@@ -12,14 +12,16 @@ namespace WorkTracker.UI.Shared.ViewModels;
 public class SuggestionsViewModel : ObservableObject, IDisposable
 {
 	private readonly IWorkSuggestionOrchestrator _orchestrator;
+	private readonly IWorkSuggestionCache _cache;
 	private readonly CancellationTokenSource _cts = new();
 	private bool _isLoading;
 	private DateTime _selectedDate;
 
-	public SuggestionsViewModel(IWorkSuggestionOrchestrator orchestrator)
+	public SuggestionsViewModel(IWorkSuggestionOrchestrator orchestrator, IWorkSuggestionCache cache)
 	{
 		_orchestrator = orchestrator;
-		RefreshCommand = new AsyncRelayCommand(LoadAsync);
+		_cache = cache;
+		RefreshCommand = new AsyncRelayCommand(RefreshAsync);
 		ToggleGroupCommand = new RelayCommand<SuggestionGroupViewModel>(ToggleGroup);
 	}
 
@@ -42,6 +44,12 @@ public class SuggestionsViewModel : ObservableObject, IDisposable
 	public async Task InitializeAsync(DateTime selectedDate)
 	{
 		_selectedDate = selectedDate;
+		await LoadAsync();
+	}
+
+	private async Task RefreshAsync()
+	{
+		_cache.Invalidate();
 		await LoadAsync();
 	}
 
