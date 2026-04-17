@@ -27,6 +27,7 @@ public class CachedWorkSuggestionOrchestrator : IWorkSuggestionOrchestrator, IWo
 	{
 		var key = date.Date;
 		Task<IReadOnlyList<SuggestionGroup>> task;
+		TaskCompletionSource<IReadOnlyList<SuggestionGroup>>? owned = null;
 
 		lock (_lock)
 		{
@@ -37,15 +38,35 @@ public class CachedWorkSuggestionOrchestrator : IWorkSuggestionOrchestrator, IWo
 			else
 			{
 				EvictExpired();
-				// Detach the cached Task from any single caller's token: if the first caller
-				// closes their dialog mid-flight, the shared Task must keep running for any
-				// concurrent caller (and for a future caller that hits the cache).
-				task = _inner.GetGroupedSuggestionsAsync(key, CancellationToken.None);
+				owned = new TaskCompletionSource<IReadOnlyList<SuggestionGroup>>(TaskCreationOptions.RunContinuationsAsynchronously);
+				task = owned.Task;
 				_entries[key] = new CacheEntry(task, _timeProvider.GetUtcNow());
 			}
 		}
 
+		if (owned != null)
+		{
+			// Run the inner fetch outside the lock so plugin code (sync prefix of each
+			// plugin's GetSuggestionsAsync) cannot block other callers entering the cache.
+			// CancellationToken.None: the shared Task must outlive any single caller closing
+			// their dialog so concurrent callers and the cache slot stay valid.
+			_ = FetchAndComplete(key, owned);
+		}
+
 		return AwaitAndReleaseOnFailure(key, task, cancellationToken);
+	}
+
+	private async Task FetchAndComplete(DateTime key, TaskCompletionSource<IReadOnlyList<SuggestionGroup>> tcs)
+	{
+		try
+		{
+			var result = await _inner.GetGroupedSuggestionsAsync(key, CancellationToken.None);
+			tcs.SetResult(result);
+		}
+		catch (Exception ex)
+		{
+			tcs.SetException(ex);
+		}
 	}
 
 	public Task<IReadOnlyList<WorkSuggestionViewModel>> SearchPluginAsync(
@@ -88,6 +109,13 @@ public class CachedWorkSuggestionOrchestrator : IWorkSuggestionOrchestrator, IWo
 
 	private bool IsExpired(CacheEntry entry)
 	{
+		// In-flight Task is never expired: starting a parallel fetch would defeat single-flight
+		// (the awaiting caller would pay the wait twice and the inner orchestrator would do
+		// duplicate plugin work). Once completed, TTL counts from CachedAt.
+		if (!entry.Task.IsCompleted)
+		{
+			return false;
+		}
 		return _timeProvider.GetUtcNow() - entry.CachedAt >= CacheTtl;
 	}
 

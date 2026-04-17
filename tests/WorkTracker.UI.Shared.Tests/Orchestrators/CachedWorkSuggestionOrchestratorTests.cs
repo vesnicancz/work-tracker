@@ -199,6 +199,63 @@ public class CachedWorkSuggestionOrchestratorTests
 	}
 
 	[Fact]
+	public async Task GetGroupedSuggestionsAsync_InFlightTaskIsNotExpiredEvenIfTtlElapses()
+	{
+		var plugin = MockPluginFactory.CreateSuggestionPlugin("jira", "Jira");
+		var release = new TaskCompletionSource<IReadOnlyList<WorkSuggestion>>(TaskCreationOptions.RunContinuationsAsynchronously);
+		plugin.Setup(p => p.GetSuggestionsAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+			.Returns(async () => PluginResult<IReadOnlyList<WorkSuggestion>>.Success(await release.Task));
+		_mockPluginManager.Setup(m => m.WorkSuggestionPlugins).Returns([plugin.Object]);
+		var date = new DateTime(2026, 4, 17);
+
+		var first = _cached.GetGroupedSuggestionsAsync(date, CancellationToken.None);
+
+		// TTL elapses while the first fetch is still running.
+		_time.Advance(TimeSpan.FromMinutes(10));
+
+		// Second caller must join the in-flight Task, not start a duplicate fetch.
+		var second = _cached.GetGroupedSuggestionsAsync(date, CancellationToken.None);
+
+		release.SetResult(new List<WorkSuggestion> { new() { Title = "A", Source = "Jira", SourceId = "1" } });
+		await Task.WhenAll(first, second);
+
+		plugin.Verify(p => p.GetSuggestionsAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once);
+	}
+
+	[Fact]
+	public async Task GetGroupedSuggestionsAsync_LongRunningFetchForOneDate_DoesNotBlockOtherDate()
+	{
+		var dateA = new DateTime(2026, 4, 17);
+		var dateB = new DateTime(2026, 4, 18);
+		var releaseA = new TaskCompletionSource<IReadOnlyList<WorkSuggestion>>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+		var plugin = MockPluginFactory.CreateSuggestionPlugin("jira", "Jira");
+		plugin.Setup(p => p.GetSuggestionsAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+			.Returns(async (DateTime d, CancellationToken _) =>
+			{
+				if (d == dateA)
+				{
+					return PluginResult<IReadOnlyList<WorkSuggestion>>.Success(await releaseA.Task);
+				}
+				return PluginResult<IReadOnlyList<WorkSuggestion>>.Success(
+					new List<WorkSuggestion> { new() { Title = "B", Source = "Jira", SourceId = "1" } });
+			});
+		_mockPluginManager.Setup(m => m.WorkSuggestionPlugins).Returns([plugin.Object]);
+
+		var first = _cached.GetGroupedSuggestionsAsync(dateA, CancellationToken.None);
+
+		// While the fetch for dateA is in flight (would hold the lock under the old design),
+		// a call for a different date must enter the cache and complete independently.
+		var second = _cached.GetGroupedSuggestionsAsync(dateB, CancellationToken.None);
+		var completed = await Task.WhenAny(second, Task.Delay(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken));
+
+		completed.Should().BeSameAs(second, "second call must not be blocked by the in-flight fetch for a different date");
+
+		releaseA.SetResult(new List<WorkSuggestion> { new() { Title = "A", Source = "Jira", SourceId = "1" } });
+		await first;
+	}
+
+	[Fact]
 	public async Task GetGroupedSuggestionsAsync_PluginErrorIsCached_NotRetriedWithinTtl()
 	{
 		// WorkSuggestionOrchestrator catches plugin exceptions and returns Error groups
