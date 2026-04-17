@@ -13,7 +13,10 @@ public static class UISharedServiceCollectionExtensions
 		services.AddTransient<IWorklogSubmissionOrchestrator, WorklogSubmissionOrchestrator>();
 		services.AddTransient<IWorkEntryEditOrchestrator, WorkEntryEditOrchestrator>();
 		services.AddTransient<ISettingsOrchestrator, SettingsOrchestrator>();
-		services.AddTransient<IWorkSuggestionOrchestrator, WorkSuggestionOrchestrator>();
+		services.AddSingleton<WorkSuggestionOrchestrator>();
+		services.AddSingleton<CachedWorkSuggestionOrchestrator>();
+		services.AddSingleton<IWorkSuggestionOrchestrator>(sp => sp.GetRequiredService<CachedWorkSuggestionOrchestrator>());
+		services.AddSingleton<IWorkSuggestionCache>(sp => sp.GetRequiredService<CachedWorkSuggestionOrchestrator>());
 		services.AddSingleton<IPomodoroService, PomodoroService>();
 
 		services.AddSingleton<IUpdateCheckService>(sp =>
