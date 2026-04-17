@@ -411,10 +411,16 @@
                                                 <ItemsControl.ItemTemplate>
                                                     <DataTemplate x:DataType="shared:ConfigurationFieldViewModel">
                                                         <StackPanel Margin="0,0,0,8" Spacing="3">
-                                                            <TextBlock Text="{Binding Label}" FontSize="12" FontWeight="Medium" />
-                                                            <TextBox Text="{Binding Value, Mode=TwoWay}"
-                                                                     Watermark="{Binding Placeholder}"
-                                                                     FontSize="12" />
+                                                            <StackPanel IsVisible="{Binding IsTextInput}" Spacing="3">
+                                                                <TextBlock Text="{Binding Label}" FontSize="12" FontWeight="Medium" />
+                                                                <TextBox Text="{Binding Value, Mode=TwoWay}"
+                                                                         Watermark="{Binding Placeholder}"
+                                                                         FontSize="12" />
+                                                            </StackPanel>
+                                                            <CheckBox IsVisible="{Binding IsCheckbox}"
+                                                                      IsChecked="{Binding BoolValue, Mode=TwoWay}"
+                                                                      Content="{Binding Label}"
+                                                                      FontSize="12" />
                                                         </StackPanel>
                                                     </DataTemplate>
                                                 </ItemsControl.ItemTemplate>
