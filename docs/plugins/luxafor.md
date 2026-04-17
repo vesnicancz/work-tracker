@@ -71,7 +71,7 @@ Všechna zařízení komunikují přes **HID API**. Plugin používá NuGet knih
 1. `OnInitializeAsync` načte barvy z konfigurace (s fallbackem na defaulty) a provede validaci hex formátu. Zařízení se v tomto kroku **neotevírá**.
 2. Teprve při prvním volání `SetStateAsync` plugin zavolá interní helper `GetOrOpenDevice()`, který přes `ILuxaforDeviceManager.TryOpen()` otevře HID connection k aktuálně připojenému Luxaforu.
 3. Pokud zařízení v tu chvíli **není** připojené, `_device` zůstane `null` a volání je no‑op; další pokus proběhne při příštím `SetStateAsync`.
-4. Pokud je zapnuté `turn_off_on_startup`, plugin při **první** inicializaci okamžitě zavolá `SetStateAsync(Idle)` — zařízení se otevře a zhasne. Při re-inicializaci (změna configu za běhu) už k zhasnutí nedojde, aby plugin nerušil probíhající Pomodoro.
+4. Pokud je zapnuté `turn_off_on_startup`, plugin při **první** inicializaci okamžitě zavolá `SetStateAsync(Idle)`. Pokud je zařízení v tu chvíli připojené, otevře se a zhasne; pokud připojené není, volání je stejně jako v bodě 3 no‑op. Při re-inicializaci (změna configu za běhu) už k zhasnutí nedojde, aby plugin nerušil probíhající Pomodoro.
 
 ### Reakce na Pomodoro
 
@@ -171,7 +171,7 @@ CLI samotné Luxafor nepoužívá (nemá Pomodoro), takže aktuálně nemá smys
       "work_color": "#FF0000",
       "short_break_color": "#00FF00",
       "long_break_color": "#0000FF",
-      "turn_off_on_startup": "false"
+      "turn_off_on_startup": false
     }
   }
 }
