@@ -36,10 +36,11 @@ public class CachedWorkSuggestionOrchestrator : IWorkSuggestionOrchestrator, IWo
 			}
 			else
 			{
+				EvictExpired();
 				// Detach the cached Task from any single caller's token: if the first caller
 				// closes their dialog mid-flight, the shared Task must keep running for any
 				// concurrent caller (and for a future caller that hits the cache).
-				task = _inner.GetGroupedSuggestionsAsync(date, CancellationToken.None);
+				task = _inner.GetGroupedSuggestionsAsync(key, CancellationToken.None);
 				_entries[key] = new CacheEntry(task, _timeProvider.GetUtcNow());
 			}
 		}
@@ -88,6 +89,26 @@ public class CachedWorkSuggestionOrchestrator : IWorkSuggestionOrchestrator, IWo
 	private bool IsExpired(CacheEntry entry)
 	{
 		return _timeProvider.GetUtcNow() - entry.CachedAt >= CacheTtl;
+	}
+
+	private void EvictExpired()
+	{
+		List<DateTime>? expiredKeys = null;
+		foreach (var (k, v) in _entries)
+		{
+			if (IsExpired(v))
+			{
+				expiredKeys ??= new List<DateTime>();
+				expiredKeys.Add(k);
+			}
+		}
+		if (expiredKeys != null)
+		{
+			foreach (var k in expiredKeys)
+			{
+				_entries.Remove(k);
+			}
+		}
 	}
 
 	private sealed record CacheEntry(Task<IReadOnlyList<SuggestionGroup>> Task, DateTimeOffset CachedAt);

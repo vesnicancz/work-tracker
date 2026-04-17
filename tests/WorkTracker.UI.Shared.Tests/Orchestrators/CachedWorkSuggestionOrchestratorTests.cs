@@ -101,6 +101,20 @@ public class CachedWorkSuggestionOrchestratorTests
 	}
 
 	[Fact]
+	public async Task GetGroupedSuggestionsAsync_PassesNormalizedDateToInner()
+	{
+		var plugin = SetupPlugin();
+		var calledWith = new List<DateTime>();
+		plugin.Setup(p => p.GetSuggestionsAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+			.Callback<DateTime, CancellationToken>((d, _) => calledWith.Add(d))
+			.ReturnsAsync(PluginResult<IReadOnlyList<WorkSuggestion>>.Success(new List<WorkSuggestion>()));
+
+		await _cached.GetGroupedSuggestionsAsync(new DateTime(2026, 4, 17, 14, 30, 0), CancellationToken.None);
+
+		calledWith.Should().ContainSingle().Which.Should().Be(new DateTime(2026, 4, 17));
+	}
+
+	[Fact]
 	public async Task Invalidate_ForcesRefetchOnNextCall()
 	{
 		var plugin = SetupPlugin();
