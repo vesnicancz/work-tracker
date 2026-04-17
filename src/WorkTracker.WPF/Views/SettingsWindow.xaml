@@ -597,17 +597,29 @@
 										<ItemsControl.ItemTemplate>
 											<DataTemplate>
 												<StackPanel Margin="0,0,0,12">
-													<TextBlock Text="{Binding Label}"
-															  FontWeight="Medium"
-															  Margin="0,0,0,4" />
-													<TextBlock Text="{Binding Description}"
-															  Foreground="{DynamicResource MaterialDesign.Brush.Foreground.Light}"
-															  FontSize="11"
-															  TextWrapping="Wrap"
-															  Margin="0,0,0,4" />
-													<TextBox Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-															materialDesign:HintAssist.Hint="{Binding Placeholder}"
-															Style="{StaticResource MaterialDesignOutlinedTextBox}" />
+													<StackPanel Visibility="{Binding IsTextInput, Converter={StaticResource BooleanToVisibilityConverter}}">
+														<TextBlock Text="{Binding Label}"
+																  FontWeight="Medium"
+																  Margin="0,0,0,4" />
+														<TextBlock Text="{Binding Description}"
+																  Foreground="{DynamicResource MaterialDesign.Brush.Foreground.Light}"
+																  FontSize="11"
+																  TextWrapping="Wrap"
+																  Margin="0,0,0,4" />
+														<TextBox Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+																materialDesign:HintAssist.Hint="{Binding Placeholder}"
+																Style="{StaticResource MaterialDesignOutlinedTextBox}" />
+													</StackPanel>
+													<StackPanel Visibility="{Binding IsCheckbox, Converter={StaticResource BooleanToVisibilityConverter}}">
+														<CheckBox IsChecked="{Binding BoolValue, Mode=TwoWay}"
+																 Content="{Binding Label}"
+																 FontWeight="Medium" />
+														<TextBlock Text="{Binding Description}"
+																  Foreground="{DynamicResource MaterialDesign.Brush.Foreground.Light}"
+																  FontSize="11"
+																  TextWrapping="Wrap"
+																  Margin="24,2,0,0" />
+													</StackPanel>
 												</StackPanel>
 											</DataTemplate>
 										</ItemsControl.ItemTemplate>

@@ -24,6 +24,9 @@ public class ConfigurationFieldViewModel : ObservableObject
 	public PluginConfigurationFieldType Type => _field.Type;
 	public bool IsRequired => _field.IsRequired;
 
+	public bool IsCheckbox => Type == PluginConfigurationFieldType.Checkbox;
+	public bool IsTextInput => !IsCheckbox;
+
 	public string Value
 	{
 		get => _pluginViewModel.Configuration.TryGetValue(Key, out var value) ? value : string.Empty;
@@ -36,11 +39,28 @@ public class ConfigurationFieldViewModel : ObservableObject
 
 			_pluginViewModel.Configuration[Key] = value;
 			OnPropertyChanged();
+			OnPropertyChanged(nameof(BoolValue));
+		}
+	}
+
+	public bool BoolValue
+	{
+		get => bool.TryParse(Value, out var parsed) && parsed;
+		set
+		{
+			var serialized = value ? "true" : "false";
+			if (Value == serialized)
+			{
+				return;
+			}
+
+			Value = serialized;
 		}
 	}
 
 	public void RefreshValue()
 	{
 		OnPropertyChanged(nameof(Value));
+		OnPropertyChanged(nameof(BoolValue));
 	}
 }

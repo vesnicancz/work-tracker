@@ -143,4 +143,136 @@ public class ConfigurationFieldViewModelTests
 
 		raised.Should().BeTrue();
 	}
+
+	[Fact]
+	public void IsCheckbox_WhenTypeCheckbox_ReturnsTrue()
+	{
+		var (vm, _) = CreateVm(CreateField(type: PluginConfigurationFieldType.Checkbox));
+
+		vm.IsCheckbox.Should().BeTrue();
+		vm.IsTextInput.Should().BeFalse();
+	}
+
+	[Theory]
+	[InlineData(PluginConfigurationFieldType.Text)]
+	[InlineData(PluginConfigurationFieldType.Password)]
+	[InlineData(PluginConfigurationFieldType.Url)]
+	[InlineData(PluginConfigurationFieldType.Number)]
+	[InlineData(PluginConfigurationFieldType.Email)]
+	[InlineData(PluginConfigurationFieldType.MultilineText)]
+	[InlineData(PluginConfigurationFieldType.Dropdown)]
+	public void IsTextInput_WhenTypeNotCheckbox_ReturnsTrue(PluginConfigurationFieldType type)
+	{
+		var (vm, _) = CreateVm(CreateField(type: type));
+
+		vm.IsTextInput.Should().BeTrue();
+		vm.IsCheckbox.Should().BeFalse();
+	}
+
+	[Theory]
+	[InlineData("true", true)]
+	[InlineData("True", true)]
+	[InlineData("TRUE", true)]
+	[InlineData("false", false)]
+	[InlineData("False", false)]
+	[InlineData("", false)]
+	[InlineData("not-a-bool", false)]
+	public void BoolValue_ParsesStoredValue(string stored, bool expected)
+	{
+		var (vm, plugin) = CreateVm(CreateField(type: PluginConfigurationFieldType.Checkbox));
+		plugin.Configuration["TestKey"] = stored;
+
+		vm.BoolValue.Should().Be(expected);
+	}
+
+	[Fact]
+	public void BoolValue_WhenKeyMissing_ReturnsFalse()
+	{
+		var (vm, _) = CreateVm(CreateField(type: PluginConfigurationFieldType.Checkbox));
+
+		vm.BoolValue.Should().BeFalse();
+	}
+
+	[Fact]
+	public void BoolValue_SetTrue_WritesTrueString()
+	{
+		var (vm, plugin) = CreateVm(CreateField(type: PluginConfigurationFieldType.Checkbox));
+
+		vm.BoolValue = true;
+
+		plugin.Configuration["TestKey"].Should().Be("true");
+	}
+
+	[Fact]
+	public void BoolValue_SetFalse_WritesFalseString()
+	{
+		var (vm, plugin) = CreateVm(CreateField(type: PluginConfigurationFieldType.Checkbox));
+		plugin.Configuration["TestKey"] = "true";
+
+		vm.BoolValue = false;
+
+		plugin.Configuration["TestKey"].Should().Be("false");
+	}
+
+	[Fact]
+	public void BoolValue_Set_RaisesBoolValueAndValuePropertyChanged()
+	{
+		var (vm, _) = CreateVm(CreateField(type: PluginConfigurationFieldType.Checkbox));
+		var raised = new List<string?>();
+		vm.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
+
+		vm.BoolValue = true;
+
+		raised.Should().Contain(nameof(ConfigurationFieldViewModel.Value));
+		raised.Should().Contain(nameof(ConfigurationFieldViewModel.BoolValue));
+	}
+
+	[Fact]
+	public void BoolValue_SetSameValue_DoesNotRaisePropertyChanged()
+	{
+		var (vm, plugin) = CreateVm(CreateField(type: PluginConfigurationFieldType.Checkbox));
+		plugin.Configuration["TestKey"] = "true";
+		var raised = false;
+		vm.PropertyChanged += (_, _) => raised = true;
+
+		vm.BoolValue = true;
+
+		raised.Should().BeFalse();
+	}
+
+	[Fact]
+	public void Value_Set_RaisesBoolValuePropertyChanged()
+	{
+		var (vm, _) = CreateVm(CreateField(type: PluginConfigurationFieldType.Checkbox));
+		var raised = false;
+		vm.PropertyChanged += (_, e) =>
+		{
+			if (e.PropertyName == nameof(ConfigurationFieldViewModel.BoolValue))
+			{
+				raised = true;
+			}
+		};
+
+		vm.Value = "true";
+
+		raised.Should().BeTrue();
+	}
+
+	[Fact]
+	public void RefreshValue_RaisesBoolValuePropertyChanged()
+	{
+		var (vm, _) = CreateVm(CreateField(type: PluginConfigurationFieldType.Checkbox));
+		var raised = false;
+		vm.PropertyChanged += (_, e) =>
+		{
+			if (e.PropertyName == nameof(ConfigurationFieldViewModel.BoolValue))
+			{
+				raised = true;
+			}
+		};
+
+		vm.RefreshValue();
+
+		raised.Should().BeTrue();
+	}
 }
