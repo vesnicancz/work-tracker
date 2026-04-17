@@ -12,6 +12,7 @@ public sealed class LuxaforStatusIndicatorPlugin(ILogger<LuxaforStatusIndicatorP
 		public const string WorkColor = "work_color";
 		public const string ShortBreakColor = "short_break_color";
 		public const string LongBreakColor = "long_break_color";
+		public const string TurnOffOnStartup = "turn_off_on_startup";
 	}
 
 	private readonly ILuxaforDeviceManager _deviceManager = deviceManager ?? new LuxaforDeviceManager();
@@ -48,7 +49,15 @@ public sealed class LuxaforStatusIndicatorPlugin(ILogger<LuxaforStatusIndicatorP
 		[
 			HexColorField(ConfigKeys.WorkColor, "Work color", "#FF0000"),
 			HexColorField(ConfigKeys.ShortBreakColor, "Short break color", "#00FF00"),
-			HexColorField(ConfigKeys.LongBreakColor, "Long break color", "#0000FF")
+			HexColorField(ConfigKeys.LongBreakColor, "Long break color", "#0000FF"),
+			new PluginConfigurationField
+			{
+				Key = ConfigKeys.TurnOffOnStartup,
+				Label = "Turn off on startup",
+				Description = "Turn off the Luxafor device when the application starts",
+				Type = PluginConfigurationFieldType.Checkbox,
+				DefaultValue = "false"
+			}
 		];
 	}
 
@@ -110,13 +119,18 @@ public sealed class LuxaforStatusIndicatorPlugin(ILogger<LuxaforStatusIndicatorP
 		}
 	}
 
-	protected override Task<bool> OnInitializeAsync(IDictionary<string, string> configuration, CancellationToken cancellationToken)
+	protected override async Task<bool> OnInitializeAsync(IDictionary<string, string> configuration, CancellationToken cancellationToken)
 	{
 		_workColor = ParseColor(GetConfigValue(ConfigKeys.WorkColor), LuxaforColor.Red);
 		_shortBreakColor = ParseColor(GetConfigValue(ConfigKeys.ShortBreakColor), LuxaforColor.Green);
 		_longBreakColor = ParseColor(GetConfigValue(ConfigKeys.LongBreakColor), LuxaforColor.Blue);
 
-		return Task.FromResult(true);
+		if (!IsInitialized && bool.TryParse(GetConfigValue(ConfigKeys.TurnOffOnStartup), out var turnOff) && turnOff)
+		{
+			await SetStateAsync(StatusIndicatorState.Idle, cancellationToken);
+		}
+
+		return true;
 	}
 
 	protected override async Task OnShutdownAsync()
