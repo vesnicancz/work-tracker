@@ -62,20 +62,20 @@ public class LuxaforStatusIndicatorPluginTests : IAsyncDisposable
 	#region Configuration Fields
 
 	[Fact]
-	public void GetConfigurationFields_ReturnsThreeHexColorFields()
+	public void GetConfigurationFields_ReturnsExpectedFields()
 	{
 		var fields = _plugin.GetConfigurationFields();
 
-		fields.Should().HaveCount(3);
-		fields.Select(f => f.Key).Should().BeEquivalentTo(["work_color", "short_break_color", "long_break_color"]);
+		fields.Should().HaveCount(4);
+		fields.Select(f => f.Key).Should().BeEquivalentTo(["work_color", "short_break_color", "long_break_color", "turn_off_on_startup"]);
 	}
 
 	[Fact]
-	public void GetConfigurationFields_AllFieldsHaveHexValidationPattern()
+	public void GetConfigurationFields_HexColorFieldsHaveHexValidationPattern()
 	{
 		var fields = _plugin.GetConfigurationFields();
 
-		foreach (var field in fields)
+		foreach (var field in fields.Where(f => f.Key.EndsWith("_color")))
 		{
 			field.ValidationPattern.Should().Be(@"^#[0-9A-Fa-f]{6}$");
 		}
@@ -89,6 +89,16 @@ public class LuxaforStatusIndicatorPluginTests : IAsyncDisposable
 		fields.Single(f => f.Key == "work_color").DefaultValue.Should().Be("#FF0000");
 		fields.Single(f => f.Key == "short_break_color").DefaultValue.Should().Be("#00FF00");
 		fields.Single(f => f.Key == "long_break_color").DefaultValue.Should().Be("#0000FF");
+		fields.Single(f => f.Key == "turn_off_on_startup").DefaultValue.Should().Be("false");
+	}
+
+	[Fact]
+	public void GetConfigurationFields_TurnOffOnStartup_IsCheckbox()
+	{
+		var field = _plugin.GetConfigurationFields().Single(f => f.Key == "turn_off_on_startup");
+
+		field.Type.Should().Be(PluginConfigurationFieldType.Checkbox);
+		field.IsRequired.Should().BeFalse();
 	}
 
 	#endregion
@@ -144,6 +154,58 @@ public class LuxaforStatusIndicatorPluginTests : IAsyncDisposable
 		var result = await _plugin.InitializeAsync(config, TestContext.Current.CancellationToken);
 
 		result.Should().BeTrue();
+	}
+
+	[Fact]
+	public async Task InitializeAsync_TurnOffOnStartupTrue_TurnsOffDevice()
+	{
+		var device = new MockLuxaforDevice();
+		await using var plugin = CreatePluginWithMockDevice(device);
+
+		var config = new Dictionary<string, string>(ValidConfig) { ["turn_off_on_startup"] = "true" };
+		await plugin.InitializeAsync(config, TestContext.Current.CancellationToken);
+
+		device.TurnedOff.Should().BeTrue();
+	}
+
+	[Fact]
+	public async Task InitializeAsync_TurnOffOnStartupFalse_DoesNotTouchDevice()
+	{
+		var device = new MockLuxaforDevice();
+		await using var plugin = CreatePluginWithMockDevice(device);
+
+		var config = new Dictionary<string, string>(ValidConfig) { ["turn_off_on_startup"] = "false" };
+		await plugin.InitializeAsync(config, TestContext.Current.CancellationToken);
+
+		device.TurnedOff.Should().BeFalse();
+		device.LastColor.Should().BeNull();
+	}
+
+	[Fact]
+	public async Task InitializeAsync_TurnOffOnStartupMissing_DoesNotTouchDevice()
+	{
+		var device = new MockLuxaforDevice();
+		await using var plugin = CreatePluginWithMockDevice(device);
+
+		await plugin.InitializeAsync(ValidConfig, TestContext.Current.CancellationToken);
+
+		device.TurnedOff.Should().BeFalse();
+		device.LastColor.Should().BeNull();
+	}
+
+	[Fact]
+	public async Task InitializeAsync_TurnOffOnStartupTrue_OnReinitialize_DoesNotTurnOffAgain()
+	{
+		var device = new MockLuxaforDevice();
+		await using var plugin = CreatePluginWithMockDevice(device);
+		var config = new Dictionary<string, string>(ValidConfig) { ["turn_off_on_startup"] = "true" };
+
+		await plugin.InitializeAsync(config, TestContext.Current.CancellationToken);
+		device.TurnOffCallCount.Should().Be(1);
+
+		await plugin.InitializeAsync(config, TestContext.Current.CancellationToken);
+
+		device.TurnOffCallCount.Should().Be(1, "re-initialization must not turn off a running indicator");
 	}
 
 	#endregion
@@ -340,6 +402,7 @@ internal sealed class MockLuxaforDevice : ILuxaforDevice
 
 	public LuxaforColor? LastColor { get; private set; }
 	public bool TurnedOff { get; private set; }
+	public int TurnOffCallCount { get; private set; }
 	public int SetColorCallCount { get; private set; }
 	public bool Disposed { get; private set; }
 	public bool ThrowOnSetColor { get; set; }
@@ -359,6 +422,7 @@ internal sealed class MockLuxaforDevice : ILuxaforDevice
 	public Task TurnOffAsync(CancellationToken cancellationToken)
 	{
 		TurnedOff = true;
+		TurnOffCallCount++;
 		return Task.CompletedTask;
 	}
 
