@@ -65,6 +65,23 @@ Při volání `UploadWorklogAsync(entry)`:
    ```
 4. **Retry** — na 408/429/500–504 až 2× s exponenciálním backoffem. První retry čeká ~2 s, druhý ~4 s (formule `2^(attempt+1)` sekund). Ostatní HTTP chyby (401, 403, 404, 400…) se neretryují a propagují se okamžitě. **Pozor:** aktuální `TempoWorklogPlugin.UploadWorklogAsync` kategorizuje všechny neúspěšné HTTP statusy obecně jako `PluginErrorCategory.Network`, ne podle jednotlivých status code (401 tedy nedostane kategorii `Authentication`, jak by leckoho napadlo).
 
+### Submission módy
+
+Plugin inzeruje `SupportedModes = Timed | Aggregated`, takže ho v submission dialogu uvidíš v obou módech.
+
+- **Timed** — použitý payload odpovídá příkladu výše (`startDate` + `startTime` + `timeSpentSeconds`).
+- **Aggregated** — pole `startTime` se z payloadu **vynechá** (Tempo ho má v API v4 jako volitelné). Orchestrátor předtím sečte čas přes (Ticket + Popis) per den a Tempo tak dostává jeden worklog za kombinaci. `startDate` i `timeSpentSeconds` zůstávají povinné.
+
+  ```json
+  {
+    "authorAccountId": "…",
+    "issueId": 12345,
+    "timeSpentSeconds": 9000,
+    "startDate": "2026-04-09",
+    "description": "Bug fix v autentizaci"
+  }
+  ```
+
 ### Test connection
 
 Stiskem **Test connection** v Settings plugin aktuálně:

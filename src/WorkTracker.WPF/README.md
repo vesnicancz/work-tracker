@@ -140,7 +140,8 @@ Edit `appsettings.json` to configure:
 
 ### Send Worklog Dialog
 - Preview of entries to be sent
-- Daily or weekly submission mode
+- Daily or weekly range (checkbox)
+- Timed vs. aggregated submission mode (radio buttons, persisted per user)
 - Progress indicator during submission
 - Result summary
 
