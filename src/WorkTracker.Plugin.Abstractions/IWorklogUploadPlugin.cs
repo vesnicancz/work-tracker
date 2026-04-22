@@ -6,6 +6,14 @@ namespace WorkTracker.Plugin.Abstractions;
 public interface IWorklogUploadPlugin : ITestablePlugin
 {
 	/// <summary>
+	/// Submission modes this plugin accepts. Defaults to <see cref="WorklogSubmissionMode.Timed"/>
+	/// for plugins that only handle per-entry start/end uploads. Plugins that can ingest
+	/// aggregated entries (totals per code+name per day) declare <see cref="WorklogSubmissionMode.Aggregated"/>
+	/// in addition.
+	/// </summary>
+	WorklogSubmissionMode SupportedModes { get; }
+
+	/// <summary>
 	/// Uploads a single worklog entry
 	/// </summary>
 	/// <param name="worklog">The worklog to upload</param>
@@ -17,9 +25,13 @@ public interface IWorklogUploadPlugin : ITestablePlugin
 	/// Uploads multiple worklog entries in batch
 	/// </summary>
 	/// <param name="worklogs">The worklogs to upload</param>
+	/// <param name="mode">Submission mode — signals how <c>StartTime</c>/<c>EndTime</c>/<c>DurationMinutes</c>
+	/// should be interpreted. In <see cref="WorklogSubmissionMode.Aggregated"/> mode entries are pre-grouped
+	/// by code+description per day, <c>StartTime</c> is representative only and <c>DurationMinutes</c> is
+	/// the authoritative total.</param>
 	/// <param name="cancellationToken">Cancellation token</param>
 	/// <returns>Result with submission summary</returns>
-	Task<PluginResult<WorklogSubmissionResult>> UploadWorklogsAsync(IEnumerable<PluginWorklogEntry> worklogs, CancellationToken cancellationToken = default);
+	Task<PluginResult<WorklogSubmissionResult>> UploadWorklogsAsync(IEnumerable<PluginWorklogEntry> worklogs, WorklogSubmissionMode mode, CancellationToken cancellationToken = default);
 
 	/// <summary>
 	/// Gets existing worklogs from the provider for a specific date range

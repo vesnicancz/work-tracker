@@ -37,10 +37,14 @@ public class PluginBasedWorklogSubmissionServiceTests
 	private static WorkEntry CreateActiveEntry(int id, string ticketId, DateTime start) =>
 		WorkEntry.Reconstitute(id, ticketId, start, null, "desc", true, start);
 
-	private Mock<IWorklogUploadPlugin> CreateMockPlugin(string id = TestPluginId, string name = "Test Plugin")
+	private Mock<IWorklogUploadPlugin> CreateMockPlugin(
+		string id = TestPluginId,
+		string name = "Test Plugin",
+		WorklogSubmissionMode supportedModes = WorklogSubmissionMode.Timed | WorklogSubmissionMode.Aggregated)
 	{
 		var plugin = new Mock<IWorklogUploadPlugin>();
 		plugin.Setup(p => p.Metadata).Returns(new PluginMetadata { Id = id, Name = name, Version = new Version(1, 0), Author = "Test" });
+		plugin.Setup(p => p.SupportedModes).Returns(supportedModes);
 		return plugin;
 	}
 
@@ -88,14 +92,14 @@ public class PluginBasedWorklogSubmissionServiceTests
 			.ReturnsAsync(entries);
 
 		SetupValidatorValid();
-		plugin.Setup(p => p.UploadWorklogsAsync(It.IsAny<IEnumerable<PluginWorklogEntry>>(), It.IsAny<CancellationToken>()))
+		plugin.Setup(p => p.UploadWorklogsAsync(It.IsAny<IEnumerable<PluginWorklogEntry>>(), It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(PluginResult<WorklogSubmissionResult>.Success(new WorklogSubmissionResult { TotalEntries = 1, SuccessfulEntries = 1 }));
 
 		var result = await _sut.SubmitDailyWorklogAsync(date, TestContext.Current.CancellationToken);
 
 		result.IsSuccess.Should().BeTrue();
 		result.Value!.SuccessfulEntries.Should().Be(1);
-		plugin.Verify(p => p.UploadWorklogsAsync(It.IsAny<IEnumerable<PluginWorklogEntry>>(), It.IsAny<CancellationToken>()), Times.Once);
+		plugin.Verify(p => p.UploadWorklogsAsync(It.IsAny<IEnumerable<PluginWorklogEntry>>(), It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()), Times.Once);
 	}
 
 	[Fact]
@@ -149,7 +153,7 @@ public class PluginBasedWorklogSubmissionServiceTests
 			.ReturnsAsync(entries);
 
 		SetupValidatorValid();
-		plugin.Setup(p => p.UploadWorklogsAsync(It.IsAny<IEnumerable<PluginWorklogEntry>>(), It.IsAny<CancellationToken>()))
+		plugin.Setup(p => p.UploadWorklogsAsync(It.IsAny<IEnumerable<PluginWorklogEntry>>(), It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(PluginResult<WorklogSubmissionResult>.Success(new WorklogSubmissionResult { TotalEntries = 2, SuccessfulEntries = 2 }));
 
 		var result = await _sut.SubmitDailyWorklogAsync(date, TestPluginId, TestContext.Current.CancellationToken);
@@ -180,7 +184,7 @@ public class PluginBasedWorklogSubmissionServiceTests
 			.Returns(ValidationResult.Success())
 			.Returns(ValidationResult.Failure("Invalid"));
 
-		plugin.Setup(p => p.UploadWorklogsAsync(It.IsAny<IEnumerable<PluginWorklogEntry>>(), It.IsAny<CancellationToken>()))
+		plugin.Setup(p => p.UploadWorklogsAsync(It.IsAny<IEnumerable<PluginWorklogEntry>>(), It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(PluginResult<WorklogSubmissionResult>.Success(new WorklogSubmissionResult { TotalEntries = 1, SuccessfulEntries = 1 }));
 
 		var result = await _sut.SubmitDailyWorklogAsync(date, TestPluginId, TestContext.Current.CancellationToken);
@@ -222,7 +226,7 @@ public class PluginBasedWorklogSubmissionServiceTests
 			.ReturnsAsync(entries);
 
 		SetupValidatorValid();
-		plugin.Setup(p => p.UploadWorklogsAsync(It.IsAny<IEnumerable<PluginWorklogEntry>>(), It.IsAny<CancellationToken>()))
+		plugin.Setup(p => p.UploadWorklogsAsync(It.IsAny<IEnumerable<PluginWorklogEntry>>(), It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(PluginResult<WorklogSubmissionResult>.Failure("API error"));
 
 		var result = await _sut.SubmitDailyWorklogAsync(date, TestPluginId, TestContext.Current.CancellationToken);
@@ -250,6 +254,7 @@ public class PluginBasedWorklogSubmissionServiceTests
 		SetupValidatorValid();
 		plugin.Setup(p => p.UploadWorklogsAsync(
 				It.Is<IEnumerable<PluginWorklogEntry>>(w => w.Count() == 1),
+				It.IsAny<WorklogSubmissionMode>(),
 				It.IsAny<CancellationToken>()))
 			.ReturnsAsync(PluginResult<WorklogSubmissionResult>.Success(new WorklogSubmissionResult { TotalEntries = 1, SuccessfulEntries = 1 }));
 
@@ -444,6 +449,20 @@ public class PluginBasedWorklogSubmissionServiceTests
 		_sut.GetAvailableProviders().Should().BeEmpty();
 	}
 
+	[Fact]
+	public void GetAvailableProviders_ExposesPluginSupportedModes()
+	{
+		var timedOnly = CreateMockPlugin("gorang3", "GoranG3", WorklogSubmissionMode.Timed);
+		var bothModes = CreateMockPlugin("tempo", "Tempo", WorklogSubmissionMode.Timed | WorklogSubmissionMode.Aggregated);
+		_mockPluginManager.Setup(p => p.WorklogUploadPlugins).Returns([timedOnly.Object, bothModes.Object]);
+
+		var providers = _sut.GetAvailableProviders().ToList();
+
+		providers.Should().HaveCount(2);
+		providers.Single(p => p.Id == "gorang3").SupportedModes.Should().Be(WorklogSubmissionMode.Timed);
+		providers.Single(p => p.Id == "tempo").SupportedModes.Should().Be(WorklogSubmissionMode.Timed | WorklogSubmissionMode.Aggregated);
+	}
+
 	#endregion
 
 	#region SubmitCustomWorklogsAsync
@@ -453,7 +472,7 @@ public class PluginBasedWorklogSubmissionServiceTests
 	{
 		_mockPluginManager.Setup(p => p.GetPlugin<IWorklogUploadPlugin>(NonExistentPluginId)).Returns((IWorklogUploadPlugin?)null);
 
-		var result = await _sut.SubmitCustomWorklogsAsync([], NonExistentPluginId, TestContext.Current.CancellationToken);
+		var result = await _sut.SubmitCustomWorklogsAsync([], NonExistentPluginId, WorklogSubmissionMode.Timed, TestContext.Current.CancellationToken);
 
 		result.IsSuccess.Should().BeFalse();
 		result.Error.Should().Contain("Plugin 'unknown' not found");
@@ -470,10 +489,10 @@ public class PluginBasedWorklogSubmissionServiceTests
 			new() { TicketId = "PROJ-1", StartTime = DateTime.Today.AddHours(9), EndTime = DateTime.Today.AddHours(10), DurationMinutes = 60 }
 		};
 
-		plugin.Setup(p => p.UploadWorklogsAsync(It.IsAny<IEnumerable<PluginWorklogEntry>>(), It.IsAny<CancellationToken>()))
+		plugin.Setup(p => p.UploadWorklogsAsync(It.IsAny<IEnumerable<PluginWorklogEntry>>(), It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(PluginResult<WorklogSubmissionResult>.Success(new WorklogSubmissionResult { TotalEntries = 1, SuccessfulEntries = 1 }));
 
-		var result = await _sut.SubmitCustomWorklogsAsync(worklogs, TestPluginId, TestContext.Current.CancellationToken);
+		var result = await _sut.SubmitCustomWorklogsAsync(worklogs, TestPluginId, WorklogSubmissionMode.Timed, TestContext.Current.CancellationToken);
 
 		result.IsSuccess.Should().BeTrue();
 		result.Value!.SuccessfulEntries.Should().Be(1);
@@ -490,13 +509,33 @@ public class PluginBasedWorklogSubmissionServiceTests
 			new() { TicketId = "PROJ-1", StartTime = DateTime.Today.AddHours(9), EndTime = DateTime.Today.AddHours(10), DurationMinutes = 60 }
 		};
 
-		plugin.Setup(p => p.UploadWorklogsAsync(It.IsAny<IEnumerable<PluginWorklogEntry>>(), It.IsAny<CancellationToken>()))
+		plugin.Setup(p => p.UploadWorklogsAsync(It.IsAny<IEnumerable<PluginWorklogEntry>>(), It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(PluginResult<WorklogSubmissionResult>.Failure("Connection refused"));
 
-		var result = await _sut.SubmitCustomWorklogsAsync(worklogs, TestPluginId, TestContext.Current.CancellationToken);
+		var result = await _sut.SubmitCustomWorklogsAsync(worklogs, TestPluginId, WorklogSubmissionMode.Timed, TestContext.Current.CancellationToken);
 
 		result.IsSuccess.Should().BeFalse();
 		result.Error.Should().Contain("Connection refused");
+	}
+
+	[Fact]
+	public async Task SubmitCustomWorklogsAsync_UnsupportedMode_ReturnsFailureBeforeCallingPlugin()
+	{
+		var plugin = CreateMockPlugin(supportedModes: WorklogSubmissionMode.Timed);
+		_mockPluginManager.Setup(p => p.GetPlugin<IWorklogUploadPlugin>(TestPluginId)).Returns(plugin.Object);
+
+		var worklogs = new List<WorklogDto>
+		{
+			new() { TicketId = "PROJ-1", StartTime = DateTime.Today.AddHours(9), EndTime = DateTime.Today.AddHours(10), DurationMinutes = 60 }
+		};
+
+		var result = await _sut.SubmitCustomWorklogsAsync(worklogs, TestPluginId, WorklogSubmissionMode.Aggregated, TestContext.Current.CancellationToken);
+
+		result.IsSuccess.Should().BeFalse();
+		result.Error.Should().Contain("does not support submission mode");
+		plugin.Verify(
+			p => p.UploadWorklogsAsync(It.IsAny<IEnumerable<PluginWorklogEntry>>(), It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()),
+			Times.Never);
 	}
 
 	#endregion
@@ -522,7 +561,7 @@ public class PluginBasedWorklogSubmissionServiceTests
 		SetupValidatorValid();
 
 		var failedWorklog = new PluginWorklogEntry { TicketId = "PROJ-2", StartTime = date.AddHours(10), EndTime = date.AddHours(12) };
-		plugin.Setup(p => p.UploadWorklogsAsync(It.IsAny<IEnumerable<PluginWorklogEntry>>(), It.IsAny<CancellationToken>()))
+		plugin.Setup(p => p.UploadWorklogsAsync(It.IsAny<IEnumerable<PluginWorklogEntry>>(), It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(PluginResult<WorklogSubmissionResult>.Success(new WorklogSubmissionResult
 			{
 				TotalEntries = 2,

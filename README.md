@@ -28,7 +28,7 @@ Jádro aplikace je rozšiřitelné pomocí pluginů, které jsou načítané z i
 
 - Start / stop / edit / delete pracovních záznamů s automatickou detekcí Jira ticket kódu
 - Denní a týdenní přehledy, navigace „Přejít na dnešek“
-- Odesílání worklogů do externích systémů s náhledem a opakovaným pokusem u selhání
+- Odesílání worklogů do externích systémů s náhledem, volbou mezi časovým a agregovaným módem (součet per den × ticket + popis) a opakovaným pokusem u selhání
 - Návrhy práce (Work Suggestions) z Jira issues a kalendářových událostí
 - Detekce a řešení překrývajících se časových intervalů (Unit of Work transakce)
 - Pomodoro timer s OS notifikacemi a volitelnou indikací na Luxafor LED

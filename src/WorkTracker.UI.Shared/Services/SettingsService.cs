@@ -10,11 +10,12 @@ namespace WorkTracker.UI.Shared.Services;
 /// <summary>
 /// Service for managing application settings
 /// </summary>
-public sealed class SettingsService : ISettingsService
+public sealed class SettingsService : ISettingsService, IDisposable
 {
 	private readonly ILogger<SettingsService> _logger;
 	private readonly ISecureStorage _secureStorage;
 	private readonly string _settingsFilePath;
+	private readonly SemaphoreSlim _writeLock = new(1, 1);
 	private ApplicationSettings _settings;
 
 	private static readonly JsonSerializerOptions WriteOptions = new() { WriteIndented = true };
@@ -131,6 +132,8 @@ public sealed class SettingsService : ISettingsService
 
 	public void SaveSettings(ApplicationSettings settings)
 	{
+		// Serialize with the async path so concurrent sync + async callers don't race on the file.
+		_writeLock.Wait();
 		try
 		{
 			var json = JsonSerializer.Serialize(settings, WriteOptions);
@@ -146,14 +149,22 @@ public sealed class SettingsService : ISettingsService
 			_logger.LogError(ex, "Error saving settings");
 			throw;
 		}
+		finally
+		{
+			_writeLock.Release();
+		}
 	}
 
 	public async Task SaveSettingsAsync(ApplicationSettings settings, CancellationToken cancellationToken = default)
 	{
+		// ConfigureAwait(false) on both awaits: prevents deadlocks when a sync SaveSettings call
+		// on a UI thread is waiting on _writeLock while this async path's continuations would
+		// otherwise need to marshal back to that same (blocked) UI context.
+		await _writeLock.WaitAsync(cancellationToken).ConfigureAwait(false);
 		try
 		{
 			var json = JsonSerializer.Serialize(settings, WriteOptions);
-			await File.WriteAllTextAsync(_settingsFilePath, json, cancellationToken);
+			await File.WriteAllTextAsync(_settingsFilePath, json, cancellationToken).ConfigureAwait(false);
 			SetOwnerOnlyPermissions(_settingsFilePath);
 
 			UnprotectPluginConfigurations(settings);
@@ -166,6 +177,15 @@ public sealed class SettingsService : ISettingsService
 			_logger.LogError(ex, "Error saving settings");
 			throw;
 		}
+		finally
+		{
+			_writeLock.Release();
+		}
+	}
+
+	public void Dispose()
+	{
+		_writeLock.Dispose();
 	}
 
 	private void SetOwnerOnlyPermissions(string filePath)

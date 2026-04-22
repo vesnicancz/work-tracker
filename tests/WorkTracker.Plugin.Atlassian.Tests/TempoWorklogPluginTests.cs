@@ -442,6 +442,90 @@ public class TempoWorklogPluginTests : IAsyncDisposable
 
     #endregion
 
+    #region SupportedModes / UploadWorklogsAsync
+
+    [Fact]
+    public void SupportedModes_AdvertisesBothTimedAndAggregated()
+    {
+        _plugin.SupportedModes.Should().Be(WorklogSubmissionMode.Timed | WorklogSubmissionMode.Aggregated);
+    }
+
+    [Fact]
+    public async Task UploadWorklogsAsync_Aggregated_PostsPayloadWithoutStartTime()
+    {
+        _httpHandler.SetupGet("/rest/api/3/issue/PROJ-1?fields=id", JiraIssueJson("PROJ-1", 10001));
+        _httpHandler.SetupPost("/4/worklogs", HttpStatusCode.OK, """{"tempoWorklogId": 1}""");
+        await InitializePluginAsync();
+
+        // Simulate pre-aggregated input: one entry per (code, description, day).
+        var aggregated = new[]
+        {
+            new PluginWorklogEntry
+            {
+                TicketId = "PROJ-1",
+                Description = "Work",
+                StartTime = new DateTime(2026, 4, 1, 9, 0, 0),
+                EndTime = new DateTime(2026, 4, 1, 9, 0, 0),
+                DurationMinutes = 150 // 2h30m = aggregated total (no end-start relationship)
+            }
+        };
+
+        var result = await _plugin.UploadWorklogsAsync(aggregated, WorklogSubmissionMode.Aggregated, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.SuccessfulEntries.Should().Be(1);
+        _httpHandler.GetPostCallCount("/4/worklogs").Should().Be(1);
+
+        // Verify the payload: startTime must be absent, but startDate + timeSpentSeconds present
+        var body = _httpHandler.GetPostBodies("/4/worklogs").Should().ContainSingle().Subject;
+        var json = JsonSerializer.Deserialize<JsonElement>(body);
+        json.TryGetProperty("startTime", out _).Should().BeFalse("aggregated mode must omit startTime");
+        json.GetProperty("startDate").GetString().Should().Be("2026-04-01");
+        json.GetProperty("timeSpentSeconds").GetInt32().Should().Be(150 * 60);
+        json.GetProperty("issueId").GetInt32().Should().Be(10001);
+    }
+
+    [Fact]
+    public async Task UploadWorklogsAsync_Timed_PostsPayloadIncludingStartTime()
+    {
+        _httpHandler.SetupGet("/rest/api/3/issue/PROJ-1?fields=id", JiraIssueJson("PROJ-1", 10001));
+        _httpHandler.SetupPost("/4/worklogs", HttpStatusCode.OK, """{"tempoWorklogId": 1}""");
+        await InitializePluginAsync();
+
+        var timed = new[] { CreateWorklog("PROJ-1", 60, new DateTime(2026, 4, 1, 9, 30, 0)) };
+
+        var result = await _plugin.UploadWorklogsAsync(timed, WorklogSubmissionMode.Timed, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        var body = _httpHandler.GetPostBodies("/4/worklogs").Should().ContainSingle().Subject;
+        var json = JsonSerializer.Deserialize<JsonElement>(body);
+        json.GetProperty("startTime").GetString().Should().Be("09:30:00");
+        json.GetProperty("startDate").GetString().Should().Be("2026-04-01");
+    }
+
+    [Fact]
+    public async Task UploadWorklogsAsync_Timed_PostsOnePerEntry()
+    {
+        _httpHandler.SetupGet("/rest/api/3/issue/PROJ-1?fields=id", JiraIssueJson("PROJ-1", 10001));
+        _httpHandler.SetupGet("/rest/api/3/issue/PROJ-2?fields=id", JiraIssueJson("PROJ-2", 10002));
+        _httpHandler.SetupPost("/4/worklogs", HttpStatusCode.OK, """{"tempoWorklogId": 1}""");
+        await InitializePluginAsync();
+
+        var timed = new[]
+        {
+            CreateWorklog("PROJ-1"),
+            CreateWorklog("PROJ-2")
+        };
+
+        var result = await _plugin.UploadWorklogsAsync(timed, WorklogSubmissionMode.Timed, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.SuccessfulEntries.Should().Be(2);
+        _httpHandler.GetPostCallCount("/4/worklogs").Should().Be(2);
+    }
+
+    #endregion
+
     #region Issue ID caching
 
     [Fact]
@@ -600,6 +684,7 @@ internal sealed class MockHttpHandler : HttpMessageHandler
     private readonly HashSet<string> _postRepeatLast = new();
     private readonly Dictionary<string, int> _getCallCounts = new();
     private readonly Dictionary<string, int> _postCallCounts = new();
+    private readonly Dictionary<string, List<string>> _postBodies = new();
 
     public void SetupGet(string pathAndQuery, string responseBody, HttpStatusCode statusCode = HttpStatusCode.OK)
     {
@@ -640,7 +725,10 @@ internal sealed class MockHttpHandler : HttpMessageHandler
     public int GetPostCallCount(string pathAndQuery) =>
         _postCallCounts.GetValueOrDefault(pathAndQuery, 0);
 
-    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    public IReadOnlyList<string> GetPostBodies(string pathAndQuery) =>
+        _postBodies.TryGetValue(pathAndQuery, out var list) ? list : [];
+
+    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         var pathAndQuery = request.RequestUri!.PathAndQuery;
 
@@ -651,30 +739,41 @@ internal sealed class MockHttpHandler : HttpMessageHandler
             if (_getResponses.TryGetValue(pathAndQuery, out var body))
             {
                 var statusCode = _getStatusCodes.GetValueOrDefault(pathAndQuery, HttpStatusCode.OK);
-                return Task.FromResult(new HttpResponseMessage(statusCode)
+                return new HttpResponseMessage(statusCode)
                 {
                     Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json")
-                });
+                };
             }
 
             var prefixMatch = _getPrefixResponses.FirstOrDefault(p => pathAndQuery.StartsWith(p.Prefix, StringComparison.Ordinal));
             if (prefixMatch != default)
             {
-                return Task.FromResult(new HttpResponseMessage(prefixMatch.Status)
+                return new HttpResponseMessage(prefixMatch.Status)
                 {
                     Content = new StringContent(prefixMatch.Body, System.Text.Encoding.UTF8, "application/json")
-                });
+                };
             }
 
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound)
+            return new HttpResponseMessage(HttpStatusCode.NotFound)
             {
                 Content = new StringContent("Not found")
-            });
+            };
         }
 
         if (request.Method == HttpMethod.Post)
         {
             _postCallCounts[pathAndQuery] = _postCallCounts.GetValueOrDefault(pathAndQuery, 0) + 1;
+
+            if (request.Content != null)
+            {
+                var body = await request.Content.ReadAsStringAsync(cancellationToken);
+                if (!_postBodies.TryGetValue(pathAndQuery, out var bodies))
+                {
+                    bodies = new List<string>();
+                    _postBodies[pathAndQuery] = bodies;
+                }
+                bodies.Add(body);
+            }
 
             if (_postSequences.TryGetValue(pathAndQuery, out var queue) && queue.Count > 0)
             {
@@ -684,18 +783,18 @@ internal sealed class MockHttpHandler : HttpMessageHandler
                     queue.Enqueue((status, responseBody));
                 }
 
-                return Task.FromResult(new HttpResponseMessage(status)
+                return new HttpResponseMessage(status)
                 {
                     Content = new StringContent(responseBody, System.Text.Encoding.UTF8, "application/json")
-                });
+                };
             }
 
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound)
+            return new HttpResponseMessage(HttpStatusCode.NotFound)
             {
                 Content = new StringContent("No response configured")
-            });
+            };
         }
 
-        return Task.FromResult(new HttpResponseMessage(HttpStatusCode.MethodNotAllowed));
+        return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
     }
 }

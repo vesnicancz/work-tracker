@@ -352,17 +352,26 @@ Viz [Work Suggestions](#work-suggestions).
 
 Otevře se po stisku **Odeslat záznamy práce** (v levém panelu dole).
 
-**Horní panel s volbami** (tři kontroly vedle sebe):
+**Horní panel s volbami** (vše na jednom řádku vedle sebe):
 
 - **Date picker** — vybrané datum (výchozí: dnes).
 - **Checkbox „Odeslat celý týden“** — přepne mezi denním a týdenním režimem. V týdenním režimu dialog zobrazí záznamy seskupené podle dnů s barevně zvýrazněnými date headery.
-- **Dropdown s pluginem** (vpravo) — vybere provider, kam se záznamy odešlou (např. „Tempo Timesheets“). Placeholder „Submit to…“ se zobrazí, dokud nic nevybereš.
+- **Mód** (radio buttony „Časový / Agregovaný“) — přepíná mezi dvěma režimy odesílání (viz níže). Volba se pamatuje mezi spuštěními aplikace.
+- **Dropdown s pluginem** (vpravo) — vybere provider, kam se záznamy odešlou (např. „Tempo Timesheets“). Dropdown se automaticky filtruje podle zvoleného módu — pluginy, které daný mód nepodporují, tam nejsou. Placeholder „Submit to…“ se zobrazí, dokud nic nevybereš.
+
+#### Časový vs. Agregovaný mód
+
+- **Časový** (default) — každý WorkEntry jde do providera jako samostatný worklog s přesným začátkem a koncem. Takto aplikace odesílala odjakživa.
+- **Agregovaný** — záznamy se **per den** seskupí podle kombinace (Ticket + Popis) a odešlou se jako jeden worklog se součtem trvání. Používej, když nechceš, aby byly v Tempu/Jiře vidět jednotlivé pauzy a přestávky v rámci stejné úlohy.
+  - V tomto módu Tempo payload **vynechá `startTime`** úplně (posílá jen `startDate` + `timeSpentSeconds`).
+  - Aktuálně podporuje jen **Tempo Timesheets**. GoranG3 inzeruje pouze časový mód a v agregovaném se v dropdownu vůbec neobjeví.
 
 **Seznam záznamů k odeslání** je editovatelný — můžeš upravit hodnoty předtím, než je předáš pluginu. Každý řádek obsahuje:
 
 - **Checkbox** na začátku — odznačením záznam vyloučíš z odeslání. Checkbox v hlavičce sloupce reaguje na dva gesty: **jednoklik invertuje výběr** (označené → neoznačené a naopak), **dvojklik označí všechny**.
-- **Ticket**, **Popis**, **Začátek**, **Konec** — všechny čtyři sloupce jsou textboxy, hodnoty můžeš přímo přepsat.
-- **Trvání** (vpravo) — pouze pro zobrazení, přepočítává se automaticky z časů.
+- **Ticket**, **Popis** — textboxy, hodnoty můžeš přímo přepsat.
+- V **Časovém** módu: **Začátek**, **Konec** (textboxy) a **Trvání** (read-only, přepočítává se automaticky z časů).
+- V **Agregovaném** módu: sloupce Začátek/Konec zmizí (nejsou u skupinového záznamu smysluplné) a **Trvání se stává editovatelným** textboxem — akceptuje formáty `H:MM`, `Xh Ym`, `Xh`, `Ym` nebo prosté číslo v minutách.
 - Záznamy s validační chybou mají červený rámeček; tooltip ukazuje důvod.
 
 > **Změny v dialogu se do databáze nepropisují.** Upravené hodnoty putují jen do pluginu při stisku **Odeslat** — původní záznamy v hlavním seznamu zůstanou beze změn. Tlačítkem **Obnovit** kdykoli vrátíš všechny úpravy zpátky na původní hodnoty z DB. Pokud chceš změnit záznam trvale, uprav ho v hlavním okně (ikona ✎ v akcích nebo dvojklikem na řádek).
@@ -502,15 +511,17 @@ Kliknutím na hlavičku skupinu rozbalíš nebo sbalíš (`ToggleGroupCommand`).
 
 1. V levém panelu hlavního okna klikni na **Odeslat záznamy práce**.
 2. Otevře se dialog s editovatelným seznamem záznamů pro zvolený den — viz [Dialog odeslání záznamů](#dialog-odeslání-záznamů).
-3. Volitelně přepni na týdenní režim (checkbox **Odeslat celý týden**), uprav záznamy, odznač ty, které odesílat nechceš, a vyber provider.
+3. Volitelně přepni na týdenní režim (checkbox **Odeslat celý týden**), vyber **mód odesílání** (Časový / Agregovaný — viz [Časový vs. Agregovaný mód](#časový-vs-agregovaný-mód)), uprav záznamy, odznač ty, které odesílat nechceš, a vyber provider.
 4. Stiskni **Odeslat**.
-5. Aplikace zavolá `IWorklogSubmissionService.SubmitDailyWorklogAsync` / `SubmitWeeklyWorklogAsync`.
+5. Aplikace zavolá `IWorklogSubmissionService.SubmitCustomWorklogsAsync(worklogs, providerId, mode)` s upravenými hodnotami z dialogu a zvoleným módem.
 
 Interně pipeline:
 
 - `IWorklogValidator` odfiltruje neplatné záznamy (prázdné, nulové, aktivní = neukončené).
+- V **Agregovaném** módu orchestrátor nejprve seskupí DTO per den podle `(TicketId, Description)` a součtem spočítá `DurationMinutes`.
 - Platné záznamy se mapují přes `WorklogMapper` na `PluginWorklogEntry`.
-- Plugin provede upload a vrátí `PluginResult<WorklogSubmissionResult>`.
+- Service ověří, že zvolený plugin daný mód inzeruje (`SupportedModes.HasFlag(mode)`), jinak vrátí `Failure`.
+- Plugin provede upload (formát payloadu si může uzpůsobit podle módu) a vrátí `PluginResult<WorklogSubmissionResult>`.
 - Výsledek je převeden na `SubmissionResult` (application‑layer DTO) s počtem úspěšných/neúspěšných záznamů a seznamem chyb.
 
 ### Opakování selhání

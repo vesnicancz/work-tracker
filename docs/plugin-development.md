@@ -248,7 +248,23 @@ Dědí `PluginBase` a implementuje `IWorklogUploadPlugin`. Definuje abstraktní 
 - `GetWorklogsAsync(DateTime startDate, DateTime endDate, CancellationToken)`
 - `WorklogExistsAsync(PluginWorklogEntry, CancellationToken)`
 
-Virtual metoda `UploadWorklogsAsync` má **výchozí implementaci**, která prochází záznamy jeden po druhém, volá `UploadWorklogAsync` a sbírá chyby do `WorklogSubmissionResult`. Stačí přepsat, jen pokud chceš hromadné API (např. batch endpoint).
+Virtual metoda `UploadWorklogsAsync(IEnumerable<PluginWorklogEntry>, WorklogSubmissionMode, CancellationToken)` má **výchozí implementaci**, která prochází záznamy jeden po druhém, volá `UploadWorklogAsync` a sbírá chyby do `WorklogSubmissionResult`. Stačí přepsat, jen pokud chceš hromadné API nebo potřebuješ jiný payload podle módu (např. Tempo v Aggregated vynechává `startTime`).
+
+#### `SupportedModes`
+
+Virtual property `WorklogSubmissionMode SupportedModes` inzeruje, které submission módy plugin umí. **Výchozí hodnota je `Timed`** — pokud plugin zvládá i agregované záznamy (grupování podle kódu+popisu per den bez reálného intervalu), override na `Timed | Aggregated`:
+
+```csharp
+public override WorklogSubmissionMode SupportedModes =>
+    WorklogSubmissionMode.Timed | WorklogSubmissionMode.Aggregated;
+```
+
+V **Aggregated** módu plugin dostává `PluginWorklogEntry`, kde:
+- `StartTime` je reprezentativní timestamp (nejstarší start skupiny), ne reálný interval.
+- `EndTime == StartTime` (není smysluplný).
+- `DurationMinutes` = součet trvání všech záznamů ve skupině (autoritativní zdroj pravdy pro čas).
+
+Submission service i base class validují, že předaný `mode` je jedna konkrétní hodnota (ne 0 ani combined flags), takže plugin se tím obvykle nemusí zabývat. UI filtruje dropdown providerů přes `SupportedModes.HasFlag(mode)`, takže do pluginu nedoteče mode, který nepodporuje.
 
 ### `WorkSuggestionPluginBase`
 

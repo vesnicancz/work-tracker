@@ -329,9 +329,16 @@ public sealed class GoranG3WorklogPlugin(ILogger<GoranG3WorklogPlugin> logger, I
 		}
 	}
 
-	public override async Task<PluginResult<WorklogSubmissionResult>> UploadWorklogsAsync(IEnumerable<PluginWorklogEntry> worklogs, CancellationToken cancellationToken)
+	public override async Task<PluginResult<WorklogSubmissionResult>> UploadWorklogsAsync(IEnumerable<PluginWorklogEntry> worklogs, WorklogSubmissionMode mode, CancellationToken cancellationToken)
 	{
 		EnsureInitialized();
+
+		if (!SupportedModes.HasFlag(mode))
+		{
+			return PluginResult<WorklogSubmissionResult>.Failure(
+				$"Goran G3 does not support submission mode '{mode}'",
+				PluginErrorCategory.Validation);
+		}
 
 		if (_mcpClient == null)
 		{
@@ -345,7 +352,7 @@ public sealed class GoranG3WorklogPlugin(ILogger<GoranG3WorklogPlugin> logger, I
 
 		foreach (var dayGroup in worklogsByDate)
 		{
-			var dayResult = await base.UploadWorklogsAsync(dayGroup, cancellationToken);
+			var dayResult = await base.UploadWorklogsAsync(dayGroup, mode, cancellationToken);
 			if (dayResult.IsFailure)
 			{
 				return dayResult;

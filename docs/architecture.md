@@ -218,6 +218,7 @@ Samostatná knihovna (`WorkTracker.Plugin.Abstractions.dll`) obsahující pouze 
 - Abstraktní base classes `PluginBase`, `WorklogUploadPluginBase`, `WorkSuggestionPluginBase`, `StatusIndicatorPluginBase`
 - Datové typy: `PluginMetadata`, `PluginConfigurationField`, `PluginResult<T>`, `PluginErrorCategory`, `PluginValidationResult`
 - Přenosové typy: `PluginWorklogEntry`, `WorklogSubmissionResult`, `WorklogSubmissionError`, `WorkSuggestion`, `StatusIndicatorState`
+- Enum kapacit: `WorklogSubmissionMode` (`[Flags]` — `Timed`, `Aggregated`) pro inzerci režimů, které plugin přijímá
 - Autentizace: `ITokenProvider`, `ITokenProviderFactory`
 
 ### Isolation: AssemblyLoadContext
@@ -373,15 +374,18 @@ Jako konkrétní ilustraci vezmeme tok **„Send today“** z Avalonia GUI do Te
    - Mapuje přes `WorklogMapper` na `List<WorklogDto>`.
    - Validuje každý přes `IWorklogValidator` → odfiltruje neplatné.
    - Vrátí `WorklogSubmissionDto` (platné worklogy + důvody odfiltrovaných).
-5. **Dialog** — Uživatel vidí náhled, vybere plugin (dropdown naplněný z `GetAvailableProviders`) a potvrdí.
-6. **Orchestrátor** — Zavolá `SubmitDailyWorklogAsync(today, providerId)`.
-7. **PluginBasedWorklogSubmissionService.SubmitDailyWorklogAsync**:
+5. **Dialog** — Uživatel vidí náhled, vybere **submission mode** (Timed / Aggregated — persistováno v `ApplicationSettings.LastSubmissionMode`), vybere plugin (dropdown je filtrovaný přes `ProviderInfo.SupportedModes.HasFlag(mode)`, takže providery nepodporující zvolený mode tam nejsou) a potvrdí. V **Aggregated** módu orchestrátor před zobrazením preview seskupí DTO podle `(TicketId, Description)` per den a součtem nastaví `DurationMinutes`; `StartTime` skupiny = nejstarší start.
+6. **Orchestrátor** — Zavolá `IWorklogSubmissionService.SubmitCustomWorklogsAsync(worklogs, providerId, mode, ct)` (z dialogu; `SubmitDailyWorklogAsync` je dnes použit jen z CLI a drží Timed default).
+7. **PluginBasedWorklogSubmissionService.SubmitCustomWorklogsAsync**:
+   - Validuje, že `mode` je single value (Timed nebo Aggregated) — jinak `Failure`.
    - `ResolvePlugin(providerId)` → vrátí `IWorklogUploadPlugin`.
+   - Ověří, že plugin daný mode podporuje (`plugin.SupportedModes.HasFlag(mode)`).
    - Pro každý validní `WorklogDto` vytvoří `PluginWorklogEntry`.
-   - Zavolá `plugin.UploadWorklogsAsync(entries, ct)`.
+   - Zavolá `plugin.UploadWorklogsAsync(entries, mode, ct)`.
 8. **Plugin (Tempo)** —
-   - `TempoWorklogPlugin` prochází záznamy v cyklu.
+   - `TempoWorklogPlugin` prochází záznamy v cyklu (podporuje oba módy: `SupportedModes = Timed | Aggregated`).
    - Pro každý: přeloží issue key → issue ID (s 1h cache), zavolá Tempo REST API `POST /worklogs`.
+   - V **Timed** módu payload obsahuje `startDate + startTime + timeSpentSeconds`; v **Aggregated** módu plugin `startTime` z payloadu zcela vynechá (Tempo ho má jako volitelné pole).
    - Retry logika (max 2 pokusy, backoff) na 408/429/500–504.
    - Vrátí `PluginResult<WorklogSubmissionResult>` s počty a případnými chybami.
 9. **Zpět do služby** — mapuje `PluginResult<WorklogSubmissionResult>` → `Result<SubmissionResult>` (DTO layer).

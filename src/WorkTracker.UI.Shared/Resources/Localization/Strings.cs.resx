@@ -265,6 +265,15 @@
   <data name="SubmitTo" xml:space="preserve">
     <value>Odeslat do</value>
   </data>
+  <data name="SubmissionMode" xml:space="preserve">
+    <value>Mód</value>
+  </data>
+  <data name="SubmissionModeTimed" xml:space="preserve">
+    <value>Časový</value>
+  </data>
+  <data name="SubmissionModeAggregated" xml:space="preserve">
+    <value>Agregovaný</value>
+  </data>
   <data name="LoadingPreview" xml:space="preserve">
     <value>Načítání náhledu...</value>
   </data>

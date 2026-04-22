@@ -137,26 +137,39 @@ public sealed class PluginBasedWorklogSubmissionService : IWorklogSubmissionServ
 		return _pluginManager.WorklogUploadPlugins.Select(p => new ProviderInfo
 		{
 			Id = p.Metadata.Id,
-			Name = p.Metadata.Name
+			Name = p.Metadata.Name,
+			SupportedModes = p.SupportedModes
 		});
 	}
 
 	public async Task<Result<SubmissionResult>> SubmitCustomWorklogsAsync(
 		IEnumerable<WorklogDto> worklogs,
 		string providerId,
+		WorklogSubmissionMode mode,
 		CancellationToken cancellationToken)
 	{
+		if (!mode.IsSingleMode())
+		{
+			return Result.Failure<SubmissionResult>($"Invalid submission mode '{mode}' — must be exactly Timed or Aggregated");
+		}
+
 		var plugin = ResolvePlugin(providerId);
 		if (plugin == null)
 		{
 			return Result.Failure<SubmissionResult>($"Plugin '{providerId}' not found");
 		}
 
+		if (!plugin.SupportedModes.HasFlag(mode))
+		{
+			return Result.Failure<SubmissionResult>($"Plugin '{plugin.Metadata.Name}' does not support submission mode '{mode}'");
+		}
+
 		var worklogList = worklogs.ToList();
 
-		_logger.LogInformation("Submitting {Count} custom worklogs using plugin {Plugin}", worklogList.Count, plugin.Metadata.Name);
+		_logger.LogInformation("Submitting {Count} custom worklogs using plugin {Plugin} (mode={Mode})",
+			worklogList.Count, plugin.Metadata.Name, mode);
 
-		return await UploadAndMapResultAsync(plugin, worklogList, cancellationToken);
+		return await UploadAndMapResultAsync(plugin, worklogList, mode, cancellationToken);
 	}
 
 	private IWorklogUploadPlugin? ResolvePlugin(string? providerId)
@@ -208,7 +221,7 @@ public sealed class PluginBasedWorklogSubmissionService : IWorklogSubmissionServ
 			return Result.Failure<SubmissionResult>("No valid worklogs to submit");
 		}
 
-		var result = await UploadAndMapResultAsync(plugin, validWorklogs, cancellationToken);
+		var result = await UploadAndMapResultAsync(plugin, validWorklogs, WorklogSubmissionMode.Timed, cancellationToken);
 
 		if (result.IsSuccess)
 		{
@@ -221,9 +234,10 @@ public sealed class PluginBasedWorklogSubmissionService : IWorklogSubmissionServ
 	private async Task<Result<SubmissionResult>> UploadAndMapResultAsync(
 		IWorklogUploadPlugin plugin,
 		List<WorklogDto> worklogs,
+		WorklogSubmissionMode mode,
 		CancellationToken cancellationToken)
 	{
-		var result = await plugin.UploadWorklogsAsync(worklogs.ToPluginWorklogs(), cancellationToken);
+		var result = await plugin.UploadWorklogsAsync(worklogs.ToPluginWorklogs(), mode, cancellationToken);
 
 		if (result.IsFailure)
 		{
@@ -246,6 +260,7 @@ public sealed class PluginBasedWorklogSubmissionService : IWorklogSubmissionServ
 		{
 			TicketId = e.Worklog.TicketId ?? string.Empty,
 			Date = e.Worklog.StartTime.Date,
+			Description = e.Worklog.Description,
 			ErrorMessage = e.ErrorMessage,
 			Details = $"{e.Worklog.StartTime:HH:mm}-{e.Worklog.EndTime:HH:mm}"
 		}).ToList();

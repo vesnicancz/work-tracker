@@ -102,6 +102,7 @@
 
 					<TextBox Grid.Column="3"
 							 Text="{Binding StartTimeDisplay, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+							 Visibility="{Binding IsAggregated, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}"
 							 VerticalAlignment="Center"
 							 BorderBrush="#CCCCCC"
 							 BorderThickness="1"
@@ -110,6 +111,7 @@
 
 					<TextBox Grid.Column="4"
 							 Text="{Binding EndTimeDisplay, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+							 Visibility="{Binding IsAggregated, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}"
 							 VerticalAlignment="Center"
 							 BorderBrush="#CCCCCC"
 							 BorderThickness="1"
@@ -118,10 +120,21 @@
 
 					<TextBlock Grid.Column="5"
 							   Text="{Binding DurationDisplay, Mode=OneWay}"
+							   Visibility="{Binding IsAggregated, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}"
 							   FontWeight="Medium"
 							   HorizontalAlignment="Right"
 							   VerticalAlignment="Center"
 							   Margin="4,0,0,0" />
+
+					<TextBox Grid.Column="5"
+							 Text="{Binding DurationDisplay, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+							 Visibility="{Binding IsAggregated, Converter={StaticResource BoolToVisibilityConverter}}"
+							 FontWeight="Medium"
+							 HorizontalContentAlignment="Right"
+							 VerticalAlignment="Center"
+							 BorderBrush="#CCCCCC"
+							 BorderThickness="1"
+							 Padding="6,4" />
 				</Grid>
 			</Border>
 		</DataTemplate>
@@ -189,36 +202,54 @@
 					<RowDefinition Height="Auto" />
 				</Grid.RowDefinitions>
 
-				<!-- Options -->
+				<!-- Options (single row: date, week checkbox, mode, provider) -->
 				<Grid Grid.Row="0" Margin="0,0,0,16">
 					<Grid.ColumnDefinitions>
+						<ColumnDefinition Width="Auto" />
+						<ColumnDefinition Width="16" />
+						<ColumnDefinition Width="Auto" />
+						<ColumnDefinition Width="16" />
+						<ColumnDefinition Width="Auto" />
 						<ColumnDefinition Width="*" />
-						<ColumnDefinition Width="24" />
-						<ColumnDefinition Width="*" />
+						<ColumnDefinition Width="Auto" />
 					</Grid.ColumnDefinitions>
 
-					<!-- Left column: Date and Checkbox -->
-					<StackPanel Grid.Column="0">
-						<DatePicker SelectedDate="{Binding SelectedDate}"
-							   Style="{StaticResource InputDatePickerStyle}"
-							   materialDesign:HintAssist.Hint="{markup:Localize Date}"
-							   HorizontalAlignment="Stretch"
-							   Margin="0,0,0,4" />
+					<DatePicker Grid.Column="0"
+								SelectedDate="{Binding SelectedDate}"
+								Style="{StaticResource InputDatePickerStyle}"
+								materialDesign:HintAssist.Hint="{markup:Localize Date}"
+								MinWidth="180"
+								VerticalAlignment="Center" />
 
-						<CheckBox IsChecked="{Binding IsWeekly}"
-							 Content="{markup:Localize SubmitEntireWeek}"
-							 Margin="0" />
+					<CheckBox Grid.Column="2"
+							  IsChecked="{Binding IsWeekly}"
+							  Content="{markup:Localize SubmitEntireWeek}"
+							  VerticalAlignment="Center" />
+
+					<StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center">
+						<TextBlock Text="{markup:Localize SubmissionMode}"
+								   VerticalAlignment="Center"
+								   Margin="0,0,8,0"
+								   Foreground="{DynamicResource MaterialDesign.Brush.Foreground.Light}" />
+						<RadioButton GroupName="SubmissionModeGroup"
+									 IsChecked="{Binding IsTimedMode, Mode=TwoWay}"
+									 Content="{markup:Localize SubmissionModeTimed}"
+									 VerticalAlignment="Center"
+									 Margin="0,0,12,0" />
+						<RadioButton GroupName="SubmissionModeGroup"
+									 IsChecked="{Binding IsAggregatedMode, Mode=TwoWay}"
+									 Content="{markup:Localize SubmissionModeAggregated}"
+									 VerticalAlignment="Center" />
 					</StackPanel>
 
-					<!-- Right column: Provider Selection -->
-					<StackPanel Grid.Column="2" VerticalAlignment="Top">
-						<ComboBox ItemsSource="{Binding AvailableProviders}"
-							 SelectedItem="{Binding SelectedProvider}"
-							 DisplayMemberPath="Name"
-							 materialDesign:HintAssist.Hint="{markup:Localize SubmitTo}"
-							 HorizontalAlignment="Stretch"
-							 Style="{StaticResource MaterialDesignOutlinedComboBox}" />
-					</StackPanel>
+					<ComboBox Grid.Column="6"
+							  ItemsSource="{Binding AvailableProviders}"
+							  SelectedItem="{Binding SelectedProvider}"
+							  DisplayMemberPath="Name"
+							  materialDesign:HintAssist.Hint="{markup:Localize SubmitTo}"
+							  MinWidth="220"
+							  VerticalAlignment="Center"
+							  Style="{StaticResource MaterialDesignOutlinedComboBox}" />
 				</Grid>
 
 				<!-- Preview List -->
@@ -271,8 +302,10 @@
 							<TextBlock Grid.Column="2" Text="{markup:Localize Description}" FontSize="11"
 									   Foreground="{DynamicResource MaterialDesign.Brush.Foreground.Light}" VerticalAlignment="Center" Margin="6,0,0,0" />
 							<TextBlock Grid.Column="3" Text="{markup:Localize Start}" FontSize="11"
+									   Visibility="{Binding IsAggregatedMode, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}"
 									   Foreground="{DynamicResource MaterialDesign.Brush.Foreground.Light}" VerticalAlignment="Center" Margin="6,0,0,0" />
 							<TextBlock Grid.Column="4" Text="{markup:Localize End}" FontSize="11"
+									   Visibility="{Binding IsAggregatedMode, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}"
 									   Foreground="{DynamicResource MaterialDesign.Brush.Foreground.Light}" VerticalAlignment="Center" Margin="6,0,0,0" />
 							<TextBlock Grid.Column="5" Text="{markup:Localize Duration}" FontSize="11"
 									   Foreground="{DynamicResource MaterialDesign.Brush.Foreground.Light}"
