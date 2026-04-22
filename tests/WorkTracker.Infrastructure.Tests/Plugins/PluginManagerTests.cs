@@ -373,12 +373,14 @@ public class TestWorklogPlugin : IWorklogUploadPlugin
 		return Task.FromResult(PluginResult<bool>.Success(true));
 	}
 
+	public WorklogSubmissionMode SupportedModes => WorklogSubmissionMode.Timed;
+
 	public Task<PluginResult<bool>> UploadWorklogAsync(PluginWorklogEntry worklog, CancellationToken cancellationToken)
 	{
 		return Task.FromResult(PluginResult<bool>.Success(true));
 	}
 
-	public Task<PluginResult<WorklogSubmissionResult>> UploadWorklogsAsync(IEnumerable<PluginWorklogEntry> worklogs, CancellationToken cancellationToken)
+	public Task<PluginResult<WorklogSubmissionResult>> UploadWorklogsAsync(IEnumerable<PluginWorklogEntry> worklogs, WorklogSubmissionMode mode, CancellationToken cancellationToken)
 	{
 		var result = new WorklogSubmissionResult
 		{

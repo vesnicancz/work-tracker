@@ -442,6 +442,90 @@ public class TempoWorklogPluginTests : IAsyncDisposable
 
     #endregion
 
+    #region SupportedModes / UploadWorklogsAsync
+
+    [Fact]
+    public void SupportedModes_AdvertisesBothTimedAndAggregated()
+    {
+        _plugin.SupportedModes.Should().Be(WorklogSubmissionMode.Timed | WorklogSubmissionMode.Aggregated);
+    }
+
+    [Fact]
+    public async Task UploadWorklogsAsync_Aggregated_PostsPayloadWithoutStartTime()
+    {
+        _httpHandler.SetupGet("/rest/api/3/issue/PROJ-1?fields=id", JiraIssueJson("PROJ-1", 10001));
+        _httpHandler.SetupPost("/4/worklogs", HttpStatusCode.OK, """{"tempoWorklogId": 1}""");
+        await InitializePluginAsync();
+
+        // Simulate pre-aggregated input: one entry per (code, description, day).
+        var aggregated = new[]
+        {
+            new PluginWorklogEntry
+            {
+                TicketId = "PROJ-1",
+                Description = "Work",
+                StartTime = new DateTime(2026, 4, 1, 9, 0, 0),
+                EndTime = new DateTime(2026, 4, 1, 9, 0, 0),
+                DurationMinutes = 150 // 2h30m = aggregated total (no end-start relationship)
+            }
+        };
+
+        var result = await _plugin.UploadWorklogsAsync(aggregated, WorklogSubmissionMode.Aggregated, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.SuccessfulEntries.Should().Be(1);
+        _httpHandler.GetPostCallCount("/4/worklogs").Should().Be(1);
+
+        // Verify the payload: startTime must be absent, but startDate + timeSpentSeconds present
+        var body = _httpHandler.GetPostBodies("/4/worklogs").Should().ContainSingle().Subject;
+        var json = JsonSerializer.Deserialize<JsonElement>(body);
+        json.TryGetProperty("startTime", out _).Should().BeFalse("aggregated mode must omit startTime");
+        json.GetProperty("startDate").GetString().Should().Be("2026-04-01");
+        json.GetProperty("timeSpentSeconds").GetInt32().Should().Be(150 * 60);
+        json.GetProperty("issueId").GetInt32().Should().Be(10001);
+    }
+
+    [Fact]
+    public async Task UploadWorklogsAsync_Timed_PostsPayloadIncludingStartTime()
+    {
+        _httpHandler.SetupGet("/rest/api/3/issue/PROJ-1?fields=id", JiraIssueJson("PROJ-1", 10001));
+        _httpHandler.SetupPost("/4/worklogs", HttpStatusCode.OK, """{"tempoWorklogId": 1}""");
+        await InitializePluginAsync();
+
+        var timed = new[] { CreateWorklog("PROJ-1", 60, new DateTime(2026, 4, 1, 9, 30, 0)) };
+
+        var result = await _plugin.UploadWorklogsAsync(timed, WorklogSubmissionMode.Timed, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        var body = _httpHandler.GetPostBodies("/4/worklogs").Should().ContainSingle().Subject;
+        var json = JsonSerializer.Deserialize<JsonElement>(body);
+        json.GetProperty("startTime").GetString().Should().Be("09:30:00");
+        json.GetProperty("startDate").GetString().Should().Be("2026-04-01");
+    }
+
+    [Fact]
+    public async Task UploadWorklogsAsync_Timed_PostsOnePerEntry()
+    {
+        _httpHandler.SetupGet("/rest/api/3/issue/PROJ-1?fields=id", JiraIssueJson("PROJ-1", 10001));
+        _httpHandler.SetupGet("/rest/api/3/issue/PROJ-2?fields=id", JiraIssueJson("PROJ-2", 10002));
+        _httpHandler.SetupPost("/4/worklogs", HttpStatusCode.OK, """{"tempoWorklogId": 1}""");
+        await InitializePluginAsync();
+
+        var timed = new[]
+        {
+            CreateWorklog("PROJ-1"),
+            CreateWorklog("PROJ-2")
+        };
+
+        var result = await _plugin.UploadWorklogsAsync(timed, WorklogSubmissionMode.Timed, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.SuccessfulEntries.Should().Be(2);
+        _httpHandler.GetPostCallCount("/4/worklogs").Should().Be(2);
+    }
+
+    #endregion
+
     #region Issue ID caching
 
     [Fact]
@@ -600,6 +684,7 @@ internal sealed class MockHttpHandler : HttpMessageHandler
     private readonly HashSet<string> _postRepeatLast = new();
     private readonly Dictionary<string, int> _getCallCounts = new();
     private readonly Dictionary<string, int> _postCallCounts = new();
+    private readonly Dictionary<string, List<string>> _postBodies = new();
 
     public void SetupGet(string pathAndQuery, string responseBody, HttpStatusCode statusCode = HttpStatusCode.OK)
     {
@@ -640,6 +725,9 @@ internal sealed class MockHttpHandler : HttpMessageHandler
     public int GetPostCallCount(string pathAndQuery) =>
         _postCallCounts.GetValueOrDefault(pathAndQuery, 0);
 
+    public IReadOnlyList<string> GetPostBodies(string pathAndQuery) =>
+        _postBodies.TryGetValue(pathAndQuery, out var list) ? list : [];
+
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         var pathAndQuery = request.RequestUri!.PathAndQuery;
@@ -675,6 +763,17 @@ internal sealed class MockHttpHandler : HttpMessageHandler
         if (request.Method == HttpMethod.Post)
         {
             _postCallCounts[pathAndQuery] = _postCallCounts.GetValueOrDefault(pathAndQuery, 0) + 1;
+
+            if (request.Content != null)
+            {
+                var body = request.Content.ReadAsStringAsync(cancellationToken).GetAwaiter().GetResult();
+                if (!_postBodies.TryGetValue(pathAndQuery, out var bodies))
+                {
+                    bodies = new List<string>();
+                    _postBodies[pathAndQuery] = bodies;
+                }
+                bodies.Add(body);
+            }
 
             if (_postSequences.TryGetValue(pathAndQuery, out var queue) && queue.Count > 0)
             {

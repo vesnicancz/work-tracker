@@ -54,6 +54,9 @@ public sealed class TempoWorklogPlugin(IHttpClientFactory httpClientFactory, ILo
 		Tags = ["tempo", "jira", "timetracking", "worklog"]
 	};
 
+	public override WorklogSubmissionMode SupportedModes =>
+		WorklogSubmissionMode.Timed | WorklogSubmissionMode.Aggregated;
+
 	public override IReadOnlyList<PluginConfigurationField> GetConfigurationFields()
 	{
 		return
@@ -183,7 +186,60 @@ public sealed class TempoWorklogPlugin(IHttpClientFactory httpClientFactory, ILo
 		return PluginResult<bool>.Failure(error!, category);
 	}
 
-	public override async Task<PluginResult<bool>> UploadWorklogAsync(PluginWorklogEntry worklog, CancellationToken cancellationToken)
+	public override Task<PluginResult<bool>> UploadWorklogAsync(PluginWorklogEntry worklog, CancellationToken cancellationToken)
+		=> PostWorklogAsync(worklog, includeStartTime: true, cancellationToken);
+
+	public override async Task<PluginResult<WorklogSubmissionResult>> UploadWorklogsAsync(
+		IEnumerable<PluginWorklogEntry> worklogs,
+		WorklogSubmissionMode mode,
+		CancellationToken cancellationToken)
+	{
+		// In Aggregated mode Tempo gets startDate + timeSpentSeconds only (no startTime),
+		// since the aggregated row's start is just a representative timestamp, not a real interval.
+		// Timed mode keeps the per-entry startTime so Tempo reports retain the chronological layout.
+		if (!SupportedModes.HasFlag(mode))
+		{
+			return PluginResult<WorklogSubmissionResult>.Failure(
+				$"Tempo does not support submission mode '{mode}'",
+				PluginErrorCategory.Validation);
+		}
+
+		var includeStartTime = mode != WorklogSubmissionMode.Aggregated;
+		var worklogList = worklogs.ToList();
+		var successful = 0;
+		var failed = 0;
+		var errors = new List<WorklogSubmissionError>();
+
+		foreach (var worklog in worklogList)
+		{
+			cancellationToken.ThrowIfCancellationRequested();
+
+			var result = await PostWorklogAsync(worklog, includeStartTime, cancellationToken);
+			if (result.IsSuccess)
+			{
+				successful++;
+			}
+			else
+			{
+				failed++;
+				errors.Add(new WorklogSubmissionError
+				{
+					Worklog = worklog,
+					ErrorMessage = result.Error ?? "Unknown error"
+				});
+			}
+		}
+
+		return PluginResult<WorklogSubmissionResult>.Success(new WorklogSubmissionResult
+		{
+			TotalEntries = worklogList.Count,
+			SuccessfulEntries = successful,
+			FailedEntries = failed,
+			Errors = errors
+		});
+	}
+
+	private async Task<PluginResult<bool>> PostWorklogAsync(PluginWorklogEntry worklog, bool includeStartTime, CancellationToken cancellationToken)
 	{
 		EnsureInitialized();
 
@@ -206,15 +262,31 @@ public sealed class TempoWorklogPlugin(IHttpClientFactory httpClientFactory, ILo
 				return PluginResult<bool>.Failure("Invalid duration: must be greater than 0", PluginErrorCategory.Validation);
 			}
 
-			var tempoWorklog = new
-			{
-				issueId = issueId.Value,
-				timeSpentSeconds,
-				startDate = worklog.StartTime.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
-				startTime = worklog.StartTime.ToString("HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture),
-				authorAccountId = _jiraAccountId,
-				description = worklog.Description ?? string.Empty
-			};
+			var startDate = worklog.StartTime.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+			var startTime = includeStartTime
+				? worklog.StartTime.ToString("HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture)
+				: null;
+
+			// Object shape has the same property set in both modes; setting startTime to null makes
+			// System.Text.Json omit it (default serializer + WhenWritingNull on this project).
+			object tempoWorklog = includeStartTime
+				? new
+				{
+					issueId = issueId.Value,
+					timeSpentSeconds,
+					startDate,
+					startTime,
+					authorAccountId = _jiraAccountId,
+					description = worklog.Description ?? string.Empty
+				}
+				: new
+				{
+					issueId = issueId.Value,
+					timeSpentSeconds,
+					startDate,
+					authorAccountId = _jiraAccountId,
+					description = worklog.Description ?? string.Empty
+				};
 
 			string? lastError = null;
 			for (var attempt = 0; attempt <= MaxRetries; attempt++)

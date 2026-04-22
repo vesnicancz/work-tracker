@@ -1,3 +1,5 @@
+using WorkTracker.Plugin.Abstractions;
+
 namespace WorkTracker.UI.Shared.Models;
 
 /// <summary>
@@ -5,6 +7,12 @@ namespace WorkTracker.UI.Shared.Models;
 /// </summary>
 public class ApplicationSettings
 {
+	/// <summary>
+	/// Last-selected submission mode in the Submit dialog. Persisted so the dialog
+	/// remembers the user's preferred mode across sessions.
+	/// </summary>
+	public WorklogSubmissionMode LastSubmissionMode { get; set; } = WorklogSubmissionMode.Timed;
+
 	/// <summary>
 	/// Behavior when closing the main window
 	/// </summary>

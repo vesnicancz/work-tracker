@@ -7,12 +7,25 @@ namespace WorkTracker.Plugin.Abstractions;
 /// </summary>
 public abstract class WorklogUploadPluginBase(ILogger logger) : PluginBase(logger), IWorklogUploadPlugin
 {
+	/// <summary>
+	/// Submission modes supported by this plugin. Defaults to <see cref="WorklogSubmissionMode.Timed"/>;
+	/// plugins that accept pre-aggregated entries should override to include <see cref="WorklogSubmissionMode.Aggregated"/>.
+	/// </summary>
+	public virtual WorklogSubmissionMode SupportedModes => WorklogSubmissionMode.Timed;
+
 	public abstract Task<PluginResult<bool>> TestConnectionAsync(IProgress<string>? progress, CancellationToken cancellationToken);
 
 	public abstract Task<PluginResult<bool>> UploadWorklogAsync(PluginWorklogEntry worklog, CancellationToken cancellationToken);
 
-	public virtual async Task<PluginResult<WorklogSubmissionResult>> UploadWorklogsAsync(IEnumerable<PluginWorklogEntry> worklogs, CancellationToken cancellationToken)
+	public virtual async Task<PluginResult<WorklogSubmissionResult>> UploadWorklogsAsync(IEnumerable<PluginWorklogEntry> worklogs, WorklogSubmissionMode mode, CancellationToken cancellationToken)
 	{
+		if (!SupportedModes.HasFlag(mode))
+		{
+			return PluginResult<WorklogSubmissionResult>.Failure(
+				$"Plugin does not support submission mode '{mode}'",
+				PluginErrorCategory.Validation);
+		}
+
 		if (!IsInitialized)
 		{
 			return PluginResult<WorklogSubmissionResult>.Failure("Plugin is not initialized");

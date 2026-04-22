@@ -1,5 +1,6 @@
 using WorkTracker.Application.Common;
 using WorkTracker.Application.DTOs;
+using WorkTracker.Plugin.Abstractions;
 
 namespace WorkTracker.Application.Services;
 
@@ -41,7 +42,13 @@ public interface IWorklogSubmissionService
 	IEnumerable<ProviderInfo> GetAvailableProviders();
 
 	/// <summary>
-	/// Submits custom worklogs using specified provider (for edited worklogs)
+	/// Submits custom worklogs using specified provider (for edited worklogs).
 	/// </summary>
-	Task<Result<SubmissionResult>> SubmitCustomWorklogsAsync(IEnumerable<WorklogDto> worklogs, string providerId, CancellationToken cancellationToken = default);
+	/// <param name="worklogs">Worklog entries to submit. In <see cref="WorklogSubmissionMode.Aggregated"/>
+	/// mode entries are expected to be already grouped by code+description per day with
+	/// <c>DurationMinutes</c> holding the total.</param>
+	/// <param name="providerId">Target plugin id. Must support <paramref name="mode"/>.</param>
+	/// <param name="mode">Submission shape passed through to the plugin.</param>
+	/// <param name="cancellationToken">Cancellation token.</param>
+	Task<Result<SubmissionResult>> SubmitCustomWorklogsAsync(IEnumerable<WorklogDto> worklogs, string providerId, WorklogSubmissionMode mode, CancellationToken cancellationToken = default);
 }

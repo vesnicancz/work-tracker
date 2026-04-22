@@ -3,6 +3,7 @@ using System.Windows.Input;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using WorkTracker.Application.DTOs;
+using WorkTracker.Plugin.Abstractions;
 using WorkTracker.UI.Shared.Orchestrators;
 using WorkTracker.UI.Shared.Services;
 using WorkTracker.UI.Shared.ViewModels;
@@ -17,7 +18,9 @@ public class SubmitWorklogViewModel : ViewModelBase
 	private readonly IWorklogSubmissionOrchestrator _orchestrator;
 	private readonly TimeProvider _timeProvider;
 	private readonly ILocalizationService _localization;
+	private readonly ISettingsService _settingsService;
 	private readonly ILogger<SubmitWorklogViewModel> _logger;
+	private readonly List<ProviderInfo> _allProviders;
 	private bool _suppressRecalculation;
 	private DateTime _selectedDate;
 	private bool _isWeekly;
@@ -29,18 +32,22 @@ public class SubmitWorklogViewModel : ViewModelBase
 	private ObservableCollection<ProviderInfo> _availableProviders = new();
 	private ProviderInfo? _selectedProvider;
 	private bool _hasFailedItems;
+	private WorklogSubmissionMode _selectedMode;
 
 	public SubmitWorklogViewModel(
 		IWorklogSubmissionOrchestrator orchestrator,
 		ILocalizationService localization,
+		ISettingsService settingsService,
 		TimeProvider timeProvider,
 		ILogger<SubmitWorklogViewModel> logger)
 	{
 		_orchestrator = orchestrator;
 		_localization = localization;
+		_settingsService = settingsService;
 		_timeProvider = timeProvider;
 		_logger = logger;
 		_selectedDate = _timeProvider.GetLocalNow().Date;
+		_selectedMode = _settingsService.Settings.LastSubmissionMode;
 
 		SendCommand = new AsyncRelayCommand(SendAsync, CanSend);
 		RetryFailedCommand = new AsyncRelayCommand(RetryFailedAsync, CanRetryFailed);
@@ -49,12 +56,18 @@ public class SubmitWorklogViewModel : ViewModelBase
 		InvertSelectionCommand = new RelayCommand(InvertSelection);
 		SelectAllCommand = new RelayCommand(SelectAll);
 
-		var providers = _orchestrator.LoadAvailableProviders();
-		AvailableProviders = new ObservableCollection<ProviderInfo>(providers);
-		if (AvailableProviders.Any())
-		{
-			SelectedProvider = AvailableProviders.First();
-		}
+		_allProviders = _orchestrator.LoadAvailableProviders();
+		RefreshProviderFilter();
+	}
+
+	private void RefreshProviderFilter()
+	{
+		var previousId = SelectedProvider?.Id;
+		var filtered = _allProviders.Where(p => p.SupportedModes.HasFlag(_selectedMode)).ToList();
+		AvailableProviders = new ObservableCollection<ProviderInfo>(filtered);
+
+		// Preserve selection if compatible with the new filter; otherwise fall back to the first provider.
+		SelectedProvider = filtered.FirstOrDefault(p => p.Id == previousId) ?? filtered.FirstOrDefault();
 	}
 
 	#region Properties
@@ -160,6 +173,50 @@ public class SubmitWorklogViewModel : ViewModelBase
 
 	public string DialogTitle => IsWeekly ? _localization["SubmitWeeklyWorklogs"] : _localization["SubmitDailyWorklogs"];
 
+	public WorklogSubmissionMode SelectedMode
+	{
+		get => _selectedMode;
+		set
+		{
+			if (SetProperty(ref _selectedMode, value))
+			{
+				OnPropertyChanged(nameof(IsTimedMode));
+				OnPropertyChanged(nameof(IsAggregatedMode));
+
+				var settings = _settingsService.Settings;
+				settings.LastSubmissionMode = value;
+				_settingsService.SaveSettings(settings);
+
+				RefreshProviderFilter();
+				_ = LoadPreviewAsync();
+			}
+		}
+	}
+
+	public bool IsTimedMode
+	{
+		get => _selectedMode == WorklogSubmissionMode.Timed;
+		set
+		{
+			if (value)
+			{
+				SelectedMode = WorklogSubmissionMode.Timed;
+			}
+		}
+	}
+
+	public bool IsAggregatedMode
+	{
+		get => _selectedMode == WorklogSubmissionMode.Aggregated;
+		set
+		{
+			if (value)
+			{
+				SelectedMode = WorklogSubmissionMode.Aggregated;
+			}
+		}
+	}
+
 	public Action? CloseAction { get; set; }
 	public bool DialogResult { get; set; }
 
@@ -194,7 +251,7 @@ public class SubmitWorklogViewModel : ViewModelBase
 			HasFailedItems = false;
 			StatusMessage = _localization["LoadingPreview"];
 
-			var result = await _orchestrator.LoadPreviewAsync(SelectedDate, IsWeekly, _localization["NoTicket"], CancellationToken.None);
+			var result = await _orchestrator.LoadPreviewAsync(SelectedDate, IsWeekly, _selectedMode, _localization["NoTicket"], CancellationToken.None);
 
 			// Unsubscribe from old items before replacing
 			foreach (var item in PreviewItems.Where(i => !i.IsDateHeader))
@@ -239,7 +296,7 @@ public class SubmitWorklogViewModel : ViewModelBase
 			IsSending = true;
 			StatusMessage = _localization.GetFormattedString("SubmittingTo", SelectedProvider.Name);
 
-			var outcome = await _orchestrator.SubmitAsync(PreviewItems, SelectedProvider.Id, SelectedProvider.Name, CancellationToken.None);
+			var outcome = await _orchestrator.SubmitAsync(PreviewItems, SelectedProvider.Id, SelectedProvider.Name, _selectedMode, CancellationToken.None);
 			HasFailedItems = outcome.HasFailedItems;
 			StatusMessage = outcome.StatusMessage;
 
@@ -274,7 +331,7 @@ public class SubmitWorklogViewModel : ViewModelBase
 			IsSending = true;
 			StatusMessage = _localization["RetryingFailed"];
 
-			var outcome = await _orchestrator.RetryFailedAsync(PreviewItems, SelectedProvider.Id, SelectedProvider.Name, CancellationToken.None);
+			var outcome = await _orchestrator.RetryFailedAsync(PreviewItems, SelectedProvider.Id, SelectedProvider.Name, _selectedMode, CancellationToken.None);
 			HasFailedItems = outcome.HasFailedItems;
 			StatusMessage = outcome.StatusMessage;
 

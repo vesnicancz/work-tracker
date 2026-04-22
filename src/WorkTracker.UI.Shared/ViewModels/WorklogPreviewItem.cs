@@ -43,6 +43,13 @@ public class WorklogPreviewItem : ObservableObject
 
 	public string? DateDisplay { get; set; }
 
+	/// <summary>
+	/// Whether this row represents an aggregated submission entry (grouped by code+description
+	/// per day). In aggregated mode <see cref="StartTime"/> is representative only,
+	/// <see cref="EndTime"/> is not meaningful, and <see cref="Duration"/> is directly editable.
+	/// </summary>
+	public bool IsAggregated { get; set; }
+
 	public bool IsSelected
 	{
 		get => _isSelected;
@@ -151,7 +158,71 @@ public class WorklogPreviewItem : ObservableObject
 		}
 	}
 
-	public string DurationDisplay => _durationDisplay;
+	public string DurationDisplay
+	{
+		get => _durationDisplay;
+		set
+		{
+			if (TryParseDuration(value, out var seconds))
+			{
+				Duration = seconds;
+			}
+			else
+			{
+				// Notify so the bound TextBox snaps back to the last valid display value
+				OnPropertyChanged(nameof(DurationDisplay));
+			}
+		}
+	}
+
+	private static bool TryParseDuration(string? text, out int seconds)
+	{
+		seconds = 0;
+		if (string.IsNullOrWhiteSpace(text))
+		{
+			return false;
+		}
+
+		var trimmed = text.Trim();
+
+		// H:MM or HH:MM form
+		if (TimeSpan.TryParseExact(trimmed, TimeFormats, CultureInfo.InvariantCulture, out var ts) && ts >= TimeSpan.Zero)
+		{
+			seconds = (int)ts.TotalSeconds;
+			return true;
+		}
+
+		// "Xh Ym", "Xh", "Ym" form (matches DurationFormatter output)
+		var totalMinutes = 0;
+		var matched = false;
+		var hoursMatch = System.Text.RegularExpressions.Regex.Match(trimmed, @"(\d+)\s*h", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+		if (hoursMatch.Success)
+		{
+			totalMinutes += int.Parse(hoursMatch.Groups[1].Value, CultureInfo.InvariantCulture) * 60;
+			matched = true;
+		}
+		var minutesMatch = System.Text.RegularExpressions.Regex.Match(trimmed, @"(\d+)\s*m", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+		if (minutesMatch.Success)
+		{
+			totalMinutes += int.Parse(minutesMatch.Groups[1].Value, CultureInfo.InvariantCulture);
+			matched = true;
+		}
+
+		if (matched && totalMinutes >= 0)
+		{
+			seconds = totalMinutes * 60;
+			return true;
+		}
+
+		// Bare integer = minutes
+		if (int.TryParse(trimmed, NumberStyles.Integer, CultureInfo.InvariantCulture, out var minutesOnly) && minutesOnly >= 0)
+		{
+			seconds = minutesOnly * 60;
+			return true;
+		}
+
+		return false;
+	}
 
 	private void UpdateStartTimeDisplayCache()
 	{
@@ -192,6 +263,12 @@ public class WorklogPreviewItem : ObservableObject
 
 	private void UpdateDurationFromTimes()
 	{
+		// In aggregated mode Start/End are not a real interval — Duration is driven by the user directly.
+		if (IsAggregated)
+		{
+			return;
+		}
+
 		if (EndTime > StartTime)
 		{
 			Duration = (int)(EndTime - StartTime).TotalSeconds;
