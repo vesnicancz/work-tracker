@@ -13,27 +13,34 @@ public class SuggestionGroupViewModel : ObservableObject, IDisposable
 	private const int MinSearchLength = 3;
 
 	private readonly IWorkSuggestionOrchestrator _orchestrator;
-	private readonly string _pluginId;
+	private readonly TimeProvider _timeProvider;
 	private readonly DateTime _date;
 	private string _searchText = string.Empty;
 	private bool _isSearching;
 	private bool _isExpanded;
 	private CancellationTokenSource? _searchCts;
 
-	public SuggestionGroupViewModel(IWorkSuggestionOrchestrator orchestrator, SuggestionGroup group, DateTime date)
+	public SuggestionGroupViewModel(
+		IWorkSuggestionOrchestrator orchestrator,
+		SuggestionGroup group,
+		DateTime date,
+		TimeProvider timeProvider)
 	{
 		_orchestrator = orchestrator;
-		_pluginId = group.PluginId;
+		_timeProvider = timeProvider;
+		PluginId = group.PluginId;
 		_date = date;
 		Name = group.PluginName;
 		IconHint = group.IconHint;
 		SupportsSearch = group.SupportsSearch;
 		Count = group.Items.Count;
 		Error = group.Error;
+		MarkPastItems(group.Items);
 		Items = new ObservableCollection<WorkSuggestionViewModel>(group.Items);
 		SelectCommand = new RelayCommand<WorkSuggestionViewModel>(OnSuggestionSelected);
 	}
 
+	public string PluginId { get; }
 	public string Name { get; }
 	public string? IconHint { get; }
 	public bool SupportsSearch { get; }
@@ -94,7 +101,7 @@ public class SuggestionGroupViewModel : ObservableObject, IDisposable
 			}
 
 			IsSearching = true;
-			var results = await _orchestrator.SearchPluginAsync(_pluginId, trimmed, _date, _searchCts.Token);
+			var results = await _orchestrator.SearchPluginAsync(PluginId, trimmed, _date, _searchCts.Token);
 			ReplaceItems(results);
 		}
 		catch (OperationCanceledException) { }
@@ -110,6 +117,9 @@ public class SuggestionGroupViewModel : ObservableObject, IDisposable
 
 	private void ReplaceItems(IReadOnlyList<WorkSuggestionViewModel> items)
 	{
+		// Mark before adding so the UI reads the final IsPast value when the
+		// item enters the bound collection (IsPast has no INotifyPropertyChanged).
+		MarkPastItems(items);
 		Items.Clear();
 		foreach (var item in items)
 		{
@@ -121,6 +131,31 @@ public class SuggestionGroupViewModel : ObservableObject, IDisposable
 		OnPropertyChanged(nameof(Error));
 		OnPropertyChanged(nameof(HasError));
 		OnPropertyChanged(nameof(IsEmpty));
+	}
+
+	private void MarkPastItems(IEnumerable<WorkSuggestionViewModel> items)
+	{
+		// Only dim past events when viewing today — for past/future days the
+		// notion of "already happened" is either universal or meaningless.
+		// Always assign (don't early-return) so stale IsPast from a previous
+		// cached view across midnight gets cleared.
+		var now = _timeProvider.GetLocalNow().DateTime;
+		var viewingToday = _date.Date == now.Date;
+		foreach (var item in items)
+		{
+			if (!item.HasTimeSlot)
+			{
+				item.IsPast = false;
+				continue;
+			}
+			if (!viewingToday)
+			{
+				item.IsPast = false;
+				continue;
+			}
+			var cutoff = item.EndTime ?? item.StartTime!.Value;
+			item.IsPast = cutoff <= now;
+		}
 	}
 
 	private void OnSuggestionSelected(WorkSuggestionViewModel? suggestion)

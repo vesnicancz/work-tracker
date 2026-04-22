@@ -18,6 +18,7 @@ public static class UISharedServiceCollectionExtensions
 		services.AddSingleton<IWorkSuggestionOrchestrator>(sp => sp.GetRequiredService<CachedWorkSuggestionOrchestrator>());
 		services.AddSingleton<IWorkSuggestionCache>(sp => sp.GetRequiredService<CachedWorkSuggestionOrchestrator>());
 		services.AddSingleton<IPomodoroService, PomodoroService>();
+		services.AddSingleton<ISuggestionsViewState, SuggestionsViewState>();
 
 		services.AddSingleton<IUpdateCheckService>(sp =>
 		{

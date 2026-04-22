@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using WorkTracker.UI.Shared.Orchestrators;
+using WorkTracker.UI.Shared.Services;
 
 namespace WorkTracker.UI.Shared.ViewModels;
 
@@ -13,14 +14,22 @@ public class SuggestionsViewModel : ObservableObject, IDisposable
 {
 	private readonly IWorkSuggestionOrchestrator _orchestrator;
 	private readonly IWorkSuggestionCache _cache;
+	private readonly ISuggestionsViewState _viewState;
+	private readonly TimeProvider _timeProvider;
 	private readonly CancellationTokenSource _cts = new();
 	private bool _isLoading;
 	private DateTime _selectedDate;
 
-	public SuggestionsViewModel(IWorkSuggestionOrchestrator orchestrator, IWorkSuggestionCache cache)
+	public SuggestionsViewModel(
+		IWorkSuggestionOrchestrator orchestrator,
+		IWorkSuggestionCache cache,
+		ISuggestionsViewState viewState,
+		TimeProvider timeProvider)
 	{
 		_orchestrator = orchestrator;
 		_cache = cache;
+		_viewState = viewState;
+		_timeProvider = timeProvider;
 		RefreshCommand = new AsyncRelayCommand(RefreshAsync);
 		ToggleGroupCommand = new RelayCommand<SuggestionGroupViewModel>(ToggleGroup);
 	}
@@ -65,14 +74,19 @@ public class SuggestionsViewModel : ObservableObject, IDisposable
 				old.Dispose();
 			}
 			Groups.Clear();
-			var isFirst = true;
 			foreach (var group in groups)
 			{
-				var groupVm = new SuggestionGroupViewModel(_orchestrator, group, _selectedDate);
-				groupVm.IsExpanded = isFirst;
+				var groupVm = new SuggestionGroupViewModel(_orchestrator, group, _selectedDate, _timeProvider);
 				groupVm.SuggestionSelected += suggestion => SuggestionSelected?.Invoke(suggestion);
 				Groups.Add(groupVm);
-				isFirst = false;
+			}
+
+			var remembered = Groups.FirstOrDefault(g => g.PluginId == _viewState.LastExpandedPluginId);
+			var initial = remembered ?? Groups.FirstOrDefault();
+			if (initial != null)
+			{
+				initial.IsExpanded = true;
+				_viewState.LastExpandedPluginId = initial.PluginId;
 			}
 		}
 		catch (OperationCanceledException) { }
@@ -89,16 +103,30 @@ public class SuggestionsViewModel : ObservableObject, IDisposable
 			return;
 		}
 
-		var expanding = !target.IsExpanded;
-		foreach (var group in Groups)
+		if (target.IsExpanded)
 		{
-			group.IsExpanded = false;
+			// Always keep at least one group expanded. Collapsing the active group
+			// is only allowed when another group can take its place.
+			var fallback = Groups.FirstOrDefault(g => g != target);
+			if (fallback == null)
+			{
+				return;
+			}
+			target.IsExpanded = false;
+			fallback.IsExpanded = true;
+			_viewState.LastExpandedPluginId = fallback.PluginId;
+			return;
 		}
 
-		if (expanding)
+		foreach (var group in Groups)
 		{
-			target.IsExpanded = true;
+			if (group != target)
+			{
+				group.IsExpanded = false;
+			}
 		}
+		target.IsExpanded = true;
+		_viewState.LastExpandedPluginId = target.PluginId;
 	}
 
 	public void Dispose()

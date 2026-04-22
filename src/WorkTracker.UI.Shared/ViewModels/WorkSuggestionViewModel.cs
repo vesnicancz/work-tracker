@@ -14,6 +14,17 @@ public class WorkSuggestionViewModel
 	public required string SourceId { get; init; }
 	public string? SourceUrl { get; init; }
 
+	/// <summary>
+	/// Whether this suggestion represents a time-slotted event whose cutoff has
+	/// already passed on the current day. The cutoff is <see cref="EndTime"/>
+	/// when present, otherwise <see cref="StartTime"/> — so a point-in-time
+	/// event is considered past once its start time is reached. Only set for
+	/// items on today's date; always false for other days or for items without
+	/// a time slot. Set by <see cref="SuggestionGroupViewModel"/> when items
+	/// are populated.
+	/// </summary>
+	public bool IsPast { get; set; }
+
 	public bool HasTimeSlot => StartTime.HasValue;
 
 	public string TimeDisplay => HasTimeSlot

@@ -183,9 +183,24 @@
 												<DataTemplate>
 													<Button Command="{Binding DataContext.SelectCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
 															CommandParameter="{Binding}"
-															Style="{StaticResource MaterialDesignFlatButton}"
 															HorizontalContentAlignment="Stretch"
 															Padding="8,6" Margin="0,1" Height="Auto">
+														<Button.Style>
+															<Style TargetType="Button" BasedOn="{StaticResource MaterialDesignFlatButton}">
+																<Style.Triggers>
+																	<DataTrigger Binding="{Binding IsPast}" Value="True">
+																		<Setter Property="Opacity" Value="0.45" />
+																	</DataTrigger>
+																	<MultiDataTrigger>
+																		<MultiDataTrigger.Conditions>
+																			<Condition Binding="{Binding IsPast}" Value="True" />
+																			<Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource Self}}" Value="True" />
+																		</MultiDataTrigger.Conditions>
+																		<Setter Property="Opacity" Value="1.0" />
+																	</MultiDataTrigger>
+																</Style.Triggers>
+															</Style>
+														</Button.Style>
 														<Grid>
 															<Grid.ColumnDefinitions>
 																<ColumnDefinition Width="Auto" />
