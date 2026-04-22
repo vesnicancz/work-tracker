@@ -48,7 +48,8 @@ public class SubmitWorklogViewModel : ViewModelBase
 		_timeProvider = timeProvider;
 		_logger = logger;
 		_selectedDate = _timeProvider.GetLocalNow().Date;
-		_selectedMode = _settingsService.Settings.LastSubmissionMode;
+		var persistedMode = _settingsService.Settings.LastSubmissionMode;
+		_selectedMode = persistedMode.IsSingleMode() ? persistedMode : WorklogSubmissionMode.Timed;
 
 		SendCommand = new AsyncRelayCommand(SendAsync, CanSend);
 		RetryFailedCommand = new AsyncRelayCommand(RetryFailedAsync, CanRetryFailed);

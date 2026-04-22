@@ -19,6 +19,13 @@ public abstract class WorklogUploadPluginBase(ILogger logger) : PluginBase(logge
 
 	public virtual async Task<PluginResult<WorklogSubmissionResult>> UploadWorklogsAsync(IEnumerable<PluginWorklogEntry> worklogs, WorklogSubmissionMode mode, CancellationToken cancellationToken)
 	{
+		if (!mode.IsSingleMode())
+		{
+			return PluginResult<WorklogSubmissionResult>.Failure(
+				$"Invalid submission mode '{mode}' — must be exactly Timed or Aggregated",
+				PluginErrorCategory.Validation);
+		}
+
 		if (!SupportedModes.HasFlag(mode))
 		{
 			return PluginResult<WorklogSubmissionResult>.Failure(

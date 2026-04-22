@@ -267,8 +267,8 @@ public sealed class TempoWorklogPlugin(IHttpClientFactory httpClientFactory, ILo
 				? worklog.StartTime.ToString("HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture)
 				: null;
 
-			// Object shape has the same property set in both modes; setting startTime to null makes
-			// System.Text.Json omit it (default serializer + WhenWritingNull on this project).
+			// Use different payload shapes per mode: Timed includes startTime, Aggregated omits
+			// the property entirely (different anonymous type → different JSON contract).
 			object tempoWorklog = includeStartTime
 				? new
 				{

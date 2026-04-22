@@ -148,6 +148,11 @@ public sealed class PluginBasedWorklogSubmissionService : IWorklogSubmissionServ
 		WorklogSubmissionMode mode,
 		CancellationToken cancellationToken)
 	{
+		if (!mode.IsSingleMode())
+		{
+			return Result.Failure<SubmissionResult>($"Invalid submission mode '{mode}' — must be exactly Timed or Aggregated");
+		}
+
 		var plugin = ResolvePlugin(providerId);
 		if (plugin == null)
 		{
