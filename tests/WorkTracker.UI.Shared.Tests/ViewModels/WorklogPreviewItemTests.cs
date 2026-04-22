@@ -333,4 +333,98 @@ public class WorklogPreviewItemTests
 	}
 
 	#endregion
+
+	#region DurationDisplay parsing (Aggregated mode)
+
+	[Theory]
+	[InlineData("1:30", 90 * 60)]
+	[InlineData("01:05", 65 * 60)]
+	[InlineData("0:45", 45 * 60)]
+	public void DurationDisplay_Set_HhMm_UpdatesDuration(string input, int expectedSeconds)
+	{
+		var item = new WorklogPreviewItem { IsAggregated = true };
+
+		item.DurationDisplay = input;
+
+		item.Duration.Should().Be(expectedSeconds);
+	}
+
+	[Theory]
+	[InlineData("2h 30m", 150 * 60)]
+	[InlineData("2h", 120 * 60)]
+	[InlineData("45m", 45 * 60)]
+	[InlineData("1h 0m", 60 * 60)]
+	public void DurationDisplay_Set_HoursMinutesForm_UpdatesDuration(string input, int expectedSeconds)
+	{
+		var item = new WorklogPreviewItem { IsAggregated = true };
+
+		item.DurationDisplay = input;
+
+		item.Duration.Should().Be(expectedSeconds);
+	}
+
+	[Theory]
+	[InlineData("30", 30 * 60)]
+	[InlineData("0", 0)]
+	[InlineData("120", 120 * 60)]
+	public void DurationDisplay_Set_BareMinutes_UpdatesDuration(string input, int expectedSeconds)
+	{
+		var item = new WorklogPreviewItem { IsAggregated = true };
+
+		item.DurationDisplay = input;
+
+		item.Duration.Should().Be(expectedSeconds);
+	}
+
+	[Theory]
+	[InlineData("abc")]
+	[InlineData("")]
+	[InlineData("  ")]
+	[InlineData("-5m")]
+	[InlineData("99999999999h")]
+	public void DurationDisplay_Set_InvalidInput_LeavesDurationUnchanged(string input)
+	{
+		var item = new WorklogPreviewItem { IsAggregated = true };
+		item.DurationDisplay = "1h";
+		var durationBefore = item.Duration;
+
+		item.DurationDisplay = input;
+
+		item.Duration.Should().Be(durationBefore);
+	}
+
+	[Fact]
+	public void DurationDisplay_Set_InvalidInput_RaisesPropertyChangedToRevertBinding()
+	{
+		var item = new WorklogPreviewItem { IsAggregated = true };
+		item.DurationDisplay = "1h"; // sets Duration to 60 * 60 = 3600 s
+		var propertyNames = new List<string>();
+		item.PropertyChanged += (_, e) => propertyNames.Add(e.PropertyName!);
+
+		item.DurationDisplay = "not a duration";
+
+		// TextBox bound to DurationDisplay must snap back to the last valid display value
+		propertyNames.Should().Contain(nameof(WorklogPreviewItem.DurationDisplay));
+		item.Duration.Should().Be(3600);
+	}
+
+	[Fact]
+	public void DurationDisplay_Set_NewValueOverridesAggregatedDuration()
+	{
+		// In aggregated mode the user can edit Duration directly; Start/End must not recalculate it.
+		var item = new WorklogPreviewItem
+		{
+			Date = new DateTime(2025, 3, 15),
+			IsAggregated = true,
+			StartTime = new DateTime(2025, 3, 15, 9, 0, 0),
+			EndTime = new DateTime(2025, 3, 15, 9, 0, 0),
+			Duration = 60 * 60
+		};
+
+		item.DurationDisplay = "3h 15m";
+
+		item.Duration.Should().Be(195 * 60);
+	}
+
+	#endregion
 }

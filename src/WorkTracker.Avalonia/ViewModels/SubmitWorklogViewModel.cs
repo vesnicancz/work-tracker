@@ -14,7 +14,7 @@ namespace WorkTracker.Avalonia.ViewModels;
 /// <summary>
 /// ViewModel for submitting worklogs to upload providers
 /// </summary>
-public class SubmitWorklogViewModel : ViewModelBase
+public class SubmitWorklogViewModel : ViewModelBase, IDisposable
 {
 	private readonly IWorklogSubmissionOrchestrator _orchestrator;
 	private readonly TimeProvider _timeProvider;
@@ -34,6 +34,7 @@ public class SubmitWorklogViewModel : ViewModelBase
 	private ProviderInfo? _selectedProvider;
 	private bool _hasFailedItems;
 	private WorklogSubmissionMode _selectedMode;
+	private CancellationTokenSource? _loadPreviewCts;
 
 	public SubmitWorklogViewModel(
 		IWorklogSubmissionOrchestrator orchestrator,
@@ -259,13 +260,25 @@ public class SubmitWorklogViewModel : ViewModelBase
 
 	private async Task LoadPreviewAsync()
 	{
+		// Cancel any previous in-flight load so fast toggles of mode/week/date can't race and
+		// overwrite PreviewItems with stale results.
+		_loadPreviewCts?.Cancel();
+		_loadPreviewCts?.Dispose();
+		_loadPreviewCts = new CancellationTokenSource();
+		var cancellationToken = _loadPreviewCts.Token;
+
 		try
 		{
 			IsLoading = true;
 			HasFailedItems = false;
 			StatusMessage = _localization["LoadingPreview"];
 
-			var result = await _orchestrator.LoadPreviewAsync(SelectedDate, IsWeekly, _selectedMode, _localization["NoTicket"], CancellationToken.None);
+			var result = await _orchestrator.LoadPreviewAsync(SelectedDate, IsWeekly, _selectedMode, _localization["NoTicket"], cancellationToken);
+
+			if (cancellationToken.IsCancellationRequested)
+			{
+				return;
+			}
 
 			// Unsubscribe from old items before replacing
 			foreach (var item in PreviewItems.Where(i => !i.IsDateHeader))
@@ -283,6 +296,10 @@ public class SubmitWorklogViewModel : ViewModelBase
 			TotalTimeDisplay = _orchestrator.FormatDuration(result.TotalSeconds);
 			StatusMessage = _localization.GetFormattedString("ReadyToSubmit", result.DataItemCount);
 		}
+		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+		{
+			// Superseded by a newer LoadPreviewAsync call — silently drop the stale result.
+		}
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Failed to load worklog preview");
@@ -291,7 +308,10 @@ public class SubmitWorklogViewModel : ViewModelBase
 		}
 		finally
 		{
-			IsLoading = false;
+			if (!cancellationToken.IsCancellationRequested)
+			{
+				IsLoading = false;
+			}
 		}
 	}
 
@@ -369,6 +389,13 @@ public class SubmitWorklogViewModel : ViewModelBase
 	{
 		DialogResult = false;
 		CloseAction?.Invoke();
+	}
+
+	public void Dispose()
+	{
+		_loadPreviewCts?.Cancel();
+		_loadPreviewCts?.Dispose();
+		_loadPreviewCts = null;
 	}
 
 	private void ResetToOriginal()

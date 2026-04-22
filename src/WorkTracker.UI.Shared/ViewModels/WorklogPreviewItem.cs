@@ -185,6 +185,13 @@ public class WorklogPreviewItem : ObservableObject
 
 		var trimmed = text.Trim();
 
+		// Reject explicit negative input — regex captures below only match digits, so "-5m" would
+		// otherwise be parsed as "5m" instead of being rejected.
+		if (trimmed.StartsWith('-'))
+		{
+			return false;
+		}
+
 		// H:MM or HH:MM form
 		if (TimeSpan.TryParseExact(trimmed, TimeFormats, CultureInfo.InvariantCulture, out var ts) && ts >= TimeSpan.Zero)
 		{

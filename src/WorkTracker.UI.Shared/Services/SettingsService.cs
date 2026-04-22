@@ -157,11 +157,14 @@ public sealed class SettingsService : ISettingsService, IDisposable
 
 	public async Task SaveSettingsAsync(ApplicationSettings settings, CancellationToken cancellationToken = default)
 	{
-		await _writeLock.WaitAsync(cancellationToken);
+		// ConfigureAwait(false) on both awaits: prevents deadlocks when a sync SaveSettings call
+		// on a UI thread is waiting on _writeLock while this async path's continuations would
+		// otherwise need to marshal back to that same (blocked) UI context.
+		await _writeLock.WaitAsync(cancellationToken).ConfigureAwait(false);
 		try
 		{
 			var json = JsonSerializer.Serialize(settings, WriteOptions);
-			await File.WriteAllTextAsync(_settingsFilePath, json, cancellationToken);
+			await File.WriteAllTextAsync(_settingsFilePath, json, cancellationToken).ConfigureAwait(false);
 			SetOwnerOnlyPermissions(_settingsFilePath);
 
 			UnprotectPluginConfigurations(settings);
