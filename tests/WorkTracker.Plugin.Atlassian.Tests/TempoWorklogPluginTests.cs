@@ -728,7 +728,7 @@ internal sealed class MockHttpHandler : HttpMessageHandler
     public IReadOnlyList<string> GetPostBodies(string pathAndQuery) =>
         _postBodies.TryGetValue(pathAndQuery, out var list) ? list : [];
 
-    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         var pathAndQuery = request.RequestUri!.PathAndQuery;
 
@@ -739,25 +739,25 @@ internal sealed class MockHttpHandler : HttpMessageHandler
             if (_getResponses.TryGetValue(pathAndQuery, out var body))
             {
                 var statusCode = _getStatusCodes.GetValueOrDefault(pathAndQuery, HttpStatusCode.OK);
-                return Task.FromResult(new HttpResponseMessage(statusCode)
+                return new HttpResponseMessage(statusCode)
                 {
                     Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json")
-                });
+                };
             }
 
             var prefixMatch = _getPrefixResponses.FirstOrDefault(p => pathAndQuery.StartsWith(p.Prefix, StringComparison.Ordinal));
             if (prefixMatch != default)
             {
-                return Task.FromResult(new HttpResponseMessage(prefixMatch.Status)
+                return new HttpResponseMessage(prefixMatch.Status)
                 {
                     Content = new StringContent(prefixMatch.Body, System.Text.Encoding.UTF8, "application/json")
-                });
+                };
             }
 
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound)
+            return new HttpResponseMessage(HttpStatusCode.NotFound)
             {
                 Content = new StringContent("Not found")
-            });
+            };
         }
 
         if (request.Method == HttpMethod.Post)
@@ -766,7 +766,7 @@ internal sealed class MockHttpHandler : HttpMessageHandler
 
             if (request.Content != null)
             {
-                var body = request.Content.ReadAsStringAsync(cancellationToken).GetAwaiter().GetResult();
+                var body = await request.Content.ReadAsStringAsync(cancellationToken);
                 if (!_postBodies.TryGetValue(pathAndQuery, out var bodies))
                 {
                     bodies = new List<string>();
@@ -783,18 +783,18 @@ internal sealed class MockHttpHandler : HttpMessageHandler
                     queue.Enqueue((status, responseBody));
                 }
 
-                return Task.FromResult(new HttpResponseMessage(status)
+                return new HttpResponseMessage(status)
                 {
                     Content = new StringContent(responseBody, System.Text.Encoding.UTF8, "application/json")
-                });
+                };
             }
 
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound)
+            return new HttpResponseMessage(HttpStatusCode.NotFound)
             {
                 Content = new StringContent("No response configured")
-            });
+            };
         }
 
-        return Task.FromResult(new HttpResponseMessage(HttpStatusCode.MethodNotAllowed));
+        return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed);
     }
 }

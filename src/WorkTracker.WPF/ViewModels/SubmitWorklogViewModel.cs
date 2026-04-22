@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using WorkTracker.Application.DTOs;
 using WorkTracker.Plugin.Abstractions;
+using WorkTracker.UI.Shared.Models;
 using WorkTracker.UI.Shared.Orchestrators;
 using WorkTracker.UI.Shared.Services;
 using WorkTracker.UI.Shared.ViewModels;
@@ -184,11 +185,23 @@ public class SubmitWorklogViewModel : ViewModelBase
 
 				var settings = _settingsService.Settings;
 				settings.LastSubmissionMode = value;
-				_settingsService.SaveSettings(settings);
+				_ = PersistSettingsAsync(settings);
 
 				RefreshProviderFilter();
 				_ = LoadPreviewAsync();
 			}
+		}
+	}
+
+	private async Task PersistSettingsAsync(ApplicationSettings settings)
+	{
+		try
+		{
+			await _settingsService.SaveSettingsAsync(settings);
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Failed to persist LastSubmissionMode");
 		}
 	}
 

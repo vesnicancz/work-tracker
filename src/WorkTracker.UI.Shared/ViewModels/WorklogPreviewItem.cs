@@ -198,13 +198,21 @@ public class WorklogPreviewItem : ObservableObject
 		var hoursMatch = System.Text.RegularExpressions.Regex.Match(trimmed, @"(\d+)\s*h", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 		if (hoursMatch.Success)
 		{
-			totalMinutes += int.Parse(hoursMatch.Groups[1].Value, CultureInfo.InvariantCulture) * 60;
+			if (!int.TryParse(hoursMatch.Groups[1].Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var hours))
+			{
+				return false;
+			}
+			totalMinutes += hours * 60;
 			matched = true;
 		}
 		var minutesMatch = System.Text.RegularExpressions.Regex.Match(trimmed, @"(\d+)\s*m", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 		if (minutesMatch.Success)
 		{
-			totalMinutes += int.Parse(minutesMatch.Groups[1].Value, CultureInfo.InvariantCulture);
+			if (!int.TryParse(minutesMatch.Groups[1].Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var minutes))
+			{
+				return false;
+			}
+			totalMinutes += minutes;
 			matched = true;
 		}
 
