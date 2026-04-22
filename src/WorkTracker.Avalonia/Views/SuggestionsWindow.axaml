@@ -27,8 +27,14 @@
             <Setter Property="Foreground" Value="{DynamicResource TextBright}" />
             <Setter Property="Cursor" Value="Hand" />
         </Style>
+        <Style Selector="Button.suggestionItem.past">
+            <Setter Property="Opacity" Value="0.45" />
+        </Style>
         <Style Selector="Button.suggestionItem:pointerover">
             <Setter Property="Background" Value="{DynamicResource InputBackground}" />
+        </Style>
+        <Style Selector="Button.suggestionItem.past:pointerover">
+            <Setter Property="Opacity" Value="1.0" />
         </Style>
         <Style Selector="Button.accordionHeader:pointerover /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="Transparent" />
@@ -175,6 +181,7 @@
                                                 <DataTemplate>
                                                     <Button Theme="{x:Null}"
                                                             Classes="suggestionItem"
+                                                            Classes.past="{Binding IsPast}"
                                                             Padding="8,6" Margin="0,1"
                                                             CornerRadius="4"
                                                             HorizontalAlignment="Stretch"

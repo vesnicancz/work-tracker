@@ -14,6 +14,13 @@ public class WorkSuggestionViewModel
 	public required string SourceId { get; init; }
 	public string? SourceUrl { get; init; }
 
+	/// <summary>
+	/// Whether this suggestion represents an event that has already finished
+	/// (only applicable for time-slotted items on the current day). Set by
+	/// <see cref="SuggestionGroupViewModel"/> when items are populated.
+	/// </summary>
+	public bool IsPast { get; set; }
+
 	public bool HasTimeSlot => StartTime.HasValue;
 
 	public string TimeDisplay => HasTimeSlot
