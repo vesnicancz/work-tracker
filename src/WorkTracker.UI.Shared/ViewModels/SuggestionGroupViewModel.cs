@@ -137,15 +137,20 @@ public class SuggestionGroupViewModel : ObservableObject, IDisposable
 	{
 		// Only dim past events when viewing today — for past/future days the
 		// notion of "already happened" is either universal or meaningless.
+		// Always assign (don't early-return) so stale IsPast from a previous
+		// cached view across midnight gets cleared.
 		var now = _timeProvider.GetLocalNow().DateTime;
-		if (_date.Date != now.Date)
-		{
-			return;
-		}
+		var viewingToday = _date.Date == now.Date;
 		foreach (var item in items)
 		{
 			if (!item.HasTimeSlot)
 			{
+				item.IsPast = false;
+				continue;
+			}
+			if (!viewingToday)
+			{
+				item.IsPast = false;
 				continue;
 			}
 			var cutoff = item.EndTime ?? item.StartTime!.Value;

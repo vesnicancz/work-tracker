@@ -78,6 +78,29 @@ public class SuggestionGroupViewModelTests
 	}
 
 	[Fact]
+	public void Ctor_ViewingOtherDay_ClearsStaleIsPastFromCachedInstances()
+	{
+		// Regression: the 5-min suggestions cache returns the same VM instances
+		// across midnight. An item marked IsPast=true while the page was "today"
+		// must not remain dimmed when that same date becomes "yesterday".
+		var now = new DateTime(2026, 4, 23, 0, 2, 0);
+		var timeProvider = new FakeTimeProvider(now);
+		var yesterday = new DateTime(2026, 4, 22);
+		var staleItem = CreateEvent(yesterday.AddHours(9), yesterday.AddHours(10));
+		staleItem.IsPast = true;
+		var group = new SuggestionGroup
+		{
+			PluginId = "cal",
+			PluginName = "Calendar",
+			Items = [staleItem],
+		};
+
+		var vm = new SuggestionGroupViewModel(_orchestrator.Object, group, yesterday, timeProvider);
+
+		vm.Items[0].IsPast.Should().BeFalse();
+	}
+
+	[Fact]
 	public void Ctor_ItemWithoutTimeSlot_IsNotMarkedAsPast()
 	{
 		var now = new DateTime(2026, 4, 22, 14, 30, 0);
