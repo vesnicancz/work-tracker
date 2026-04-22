@@ -175,6 +175,12 @@ public class WorklogPreviewItem : ObservableObject
 		}
 	}
 
+	// Anchored whole-string match: optional "Xh", optional whitespace, optional "Ym".
+	// Must consume the entire input — rejects garbage like "1h -5m", "2h foo", "blah 3m".
+	private static readonly System.Text.RegularExpressions.Regex HoursMinutesRegex = new(
+		@"^(?:(\d+)\s*h)?\s*(?:(\d+)\s*m)?$",
+		System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Compiled);
+
 	private static bool TryParseDuration(string? text, out int seconds)
 	{
 		seconds = 0;
@@ -185,8 +191,7 @@ public class WorklogPreviewItem : ObservableObject
 
 		var trimmed = text.Trim();
 
-		// Reject explicit negative input — regex captures below only match digits, so "-5m" would
-		// otherwise be parsed as "5m" instead of being rejected.
+		// Reject explicit negative input — downstream parsers only capture digit groups.
 		if (trimmed.StartsWith('-'))
 		{
 			return false;
@@ -200,43 +205,50 @@ public class WorklogPreviewItem : ObservableObject
 		}
 
 		// "Xh Ym", "Xh", "Ym" form (matches DurationFormatter output)
-		var totalMinutes = 0;
-		var matched = false;
-		var hoursMatch = System.Text.RegularExpressions.Regex.Match(trimmed, @"(\d+)\s*h", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-		if (hoursMatch.Success)
+		var match = HoursMinutesRegex.Match(trimmed);
+		if (match.Success && (match.Groups[1].Success || match.Groups[2].Success))
 		{
-			if (!int.TryParse(hoursMatch.Groups[1].Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var hours))
+			long totalMinutes = 0;
+			if (match.Groups[1].Success)
 			{
-				return false;
+				if (!long.TryParse(match.Groups[1].Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var hours) ||
+					hours > int.MaxValue / 60)
+				{
+					return false;
+				}
+				totalMinutes += hours * 60;
 			}
-			totalMinutes += hours * 60;
-			matched = true;
-		}
-		var minutesMatch = System.Text.RegularExpressions.Regex.Match(trimmed, @"(\d+)\s*m", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-		if (minutesMatch.Success)
-		{
-			if (!int.TryParse(minutesMatch.Groups[1].Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var minutes))
+			if (match.Groups[2].Success)
 			{
-				return false;
+				if (!long.TryParse(match.Groups[2].Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var minutes) ||
+					minutes > int.MaxValue)
+				{
+					return false;
+				}
+				totalMinutes += minutes;
 			}
-			totalMinutes += minutes;
-			matched = true;
-		}
 
-		if (matched && totalMinutes >= 0)
-		{
-			seconds = totalMinutes * 60;
-			return true;
+			return TryConvertMinutesToSeconds(totalMinutes, out seconds);
 		}
 
 		// Bare integer = minutes
-		if (int.TryParse(trimmed, NumberStyles.Integer, CultureInfo.InvariantCulture, out var minutesOnly) && minutesOnly >= 0)
+		if (long.TryParse(trimmed, NumberStyles.Integer, CultureInfo.InvariantCulture, out var minutesOnly) && minutesOnly >= 0)
 		{
-			seconds = minutesOnly * 60;
-			return true;
+			return TryConvertMinutesToSeconds(minutesOnly, out seconds);
 		}
 
 		return false;
+	}
+
+	private static bool TryConvertMinutesToSeconds(long totalMinutes, out int seconds)
+	{
+		seconds = 0;
+		if (totalMinutes < 0 || totalMinutes > int.MaxValue / 60)
+		{
+			return false;
+		}
+		seconds = (int)(totalMinutes * 60);
+		return true;
 	}
 
 	private void UpdateStartTimeDisplayCache()

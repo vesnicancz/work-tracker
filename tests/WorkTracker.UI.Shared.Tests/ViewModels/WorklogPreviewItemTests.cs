@@ -382,6 +382,12 @@ public class WorklogPreviewItemTests
 	[InlineData("  ")]
 	[InlineData("-5m")]
 	[InlineData("99999999999h")]
+	[InlineData("1h -5m")]       // garbage between tokens — anchored regex must reject
+	[InlineData("2h foo")]       // trailing junk
+	[InlineData("blah 3m")]      // leading junk
+	[InlineData("1h 2h")]        // two hours tokens
+	[InlineData("5m 10m")]       // two minutes tokens
+	[InlineData("2147483647h")]  // int.MaxValue hours — overflow when *60
 	public void DurationDisplay_Set_InvalidInput_LeavesDurationUnchanged(string input)
 	{
 		var item = new WorklogPreviewItem { IsAggregated = true };

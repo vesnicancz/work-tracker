@@ -260,10 +260,13 @@ public class SubmitWorklogViewModel : ViewModelBase, IDisposable
 	private async Task LoadPreviewAsync()
 	{
 		// Cancel any previous in-flight load so fast toggles of mode/week/date can't race and
-		// overwrite PreviewItems with stale results.
-		_loadPreviewCts?.Cancel();
-		_loadPreviewCts?.Dispose();
+		// overwrite PreviewItems with stale results. Do NOT dispose the old CTS here — the
+		// previous load's token is still in use inside the orchestrator/plugin pipeline, and
+		// disposing could surface ObjectDisposedException. GC will clean it up once the last
+		// task using it completes.
+		var previousCts = _loadPreviewCts;
 		_loadPreviewCts = new CancellationTokenSource();
+		previousCts?.Cancel();
 		var cancellationToken = _loadPreviewCts.Token;
 
 		try
