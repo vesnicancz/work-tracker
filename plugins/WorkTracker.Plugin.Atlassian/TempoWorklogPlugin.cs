@@ -197,10 +197,24 @@ public sealed class TempoWorklogPlugin(IHttpClientFactory httpClientFactory, ILo
 		// In Aggregated mode Tempo gets startDate + timeSpentSeconds only (no startTime),
 		// since the aggregated row's start is just a representative timestamp, not a real interval.
 		// Timed mode keeps the per-entry startTime so Tempo reports retain the chronological layout.
+		if (!mode.IsSingleMode())
+		{
+			return PluginResult<WorklogSubmissionResult>.Failure(
+				$"Invalid submission mode '{mode}' — must be exactly Timed or Aggregated",
+				PluginErrorCategory.Validation);
+		}
+
 		if (!SupportedModes.HasFlag(mode))
 		{
 			return PluginResult<WorklogSubmissionResult>.Failure(
 				$"Tempo does not support submission mode '{mode}'",
+				PluginErrorCategory.Validation);
+		}
+
+		if (!IsInitialized)
+		{
+			return PluginResult<WorklogSubmissionResult>.Failure(
+				"Plugin is not initialized",
 				PluginErrorCategory.Validation);
 		}
 
