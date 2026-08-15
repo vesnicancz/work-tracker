@@ -18,7 +18,7 @@
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False"
         CanResize="True"
-        SystemDecorations="None"
+        WindowDecorations="None"
         Background="Transparent">
 
     <Border CornerRadius="{DynamicResource WindowCornerRadius}"
@@ -182,7 +182,7 @@
                                                               MinWidth="0" Padding="0" />
                                                     <TextBox Grid.Column="1"
                                                              Text="{Binding TicketId, Mode=TwoWay}"
-                                                             Watermark="{Binding NoTicketLabel}"
+                                                             PlaceholderText="{Binding NoTicketLabel}"
                                                              FontSize="12" FontWeight="Medium"
                                                              Background="{DynamicResource InputBackground}"
                                                              BorderBrush="{DynamicResource InputBorder}"

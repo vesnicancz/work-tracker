@@ -14,7 +14,7 @@
         WindowStartupLocation="CenterOwner"
         CanResize="False"
         ShowInTaskbar="False"
-        SystemDecorations="None"
+        WindowDecorations="None"
         Background="Transparent">
 
     <Window.Resources>
@@ -161,7 +161,7 @@
 
                                     <!-- Search -->
                                     <TextBox Text="{Binding SearchText, Mode=TwoWay}"
-                                             Watermark="{markup:Localize SearchSuggestions}"
+                                             PlaceholderText="{markup:Localize SearchSuggestions}"
                                              IsVisible="{Binding SupportsSearch}" />
 
                                     <!-- Empty state -->

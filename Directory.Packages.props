@@ -22,19 +22,18 @@
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.11" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.11" />
     <!-- Avalonia -->
-    <PackageVersion Include="Avalonia" Version="11.3.20" />
-    <PackageVersion Include="Avalonia.Controls.DataGrid" Version="11.3.13" />
-    <PackageVersion Include="Avalonia.Desktop" Version="11.3.20" />
-    <PackageVersion Include="Avalonia.Diagnostics" Version="11.3.20" />
-    <PackageVersion Include="Avalonia.Fonts.Inter" Version="11.3.20" />
-    <PackageVersion Include="Avalonia.Labs.Notifications" Version="11.3.1" />
-    <PackageVersion Include="Avalonia.Themes.Fluent" Version="11.3.20" />
+    <PackageVersion Include="Avalonia" Version="12.1.1" />
+    <PackageVersion Include="Avalonia.Controls.DataGrid" Version="12.1.2" />
+    <PackageVersion Include="Avalonia.Desktop" Version="12.1.1" />
+    <PackageVersion Include="Avalonia.Fonts.Inter" Version="12.1.1" />
+    <PackageVersion Include="Avalonia.Labs.Notifications" Version="12.0.2" />
+    <PackageVersion Include="Avalonia.Themes.Fluent" Version="12.1.1" />
     <!-- UI -->
     <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageVersion Include="DesktopNotifications.Windows" Version="1.3.1" />
     <PackageVersion Include="FontAwesome6.Svg" Version="2.5.1" />
     <PackageVersion Include="Hardcodet.NotifyIcon.Wpf" Version="2.0.1" />
-    <PackageVersion Include="Material.Icons.Avalonia" Version="3.0.0" />
+    <PackageVersion Include="Material.Icons.Avalonia" Version="3.0.2" />
     <PackageVersion Include="MaterialDesignColors" Version="5.3.2" />
     <PackageVersion Include="MaterialDesignThemes" Version="5.3.2" />
     <!-- Testing -->

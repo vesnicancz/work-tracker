@@ -15,7 +15,7 @@
         WindowStartupLocation="CenterOwner"
         CanResize="False"
         ShowInTaskbar="False"
-        SystemDecorations="None"
+        WindowDecorations="None"
         Background="Transparent">
 
     <Window.Resources>
@@ -67,12 +67,12 @@
 
                 <!-- Ticket ID -->
                 <TextBox Text="{Binding TicketId, Mode=TwoWay}"
-                         Watermark="{markup:Localize TicketIdOptional}"
+                         PlaceholderText="{markup:Localize TicketIdOptional}"
                          MaxLength="50" />
 
                 <!-- Description -->
                 <TextBox Text="{Binding Description, Mode=TwoWay}"
-                         Watermark="{markup:Localize DescriptionOptional}"
+                         PlaceholderText="{markup:Localize DescriptionOptional}"
                          MaxLength="500"
                          AcceptsReturn="True"
                          TextWrapping="Wrap"
@@ -87,7 +87,7 @@
                                         HorizontalAlignment="Stretch" />
                     <TextBox Grid.Column="2"
                              Text="{Binding StartTime, Mode=TwoWay, Converter={StaticResource TimeSpanToStringConverter}, ConverterParameter='HH:mm'}"
-                             Watermark="HH:mm"
+                             PlaceholderText="HH:mm"
                              FontFamily="{DynamicResource FontFamilyMono}"
                              Width="80" />
                 </Grid>
@@ -105,7 +105,7 @@
                                             HorizontalAlignment="Stretch" />
                         <TextBox Grid.Column="2"
                                  Text="{Binding EndTime, Mode=TwoWay, Converter={StaticResource TimeSpanToStringConverter}, ConverterParameter='HH:mm'}"
-                                 Watermark="HH:mm"
+                                 PlaceholderText="HH:mm"
                                  FontFamily="{DynamicResource FontFamilyMono}"
                                  Width="80" />
                     </Grid>

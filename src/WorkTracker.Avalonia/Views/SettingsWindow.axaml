@@ -15,7 +15,7 @@
         WindowStartupLocation="CenterOwner"
         CanResize="False"
         ShowInTaskbar="False"
-        SystemDecorations="None"
+        WindowDecorations="None"
         Background="Transparent">
 
     <Border CornerRadius="{DynamicResource WindowCornerRadius}"
@@ -261,11 +261,11 @@
                                                    IsVisible="{Binding IsAddingFavorite}" />
 
                                         <TextBox Text="{Binding EditingFavoriteName, Mode=TwoWay}"
-                                                 Watermark="{markup:Localize FavoriteName}" FontSize="12" />
+                                                 PlaceholderText="{markup:Localize FavoriteName}" FontSize="12" />
                                         <TextBox Text="{Binding EditingFavoriteTicket, Mode=TwoWay}"
-                                                 Watermark="{markup:Localize FavoriteTicket}" FontSize="12" />
+                                                 PlaceholderText="{markup:Localize FavoriteTicket}" FontSize="12" />
                                         <TextBox Text="{Binding EditingFavoriteDescription, Mode=TwoWay}"
-                                                 Watermark="{markup:Localize FavoriteDescription}"
+                                                 PlaceholderText="{markup:Localize FavoriteDescription}"
                                                  FontSize="12" TextWrapping="Wrap"
                                                  AcceptsReturn="True" MinHeight="50" />
 
@@ -440,7 +440,7 @@
                                                             <StackPanel IsVisible="{Binding IsTextInput}" Spacing="3">
                                                                 <TextBlock Text="{Binding Label}" FontSize="12" FontWeight="Medium" />
                                                                 <TextBox Text="{Binding Value, Mode=TwoWay}"
-                                                                         Watermark="{Binding Placeholder}"
+                                                                         PlaceholderText="{Binding Placeholder}"
                                                                          FontSize="12" />
                                                             </StackPanel>
                                                             <CheckBox IsVisible="{Binding IsCheckbox}"
