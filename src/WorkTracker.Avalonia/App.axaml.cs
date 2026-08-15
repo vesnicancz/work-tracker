@@ -46,8 +46,6 @@ public partial class App : global::Avalonia.Application
 
 		if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
 		{
-			desktop.ShutdownRequested += OnShutdownRequested;
-
 			// Read theme and startMinimized directly from settings.json (fast, no DI needed)
 			var (theme, followSystemTheme, lightTheme, darkTheme, startMinimized) = ReadEarlySettings();
 			ApplyThemeMode(followSystemTheme, theme, lightTheme, darkTheme);
@@ -275,20 +273,45 @@ public partial class App : global::Avalonia.Application
 		}
 	}
 
-	private async void OnShutdownRequested(object? sender, ShutdownRequestedEventArgs e)
+	/// <summary>
+	/// Tears down services and the host after the Avalonia main loop has exited
+	/// (called from Program.Main). Runs on the former UI thread with no Dispatcher
+	/// pumping, so the async host teardown is bounded by <paramref name="timeout"/> —
+	/// a stuck plugin must not keep the process alive and block OS shutdown.
+	/// </summary>
+	internal void ShutdownCleanup(TimeSpan timeout)
 	{
 		try
 		{
-			if (_host != null)
+			_hotkeyService?.Unregister();
+
+			if (_host == null)
 			{
-				_hotkeyService?.Unregister();
-				var mainViewModel = _host.Services.GetRequiredService<MainViewModel>();
-				mainViewModel.Dispose();
-				var pluginManager = _host.Services.GetRequiredService<IPluginManager>();
+				return;
+			}
+
+			_host.Services.GetRequiredService<MainViewModel>().Dispose();
+
+			var pluginManager = _host.Services.GetRequiredService<IPluginManager>();
+			var host = _host;
+			var teardown = Task.Run(async () =>
+			{
 				await pluginManager.DisposeAsync();
-				await _host.StopAsync();
+				await host.StopAsync();
+			});
+
+			if (teardown.Wait(timeout))
+			{
 				_host.Dispose();
 			}
+			else
+			{
+				// Skip Dispose — it could block indefinitely too, and the process is exiting anyway
+				LogErrorSafe(new TimeoutException($"Host teardown did not finish within {timeout.TotalSeconds:0} s"),
+					"Host teardown timed out");
+			}
+
+			_host = null;
 		}
 		catch (Exception ex)
 		{
