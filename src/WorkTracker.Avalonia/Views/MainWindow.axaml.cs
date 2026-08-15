@@ -68,7 +68,11 @@ public partial class MainWindow : Window
 
 	private void OnWindowClosing(object? sender, WindowClosingEventArgs e)
 	{
-		if (_settingsService?.Settings.CloseWindowBehavior == CloseWindowBehavior.MinimizeToTray)
+		// Minimize-to-tray must only intercept user-initiated closes; cancelling a close
+		// with reason ApplicationShutdown/OSShutdown aborts the whole shutdown and blocks
+		// OS power-off on Linux (session manager keeps waiting for the app to exit).
+		if (e.CloseReason == WindowCloseReason.WindowClosing
+			&& _settingsService?.Settings.CloseWindowBehavior == CloseWindowBehavior.MinimizeToTray)
 		{
 			e.Cancel = true;
 			(DataContext as MainViewModel)?.PauseTimer();

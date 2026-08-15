@@ -25,6 +25,7 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 	private TrayIcon? _trayIcon;
 	private NativeMenu? _menu;
 	private bool _isInitialized;
+	private bool _disposed;
 	private readonly List<NativeMenuItem> _favoriteMenuItems = new();
 	private readonly CancellationTokenSource _cts = new();
 	private NativeMenuItemSeparator? _favoritesSeparator;
@@ -174,6 +175,14 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 
 	public void Dispose()
 	{
+		// Called both from MainWindow.OnWindowClosing and from host/container disposal —
+		// the second call must not touch the already-disposed CancellationTokenSource
+		if (_disposed)
+		{
+			return;
+		}
+		_disposed = true;
+
 		_worklogStateService.IsTrackingChanged -= OnIsTrackingChanged;
 		_cts.Cancel();
 		_cts.Dispose();
