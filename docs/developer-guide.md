@@ -31,7 +31,6 @@ Praktický průvodce pro vývojáře, kteří chtějí pracovat na samotném Wor
 - **Git**
 - **IDE** — Rider nebo Visual Studio 2022+. VS Code s C# Dev Kit také funguje.
 - **SQLite browser** (volitelné) — DB Browser for SQLite nebo `sqlite3` CLI pro ad‑hoc inspekci `worktracker.db`.
-- **Windows** pro WPF projekt; Linux/macOS pro zbytek.
 - **EF Core CLI** — `dotnet tool install --global dotnet-ef` (pro migrace).
 
 ---
@@ -63,7 +62,6 @@ work-tracker/
 │   ├── WorkTracker.Infrastructure/       # EF Core, plugins, MSAL, secure storage
 │   ├── WorkTracker.UI.Shared/            # Sdílené ViewModely, orchestrátory, služby
 │   ├── WorkTracker.CLI/                  # Spectre.Console klient
-│   ├── WorkTracker.WPF/                  # WPF GUI (Windows)
 │   ├── WorkTracker.Avalonia/             # Avalonia GUI (cross-platform)
 │   └── WorkTracker.Plugin.Abstractions/  # Plugin API
 ├── plugins/
@@ -116,14 +114,6 @@ dotnet run --project src/WorkTracker.Avalonia
 
 Při prvním spuštění se vytvoří databáze. Pluginy se discoverují z adresáře vedle binárky — při debugování je to `src/WorkTracker.Avalonia/bin/Debug/net10.0/plugins/`, kam se plugin dostane buď přes `dotnet publish` plugin projektu do té složky, nebo ručním zkopírováním DLL.
 
-### WPF
-
-```bash
-dotnet run --project src/WorkTracker.WPF
-```
-
-Pouze Windows (target `net10.0-windows`).
-
 ### Plugin projekty
 
 Pluginy samy nejsou spustitelné. Build:
@@ -132,7 +122,7 @@ Pluginy samy nejsou spustitelné. Build:
 dotnet build plugins/WorkTracker.Plugin.Atlassian
 ```
 
-A pro lokální testování v Avalonia / WPF:
+A pro lokální testování v Avalonia:
 
 ```bash
 dotnet publish plugins/WorkTracker.Plugin.Atlassian -c Debug \
@@ -543,7 +533,7 @@ Push + PR na `master`:
 4. `dotnet build --no-restore`
 5. `dotnet test --no-build --verbosity normal`
 
-Běží na `ubuntu-latest`. WPF projekt (`net10.0-windows`) se **na Linuxu kompilované builduje** díky globálnímu nastavení `<EnableWindowsTargeting>true</EnableWindowsTargeting>` v `Directory.Build.props` — kompilace projde, ale runtime scénář (spuštění WPF aplikace) je jen Windows.
+Běží na `ubuntu-latest` — všechny projekty cílí na cross‑platform `net10.0`, takže build i testy projdou na Linuxu bez speciálního nastavení.
 
 ### `.github/workflows/release.yml`
 
@@ -551,10 +541,9 @@ Trigger: push tagu `v*`. Jobs:
 
 1. **test** (ubuntu) — spustí celou test sadu před release.
 2. **publish-cli** (matrix: win-x64, linux-x64, osx-x64, osx-arm64) — `dotnet publish` s `PublishSingleFile=true`, `SelfContained=false`, zip artifact.
-3. **publish-wpf** (windows-latest) — WPF jen pro Windows, zip přes `Compress-Archive`.
-4. **publish-avalonia** (matrix: win-x64, linux-x64, osx-x64, osx-arm64, win-arm64) — Avalonia pro všechny platformy.
-5. **publish-plugins** (matrix: Atlassian, Luxafor, GoranG3, Office365Calendar) — každý plugin samostatně.
-6. **release** — stáhne artifacty a vytvoří GitHub Release.
+3. **publish-avalonia** (matrix: win-x64, linux-x64, osx-x64, osx-arm64, win-arm64) — Avalonia pro všechny platformy.
+4. **publish-plugins** (matrix: Atlassian, Luxafor, GoranG3, Office365Calendar) — každý plugin samostatně.
+5. **release** — stáhne artifacty a vytvoří GitHub Release.
 
 Artifacty jsou framework‑dependent (bez runtime). Kdo chce self‑contained, buildí si sám.
 
@@ -592,9 +581,9 @@ Artifacty jsou framework‑dependent (bez runtime). Kdo chce self‑contained, b
 - **CS0618** — obsolete API. Obvykle je v error message už předepsaný migration path.
 - **Analyzer warning** (StyleCop / Roslynator) — nech analyzer vyjet v IDE, oprav podle hintu.
 
-### `file is locked` při buildu WPF projektu
+### `file is locked` při buildu GUI projektu
 
-Zavři všechny instance WPF aplikace (i ty v tray), pak `dotnet build` znovu.
+Zavři všechny běžící instance aplikace (i ty v tray), pak `dotnet build` znovu.
 
 ### Plugin se po publishi neobjevuje
 

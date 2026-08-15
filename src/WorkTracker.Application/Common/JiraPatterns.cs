@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 namespace WorkTracker.Application.Common;
 
 /// <summary>
-/// Shared Jira-related patterns used across CLI and WPF presentation layers
+/// Shared Jira-related patterns used across CLI and GUI presentation layers
 /// </summary>
 public static partial class JiraPatterns
 {

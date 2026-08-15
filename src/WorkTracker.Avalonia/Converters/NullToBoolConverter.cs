@@ -5,7 +5,7 @@ namespace WorkTracker.Avalonia.Converters;
 
 /// <summary>
 /// Returns <see langword="true"/> when the bound value is not null, <see langword="false"/> when
-/// it is null. Use with <c>IsVisible</c> to replace the WPF NullToVisibilityConverter.
+/// it is null. Use with <c>IsVisible</c> (Avalonia's equivalent of a WPF-style NullToVisibilityConverter).
 /// Pass "Inverse" as the converter parameter to reverse the logic.
 /// </summary>
 public class NullToBoolConverter : IValueConverter
