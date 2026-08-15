@@ -40,6 +40,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <AvaloniaResource Include="Resources\Fonts\JetBrainsMono-Regular.ttf" />
+    <AvaloniaResource Include="Resources\Fonts\JetBrainsMono-Bold.ttf" />
+    <AvaloniaResource Include="Resources\Fonts\MaterialSymbolsOutlined.ttf" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Update="appsettings.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

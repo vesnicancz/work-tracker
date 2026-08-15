@@ -126,11 +126,37 @@
                                 <TextBlock Text="{markup:Localize Appearance}" FontSize="13" Foreground="{DynamicResource TextMuted}"
                                            Margin="0,0,0,8" />
 
-                                <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                                <CheckBox IsChecked="{Binding FollowSystemTheme}" Margin="0,0,0,6">
+                                    <StackPanel>
+                                        <TextBlock Text="{markup:Localize FollowSystemTheme}" FontWeight="Medium" />
+                                        <TextBlock Text="{markup:Localize FollowSystemThemeDesc}"
+                                                   Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,2,0,0" />
+                                    </StackPanel>
+                                </CheckBox>
+
+                                <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center"
+                                            IsVisible="{Binding IsSingleThemeMode}">
                                     <TextBlock Text="{markup:Localize Theme}" FontWeight="Medium" VerticalAlignment="Center" />
                                     <ComboBox SelectedItem="{Binding SelectedTheme}"
                                               ItemsSource="{Binding AvailableThemes}"
                                               MinWidth="150" />
+                                </StackPanel>
+
+                                <StackPanel Spacing="8" IsVisible="{Binding FollowSystemTheme}">
+                                    <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                                        <TextBlock Text="{markup:Localize DayTheme}" FontWeight="Medium" VerticalAlignment="Center"
+                                                   Width="80" />
+                                        <ComboBox SelectedItem="{Binding SelectedLightTheme}"
+                                                  ItemsSource="{Binding AvailableLightThemes}"
+                                                  MinWidth="150" />
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                                        <TextBlock Text="{markup:Localize NightTheme}" FontWeight="Medium" VerticalAlignment="Center"
+                                                   Width="80" />
+                                        <ComboBox SelectedItem="{Binding SelectedDarkTheme}"
+                                                  ItemsSource="{Binding AvailableDarkThemes}"
+                                                  MinWidth="150" />
+                                    </StackPanel>
                                 </StackPanel>
 
                             </StackPanel>

@@ -183,6 +183,52 @@ public class SettingsOrchestratorTests
 	}
 
 	[Fact]
+	public async Task SaveSettingsAsync_PersistsFollowSystemThemeAndDayNightSelections()
+	{
+		var request = new SettingsSaveRequest
+		{
+			Theme = "Dark",
+			FollowSystemTheme = true,
+			LightTheme = "Cobalt",
+			DarkTheme = "Eclipse",
+			FavoriteWorkItems = new List<FavoriteWorkItem>(),
+			Plugins = new List<PluginViewModel>()
+		};
+
+		await _orchestrator.SaveSettingsAsync(request, TestContext.Current.CancellationToken);
+
+		_mockSettingsService.Verify(s => s.SaveSettingsAsync(It.Is<ApplicationSettings>(a =>
+			a.FollowSystemTheme == true &&
+			a.LightTheme == "Cobalt" &&
+			a.DarkTheme == "Eclipse"), It.IsAny<CancellationToken>()), Times.Once);
+	}
+
+	[Fact]
+	public async Task SaveSettingsAsync_NullLightAndDarkTheme_PreservesExisting()
+	{
+		var existingSettings = new ApplicationSettings
+		{
+			LightTheme = "Sandstone",
+			DarkTheme = "Synthwave"
+		};
+		_mockSettingsService.Setup(s => s.Settings).Returns(existingSettings);
+
+		var request = new SettingsSaveRequest
+		{
+			LightTheme = null,
+			DarkTheme = null,
+			FavoriteWorkItems = new List<FavoriteWorkItem>(),
+			Plugins = new List<PluginViewModel>()
+		};
+
+		await _orchestrator.SaveSettingsAsync(request, TestContext.Current.CancellationToken);
+
+		_mockSettingsService.Verify(s => s.SaveSettingsAsync(It.Is<ApplicationSettings>(a =>
+			a.LightTheme == "Sandstone" && a.DarkTheme == "Synthwave"),
+			It.IsAny<CancellationToken>()), Times.Once);
+	}
+
+	[Fact]
 	public async Task SaveSettingsAsync_ProtectsPasswordFields()
 	{
 		var plugin = CreateMockPluginWithPasswordField("tempo", "Tempo", "ApiToken");

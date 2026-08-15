@@ -195,7 +195,7 @@
                                                                        VerticalAlignment="Center"
                                                                        Margin="0,0,10,0"
                                                                        FontSize="12"
-                                                                       FontFamily="JetBrains Mono,Consolas,monospace"
+                                                                       FontFamily="{DynamicResource FontFamilyMono}"
                                                                        Foreground="{DynamicResource TextMuted}"
                                                                        IsVisible="{Binding HasTimeSlot}" />
                                                             <!-- Ticket badge (Jira) -->

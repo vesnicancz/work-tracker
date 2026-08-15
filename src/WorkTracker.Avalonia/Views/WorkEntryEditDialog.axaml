@@ -88,7 +88,7 @@
                     <TextBox Grid.Column="2"
                              Text="{Binding StartTime, Mode=TwoWay, Converter={StaticResource TimeSpanToStringConverter}, ConverterParameter='HH:mm'}"
                              Watermark="HH:mm"
-                             FontFamily="JetBrains Mono,Consolas,monospace"
+                             FontFamily="{DynamicResource FontFamilyMono}"
                              Width="80" />
                 </Grid>
 
@@ -106,7 +106,7 @@
                         <TextBox Grid.Column="2"
                                  Text="{Binding EndTime, Mode=TwoWay, Converter={StaticResource TimeSpanToStringConverter}, ConverterParameter='HH:mm'}"
                                  Watermark="HH:mm"
-                                 FontFamily="JetBrains Mono,Consolas,monospace"
+                                 FontFamily="{DynamicResource FontFamilyMono}"
                                  Width="80" />
                     </Grid>
                 </StackPanel>

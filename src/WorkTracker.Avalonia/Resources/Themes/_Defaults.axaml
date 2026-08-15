@@ -1,0 +1,99 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        Theme defaults — safety net loaded BEFORE the active theme.
+        Any token a theme leaves unset falls back to the values defined here.
+
+        Themes can override every key below; this file's job is to:
+          1) guarantee no DynamicResource lookup misses, and
+          2) document the full theme contract in one place.
+
+        Token categories:
+          - Typography (FontFamilyBody, FontFamilyMono, TimerFontSize/Weight)
+          - Geometry & elevation (WindowBoxShadow, CardBoxShadow, ButtonCornerRadius)
+          - DataGrid metrics (DataGridRowMinHeight, DataGridRowFontSize, DataGridCellPadding)
+          - Effects (TimerGlowEffect, AccentDropShadowEffect)
+          - Row state surfaces (RowHoverBackground, RowSelectedBackground, AccentSoftBackground)
+    -->
+
+    <!-- ============ Icon pack & grid styling ============ -->
+    <!-- false = modern Material Symbols Outlined (default for new themes).
+         true  = legacy Material Design Icons (set by themes shipped before the Symbols migration).
+         IconPackIsModern is the negation, used for IsVisible bindings where direct negation
+         of DynamicResource isn't possible. -->
+    <x:Boolean x:Key="IconPackIsLegacy">False</x:Boolean>
+    <x:Boolean x:Key="IconPackIsModern">True</x:Boolean>
+
+    <!-- Grid time-cell font: defaults to mono per designer's `.grid .mono` spec.
+         Old themes override to Inter to preserve their original look. -->
+    <FontFamily x:Key="GridTimeFontFamily">avares://WorkTracker.Avalonia/Resources/Fonts/JetBrainsMono-Regular.ttf#JetBrains Mono, Consolas, Cascadia Mono, monospace</FontFamily>
+
+    <!-- Success button foreground: bright theme success colors need dark text for legibility.
+         Themes with low-contrast/dark success greens keep the white default. -->
+    <SolidColorBrush x:Key="SuccessButtonForeground" Color="#FFFFFF" />
+
+    <!-- ============ Typography ============ -->
+    <FontFamily x:Key="FontFamilyBody">Inter, $Default</FontFamily>
+    <FontFamily x:Key="FontFamilyMono">avares://WorkTracker.Avalonia/Resources/Fonts/JetBrainsMono-Regular.ttf#JetBrains Mono, Consolas, Cascadia Mono, monospace</FontFamily>
+    <FontFamily x:Key="FontFamilyMonoBold">avares://WorkTracker.Avalonia/Resources/Fonts/JetBrainsMono-Bold.ttf#JetBrains Mono, Consolas, Cascadia Mono, monospace</FontFamily>
+    <FontFamily x:Key="FontFamilyIcon">avares://WorkTracker.Avalonia/Resources/Fonts/MaterialSymbolsOutlined.ttf#Material Symbols Outlined</FontFamily>
+    <x:Double x:Key="TimerFontSize">32</x:Double>
+    <x:Double x:Key="PomodoroTimerFontSize">28</x:Double>
+    <x:Double x:Key="TodayTotalFontSize">16</x:Double>
+
+    <!-- ============ Window / Card elevation ============ -->
+    <!-- BoxShadows syntax: "[inset] offsetX offsetY blur spread color" -->
+    <BoxShadows x:Key="WindowBoxShadow">0 4 24 0 #40000000</BoxShadows>
+    <BoxShadows x:Key="CardBoxShadow">0 0 0 0 #00000000</BoxShadows>
+
+    <!-- ============ Buttons ============ -->
+    <CornerRadius x:Key="ButtonCornerRadius">4</CornerRadius>
+    <Thickness x:Key="ButtonPadding">12,6</Thickness>
+
+    <!-- ============ DataGrid ============ -->
+    <x:Double x:Key="DataGridRowMinHeight">32</x:Double>
+    <x:Double x:Key="DataGridRowFontSize">12</x:Double>
+    <x:Double x:Key="DataGridHeaderFontSize">11</x:Double>
+    <FontWeight x:Key="DataGridHeaderFontWeight">Medium</FontWeight>
+    <Thickness x:Key="DataGridCellPadding">8,4</Thickness>
+
+    <!-- ============ Effects ============ -->
+    <!-- Default = invisible no-op effect. Themes override with a real glow if desired.
+         TimerGlowEffect      → applied to the big "elapsed time" digits in the active card
+         PomodoroGlowEffect   → applied to the Pomodoro phase timer digits
+         AccentGlowEffect     → reserved for future accent labels/ticket cells -->
+    <DropShadowEffect x:Key="TimerGlowEffect"
+                      Color="#00000000"
+                      BlurRadius="0"
+                      OffsetX="0"
+                      OffsetY="0"
+                      Opacity="0" />
+    <DropShadowEffect x:Key="PomodoroGlowEffect"
+                      Color="#00000000"
+                      BlurRadius="0"
+                      OffsetX="0"
+                      OffsetY="0"
+                      Opacity="0" />
+    <DropShadowEffect x:Key="AccentGlowEffect"
+                      Color="#00000000"
+                      BlurRadius="0"
+                      OffsetX="0"
+                      OffsetY="0"
+                      Opacity="0" />
+
+    <!-- ============ Pomodoro phase foregrounds ============ -->
+    <!-- Timer digit color per Pomodoro phase. Every theme overrides all three
+         (typically with its DangerRed/SuccessGreen/InfoBlue; bold themes may use
+         their accent for the work phase) — these are lookup-miss safety nets only. -->
+    <SolidColorBrush x:Key="PomodoroWorkForeground" Color="#E06C75" />
+    <SolidColorBrush x:Key="PomodoroBreakForeground" Color="#98C379" />
+    <SolidColorBrush x:Key="PomodoroLongBreakForeground" Color="#61AFEF" />
+
+    <!-- ============ Row state surfaces ============ -->
+    <!-- Themes that want a tinted selection (color-mix of accent + transparent) should override these. -->
+    <SolidColorBrush x:Key="RowHoverBackground" Color="#14FFFFFF" />
+    <SolidColorBrush x:Key="RowSelectedBackground" Color="#22FFFFFF" />
+    <SolidColorBrush x:Key="AccentSoftBackground" Color="#22FFFFFF" />
+
+</ResourceDictionary>

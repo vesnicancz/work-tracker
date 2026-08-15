@@ -48,6 +48,9 @@
     <SolidColorBrush x:Key="PomodoroBreakCardBorder"          Color="#2B5C3D" />
     <SolidColorBrush x:Key="PomodoroLongBreakCardBackground"  Color="#15202A" />
     <SolidColorBrush x:Key="PomodoroLongBreakCardBorder"      Color="#2B3D5C" />
+    <SolidColorBrush x:Key="PomodoroWorkForeground"           Color="#F87C88" />
+    <SolidColorBrush x:Key="PomodoroBreakForeground"          Color="#69B090" />
+    <SolidColorBrush x:Key="PomodoroLongBreakForeground"      Color="#71A3EF" />
 
     <!-- Buttons -->
     <SolidColorBrush x:Key="ButtonSecondaryBg"   Color="#322C43" />
@@ -110,5 +113,22 @@
     <SolidColorBrush x:Key="RowActionPlayColor" Color="#169068" />
     <SolidColorBrush x:Key="RowActionEditColor" Color="#2a7deb" />
     <SolidColorBrush x:Key="RowActionDeleteColor" Color="#e1465e" />
+
+    <!-- ============ Theme contract extensions ============ -->
+    <!-- Values preserve the theme's prior look (no glow, prior datagrid metrics, MDI icons, system mono). -->
+    <x:Boolean x:Key="IconPackIsLegacy">True</x:Boolean>
+    <x:Boolean x:Key="IconPackIsModern">False</x:Boolean>
+    <FontFamily x:Key="FontFamilyMono">Consolas, Cascadia Mono, monospace</FontFamily>
+    <FontFamily x:Key="GridTimeFontFamily">Inter, $Default</FontFamily>
+    <FontWeight x:Key="DataGridHeaderFontWeight">SemiBold</FontWeight>
+    <BoxShadows x:Key="WindowBoxShadow">0 4 24 0 #40000000</BoxShadows>
+    <BoxShadows x:Key="CardBoxShadow">0 0 0 0 #00000000</BoxShadows>
+    <DropShadowEffect x:Key="TimerGlowEffect" Color="#00000000" BlurRadius="0" Opacity="0" />
+    <SolidColorBrush x:Key="AccentSoftBackground"  Color="#22A660D4" />
+    <SolidColorBrush x:Key="RowHoverBackground"    Color="#14FFFFFF" />
+    <SolidColorBrush x:Key="RowSelectedBackground" Color="#22A660D4" />
+    <CornerRadius x:Key="ButtonCornerRadius">4</CornerRadius>
+    <x:Double x:Key="DataGridRowMinHeight">32</x:Double>
+    <x:Double x:Key="DataGridRowFontSize">10</x:Double>
 
 </ResourceDictionary>

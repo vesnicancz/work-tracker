@@ -44,7 +44,10 @@ public class SettingsViewModel : ViewModelBase
 	private string _editingFavoriteDescription = string.Empty;
 	private bool _editingFavoriteShowAsTemplate;
 	private bool _isAddingFavorite;
-	private string _selectedTheme = "Dark";
+	private string _selectedTheme = ApplicationSettings.DefaultTheme;
+	private bool _followSystemTheme;
+	private string _selectedLightTheme = ThemeCatalog.DefaultLightTheme;
+	private string _selectedDarkTheme = ThemeCatalog.DefaultDarkTheme;
 
 	public SettingsViewModel(
 		ISettingsOrchestrator orchestrator,
@@ -64,7 +67,10 @@ public class SettingsViewModel : ViewModelBase
 		_startWithWindows = _autostartManager.IsEnabled;
 		_startMinimized = _settingsService.Settings.StartMinimized;
 		_checkForUpdates = _settingsService.Settings.CheckForUpdates;
-		_selectedTheme = _settingsService.Settings.Theme ?? "Dark";
+		_selectedTheme = _settingsService.Settings.Theme ?? ApplicationSettings.DefaultTheme;
+		_followSystemTheme = _settingsService.Settings.FollowSystemTheme;
+		_selectedLightTheme = ResolveLightTheme(_settingsService.Settings.LightTheme);
+		_selectedDarkTheme = ResolveDarkTheme(_settingsService.Settings.DarkTheme);
 
 		// Load Pomodoro settings
 		var pomodoro = _settingsService.Settings.Pomodoro;
@@ -168,7 +174,11 @@ public class SettingsViewModel : ViewModelBase
 	public string RuntimeVersion => $".NET {Environment.Version}";
 	public string PlatformInfo => System.Runtime.InteropServices.RuntimeInformation.OSDescription;
 
-	public string[] AvailableThemes { get; } = [.. new[] { "Dark", "Light", "Midnight", "Modern Blue", "Purple" }.OrderBy(t => t)];
+	public string[] AvailableThemes { get; } = ThemeCatalog.AllThemes;
+
+	public string[] AvailableLightThemes { get; } = ThemeCatalog.LightThemesSorted;
+
+	public string[] AvailableDarkThemes { get; } = ThemeCatalog.DarkThemesSorted;
 
 	public string SelectedTheme
 	{
@@ -177,10 +187,60 @@ public class SettingsViewModel : ViewModelBase
 		{
 			if (SetProperty(ref _selectedTheme, value))
 			{
-				App.SwitchTheme(value);
+				ApplyThemePreview();
 			}
 		}
 	}
+
+	public bool FollowSystemTheme
+	{
+		get => _followSystemTheme;
+		set
+		{
+			if (SetProperty(ref _followSystemTheme, value))
+			{
+				OnPropertyChanged(nameof(IsSingleThemeMode));
+				ApplyThemePreview();
+			}
+		}
+	}
+
+	public bool IsSingleThemeMode => !_followSystemTheme;
+
+	public string SelectedLightTheme
+	{
+		get => _selectedLightTheme;
+		set
+		{
+			if (SetProperty(ref _selectedLightTheme, value))
+			{
+				ApplyThemePreview();
+			}
+		}
+	}
+
+	public string SelectedDarkTheme
+	{
+		get => _selectedDarkTheme;
+		set
+		{
+			if (SetProperty(ref _selectedDarkTheme, value))
+			{
+				ApplyThemePreview();
+			}
+		}
+	}
+
+	private void ApplyThemePreview()
+	{
+		App.ApplyThemeMode(_followSystemTheme, _selectedTheme, _selectedLightTheme, _selectedDarkTheme);
+	}
+
+	private static string ResolveLightTheme(string? saved)
+		=> !string.IsNullOrEmpty(saved) && ThemeCatalog.IsLight(saved) ? saved : ThemeCatalog.DefaultLightTheme;
+
+	private static string ResolveDarkTheme(string? saved)
+		=> !string.IsNullOrEmpty(saved) && !ThemeCatalog.IsLight(saved) ? saved : ThemeCatalog.DefaultDarkTheme;
 
 	public Action? CloseAction { get; set; }
 	public bool DialogResult { get; set; }
@@ -365,6 +425,9 @@ public class SettingsViewModel : ViewModelBase
 				StartMinimized = StartMinimized,
 				CheckForUpdates = CheckForUpdates,
 				Theme = SelectedTheme,
+				FollowSystemTheme = FollowSystemTheme,
+				LightTheme = SelectedLightTheme,
+				DarkTheme = SelectedDarkTheme,
 				FavoriteWorkItems = FavoriteWorkItems.ToList(),
 				Plugins = Plugins.ToList(),
 				Pomodoro = new PomodoroSettings

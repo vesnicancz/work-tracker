@@ -1,0 +1,131 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        Palette: Coral
+        Bold warm-light theme: peach paper, coral red accent, deep teal status.
+        Energetic but never shouty. Sister theme to the "Synthwave" dark.
+    -->
+
+    <!-- Background / Surface -->
+    <SolidColorBrush x:Key="AppBackground"       Color="#FFF6F1" />
+    <SolidColorBrush x:Key="SidebarBackground"   Color="#FFE9DC" />
+    <SolidColorBrush x:Key="SidebarBorder"       Color="#F4C9AC" />
+    <SolidColorBrush x:Key="CardBackground"      Color="#FFFFFF" />
+    <SolidColorBrush x:Key="CardBorder"          Color="#FAD3BC" />
+    <SolidColorBrush x:Key="InputBackground"     Color="#FFFFFF" />
+    <SolidColorBrush x:Key="InputBorder"         Color="#F2B89E" />
+
+    <!-- Text -->
+    <SolidColorBrush x:Key="TextPrimary"         Color="#2D1B1A" />
+    <SolidColorBrush x:Key="TextSecondary"       Color="#6B4A4A" />
+    <SolidColorBrush x:Key="TextMuted"           Color="#B08886" />
+    <SolidColorBrush x:Key="TextBright"          Color="#1A0E0E" />
+
+    <!-- Accent / Status -->
+    <SolidColorBrush x:Key="AccentBlue"          Color="#E84C61" />
+    <SolidColorBrush x:Key="AccentBlueDark"      Color="#D03A50" />
+    <SolidColorBrush x:Key="AccentBluePressed"   Color="#B52E42" />
+    <SolidColorBrush x:Key="SuccessGreen"        Color="#0FA98E" />
+    <SolidColorBrush x:Key="SuccessGreenDark"    Color="#0C8E76" />
+    <SolidColorBrush x:Key="SuccessGreenPressed" Color="#0A745F" />
+    <SolidColorBrush x:Key="DangerRed"           Color="#C73B5E" />
+    <SolidColorBrush x:Key="DangerRedDark"       Color="#AC2D4E" />
+    <SolidColorBrush x:Key="DangerRedPressed"    Color="#8E223E" />
+    <SolidColorBrush x:Key="WarningYellow"       Color="#E89B12" />
+    <SolidColorBrush x:Key="InfoBlue"            Color="#3B82B8" />
+    <SolidColorBrush x:Key="SeparatorColor"      Color="#FAD3BC" />
+
+    <!-- Active tracking card (mint-tinted surface) -->
+    <SolidColorBrush x:Key="ActiveCardBackground" Color="#E3F7F1" />
+    <SolidColorBrush x:Key="ActiveCardBorder"     Color="#7AD0BB" />
+
+    <!-- Pomodoro phase cards -->
+    <SolidColorBrush x:Key="PomodoroWorkCardBackground"      Color="#FCE3E8" />
+    <SolidColorBrush x:Key="PomodoroWorkCardBorder"           Color="#E89AAA" />
+    <SolidColorBrush x:Key="PomodoroBreakCardBackground"      Color="#E3F7F1" />
+    <SolidColorBrush x:Key="PomodoroBreakCardBorder"          Color="#7AD0BB" />
+    <SolidColorBrush x:Key="PomodoroLongBreakCardBackground"  Color="#EDE6F9" />
+    <SolidColorBrush x:Key="PomodoroLongBreakCardBorder"      Color="#B49CDC" />
+    <!-- Work-phase digits use the coral accent (designer's pomo-work-fg), not DangerRed. -->
+    <SolidColorBrush x:Key="PomodoroWorkForeground"           Color="#E84C61" />
+    <SolidColorBrush x:Key="PomodoroBreakForeground"          Color="#0FA98E" />
+    <SolidColorBrush x:Key="PomodoroLongBreakForeground"      Color="#3B82B8" />
+
+    <!-- Button -->
+    <SolidColorBrush x:Key="ButtonSecondaryBg"   Color="#FFE0CE" />
+    <SolidColorBrush x:Key="ButtonSecondaryFg"   Color="#2D1B1A" />
+    <SolidColorBrush x:Key="AccentButtonFg"      Color="#FFFFFF" />
+    <SolidColorBrush x:Key="WarningButtonBg"        Color="#FFEFD4" />
+    <SolidColorBrush x:Key="WarningButtonBgHover"   Color="#FBE3B7" />
+    <SolidColorBrush x:Key="WarningButtonBgPressed"  Color="#F6D69A" />
+    <SolidColorBrush x:Key="WarningButtonBorder"     Color="#DCAB55" />
+    <SolidColorBrush x:Key="WarningButtonFg"         Color="#8A5300" />
+
+    <!-- Avalonia system overrides -->
+    <SolidColorBrush x:Key="SolidBackgroundFillColorBaseBrush"           Color="#FFF6F1" />
+    <SolidColorBrush x:Key="ApplicationPageBackgroundThemeBrush"          Color="#FFF6F1" />
+    <SolidColorBrush x:Key="LayerFillColorDefaultBrush"                   Color="#FFF6F1" />
+    <SolidColorBrush x:Key="LayerOnMicaBaseAltFillColorDefaultBrush"      Color="#FFE9DC" />
+    <SolidColorBrush x:Key="CardBackgroundFillColorDefaultBrush"          Color="#FFFFFF" />
+    <SolidColorBrush x:Key="CardStrokeColorDefaultBrush"                  Color="#FAD3BC" />
+    <SolidColorBrush x:Key="ControlFillColorDefaultBrush"                 Color="#FFFFFF" />
+    <SolidColorBrush x:Key="ControlFillColorSecondaryBrush"               Color="#FFF1E6" />
+    <SolidColorBrush x:Key="ControlFillColorTertiaryBrush"                Color="#FFE0CE" />
+    <SolidColorBrush x:Key="ControlStrokeColorDefaultBrush"               Color="#F2B89E" />
+    <SolidColorBrush x:Key="ControlStrokeColorSecondaryBrush"             Color="#E0A083" />
+    <SolidColorBrush x:Key="TextFillColorPrimaryBrush"                    Color="#2D1B1A" />
+    <SolidColorBrush x:Key="TextFillColorSecondaryBrush"                  Color="#6B4A4A" />
+    <SolidColorBrush x:Key="TextFillColorTertiaryBrush"                   Color="#B08886" />
+    <SolidColorBrush x:Key="TextFillColorDisabledBrush"                   Color="#D0AEAB" />
+    <SolidColorBrush x:Key="DividerStrokeColorDefaultBrush"               Color="#FAD3BC" />
+    <Color x:Key="SystemAccentColor">#E84C61</Color>
+    <Color x:Key="SystemAccentColorLight1">#F06D7E</Color>
+    <Color x:Key="SystemAccentColorLight2">#F58FA0</Color>
+    <Color x:Key="SystemAccentColorDark1">#D03A50</Color>
+    <Color x:Key="SystemAccentColorDark2">#B52E42</Color>
+    <SolidColorBrush x:Key="SuccessBrush"    Color="#0FA98E" />
+    <SolidColorBrush x:Key="WarningBrush"    Color="#E89B12" />
+    <SolidColorBrush x:Key="ErrorBrush"      Color="#C73B5E" />
+    <SolidColorBrush x:Key="InfoBrush"       Color="#3B82B8" />
+
+    <!-- Extended layout parameters -->
+    <CornerRadius x:Key="CardCornerRadius">10</CornerRadius>
+    <Thickness x:Key="CardPadding">14</Thickness>
+
+    <!-- Window chrome -->
+    <SolidColorBrush x:Key="TitleBarBackground" Color="#FFE9DC" />
+    <Thickness x:Key="TitleBarBorderThickness">0,0,0,1</Thickness>
+    <CornerRadius x:Key="WindowCornerRadius">12</CornerRadius>
+    <CornerRadius x:Key="WindowTopCornerRadius">12,12,0,0</CornerRadius>
+    <CornerRadius x:Key="SidebarCornerRadius">0,0,0,12</CornerRadius>
+    <Thickness x:Key="SidebarMargin">0</Thickness>
+    <Thickness x:Key="SidebarBorderThickness">0,0,1,0</Thickness>
+    <SolidColorBrush x:Key="DialogBackground" Color="#FFE9DC" />
+    <SolidColorBrush x:Key="WindowControlForeground" Color="#6B4A4A" />
+    <SolidColorBrush x:Key="AppTitleForeground"      Color="#B08886" />
+    <x:Double x:Key="WindowControlIconSize">14</x:Double>
+    <x:Double x:Key="ToolbarIconSize">16</x:Double>
+    <HorizontalAlignment x:Key="TitleBarAlignment">Left</HorizontalAlignment>
+    <x:Boolean x:Key="ShowDialogTitleBar">True</x:Boolean>
+    <Thickness x:Key="ToasterMargin">0,0,0,12</Thickness>
+    <x:Double x:Key="RowActionsDefaultOpacity">1</x:Double>
+    <SolidColorBrush x:Key="RowActionPlayColor" Color="#0FA98E" />
+    <SolidColorBrush x:Key="RowActionEditColor" Color="#6B4A4A" />
+    <SolidColorBrush x:Key="RowActionDeleteColor" Color="#C73B5E" />
+
+    <!-- ============ Theme contract extensions ============ -->
+    <!-- Warm peach drop shadow + rounder buttons + roomier grid per designer's bold look. -->
+    <BoxShadows x:Key="WindowBoxShadow">0 20 60 -16 #33000000, 0 6 18 -6 #1F000000</BoxShadows>
+    <BoxShadows x:Key="CardBoxShadow">0 2 6 0 #14000000</BoxShadows>
+    <DropShadowEffect x:Key="TimerGlowEffect" Color="#00000000" BlurRadius="0" Opacity="0" />
+    <SolidColorBrush x:Key="AccentSoftBackground"  Color="#22E84C61" />
+    <SolidColorBrush x:Key="RowHoverBackground"    Color="#0A2D1B1A" />
+    <SolidColorBrush x:Key="RowSelectedBackground" Color="#24E84C61" />
+    <CornerRadius x:Key="ButtonCornerRadius">6</CornerRadius>
+    <Thickness x:Key="ButtonPadding">14,8</Thickness>
+    <x:Double x:Key="DataGridRowMinHeight">36</x:Double>
+    <x:Double x:Key="DataGridRowFontSize">13</x:Double>
+    <Thickness x:Key="DataGridCellPadding">10,7</Thickness>
+
+</ResourceDictionary>
