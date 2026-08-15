@@ -307,7 +307,7 @@ public override PluginMetadata Metadata => new()
 
 **`Id` je kritický** — používá se pro persistenci konfigurace, enabled state, reference z UI. Jakmile plugin vydáš, **nezměň Id** — uživatelé by ztratili konfiguraci. Vhodná konvence: `{doména}.{funkce}`, např. `tempo.worklog`, `jira.suggestions`.
 
-**`IconName`** je hint pro Avalonia UI. Materiál ikony najdeš na [pictogrammers.com/library/mdi](https://pictogrammers.com/library/mdi/). WPF UI tento hint ignoruje (používá Material Design palety).
+**`IconName`** je hint pro Avalonia UI. Materiál ikony najdeš na [pictogrammers.com/library/mdi](https://pictogrammers.com/library/mdi/).
 
 ---
 

@@ -8,7 +8,7 @@
 [![C# 13](https://img.shields.io/badge/C%23-13-blue)](https://learn.microsoft.com/en-us/dotnet/csharp/)
 ![Platform](https://img.shields.io/badge/platform-Windows%20|%20Linux%20|%20macOS-lightgrey)
 [![EF Core](https://img.shields.io/badge/EF%20Core-10.0-blueviolet)](https://learn.microsoft.com/en-us/ef/core/)
-[![Avalonia](https://img.shields.io/badge/Avalonia-11.3-blue)](https://avaloniaui.net/)
+[![Avalonia](https://img.shields.io/badge/Avalonia-12.1-blue)](https://avaloniaui.net/)
 
 ---
 
@@ -16,10 +16,9 @@
 
 ## O projektu
 
-WorkTracker je desktopová aplikace pro sledování času stráveného na pracovních úkolech. Je postavená na .NET 10 s Clean Architecture a nabízí tři způsoby ovládání:
+WorkTracker je desktopová aplikace pro sledování času stráveného na pracovních úkolech. Je postavená na .NET 10 s Clean Architecture a nabízí dva způsoby ovládání:
 
 - **Avalonia GUI** — moderní cross‑platform rozhraní (Windows, Linux, macOS)
-- **WPF GUI** — nativní Windows aplikace s Material Design
 - **CLI** — terminálový klient (Spectre.Console) pro rychlé ovládání z příkazové řádky
 
 Jádro aplikace je rozšiřitelné pomocí pluginů, které jsou načítané z izolovaných `AssemblyLoadContext`. Pluginy pro integraci s Jirou, Tempem, Office 365 kalendářem, Goran G3 a Luxafor LED indikátorem jsou publikované jako samostatné `WorkTracker.Plugin.*.zip` balíčky — nejsou součástí runtime ZIPu aplikace, stáhni si je podle potřeby a rozbal do adresáře `plugins/` vedle spustitelného souboru.
@@ -45,9 +44,7 @@ Jádro aplikace je rozšiřitelné pomocí pluginů, které jsou načítané z i
 
 - [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
 - Git
-- Jedna z podporovaných platforem:
-  - Windows 10/11 — všechny tři frontendy (CLI, WPF, Avalonia)
-  - Linux / macOS — CLI a Avalonia
+- Jedna z podporovaných platforem: Windows 10/11, Linux nebo macOS (CLI i Avalonia jsou cross‑platform)
 
 ### Naklonování a build
 
@@ -68,9 +65,6 @@ dotnet run --project src/WorkTracker.CLI -- help
 
 # Avalonia (cross-platform)
 dotnet run --project src/WorkTracker.Avalonia
-
-# WPF (pouze Windows)
-dotnet run --project src/WorkTracker.WPF
 ```
 
 ### První záznam
@@ -163,7 +157,7 @@ Citlivé údaje (API tokeny, hesla) aplikace ukládá přes `ISecureStorage` do 
 
 V souboru `settings.json` je na jejich místě uložený pouze placeholder `CS:{pluginId}:{fieldKey}`, nikdy plaintext. OAuth tokeny pro pluginy používající MSAL (Office 365 Calendar, Goran G3) jsou v zašifrované cache v `keys/` a při vypršení se obnovují přes **device code flow**.
 
-> **Pluginy v CLI:** Aktuální `WorkTracker.CLI` volá `InitializePluginsAsync` bez enabled‑plugin mapy, takže v CLI **zůstanou všechny pluginy vypnuté** a příkaz `send` skončí s „No worklog upload plugin available“. Konfigurace pluginů se tedy reálně dělá jen v GUI (Avalonia / WPF → **Nastavení → Pluginy**). Jednotlivé plugin docs v [docs/plugins/](docs/plugins/) obsahují ukázkové `appsettings.json` schéma pluginu jako referenci pro integrátory s vlastním hostem, ne jako funkční CLI fallback.
+> **Pluginy v CLI:** Aktuální `WorkTracker.CLI` volá `InitializePluginsAsync` bez enabled‑plugin mapy, takže v CLI **zůstanou všechny pluginy vypnuté** a příkaz `send` skončí s „No worklog upload plugin available“. Konfigurace pluginů se tedy reálně dělá jen v GUI (Avalonia → **Nastavení → Pluginy**). Jednotlivé plugin docs v [docs/plugins/](docs/plugins/) obsahují ukázkové `appsettings.json` schéma pluginu jako referenci pro integrátory s vlastním hostem, ne jako funkční CLI fallback.
 
 > **Bezpečnost:** Necommituj API tokeny do Gitu.
 
@@ -232,7 +226,7 @@ Kompletní návod: [docs/plugin-development.md](docs/plugin-development.md).
 Clean Architecture s jednosměrnými závislostmi:
 
 ```
-Presentation (CLI, WPF, Avalonia)
+Presentation (CLI, Avalonia)
       └─ UI.Shared (ViewModels, Orchestrátory, ISettingsService, ILocalizationService)
             └─ Application (IWorkEntryService, IUnitOfWork, Result<T>, DTOs)
                   └─ Domain (WorkEntry, IWorkEntryRepository, business pravidla)
@@ -253,7 +247,6 @@ work-tracker/
 │   ├── WorkTracker.Infrastructure/       # EF Core, SQLite, PluginManager, MSAL
 │   ├── WorkTracker.UI.Shared/            # Sdílené ViewModely a služby
 │   ├── WorkTracker.CLI/                  # Spectre.Console klient
-│   ├── WorkTracker.WPF/                  # WPF GUI (Windows)
 │   ├── WorkTracker.Avalonia/             # Avalonia GUI (cross-platform)
 │   └── WorkTracker.Plugin.Abstractions/  # Plugin API
 ├── plugins/

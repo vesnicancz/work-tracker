@@ -75,7 +75,7 @@ Všechna zařízení komunikují přes **HID API**. Plugin používá NuGet knih
 
 ### Reakce na Pomodoro
 
-Avalonia/WPF aplikace si předplatí `IPomodoroService.PhaseChanged`. Při eventu:
+Avalonia aplikace si předplatí `IPomodoroService.PhaseChanged`. Při eventu:
 
 ```csharp
 void OnPhaseChanged(PomodoroPhase newPhase)

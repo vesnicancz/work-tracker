@@ -57,7 +57,7 @@ public static class WorkTrackerPaths
 	public static string SettingsFilePath => _settingsFilePath.Value;
 
 	/// <summary>
-	/// Default log file path for GUI applications (Avalonia, WPF).
+	/// Default log file path for GUI applications (Avalonia).
 	/// Serilog appends the date before the extension (e.g. worktracker-20260408.log).
 	/// </summary>
 	public static string LogFilePath => _logFilePath.Value;

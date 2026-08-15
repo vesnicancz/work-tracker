@@ -82,40 +82,6 @@ jobs:
           name: ${{ matrix.artifact }}
           path: publish/${{ matrix.artifact }}.zip
 
-  publish-wpf:
-    name: Publish WPF
-    needs: test
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
-
-      - name: Publish
-        run: >
-          dotnet publish src/WorkTracker.WPF/WorkTracker.WPF.csproj
-          -c ${{ env.CONFIGURATION }}
-          -r win-x64
-          -p:SelfContained=false
-          -p:PublishSingleFile=true
-          -p:IncludeNativeLibrariesForSelfExtract=true
-          -p:DebugType=none
-          -o publish/WorkTracker-WPF-win-x64
-
-      - name: Archive
-        run: Compress-Archive -Path publish/WorkTracker-WPF-win-x64/* -DestinationPath publish/WorkTracker-WPF-win-x64.zip
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: WorkTracker-WPF-win-x64
-          path: publish/WorkTracker-WPF-win-x64.zip
-
   publish-avalonia:
     name: Publish Avalonia (${{ matrix.rid }})
     needs: test
@@ -224,7 +190,7 @@ jobs:
 
   release:
     name: Create GitHub Release
-    needs: [publish-cli, publish-wpf, publish-avalonia, publish-plugins]
+    needs: [publish-cli, publish-avalonia, publish-plugins]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6

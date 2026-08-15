@@ -42,7 +42,7 @@ public class PluginMetadata
 
 	/// <summary>
 	/// Icon name hint for UI display (e.g., "CalendarMonth", "Jira", "LightbulbOutline").
-	/// Maps to MaterialIcon Kind in Avalonia/WPF.
+	/// Maps to MaterialIcon Kind in Avalonia.
 	/// </summary>
 	public string? IconName { get; init; }
 

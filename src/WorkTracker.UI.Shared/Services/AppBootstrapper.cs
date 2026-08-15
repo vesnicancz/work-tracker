@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 namespace WorkTracker.UI.Shared.Services;
 
 /// <summary>
-/// Shared application bootstrapping logic for UI hosts (Avalonia, WPF).
+/// Shared application bootstrapping logic for UI hosts (Avalonia).
 /// Call after building the host and before wiring up the main window.
 /// </summary>
 public static class AppBootstrapper

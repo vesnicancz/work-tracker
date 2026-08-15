@@ -11,16 +11,15 @@ Průvodce ovládáním WorkTrackeru od prvního spuštění až po pokročilé f
 3. [Umístění dat](#umístění-dat)
 4. [CLI](#cli)
 5. [Avalonia GUI](#avalonia-gui)
-6. [WPF GUI](#wpf-gui)
-7. [Konfigurace pluginů](#konfigurace-pluginů)
-8. [Work Suggestions](#work-suggestions)
-9. [Odesílání worklogů](#odesílání-worklogů)
-10. [Pomodoro](#pomodoro)
-11. [Oblíbené položky](#oblíbené-položky)
-12. [System tray a notifikace](#system-tray-a-notifikace)
-13. [Lokalizace a motivy](#lokalizace-a-motivy)
-14. [Automatické aktualizace](#automatické-aktualizace)
-15. [Řešení problémů](#řešení-problémů)
+6. [Konfigurace pluginů](#konfigurace-pluginů)
+7. [Work Suggestions](#work-suggestions)
+8. [Odesílání worklogů](#odesílání-worklogů)
+9. [Pomodoro](#pomodoro)
+10. [Oblíbené položky](#oblíbené-položky)
+11. [System tray a notifikace](#system-tray-a-notifikace)
+12. [Lokalizace a motivy](#lokalizace-a-motivy)
+13. [Automatické aktualizace](#automatické-aktualizace)
+14. [Řešení problémů](#řešení-problémů)
 
 ---
 
@@ -34,7 +33,6 @@ Na stránce [Releases](https://github.com/vesnicancz/work-tracker/releases/lates
 |---------|-------|-----------------|
 | `WorkTracker-CLI-{rid}.zip` | Konzolová aplikace | `win-x64`, `linux-x64`, `osx-x64`, `osx-arm64` |
 | `WorkTracker-Avalonia-{rid}.zip` | Cross‑platform GUI | `win-x64`, `win-arm64`, `linux-x64`, `osx-x64`, `osx-arm64` |
-| `WorkTracker-WPF-win-x64.zip` | WPF GUI (pouze Windows) | `win-x64` |
 | `WorkTracker.Plugin.{Name}.zip` | Platformně neutrální pluginy (Atlassian, GoranG3, Luxafor, Office365Calendar) | — |
 
 **Postup:**
@@ -73,7 +71,7 @@ Při prvním startu aplikace:
 
 Doporučený postup pro nového uživatele:
 
-1. Spusť Avalonia (nebo WPF) GUI.
+1. Spusť Avalonia GUI.
 2. Otevři **Settings** (ozubené kolečko v pravém horním rohu nebo menu).
 3. Nakonfiguruj pluginy, které chceš používat — viz [Konfigurace pluginů](#konfigurace-pluginů).
 4. Nastav Pomodoro, téma a lokalizaci podle chuti.
@@ -423,20 +421,6 @@ Během načítání preview je místo seznamu vidět progress bar s textem „Na
 
 ---
 
-## WPF GUI
-
-Pouze Windows. Funkčnost je prakticky totožná s Avalonia — stejné orchestrátory, stejné ViewModely (platform‑specific wrappery nad sdílenou logikou v `UI.Shared`), jen vizuálně na bázi **Material Design in XAML Toolkit**.
-
-Spustit:
-
-```bash
-dotnet run --project src/WorkTracker.WPF
-```
-
-WPF je udržované především z důvodu hlubší integrace s Windows (system tray přes `Hardcodet.NotifyIcon.Wpf`). Pro nová nasazení preferujeme Avalonia.
-
----
-
 ## Konfigurace pluginů
 
 Pluginy se konfigurují v GUI přes **Settings → Plugins**. Každý plugin vystavuje seznam polí (`PluginConfigurationField`), pro která aplikace vygeneruje formulář.
@@ -669,7 +653,6 @@ Nativní systémové notifikace, které jsou viditelné **i když je hlavní okn
 **Implementace:**
 
 - **Avalonia** používá `Avalonia.Labs.Notifications` (`NativeNotificationManager`), který interně mapuje na nativní platformní API každého OS.
-- **WPF** má vlastní `SystemNotificationService` postavený nad Windows notifikacemi.
 
 ---
 
@@ -705,8 +688,6 @@ K dispozici je **11 motivů** kombinovatelných nad Fluent theme + Material Icon
 | **Eclipse** | Hluboce modročerné povrchy + teplý zlatý akcent |
 | **Sandstone** | Teplý krémový papírový motiv + terakotový akcent |
 | **Synthwave** | Fialovočerná noc + elektricky magentový akcent a azurové info |
-
-WPF aplikace používá pouze Material Design palety (light/dark).
 
 Přepnutí v **Nastavení → Obecné → Vzhled → Motiv**. Motiv se načítá i při startu (early settings read), aby se zabránilo FOUC flash white při otevření okna.
 

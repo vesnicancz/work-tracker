@@ -11,7 +11,7 @@ Pokud tě zajímá **jak napsat vlastní plugin**, jdi rovnou na [plugin-develop
 1. [Diagram vrstev](#diagram-vrstev)
 2. [Vrstvy a odpovědnosti](#vrstvy-a-odpovědnosti)
 3. [Dependency flow](#dependency-flow)
-4. [Presentation: CLI, WPF, Avalonia](#presentation-cli-wpf-avalonia)
+4. [Presentation: CLI, Avalonia](#presentation-cli-avalonia)
 5. [Plugin systém](#plugin-systém)
 6. [Klíčové vzory](#klíčové-vzory)
 7. [Datový tok: příklad odeslání worklogu](#datový-tok-příklad-odeslání-worklogu)
@@ -23,12 +23,12 @@ Pokud tě zajímá **jak napsat vlastní plugin**, jdi rovnou na [plugin-develop
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │  Presentation                                                       │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────────┐   │
-│  │ WorkTracker  │  │ WorkTracker  │  │ WorkTracker.Avalonia     │   │
-│  │ .CLI         │  │ .WPF         │  │ (cross-platform desktop) │   │
-│  └──────┬───────┘  └──────┬───────┘  └──────────┬───────────────┘   │
-│         │                 │                     │                   │
-│         │         ┌───────┴─────────────────────┘                   │
+│  ┌──────────────┐  ┌──────────────────────────┐                     │
+│  │ WorkTracker  │  │ WorkTracker.Avalonia     │                     │
+│  │ .CLI         │  │ (cross-platform desktop) │                     │
+│  └──────┬───────┘  └──────────┬───────────────┘                     │
+│         │                     │                                     │
+│         │         ┌───────────┘                                     │
 │         │         │                                                 │
 │         │  ┌──────▼───────────────────────────────────────────┐     │
 │         │  │ WorkTracker.UI.Shared                            │     │
@@ -141,13 +141,12 @@ UI.Shared závisí na Application, ne přímo na Infrastructure.
 
 ### Presentation
 
-Tři nezávislé projekty:
+Dva nezávislé projekty:
 
 - **`WorkTracker.CLI`** — `Host.CreateApplicationBuilder`, Serilog, Spectre.Console. Command dispatch je ručně v `Program.cs` (switch statement), implementace příkazů v `CommandHandler`.
-- **`WorkTracker.WPF`** — Windows‑only, Material Design. `App.xaml.cs` staví `IHost`, registruje ViewModely a views.
 - **`WorkTracker.Avalonia`** — cross‑platform. `App.axaml.cs` staví DI v background threadu po zobrazení splash okna, aby start byl vizuálně rychlý.
 
-Všechny tři prezentační projekty volají `AddInfrastructure(configuration)` a pak si přidávají své vlastní UI služby.
+Oba prezentační projekty volají `AddInfrastructure(configuration)` a pak si přidávají své vlastní UI služby.
 
 ---
 
@@ -179,19 +178,20 @@ Praktické důsledky:
 
 ---
 
-## Presentation: CLI, WPF, Avalonia
+## Presentation: CLI, Avalonia
 
-Projekt záměrně udržuje **tři paralelní frontendy**. Důvody:
+Projekt záměrně udržuje **dva paralelní frontendy**. Důvody:
 
 - **CLI** — rychlé skriptování, CI integrace, headless servery, automatizace.
-- **WPF** — nejlepší integrace s Windows (tray, taskbar, notifikace přes `NotifyIcon`, jump lists).
-- **Avalonia** — cross‑platform, stejná funkčnost jako WPF, do budoucna preferovaný frontend.
+- **Avalonia** — cross‑platform desktop GUI (Windows, Linux, macOS).
+
+Dříve existoval i třetí frontend **WPF** (Windows‑only); byl odstraněn, protože Avalonia jeho funkčnost plně pokrývá i na Windows a duplicitní údržba se nevyplácela.
 
 ### ViewModely: hybridní přístup
 
-**Root ViewModely** (například `MainViewModel`, `SettingsViewModel`) jsou v každém frontendu vlastní — WPF a Avalonia je nesdílejí. **To je záměr.** Drobné rozdíly v threadingu, messaging a styling bindings způsobí, že pokus o sdílený base class pro celé obrazovky končí kompromisy na obou stranách.
+**Root ViewModely** (například `MainViewModel`, `SettingsViewModel`) jsou frontend‑specifické a žijí přímo v projektu `WorkTracker.Avalonia`. **To je záměr.** Framework‑specifické detaily (threading, messaging, styling bindings) patří k frontendu; sdílený base class pro celé obrazovky by končil kompromisy.
 
-**Sub‑ViewModely**, které nemají framework‑specifickou vazbu, ale jsou naopak znovupoužitelné (například `SuggestionsViewModel`, pomodoro komponenty, plugin konfigurační VM), žijí v `WorkTracker.UI.Shared.ViewModels` a jsou **skládané** do root ViewModelů v obou frontendech. Vedle nich jsou v `UI.Shared` bezstavové služby, orchestrátory a settings.
+**Sub‑ViewModely**, které nemají framework‑specifickou vazbu, ale jsou naopak znovupoužitelné (například `SuggestionsViewModel`, pomodoro komponenty, plugin konfigurační VM), žijí v `WorkTracker.UI.Shared.ViewModels` a jsou **skládané** do root ViewModelů. Vedle nich jsou v `UI.Shared` bezstavové služby, orchestrátory a settings.
 
 ### Dispatch mezi UI a služby
 
@@ -201,7 +201,7 @@ ViewModely volají orchestrátory nebo přímo Application služby. Orchestráto
 - kombinuje víc služeb (načti entries → validuj → otevři dialog → submit → zpracuj chyby),
 - má retry/recovery logiku.
 
-Bez orchestrátoru by toto všechno skončilo ve ViewModelu a duplikovalo se mezi WPF a Avalonia.
+Bez orchestrátoru by toto všechno skončilo ve ViewModelu a orchestrace by se míchala s prezentační logikou.
 
 ---
 

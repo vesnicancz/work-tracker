@@ -28,7 +28,7 @@ dotnet publish src/WorkTracker.CLI -c Release -r win-x64
 Clean Architecture with 4 layers + plugin system. Dependencies flow inward only.
 
 ```
-Presentation (CLI / WPF / Avalonia)
+Presentation (CLI / Avalonia)
   └─ UI.Shared (shared ViewModels, Orchestrators, Services)
        └─ Application (use cases, IWorkEntryService, Result<T>, DTOs)
             └─ Domain (WorkEntry entity, repository interfaces, business rules)
@@ -42,7 +42,7 @@ Plugin.Abstractions (IPlugin, IWorklogUploadPlugin, IWorkSuggestionPlugin, IStat
 - **Application** — Orchestrates use cases. Uses `Result<T>` for error handling (no exceptions for business logic). Registers services via `DependencyInjection.AddApplication()`.
 - **Infrastructure** — EF Core/SQLite, `PluginManager`, repository implementations. Registers everything via `DependencyInjection.AddInfrastructure()` (which calls `AddApplication()` internally).
 - **UI.Shared** — Platform-agnostic ViewModels (CommunityToolkit.Mvvm), Orchestrators that coordinate services, `ILocalizationService`, `ISettingsService`.
-- **Presentation** — Platform-specific UI. Avalonia (cross-platform), WPF (Windows-only), CLI (Spectre.Console). Each has its own DI setup in `Program.cs` / `App.xaml.cs`.
+- **Presentation** — Platform-specific UI. Avalonia (cross-platform), CLI (Spectre.Console). Each has its own DI setup in `Program.cs` / `App.axaml.cs`.
 
 ## Plugin System
 
@@ -74,7 +74,7 @@ Existing plugins: `Plugin.Atlassian` (Tempo + Jira), `Plugin.Office365Calendar`,
 - **.NET 10 / C# 13**, nullable reference types enabled, `TreatWarningsAsErrors = true`
 - **Central Package Management** via `Directory.Packages.props` — use `<PackageReference Include="..." />` without Version in `.csproj` files
 - **Naming**: interfaces `IName`, private fields `_camelCase`, types `PascalCase` (enforced by `.editorconfig`)
-- **ViewModels are platform-specific** — WPF and Avalonia each have their own ViewModels. Shared logic goes in `UI.Shared/ViewModels/` or `UI.Shared/Orchestrators/`.
+- **ViewModels are split** — root ViewModels live in the Avalonia project; reusable sub-ViewModels and shared logic go in `UI.Shared/ViewModels/` or `UI.Shared/Orchestrators/`.
 - **DI registration** is centralized: `Application/DependencyInjection.cs` and `Infrastructure/DependencyInjection.cs`. Infrastructure's `AddInfrastructure()` is the single entry point for non-UI services.
 - **Database** uses `IDbContextFactory<WorkTrackerDbContext>` (not scoped DbContext). SQLite stored in `%LocalAppData%\WorkTracker\`.
 - **Unit of Work** (`IUnitOfWork` / `IUnitOfWorkFactory` in `Application/Interfaces/`) wraps multi-step write operations (auto-stop + start, overlap resolution) in an explicit `IDbContextTransaction`. `IUnitOfWorkFactory.CreateAsync` opens the transaction; `IUnitOfWork.SaveChangesAsync` flushes changes and commits; disposing without calling `SaveChangesAsync` triggers a transaction rollback. `WorkEntryRepository` has two modes: factory mode (standalone, each op auto-saves) and shared-context mode (inside UoW, SaveChanges deferred to the UoW). Single-operation methods use the transient repository directly.

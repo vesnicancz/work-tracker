@@ -27,7 +27,6 @@
     <Project Path="src/WorkTracker.Infrastructure/WorkTracker.Infrastructure.csproj" />
     <Project Path="src/WorkTracker.Plugin.Abstractions/WorkTracker.Plugin.Abstractions.csproj" />
     <Project Path="src/WorkTracker.UI.Shared/WorkTracker.UI.Shared.csproj" />
-    <Project Path="src/WorkTracker.WPF/WorkTracker.WPF.csproj" />
   </Folder>
   <Folder Name="/docs/plugins/">
     <File Path="docs/plugins/atlassian.md" />
