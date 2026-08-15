@@ -29,6 +29,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\WorkTracker.Infrastructure\WorkTracker.Infrastructure.csproj" />
+    <!-- Test-only reference: puts a real plugin DLL into the test output so PluginLoader's
+         happy path (discover + load + instantiate from a file) can be exercised. -->
+    <ProjectReference Include="..\..\plugins\WorkTracker.Plugin.Luxafor\WorkTracker.Plugin.Luxafor.csproj" />
   </ItemGroup>
 
 </Project>
