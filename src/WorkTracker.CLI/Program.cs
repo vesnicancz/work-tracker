@@ -77,24 +77,6 @@ catch (Exception ex)
 	return 1;
 }
 
-static DateTime? ParseDateTime(string input)
-{
-	// Try parsing as full DateTime first (e.g., "2025-10-30 14:30")
-	if (DateTime.TryParse(input, out var fullDateTime))
-	{
-		return fullDateTime;
-	}
-
-	// Try parsing as time only (e.g., "14:30" or "14:30:00")
-	if (TimeOnly.TryParse(input, out var timeOnly))
-	{
-		// Combine with today's date
-		return DateTime.Today.Add(timeOnly.ToTimeSpan());
-	}
-
-	return null;
-}
-
 static async Task<int> HandleStartCommand(CommandHandler handler, string[] args)
 {
 	if (args.Length < 2)
@@ -107,7 +89,7 @@ static async Task<int> HandleStartCommand(CommandHandler handler, string[] args)
 	}
 
 	// Parse input to extract Jira code, description, and start time
-	var (ticketId, description, startTime) = ParseStartCommandInput(args);
+	var (ticketId, description, startTime) = CliArgumentParser.ParseStartCommandInput(args);
 
 	if (string.IsNullOrWhiteSpace(ticketId) && string.IsNullOrWhiteSpace(description))
 	{
@@ -118,80 +100,13 @@ static async Task<int> HandleStartCommand(CommandHandler handler, string[] args)
 	return await handler.HandleStartCommand(ticketId, startTime, description);
 }
 
-static (string? ticketId, string? description, DateTime? startTime) ParseStartCommandInput(string[] args)
-{
-	var jiraPattern = WorkTracker.Application.Common.JiraPatterns.TicketId();
-	string? ticketId = null;
-	string? description = null;
-	DateTime? startTime = null;
-
-	// Combine all args starting from index 1
-	var input = string.Join(" ", args.Skip(1));
-
-	// Try to extract Jira code from the beginning
-	var match = jiraPattern.Match(input);
-	if (match.Success)
-	{
-		ticketId = match.Groups[1].Value;
-		// Remove the Jira code from the input
-		input = input.Substring(ticketId.Length).TrimStart();
-	}
-
-	// Now parse the remaining input for description and/or start time
-	if (!string.IsNullOrWhiteSpace(input))
-	{
-		// Split by space to look for time components
-		var parts = input.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-
-		// Try to find if the last part(s) could be a time
-		DateTime? parsedTime = null;
-		int timePartIndex = -1;
-
-		// Check last part first (most common case: "description HH:mm")
-		if (parts.Length > 0)
-		{
-			parsedTime = ParseDateTime(parts[^1]);
-			if (parsedTime.HasValue)
-			{
-				timePartIndex = parts.Length - 1;
-				startTime = parsedTime;
-			}
-		}
-
-		// Check last 2 parts (case: "description yyyy-MM-dd HH:mm")
-		if (!parsedTime.HasValue && parts.Length > 1)
-		{
-			var lastTwoParts = $"{parts[^2]} {parts[^1]}";
-			parsedTime = ParseDateTime(lastTwoParts);
-			if (parsedTime.HasValue)
-			{
-				timePartIndex = parts.Length - 2;
-				startTime = parsedTime;
-			}
-		}
-
-		// Everything before the time part is the description
-		if (timePartIndex > 0)
-		{
-			description = string.Join(" ", parts.Take(timePartIndex));
-		}
-		else if (timePartIndex == -1)
-		{
-			// No time found, everything is description
-			description = input;
-		}
-	}
-
-	return (ticketId, description, startTime);
-}
-
 static async Task<int> HandleStopCommand(CommandHandler handler, string[] args)
 {
 	DateTime? endTime = null;
 
 	if (args.Length >= 2)
 	{
-		endTime = ParseDateTime(args[1]);
+		endTime = CliArgumentParser.ParseDateTime(args[1]);
 		if (endTime == null)
 		{
 			AnsiConsole.MarkupLine("[red]Error:[/] Invalid date/time format");
@@ -238,47 +153,15 @@ static async Task<int> HandleEditCommand(CommandHandler handler, string[] args)
 		return 1;
 	}
 
-	string? ticketId = null;
-	DateTime? startTime = null;
-	DateTime? endTime = null;
-	string? description = null;
-
-	for (int i = 2; i < args.Length; i++)
+	var options = CliArgumentParser.ParseEditOptions(args, out var invalidField);
+	if (options == null)
 	{
-		var arg = args[i];
-		if (arg.StartsWith("--ticket="))
-		{
-			ticketId = arg.Substring("--ticket=".Length);
-		}
-		else if (arg.StartsWith("--start="))
-		{
-			var timeStr = arg.Substring("--start=".Length);
-			startTime = ParseDateTime(timeStr);
-			if (startTime == null)
-			{
-				AnsiConsole.MarkupLine("[red]Error:[/] Invalid start time format");
-				AnsiConsole.MarkupLine("Supported formats: HH:mm, HH:mm:ss, yyyy-MM-dd HH:mm");
-				return 1;
-			}
-		}
-		else if (arg.StartsWith("--end="))
-		{
-			var timeStr = arg.Substring("--end=".Length);
-			endTime = ParseDateTime(timeStr);
-			if (endTime == null)
-			{
-				AnsiConsole.MarkupLine("[red]Error:[/] Invalid end time format");
-				AnsiConsole.MarkupLine("Supported formats: HH:mm, HH:mm:ss, yyyy-MM-dd HH:mm");
-				return 1;
-			}
-		}
-		else if (arg.StartsWith("--desc="))
-		{
-			description = arg.Substring("--desc=".Length);
-		}
+		AnsiConsole.MarkupLine($"[red]Error:[/] Invalid {invalidField} time format");
+		AnsiConsole.MarkupLine("Supported formats: HH:mm, HH:mm:ss, yyyy-MM-dd HH:mm");
+		return 1;
 	}
 
-	return await handler.HandleEditCommand(id, ticketId, startTime, endTime, description);
+	return await handler.HandleEditCommand(id, options.TicketId, options.StartTime, options.EndTime, options.Description);
 }
 
 static async Task<int> HandleDeleteCommand(CommandHandler handler, string[] args)
@@ -301,41 +184,19 @@ static async Task<int> HandleDeleteCommand(CommandHandler handler, string[] args
 
 static async Task<int> HandleSendCommand(CommandHandler handler, string[] args)
 {
-	DateTime? date = null;
-	bool isWeek = false;
-
-	// Check for "week" parameter
-	if (args.Length >= 2 && args[1].Equals("week", StringComparison.OrdinalIgnoreCase))
+	if (!CliArgumentParser.TryParseSendArguments(args, out var date, out var isWeek))
 	{
-		isWeek = true;
-
-		// Check if there's a date after "week"
-		if (args.Length >= 3)
+		if (isWeek)
 		{
-			if (DateTime.TryParse(args[2], out var parsedDate))
-			{
-				date = parsedDate;
-			}
-			else
-			{
-				AnsiConsole.MarkupLine("[red]Error:[/] Invalid date format");
-				return 1;
-			}
-		}
-	}
-	else if (args.Length >= 2)
-	{
-		// No "week" parameter, try to parse as date
-		if (DateTime.TryParse(args[1], out var parsedDate))
-		{
-			date = parsedDate;
+			AnsiConsole.MarkupLine("[red]Error:[/] Invalid date format");
 		}
 		else
 		{
 			AnsiConsole.MarkupLine("[red]Error:[/] Invalid date format or unknown parameter");
 			AnsiConsole.MarkupLine("Usage: worklog send [week] [date]");
-			return 1;
 		}
+
+		return 1;
 	}
 
 	return await handler.HandleSendCommand(date, isWeek);

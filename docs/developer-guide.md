@@ -75,6 +75,7 @@ work-tracker/
 │   ├── WorkTracker.Infrastructure.Tests/
 │   ├── WorkTracker.UI.Shared.Tests/
 │   ├── WorkTracker.Avalonia.Tests/
+│   ├── WorkTracker.CLI.Tests/
 │   ├── WorkTracker.Plugin.Atlassian.Tests/
 │   ├── WorkTracker.Plugin.GoranG3.Tests/
 │   ├── WorkTracker.Plugin.Luxafor.Tests/

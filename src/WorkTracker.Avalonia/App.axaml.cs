@@ -90,28 +90,7 @@ public partial class App : global::Avalonia.Application
 							.AddEnvironmentVariables();
 					})
 					.ConfigureServices((context, services) =>
-					{
-						services.AddInfrastructure(context.Configuration);
-						services.AddUIShared();
-
-						services.AddSingleton(localization);
-						services.AddSingleton<ILocalizationService>(localization);
-
-						services.AddSingleton<ISettingsService, SettingsService>();
-						services.AddSingleton<IWorklogStateService, WorklogStateService>();
-
-						services.AddSingleton<IDialogService, DialogService>();
-						services.AddSingleton<INotificationService, NotificationService>();
-						services.AddSingleton<ITrayIconService, TrayIconService>();
-						services.AddSingleton<ISystemNotificationService, SystemNotificationService>();
-						services.AddSingleton<IAutostartManager, AutostartManager>();
-						services.AddSingleton<IHotkeyService, HotkeyService>();
-
-						services.AddSingleton<MainViewModel>();
-						services.AddTransient<WorkEntryEditViewModel>();
-						services.AddTransient<SubmitWorklogViewModel>();
-						services.AddTransient<SettingsViewModel>();
-					})
+						ConfigureAppServices(services, context.Configuration, localization))
 					.UseSerilog((context, loggerConfiguration) =>
 					{
 						loggerConfiguration
@@ -215,6 +194,34 @@ public partial class App : global::Avalonia.Application
 				errorWindow.Show();
 			}
 		}
+	}
+
+	/// <summary>
+	/// Complete service registration for the Avalonia host. Internal so smoke tests can
+	/// build and validate the exact same container the app uses at runtime.
+	/// </summary>
+	internal static void ConfigureAppServices(IServiceCollection services, IConfiguration configuration, LocalizationService localization)
+	{
+		services.AddInfrastructure(configuration);
+		services.AddUIShared();
+
+		services.AddSingleton(localization);
+		services.AddSingleton<ILocalizationService>(localization);
+
+		services.AddSingleton<ISettingsService, SettingsService>();
+		services.AddSingleton<IWorklogStateService, WorklogStateService>();
+
+		services.AddSingleton<IDialogService, DialogService>();
+		services.AddSingleton<INotificationService, NotificationService>();
+		services.AddSingleton<ITrayIconService, TrayIconService>();
+		services.AddSingleton<ISystemNotificationService, SystemNotificationService>();
+		services.AddSingleton<IAutostartManager, AutostartManager>();
+		services.AddSingleton<IHotkeyService, HotkeyService>();
+
+		services.AddSingleton<MainViewModel>();
+		services.AddTransient<WorkEntryEditViewModel>();
+		services.AddTransient<SubmitWorklogViewModel>();
+		services.AddTransient<SettingsViewModel>();
 	}
 
 	/// <summary>
