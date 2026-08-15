@@ -104,7 +104,7 @@
     <Style Selector="CalendarDayButton">
         <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
     </Style>
-    <Style Selector="CalendarDayButton:pointerover /template/ ContentControl#Content">
+    <Style Selector="CalendarDayButton:pointerover /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Foreground" Value="{DynamicResource TextBright}" />
     </Style>
     <Style Selector="CalendarButton">
