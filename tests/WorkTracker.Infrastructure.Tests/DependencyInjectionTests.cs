@@ -336,6 +336,113 @@ public class DependencyInjectionTests : IAsyncDisposable
 		dbContext.Database.GetConnectionString().Should().Contain("worktracker.db");
 	}
 
+	[Fact]
+	public async Task AddInfrastructure_WithoutPoolingSetting_ShouldEnablePooling()
+	{
+		// Arrange
+		_services.AddInfrastructure(_configuration);
+		_serviceProvider = _services.BuildServiceProvider();
+
+		// Act
+		var dbContextFactory = _serviceProvider.GetRequiredService<IDbContextFactory<WorkTrackerDbContext>>();
+		await using var dbContext = await dbContextFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+
+		// Assert
+		dbContext.Database.GetConnectionString().Should().Contain("Pooling=True");
+	}
+
+	[Fact]
+	public async Task AddInfrastructure_WithPoolingDisabled_ShouldDisablePooling()
+	{
+		// Arrange
+		var configData = new Dictionary<string, string?>
+		{
+			["Database:Path"] = _testDbPath,
+			["Database:Pooling"] = "false"
+		};
+		var config = new ConfigurationBuilder()
+			.AddInMemoryCollection(configData)
+			.Build();
+
+		_services.AddInfrastructure(config);
+		_serviceProvider = _services.BuildServiceProvider();
+
+		// Act
+		var dbContextFactory = _serviceProvider.GetRequiredService<IDbContextFactory<WorkTrackerDbContext>>();
+		await using var dbContext = await dbContextFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+
+		// Assert
+		dbContext.Database.GetConnectionString().Should().Contain("Pooling=False");
+	}
+
+	[Fact]
+	public async Task AddInfrastructure_WithRelativeDatabasePath_ShouldResolveAgainstBaseDirectory()
+	{
+		// Arrange
+		var relativePath = Path.Combine($"db_rel_{Guid.NewGuid()}", "test.db");
+		var expectedPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, relativePath));
+		var expectedDir = Path.GetDirectoryName(expectedPath)!;
+		var configData = new Dictionary<string, string?>
+		{
+			["Database:Path"] = relativePath
+		};
+		var config = new ConfigurationBuilder()
+			.AddInMemoryCollection(configData)
+			.Build();
+
+		try
+		{
+			_services.AddInfrastructure(config);
+			_serviceProvider = _services.BuildServiceProvider();
+
+			// Act
+			var dbContextFactory = _serviceProvider.GetRequiredService<IDbContextFactory<WorkTrackerDbContext>>();
+			await using var dbContext = await dbContextFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+
+			// Assert
+			dbContext.Database.GetConnectionString().Should().Contain(expectedPath);
+			Directory.Exists(expectedDir).Should().BeTrue("relative database directory should be resolved and created");
+		}
+		finally
+		{
+			if (_serviceProvider != null)
+			{
+				await _serviceProvider.DisposeAsync();
+				_serviceProvider = null;
+			}
+
+			Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+			if (Directory.Exists(expectedDir))
+			{
+				Directory.Delete(expectedDir, true);
+			}
+		}
+	}
+
+	[Fact]
+	public async Task AddInfrastructure_WithMemoryDataSource_ShouldNotResolveAsPath()
+	{
+		// Arrange
+		var configData = new Dictionary<string, string?>
+		{
+			["Database:Path"] = ":memory:"
+		};
+		var config = new ConfigurationBuilder()
+			.AddInMemoryCollection(configData)
+			.Build();
+
+		_services.AddInfrastructure(config);
+		_serviceProvider = _services.BuildServiceProvider();
+
+		// Act
+		var dbContextFactory = _serviceProvider.GetRequiredService<IDbContextFactory<WorkTrackerDbContext>>();
+		await using var dbContext = await dbContextFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+
+		// Assert — ":memory:" must not be combined with the base directory
+		dbContext.Database.GetConnectionString().Should().Contain(":memory:");
+		dbContext.Database.GetConnectionString().Should().NotContain(AppContext.BaseDirectory);
+	}
+
 	#endregion Configuration Tests
 
 	#region Service Resolution Tests
@@ -421,6 +528,33 @@ public class DependencyInjectionTests : IAsyncDisposable
 		await using var dbContext = await dbContextFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
 		var canConnect = await dbContext.Database.CanConnectAsync(TestContext.Current.CancellationToken);
 		canConnect.Should().BeTrue();
+	}
+
+	[Fact]
+	public async Task InitializeDatabaseAsync_WithWalDatabase_ShouldSwitchToDeleteJournalMode()
+	{
+		// Arrange — create the database file with persistent WAL journal mode
+		await using (var walConnection = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={_testDbPath};Pooling=False"))
+		{
+			await walConnection.OpenAsync(TestContext.Current.CancellationToken);
+			await using var walCommand = walConnection.CreateCommand();
+			walCommand.CommandText = "PRAGMA journal_mode=WAL;";
+			await walCommand.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
+		}
+
+		_services.AddInfrastructure(_configuration);
+		_serviceProvider = _services.BuildServiceProvider();
+
+		// Act
+		await DependencyInjection.InitializeDatabaseAsync(_serviceProvider, TestContext.Current.CancellationToken);
+
+		// Assert — journal mode is persisted in the file, so a fresh connection reflects it
+		await using var connection = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={_testDbPath};Pooling=False");
+		await connection.OpenAsync(TestContext.Current.CancellationToken);
+		await using var command = connection.CreateCommand();
+		command.CommandText = "PRAGMA journal_mode;";
+		var journalMode = (string?)await command.ExecuteScalarAsync(TestContext.Current.CancellationToken);
+		journalMode.Should().Be("delete");
 	}
 
 	#endregion InitializeDatabaseAsync Tests

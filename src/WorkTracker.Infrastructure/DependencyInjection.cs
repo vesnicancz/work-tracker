@@ -1,3 +1,4 @@
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -27,15 +28,47 @@ public static class DependencyInjection
 		{
 			dbPath = WorkTrackerPaths.DefaultDatabasePath;
 		}
+		else
+		{
+			dbPath = dbPath.Trim();
+
+			// Resolve relative paths against the executable directory (consistent with plugin
+			// directories); leave special SQLite data sources (":memory:", "file:" URIs) untouched
+			if (!dbPath.StartsWith(':') && !dbPath.StartsWith("file:", StringComparison.OrdinalIgnoreCase) && !Path.IsPathRooted(dbPath))
+			{
+				dbPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, dbPath));
+			}
+		}
 
 		var dbDirectory = Path.GetDirectoryName(dbPath);
 		if (!string.IsNullOrEmpty(dbDirectory) && !Directory.Exists(dbDirectory))
 		{
-			Directory.CreateDirectory(dbDirectory);
+			try
+			{
+				Directory.CreateDirectory(dbDirectory);
+			}
+			catch (Exception ex)
+			{
+				throw new InvalidOperationException(
+					$"Configured database directory '{dbDirectory}' is not accessible. " +
+					"If the database is on a removable drive, make sure it is connected and mounted.", ex);
+			}
 		}
 
+		// Pooling keeps the database file open for the whole application lifetime.
+		// Disable it (Database:Pooling = false) when the database lives on a removable
+		// drive, so the file handle is released after each operation and the drive
+		// can be safely ejected.
+		var pooling = configuration.GetValue<bool?>("Database:Pooling") ?? true;
+
+		var connectionString = new SqliteConnectionStringBuilder
+		{
+			DataSource = dbPath,
+			Pooling = pooling,
+		}.ToString();
+
 		services.AddDbContextFactory<WorkTrackerDbContext>(options =>
-			options.UseSqlite($"Data Source={dbPath}"));
+			options.UseSqlite(connectionString));
 
 		// Repositories - Transient (stateless, uses factory)
 		services.AddTransient<IWorkEntryRepository, WorkEntryRepository>();
@@ -102,6 +135,12 @@ public static class DependencyInjection
 	{
 		var contextFactory = serviceProvider.GetRequiredService<IDbContextFactory<WorkTrackerDbContext>>();
 		await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+
+		// Force rollback-journal mode. WAL is persisted in the database file and leaves
+		// -wal/-shm side files on disk, which is fragile on removable exFAT drives
+		// (no filesystem journaling, abrupt removal). DELETE mode is a no-op if already set.
+		await context.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=DELETE;", cancellationToken);
+
 		await context.Database.MigrateAsync(cancellationToken);
 	}
 
