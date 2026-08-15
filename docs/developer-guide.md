@@ -143,7 +143,7 @@ dotnet publish plugins/WorkTracker.Plugin.Atlassian -c Debug \
 
 ## Testy
 
-Projekt má ~700 testů v xUnit + Moq + FluentAssertions.
+Projekt má ~870 testů v xUnit + Moq + FluentAssertions.
 
 ### Spuštění
 
@@ -152,17 +152,16 @@ Projekt má ~700 testů v xUnit + Moq + FluentAssertions.
 dotnet test
 
 # Jeden projekt
-dotnet test tests/WorkTracker.Application.Tests
+dotnet test --project tests/WorkTracker.Application.Tests
 
-# Jeden test
-dotnet test --filter "FullyQualifiedName~WorkEntryServiceTests.StartWorkAsync_WithActiveEntry_StopsPrevious"
+# Jeden test (xUnit v3 filtry přes Microsoft.Testing.Platform)
+dotnet test -- --filter-method "WorkTracker.Application.Tests.Services.WorkEntryServiceTests.StartWorkAsync_WithActiveEntry_ShouldAutoStopPrevious"
 
-# Jen metoda/třída, filtr částečný
-dotnet test --filter "FullyQualifiedName~OverlapResolution"
-
-# S coverage (Coverlet)
-dotnet test /p:CollectCoverage=true /p:CoverletOutputFormat=opencover
+# Jen metoda/třída, filtr s wildcardem
+dotnet test -- --filter-method "*OverlapResolution*"
 ```
+
+> `dotnet test` běží od xUnit v3 4.0 v režimu Microsoft.Testing.Platform (opt-in v `global.json`, sekce `test`). Filtrování přes `--filter "FullyQualifiedName~..."` (VSTest) už není podporováno.
 
 ### Rozlišení unit vs. integration
 
