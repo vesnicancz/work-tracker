@@ -6,9 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 dotnet build                    # Build entire solution
-dotnet test                     # Run all tests (~675 tests, xUnit + Moq + FluentAssertions)
-dotnet test --filter "FullyQualifiedName~ClassName.MethodName"  # Run single test
-dotnet test tests/WorkTracker.Domain.Tests        # Run one test project
+dotnet test                     # Run all tests (~870 tests, xUnit + Moq + FluentAssertions)
+dotnet test -- --filter-method "*MethodName*"     # Run single test (MTP runner, xUnit v3 filters)
+dotnet test --project tests/WorkTracker.Domain.Tests   # Run one test project
 ```
 
 **EF Core migrations** (use CLI as startup project):
