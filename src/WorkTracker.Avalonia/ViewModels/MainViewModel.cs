@@ -512,9 +512,9 @@ public class MainViewModel : ViewModelBase, IDisposable
 	{
 		var (bgKey, borderKey, fgKey) = phase switch
 		{
-			PomodoroPhase.Work => ("PomodoroWorkCardBackground", "PomodoroWorkCardBorder", "DangerRed"),
-			PomodoroPhase.ShortBreak => ("PomodoroBreakCardBackground", "PomodoroBreakCardBorder", "SuccessGreen"),
-			PomodoroPhase.LongBreak => ("PomodoroLongBreakCardBackground", "PomodoroLongBreakCardBorder", "InfoBlue"),
+			PomodoroPhase.Work => ("PomodoroWorkCardBackground", "PomodoroWorkCardBorder", "PomodoroWorkForeground"),
+			PomodoroPhase.ShortBreak => ("PomodoroBreakCardBackground", "PomodoroBreakCardBorder", "PomodoroBreakForeground"),
+			PomodoroPhase.LongBreak => ("PomodoroLongBreakCardBackground", "PomodoroLongBreakCardBorder", "PomodoroLongBreakForeground"),
 			_ => ("CardBackground", "CardBorder", "TextBright")
 		};
 

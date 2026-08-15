@@ -6,10 +6,27 @@
         <x:Double x:Key="DataGridSortIconMinWidth">0</x:Double>
     </Styles.Resources>
 
-    <!-- Window: base background and foreground -->
+    <!-- Window: base background, foreground and font family -->
     <Style Selector="Window">
         <Setter Property="Background" Value="{DynamicResource AppBackground}" />
         <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+        <Setter Property="FontFamily" Value="{DynamicResource FontFamilyBody}" />
+    </Style>
+
+    <!-- Material Symbols Outlined glyph: TextBlock-based icon using ligature text.
+         Usage: <TextBlock Classes="symbol" Text="schedule" FontSize="20" Foreground="..." />
+         FontWeight Bold maps to the variable font's `wght=700` axis (the heaviest available)
+         to match MDI's visual stroke heft. FontSize should be ~125% of an equivalent MDI Width
+         because Material Symbols glyphs occupy ~80% of the em-square. -->
+    <Style Selector="TextBlock.symbol">
+        <Setter Property="FontFamily" Value="{DynamicResource FontFamilyIcon}" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="TextAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <!-- LineHeight = FontSize collapses the font's natural line padding so the glyph
+             sits in the geometric centre of the TextBlock bounds (not on the baseline). -->
+        <Setter Property="LineHeight" Value="{Binding FontSize, RelativeSource={RelativeSource Self}}" />
     </Style>
 
     <!-- Card: subtle surface -->
@@ -21,29 +38,37 @@
         <Setter Property="Padding" Value="{DynamicResource CardPadding}" />
     </Style>
 
-    <!-- DataGrid: minimal style -->
+    <!-- DataGrid: themeable row/header metrics + state colors -->
     <Style Selector="DataGrid">
         <Setter Property="SelectionMode" Value="Single" />
     </Style>
     <Style Selector="DataGridRow">
-        <Setter Property="MinHeight" Value="32" />
-        <Setter Property="FontSize" Value="10" />
+        <Setter Property="MinHeight" Value="{DynamicResource DataGridRowMinHeight}" />
+        <Setter Property="FontSize" Value="{DynamicResource DataGridRowFontSize}" />
     </Style>
     <Style Selector="DataGridRow:pointerover /template/ Rectangle#BackgroundRectangle">
-        <Setter Property="Fill" Value="{DynamicResource ControlFillColorSecondaryBrush}" />
+        <Setter Property="Fill" Value="{DynamicResource RowHoverBackground}" />
     </Style>
     <Style Selector="DataGridRow:selected /template/ Rectangle#BackgroundRectangle">
-        <Setter Property="Fill" Value="{DynamicResource ControlFillColorTertiaryBrush}" />
+        <Setter Property="Fill" Value="{DynamicResource RowSelectedBackground}" />
     </Style>
 
-    <!-- Column headers: blend with background -->
+    <!-- Column headers: transparent, weight per theme, bottom border only -->
     <Style Selector="DataGridColumnHeader">
-        <Setter Property="Background" Value="{DynamicResource AppBackground}" />
+        <Setter Property="Background" Value="Transparent" />
         <Setter Property="Foreground" Value="{DynamicResource TextMuted}" />
-        <Setter Property="FontSize" Value="11" />
-        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="FontSize" Value="{DynamicResource DataGridHeaderFontSize}" />
+        <Setter Property="FontWeight" Value="{DynamicResource DataGridHeaderFontWeight}" />
         <Setter Property="MinHeight" Value="30" />
-        <Setter Property="SeparatorBrush" Value="{DynamicResource SeparatorColor}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SeparatorColor}" />
+        <Setter Property="BorderThickness" Value="0,0,0,1" />
+        <Setter Property="SeparatorBrush" Value="Transparent" />
+        <Setter Property="Padding" Value="10,8" />
+    </Style>
+
+    <!-- Cells: remove default padding so our template cells own padding -->
+    <Style Selector="DataGridCell">
+        <Setter Property="Padding" Value="0" />
     </Style>
 
     <!-- Row actions: opacity controlled by theme, always visible on hover -->
@@ -86,18 +111,35 @@
         <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
     </Style>
 
-    <!-- Success button: green -->
+    <!-- Button: themeable corner radius (applied to every button unless overridden inline) -->
+    <Style Selector="Button">
+        <Setter Property="CornerRadius" Value="{DynamicResource ButtonCornerRadius}" />
+    </Style>
+
+    <!-- Ghost button: transparent surface, no border, accent-soft hover (sidebar + toolbar nav) -->
+    <Style Selector="Button.ghost">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="Button.ghost:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource RowHoverBackground}" />
+    </Style>
+    <Style Selector="Button.ghost:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource RowSelectedBackground}" />
+    </Style>
+
+    <!-- Success button: green, foreground per theme (dark text on bright cyan, white on muted teal) -->
     <Style Selector="Button.success">
         <Setter Property="Background" Value="{DynamicResource SuccessGreen}" />
-        <Setter Property="Foreground" Value="White" />
+        <Setter Property="Foreground" Value="{DynamicResource SuccessButtonForeground}" />
     </Style>
     <Style Selector="Button.success:pointerover /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource SuccessGreenDark}" />
-        <Setter Property="Foreground" Value="White" />
+        <Setter Property="Foreground" Value="{DynamicResource SuccessButtonForeground}" />
     </Style>
     <Style Selector="Button.success:pressed /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource SuccessGreenPressed}" />
-        <Setter Property="Foreground" Value="White" />
+        <Setter Property="Foreground" Value="{DynamicResource SuccessButtonForeground}" />
     </Style>
 
     <!-- Danger button: red -->

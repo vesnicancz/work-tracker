@@ -290,7 +290,9 @@ Otevírá se kliknutím na **Nastavení** v levém dolním rohu hlavního okna. 
   - **Spustit s Windows** — zaregistruje aplikaci do autostart.
   - **Spustit minimalizovanou** — okno se při startu neobjeví, aplikace jede rovnou do tray.
 - **Aktualizace** — **Kontrolovat aktualizace** zapíná/vypíná periodickou kontrolu GitHub Releases.
-- **Vzhled** — dropdown **Motiv** s volbou mezi Modern Blue, Dark, Light, Midnight a Purple.
+- **Vzhled**:
+  - **Sledovat systémové nastavení** — když je zapnuto, aplikace automaticky přepíná mezi denním a nočním motivem podle Windows/OS preference. V tomto režimu se zobrazí dva dropdowny **Den** (jen světlé motivy) a **Noc** (jen tmavé motivy).
+  - **Motiv** — když je „Sledovat systém" vypnuto, použije se jeden zvolený motiv (Modern Blue, Dark, Light, Midnight, Purple, Abyss, Cobalt, Coral, Eclipse, Sandstone, Synthwave).
 
 **Oblíbené** — správa oblíbených položek (viz [Oblíbené položky](#oblíbené-položky)):
 
@@ -659,19 +661,27 @@ Nové jazyky lze přidat vložením `.resx` souboru do `src/WorkTracker.UI.Share
 
 ### Motivy (pouze Avalonia)
 
-K dispozici je **5 motivů** kombinovatelných nad Fluent theme + Material Icons:
+K dispozici je **11 motivů** kombinovatelných nad Fluent theme + Material Icons:
 
 | Motiv | Popis |
 |-------|-------|
 | **Modern Blue** (výchozí) | Světlá varianta s modrými akcenty |
-| **Dark** | Tmavé schéma |
+| **Dark** | Tmavé schéma (One Dark Pro) |
 | **Light** | Klasické světlé |
 | **Midnight** | Velmi tmavé, kontrastní pro noční práci |
 | **Purple** | Tmavé s fialovými akcenty |
+| **Abyss** | Tmavé navy povrchy + jasně modrý akcent, konzervativní enterprise |
+| **Cobalt** | Světlé chladné papírové povrchy + hluboký kobaltový akcent |
+| **Coral** | Teplý broskvově světlý motiv + korálově červený akcent |
+| **Eclipse** | Hluboce modročerné povrchy + teplý zlatý akcent |
+| **Sandstone** | Teplý krémový papírový motiv + terakotový akcent |
+| **Synthwave** | Fialovočerná noc + elektricky magentový akcent a azurové info |
 
 WPF aplikace používá pouze Material Design palety (light/dark).
 
 Přepnutí v **Nastavení → Obecné → Vzhled → Motiv**. Motiv se načítá i při startu (early settings read), aby se zabránilo FOUC flash white při otevření okna.
+
+Pokud zaškrtnete **Sledovat systémové nastavení**, aplikace si načte aktuální Windows light/dark preferenci přes `IPlatformSettings` a poslouchá `ColorValuesChanged` — při přepnutí systému z denního na noční režim se motiv automaticky vymění bez restartu aplikace. Sady „Den" a „Noc" lze nastavit nezávisle (světlé motivy jsou filtrovány do denního dropdownu, tmavé do nočního).
 
 ---
 

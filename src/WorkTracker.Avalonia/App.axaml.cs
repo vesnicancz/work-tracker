@@ -26,6 +26,13 @@ public partial class App : global::Avalonia.Application
 	private IHost? _host;
 	private IHotkeyService? _hotkeyService;
 
+	// Active theme-mode state used to react to OS theme changes
+	private static bool s_followSystemTheme;
+	private static string s_singleTheme = ApplicationSettings.DefaultTheme;
+	private static string s_lightTheme = ThemeCatalog.DefaultLightTheme;
+	private static string s_darkTheme = ThemeCatalog.DefaultDarkTheme;
+	private static bool s_systemListenerHooked;
+
 	public override void Initialize()
 	{
 		AvaloniaXamlLoader.Load(this);
@@ -42,8 +49,8 @@ public partial class App : global::Avalonia.Application
 			desktop.ShutdownRequested += OnShutdownRequested;
 
 			// Read theme and startMinimized directly from settings.json (fast, no DI needed)
-			var (theme, startMinimized) = ReadEarlySettings();
-			SwitchTheme(theme);
+			var (theme, followSystemTheme, lightTheme, darkTheme, startMinimized) = ReadEarlySettings();
+			ApplyThemeMode(followSystemTheme, theme, lightTheme, darkTheme);
 
 			if (!startMinimized)
 			{
@@ -213,32 +220,42 @@ public partial class App : global::Avalonia.Application
 	}
 
 	/// <summary>
-	/// Reads theme and startMinimized directly from settings.json without DI.
-	/// This allows showing the correctly themed window before Host.Build() completes.
+	/// Reads theme/follow-system/light/dark + startMinimized directly from settings.json
+	/// without DI. This allows showing the correctly themed window before Host.Build() completes.
 	/// </summary>
-	private static (string theme, bool startMinimized) ReadEarlySettings()
+	private static (string theme, bool followSystemTheme, string lightTheme, string darkTheme, bool startMinimized) ReadEarlySettings()
 	{
+		var defaults = (
+			theme: ApplicationSettings.DefaultTheme,
+			followSystemTheme: false,
+			lightTheme: ThemeCatalog.DefaultLightTheme,
+			darkTheme: ThemeCatalog.DefaultDarkTheme,
+			startMinimized: false);
+
 		try
 		{
 			var settingsPath = WorkTrackerPaths.SettingsFilePath;
 
 			if (!File.Exists(settingsPath))
 			{
-				return (ApplicationSettings.DefaultTheme, false);
+				return defaults;
 			}
 
 			using var stream = File.OpenRead(settingsPath);
 			using var doc = JsonDocument.Parse(stream);
 			var root = doc.RootElement;
 
-			var theme = root.TryGetProperty("Theme", out var t) ? t.GetString() ?? ApplicationSettings.DefaultTheme : ApplicationSettings.DefaultTheme;
+			var theme = root.TryGetProperty("Theme", out var t) ? t.GetString() ?? defaults.theme : defaults.theme;
+			var followSystem = root.TryGetProperty("FollowSystemTheme", out var f) && f.GetBoolean();
+			var lightTheme = root.TryGetProperty("LightTheme", out var lt) ? lt.GetString() ?? defaults.lightTheme : defaults.lightTheme;
+			var darkTheme = root.TryGetProperty("DarkTheme", out var dt) ? dt.GetString() ?? defaults.darkTheme : defaults.darkTheme;
 			var startMinimized = root.TryGetProperty("StartMinimized", out var s) && s.GetBoolean();
 
-			return (theme, startMinimized);
+			return (theme, followSystem, lightTheme, darkTheme, startMinimized);
 		}
 		catch
 		{
-			return (ApplicationSettings.DefaultTheme, false);
+			return defaults;
 		}
 	}
 
@@ -299,8 +316,24 @@ public partial class App : global::Avalonia.Application
 	}
 
 	/// <summary>
-	/// Switches the active theme at runtime by swapping the top-level MergedDictionary entry
-	/// and aligning Avalonia's built-in FluentTheme variant for native controls.
+	/// Applies the current theme based on whether the user wants to follow the OS day/night
+	/// setting or stick to a single named theme. Also wires up (or removes) the system listener
+	/// so OS changes propagate while in follow-system mode.
+	/// </summary>
+	public static void ApplyThemeMode(bool followSystemTheme, string singleTheme, string lightTheme, string darkTheme)
+	{
+		s_followSystemTheme = followSystemTheme;
+		s_singleTheme = singleTheme;
+		s_lightTheme = lightTheme;
+		s_darkTheme = darkTheme;
+
+		EnsureSystemThemeListener();
+		SwitchTheme(ResolveEffectiveTheme());
+	}
+
+	/// <summary>
+	/// Applies a single theme immediately and switches the app out of follow-system mode.
+	/// Used by the settings preview when the user changes the single-theme dropdown.
 	/// </summary>
 	public static void SwitchTheme(string themeName)
 	{
@@ -311,10 +344,18 @@ public partial class App : global::Avalonia.Application
 			return;
 		}
 
-		// Remove the currently loaded theme dictionary, if any
+		// Remove the currently loaded theme dictionary, if any.
+		// _Defaults.axaml is the contract fallback and stays loaded; only the active theme
+		// is swapped out so its keys layer on top of (override) the defaults.
 		var existing = resources.MergedDictionaries
 			.OfType<ResourceInclude>()
-			.FirstOrDefault(r => r.Source?.ToString().Contains("/Themes/") == true);
+			.FirstOrDefault(r =>
+			{
+				var src = r.Source?.ToString();
+				return src != null
+					&& src.Contains("/Themes/")
+					&& !src.Contains("_Defaults.axaml");
+			});
 		if (existing != null)
 		{
 			resources.MergedDictionaries.Remove(existing);
@@ -326,17 +367,68 @@ public partial class App : global::Avalonia.Application
 			"Light" => new Uri("avares://WorkTracker.Avalonia/Resources/Themes/OneLightTheme.axaml"),
 			"Purple" => new Uri("avares://WorkTracker.Avalonia/Resources/Themes/PurpleTheme.axaml"),
 			"Midnight" => new Uri("avares://WorkTracker.Avalonia/Resources/Themes/MidnightTheme.axaml"),
+			"Abyss" => new Uri("avares://WorkTracker.Avalonia/Resources/Themes/Abyss.axaml"),
+			"Cobalt" => new Uri("avares://WorkTracker.Avalonia/Resources/Themes/Cobalt.axaml"),
+			"Coral" => new Uri("avares://WorkTracker.Avalonia/Resources/Themes/Coral.axaml"),
+			"Eclipse" => new Uri("avares://WorkTracker.Avalonia/Resources/Themes/Eclipse.axaml"),
+			"Sandstone" => new Uri("avares://WorkTracker.Avalonia/Resources/Themes/Sandstone.axaml"),
+			"Synthwave" => new Uri("avares://WorkTracker.Avalonia/Resources/Themes/Synthwave.axaml"),
 			ApplicationSettings.DefaultTheme => new Uri("avares://WorkTracker.Avalonia/Resources/Themes/ModernBlueTheme.axaml"),
 			_ => new Uri("avares://WorkTracker.Avalonia/Resources/Themes/OneDarkTheme.axaml")
 		};
 		resources.MergedDictionaries.Add(new ResourceInclude(uri) { Source = uri });
 
 		// Keep Avalonia's built-in FluentTheme variant in sync for native controls
-		app.RequestedThemeVariant = (themeName is "Light" or ApplicationSettings.DefaultTheme)
+		app.RequestedThemeVariant = ThemeCatalog.IsLight(themeName)
 			? global::Avalonia.Styling.ThemeVariant.Light
 			: global::Avalonia.Styling.ThemeVariant.Dark;
 
 		ThemeChanged?.Invoke(app, EventArgs.Empty);
+	}
+
+	/// <summary>
+	/// Subscribes to OS color-mode changes once. The handler re-applies the current theme
+	/// mode, which picks light/dark when in follow-system mode and is a no-op otherwise.
+	/// </summary>
+	private static void EnsureSystemThemeListener()
+	{
+		if (s_systemListenerHooked)
+		{
+			return;
+		}
+
+		var app = (App?)global::Avalonia.Application.Current;
+		var platform = app?.PlatformSettings;
+		if (platform == null)
+		{
+			return;
+		}
+
+		platform.ColorValuesChanged += (_, _) =>
+		{
+			if (!s_followSystemTheme)
+			{
+				return;
+			}
+
+			Dispatcher.UIThread.Post(() => SwitchTheme(ResolveEffectiveTheme()));
+		};
+
+		s_systemListenerHooked = true;
+	}
+
+	private static string ResolveEffectiveTheme()
+	{
+		if (!s_followSystemTheme)
+		{
+			return s_singleTheme;
+		}
+
+		var app = (App?)global::Avalonia.Application.Current;
+		var systemVariant = app?.PlatformSettings?.GetColorValues().ThemeVariant;
+		return systemVariant == global::Avalonia.Platform.PlatformThemeVariant.Light
+			? s_lightTheme
+			: s_darkTheme;
 	}
 
 	public static event EventHandler? ThemeChanged;

@@ -199,7 +199,7 @@
                                                              Text="{Binding StartTimeDisplay, Mode=TwoWay}"
                                                              IsVisible="{Binding !IsAggregated}"
                                                              FontSize="12"
-                                                             FontFamily="JetBrains Mono,Consolas,monospace"
+                                                             FontFamily="{DynamicResource FontFamilyMono}"
                                                              Background="{DynamicResource InputBackground}"
                                                              BorderBrush="{DynamicResource InputBorder}"
                                                              BorderThickness="1" Padding="6,4"
@@ -208,7 +208,7 @@
                                                              Text="{Binding EndTimeDisplay, Mode=TwoWay}"
                                                              IsVisible="{Binding !IsAggregated}"
                                                              FontSize="12"
-                                                             FontFamily="JetBrains Mono,Consolas,monospace"
+                                                             FontFamily="{DynamicResource FontFamilyMono}"
                                                              Background="{DynamicResource InputBackground}"
                                                              BorderBrush="{DynamicResource InputBorder}"
                                                              BorderThickness="1" Padding="6,4"
@@ -217,7 +217,7 @@
                                                                Text="{Binding DurationDisplay}"
                                                                IsVisible="{Binding !IsAggregated}"
                                                                FontSize="12" FontWeight="Medium"
-                                                               FontFamily="JetBrains Mono,Consolas,monospace"
+                                                               FontFamily="{DynamicResource FontFamilyMono}"
                                                                Foreground="{DynamicResource TextMuted}"
                                                                HorizontalAlignment="Right"
                                                                VerticalAlignment="Center"
@@ -226,7 +226,7 @@
                                                              Text="{Binding DurationDisplay, Mode=TwoWay}"
                                                              IsVisible="{Binding IsAggregated}"
                                                              FontSize="12" FontWeight="Medium"
-                                                             FontFamily="JetBrains Mono,Consolas,monospace"
+                                                             FontFamily="{DynamicResource FontFamilyMono}"
                                                              Background="{DynamicResource InputBackground}"
                                                              BorderBrush="{DynamicResource InputBorder}"
                                                              BorderThickness="1" Padding="6,4"
@@ -254,7 +254,7 @@
                                    VerticalAlignment="Center" />
                         <TextBlock Text="{Binding TotalTimeDisplay}"
                                    FontSize="16" FontWeight="Bold"
-                                   FontFamily="JetBrains Mono,Consolas,monospace"
+                                   FontFamily="{DynamicResource FontFamilyMono}"
                                    Foreground="{DynamicResource TextBright}" VerticalAlignment="Center" />
                     </StackPanel>
                 </Grid>

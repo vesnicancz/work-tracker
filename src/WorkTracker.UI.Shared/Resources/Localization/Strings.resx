@@ -537,6 +537,18 @@ Time: {2}</value>
   <data name="Theme" xml:space="preserve">
     <value>Theme</value>
   </data>
+  <data name="FollowSystemTheme" xml:space="preserve">
+    <value>Follow system theme</value>
+  </data>
+  <data name="FollowSystemThemeDesc" xml:space="preserve">
+    <value>Automatically switch between a day and night theme to match the operating system.</value>
+  </data>
+  <data name="DayTheme" xml:space="preserve">
+    <value>Day</value>
+  </data>
+  <data name="NightTheme" xml:space="preserve">
+    <value>Night</value>
+  </data>
 
   <!-- Settings: About -->
   <data name="About" xml:space="preserve">

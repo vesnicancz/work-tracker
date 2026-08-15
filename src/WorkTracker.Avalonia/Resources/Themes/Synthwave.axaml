@@ -1,0 +1,138 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        Palette: Synthwave
+        Bold dark theme. Deep violet-black night with electric magenta accent
+        and cyan info. The neon sister of the "Coral" light theme — shared
+        magenta/teal DNA, opposite ends of the value range.
+    -->
+
+    <!-- Background / Surface -->
+    <SolidColorBrush x:Key="AppBackground"       Color="#1A0E2E" />
+    <SolidColorBrush x:Key="SidebarBackground"   Color="#120824" />
+    <SolidColorBrush x:Key="SidebarBorder"       Color="#2A1845" />
+    <SolidColorBrush x:Key="CardBackground"      Color="#251440" />
+    <SolidColorBrush x:Key="CardBorder"          Color="#3E2461" />
+    <SolidColorBrush x:Key="InputBackground"     Color="#0F0620" />
+    <SolidColorBrush x:Key="InputBorder"         Color="#3E2461" />
+
+    <!-- Text -->
+    <SolidColorBrush x:Key="TextPrimary"         Color="#E0D4F2" />
+    <SolidColorBrush x:Key="TextSecondary"       Color="#A294C5" />
+    <SolidColorBrush x:Key="TextMuted"           Color="#6B5F90" />
+    <SolidColorBrush x:Key="TextBright"          Color="#FFFFFF" />
+
+    <!-- Accent / Status -->
+    <SolidColorBrush x:Key="AccentBlue"          Color="#FF2E88" />
+    <SolidColorBrush x:Key="AccentBlueDark"      Color="#E51F76" />
+    <SolidColorBrush x:Key="AccentBluePressed"   Color="#C71764" />
+    <SolidColorBrush x:Key="SuccessGreen"        Color="#00E5C8" />
+    <SolidColorBrush x:Key="SuccessGreenDark"    Color="#00C7AE" />
+    <SolidColorBrush x:Key="SuccessGreenPressed" Color="#00A893" />
+    <SolidColorBrush x:Key="DangerRed"           Color="#FF4365" />
+    <SolidColorBrush x:Key="DangerRedDark"       Color="#E62F51" />
+    <SolidColorBrush x:Key="DangerRedPressed"    Color="#C72443" />
+    <SolidColorBrush x:Key="WarningYellow"       Color="#FFD23F" />
+    <SolidColorBrush x:Key="InfoBlue"            Color="#5BD2FF" />
+    <SolidColorBrush x:Key="SeparatorColor"      Color="#33205A" />
+
+    <!-- Active tracking card (cyan-tinted surface) -->
+    <SolidColorBrush x:Key="ActiveCardBackground" Color="#0E2A2E" />
+    <SolidColorBrush x:Key="ActiveCardBorder"     Color="#0F6A60" />
+
+    <!-- Pomodoro phase cards -->
+    <SolidColorBrush x:Key="PomodoroWorkCardBackground"      Color="#2E0E2A" />
+    <SolidColorBrush x:Key="PomodoroWorkCardBorder"           Color="#7A1F5C" />
+    <SolidColorBrush x:Key="PomodoroBreakCardBackground"      Color="#0E2A2E" />
+    <SolidColorBrush x:Key="PomodoroBreakCardBorder"          Color="#0F6A60" />
+    <SolidColorBrush x:Key="PomodoroLongBreakCardBackground"  Color="#0E1A3A" />
+    <SolidColorBrush x:Key="PomodoroLongBreakCardBorder"      Color="#274480" />
+    <!-- Work-phase digits use the neon accent (designer's pomo-work-fg), not DangerRed. -->
+    <SolidColorBrush x:Key="PomodoroWorkForeground"           Color="#FF2E88" />
+    <SolidColorBrush x:Key="PomodoroBreakForeground"          Color="#00E5C8" />
+    <SolidColorBrush x:Key="PomodoroLongBreakForeground"      Color="#5BD2FF" />
+
+    <!-- Button -->
+    <SolidColorBrush x:Key="ButtonSecondaryBg"   Color="#251440" />
+    <SolidColorBrush x:Key="ButtonSecondaryFg"   Color="#E0D4F2" />
+    <SolidColorBrush x:Key="AccentButtonFg"      Color="#FFFFFF" />
+    <SolidColorBrush x:Key="WarningButtonBg"        Color="#3A2E0A" />
+    <SolidColorBrush x:Key="WarningButtonBgHover"   Color="#4A3A12" />
+    <SolidColorBrush x:Key="WarningButtonBgPressed"  Color="#5A461A" />
+    <SolidColorBrush x:Key="WarningButtonBorder"     Color="#6E5722" />
+    <SolidColorBrush x:Key="WarningButtonFg"         Color="#FFD23F" />
+
+    <!-- Avalonia system overrides -->
+    <SolidColorBrush x:Key="SolidBackgroundFillColorBaseBrush"           Color="#1A0E2E" />
+    <SolidColorBrush x:Key="ApplicationPageBackgroundThemeBrush"          Color="#1A0E2E" />
+    <SolidColorBrush x:Key="LayerFillColorDefaultBrush"                   Color="#1A0E2E" />
+    <SolidColorBrush x:Key="LayerOnMicaBaseAltFillColorDefaultBrush"      Color="#120824" />
+    <SolidColorBrush x:Key="CardBackgroundFillColorDefaultBrush"          Color="#251440" />
+    <SolidColorBrush x:Key="CardStrokeColorDefaultBrush"                  Color="#3E2461" />
+    <SolidColorBrush x:Key="ControlFillColorDefaultBrush"                 Color="#0F0620" />
+    <SolidColorBrush x:Key="ControlFillColorSecondaryBrush"               Color="#1F0F36" />
+    <SolidColorBrush x:Key="ControlFillColorTertiaryBrush"                Color="#2E1A4D" />
+    <SolidColorBrush x:Key="ControlStrokeColorDefaultBrush"               Color="#3E2461" />
+    <SolidColorBrush x:Key="ControlStrokeColorSecondaryBrush"             Color="#4E2F7A" />
+    <SolidColorBrush x:Key="TextFillColorPrimaryBrush"                    Color="#E0D4F2" />
+    <SolidColorBrush x:Key="TextFillColorSecondaryBrush"                  Color="#A294C5" />
+    <SolidColorBrush x:Key="TextFillColorTertiaryBrush"                   Color="#6B5F90" />
+    <SolidColorBrush x:Key="TextFillColorDisabledBrush"                   Color="#4E456B" />
+    <SolidColorBrush x:Key="DividerStrokeColorDefaultBrush"               Color="#33205A" />
+    <Color x:Key="SystemAccentColor">#FF2E88</Color>
+    <Color x:Key="SystemAccentColorLight1">#FF579F</Color>
+    <Color x:Key="SystemAccentColorLight2">#FF80B6</Color>
+    <Color x:Key="SystemAccentColorDark1">#E51F76</Color>
+    <Color x:Key="SystemAccentColorDark2">#C71764</Color>
+    <SolidColorBrush x:Key="SuccessBrush"    Color="#00E5C8" />
+    <SolidColorBrush x:Key="WarningBrush"    Color="#FFD23F" />
+    <SolidColorBrush x:Key="ErrorBrush"      Color="#FF4365" />
+    <SolidColorBrush x:Key="InfoBrush"       Color="#5BD2FF" />
+
+    <!-- Extended layout parameters -->
+    <CornerRadius x:Key="CardCornerRadius">10</CornerRadius>
+    <Thickness x:Key="CardPadding">14</Thickness>
+
+    <!-- Window chrome -->
+    <SolidColorBrush x:Key="TitleBarBackground" Color="#120824" />
+    <Thickness x:Key="TitleBarBorderThickness">0,0,0,1</Thickness>
+    <CornerRadius x:Key="WindowCornerRadius">12</CornerRadius>
+    <CornerRadius x:Key="WindowTopCornerRadius">12,12,0,0</CornerRadius>
+    <CornerRadius x:Key="SidebarCornerRadius">0,0,0,12</CornerRadius>
+    <Thickness x:Key="SidebarMargin">0</Thickness>
+    <Thickness x:Key="SidebarBorderThickness">0,0,1,0</Thickness>
+    <SolidColorBrush x:Key="DialogBackground" Color="#120824" />
+    <SolidColorBrush x:Key="WindowControlForeground" Color="#A294C5" />
+    <SolidColorBrush x:Key="AppTitleForeground"      Color="#6B5F90" />
+    <x:Double x:Key="WindowControlIconSize">14</x:Double>
+    <x:Double x:Key="ToolbarIconSize">16</x:Double>
+    <HorizontalAlignment x:Key="TitleBarAlignment">Left</HorizontalAlignment>
+    <x:Boolean x:Key="ShowDialogTitleBar">True</x:Boolean>
+    <Thickness x:Key="ToasterMargin">0,0,0,12</Thickness>
+    <x:Double x:Key="RowActionsDefaultOpacity">1</x:Double>
+    <SolidColorBrush x:Key="RowActionPlayColor" Color="#00E5C8" />
+    <SolidColorBrush x:Key="RowActionEditColor" Color="#A294C5" />
+    <SolidColorBrush x:Key="RowActionDeleteColor" Color="#FF4365" />
+
+    <!-- ============ Theme contract extensions ============ -->
+    <!-- Heavy magenta glow on timers + dramatic window shadow — Synthwave's signature look. -->
+    <BoxShadows x:Key="WindowBoxShadow">0 24 80 -20 #B3000000, 0 8 24 -8 #73000000</BoxShadows>
+    <BoxShadows x:Key="CardBoxShadow">0 2 6 0 #66000000</BoxShadows>
+    <!-- Active timer: subtle cyan halo (matches designer's `text-shadow: 0 0 16px rgba(0,229,200,0.35)`).
+         Pomodoro: stronger magenta halo (matches designer's `0 0 18px rgba(255,46,136,0.45)`).
+         OffsetX/Y MUST be 0 — Avalonia's DropShadowEffect defaults to (5,5) which produces a
+         drop-shadow look; for a centred glow halo we need an offsetless shadow. -->
+    <DropShadowEffect x:Key="TimerGlowEffect"     Color="#00E5C8" BlurRadius="16" Opacity="0.35" OffsetX="0" OffsetY="0" />
+    <DropShadowEffect x:Key="PomodoroGlowEffect"  Color="#FF2E88" BlurRadius="18" Opacity="0.45" OffsetX="0" OffsetY="0" />
+    <DropShadowEffect x:Key="AccentGlowEffect"    Color="#FF2E88" BlurRadius="10" Opacity="0.40" OffsetX="0" OffsetY="0" />
+    <SolidColorBrush x:Key="AccentSoftBackground"  Color="#22FF2E88" />
+    <SolidColorBrush x:Key="SuccessButtonForeground" Color="#0A0418" />
+    <SolidColorBrush x:Key="RowHoverBackground"    Color="#1AFFFFFF" />
+    <SolidColorBrush x:Key="RowSelectedBackground" Color="#33FF2E88" />
+    <CornerRadius x:Key="ButtonCornerRadius">6</CornerRadius>
+    <x:Double x:Key="TimerFontSize">34</x:Double>
+    <x:Double x:Key="DataGridRowMinHeight">34</x:Double>
+    <x:Double x:Key="DataGridRowFontSize">13</x:Double>
+
+</ResourceDictionary>

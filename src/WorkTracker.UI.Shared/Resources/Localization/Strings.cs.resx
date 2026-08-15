@@ -537,6 +537,18 @@ Popis: {1}
   <data name="Theme" xml:space="preserve">
     <value>Motiv</value>
   </data>
+  <data name="FollowSystemTheme" xml:space="preserve">
+    <value>Sledovat systémové nastavení</value>
+  </data>
+  <data name="FollowSystemThemeDesc" xml:space="preserve">
+    <value>Automaticky přepíná mezi denním a nočním motivem podle systému.</value>
+  </data>
+  <data name="DayTheme" xml:space="preserve">
+    <value>Den</value>
+  </data>
+  <data name="NightTheme" xml:space="preserve">
+    <value>Noc</value>
+  </data>
 
   <!-- Nastavení: O aplikaci -->
   <data name="About" xml:space="preserve">

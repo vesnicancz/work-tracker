@@ -51,9 +51,27 @@ public class ApplicationSettings
 	public const string DefaultTheme = "Modern Blue";
 
 	/// <summary>
-	/// Application theme (e.g. "Dark", "Light", "Midnight", "Purple", "Modern Blue").
+	/// Application theme used when <see cref="FollowSystemTheme"/> is false (e.g. "Modern Blue",
+	/// "Dark", "Light", "Midnight", "Purple", "Abyss", "Cobalt", "Coral", "Eclipse",
+	/// "Sandstone", "Synthwave").
 	/// </summary>
 	public string Theme { get; set; } = DefaultTheme;
+
+	/// <summary>
+	/// When true, the active theme is selected automatically based on the operating
+	/// system's day/night setting. Falls back to <see cref="Theme"/> when false.
+	/// </summary>
+	public bool FollowSystemTheme { get; set; }
+
+	/// <summary>
+	/// Theme applied while <see cref="FollowSystemTheme"/> is true and the OS is in light mode.
+	/// </summary>
+	public string LightTheme { get; set; } = ThemeCatalog.DefaultLightTheme;
+
+	/// <summary>
+	/// Theme applied while <see cref="FollowSystemTheme"/> is true and the OS is in dark mode.
+	/// </summary>
+	public string DarkTheme { get; set; } = ThemeCatalog.DefaultDarkTheme;
 
 	/// <summary>
 	/// Pomodoro timer settings
