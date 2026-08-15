@@ -114,15 +114,44 @@ Pokud potřebuješ data přenést na jiný stroj, obvykle stačí zkopírovat `w
 
 ### Přepis cesty k databázi
 
-Pro CLI lze cestu k databázi přepsat v `appsettings.json`:
+Cestu k databázi lze přepsat v `appsettings.json` (soubor vedle spustitelného souboru aplikace — platí pro GUI i CLI):
 
 ```json
 {
   "Database": {
-    "Path": "D:\\zaloha\\worktracker.db"
+    "Path": "D:\\zaloha\\worktracker.db",
+    "Pooling": true
   }
 }
 ```
+
+Relativní cesta se vyhodnocuje vůči adresáři aplikace. Pokud nakonfigurovaný adresář není dostupný (např. odpojený disk), aplikace při startu skončí s chybou — záměrně nespadne zpět na výchozí umístění, aby se data tiše nerozdělila do dvou databází.
+
+### Sdílení databáze mezi OS (dual boot, flash disk)
+
+Databázi lze umístit na sdílené úložiště (např. flash disk s exFAT) a používat střídavě z Windows i Linuxu. Doporučené nastavení:
+
+```json
+{
+  "Database": {
+    "Path": "E:\\WorkTracker\\worktracker.db",
+    "Pooling": false
+  }
+}
+```
+
+Na Linuxu bude v `appsettings.json` u tamní instalace cesta odpovídat mount pointu, např. `/mnt/flash/WorkTracker/worktracker.db` — každý OS má vlastní instalaci aplikace, a tedy vlastní `appsettings.json`.
+
+Co je pro removable média zajištěno:
+
+- **`"Pooling": false`** — bez poolingu se soubor databáze zavírá po každé operaci, takže disk jde bezpečně vysunout i za běhu aplikace (jen ne uprostřed zápisu). S výchozím `"Pooling": true` drží aplikace soubor otevřený po celou dobu běhu a vysunutí by Windows blokovaly.
+- **Journal mode `DELETE`** — aplikace při startu vynucuje rollback journal místo WAL. WAL nechává na disku pomocné soubory `-wal`/`-shm` a na exFAT (bez žurnálování souborového systému) je při náhlém odpojení rizikový.
+
+Omezení:
+
+- **Nespouštěj aplikaci na obou OS zároveň** (dual boot to přirozeně vylučuje) ani nenechávej běžet druhou instanci nad stejným souborem přes síťové sdílení — SQLite locking na exFAT/síti není spolehlivý.
+- Sdílí se jen databáze. `settings.json`, tokeny v OS credential storu a MSAL cache zůstávají per-OS (viz výše) — pluginy je potřeba nakonfigurovat na každém OS zvlášť.
+- Disk vysunuj/odpojuj ideálně po ukončení aplikace, nebo alespoň v klidu (bez běžícího záznamu, který se právě ukládá).
 
 ---
 

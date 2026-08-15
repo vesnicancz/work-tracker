@@ -120,7 +120,7 @@ Registrace služeb: `DependencyInjection.AddApplication(IServiceCollection)`. Vo
 
 Implementace externích závislostí:
 
-- **EF Core + SQLite** — `WorkTrackerDbContext`, `WorkEntryRepository`, `UnitOfWork`, `UnitOfWorkFactory`. Cesta k databázi se řídí `WorkTrackerPaths.DefaultDatabasePath` s možností přepsání přes `Database:Path` v configu.
+- **EF Core + SQLite** — `WorkTrackerDbContext`, `WorkEntryRepository`, `UnitOfWork`, `UnitOfWorkFactory`. Cesta k databázi se řídí `WorkTrackerPaths.DefaultDatabasePath` s možností přepsání přes `Database:Path` v configu (relativní cesty se vyhodnocují vůči adresáři aplikace). `Database:Pooling` (default `true`) vypíná connection pooling pro databáze na removable médiích — bez poolingu se soubor zavírá po každé operaci a disk jde bezpečně vysunout. Při startu se vynucuje `PRAGMA journal_mode=DELETE` (WAL je na removable exFAT rizikový kvůli `-wal`/`-shm` souborům).
 - **`DbContextFactory`** — všechny repository používají `IDbContextFactory<WorkTrackerDbContext>`, ne scoped `DbContext`. Důvod: plugin manager a dlouho běžící služby (GUI) nemají HTTP request scope, takže scoped DbContext by vedl k leakům a concurrent‑use chybám.
 - **`CredentialStoreSecureStorage`** — implementace `ISecureStorage` nad `GitCredentialManager` (multiplatformní: Windows Credential Manager, macOS Keychain, Linux libsecret).
 - **`PluginManager`, `PluginLoader`, `PluginLoadContext`** — načítání pluginů z `AssemblyLoadContext` (isolated, collectible), DI scope per plugin.
