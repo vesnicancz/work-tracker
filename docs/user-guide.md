@@ -144,7 +144,7 @@ Co je pro removable média zajištěno:
 
 - **`"Pooling": false`** — bez poolingu se soubor databáze zavírá po každé operaci, takže disk jde bezpečně vysunout i za běhu aplikace (jen ne uprostřed zápisu). S výchozím `"Pooling": true` drží aplikace soubor otevřený po celou dobu běhu a vysunutí by Windows blokovaly.
 - **Journal mode `DELETE`** — aplikace při startu vynucuje rollback journal místo WAL. WAL nechává na disku pomocné soubory `-wal`/`-shm` a na exFAT (bez žurnálování souborového systému) je při náhlém odpojení rizikový.
-- **Opakování pokusu při startu** — když disk při spuštění GUI není připojený, aplikace neskončí, ale zobrazí dialog **Databáze není dostupná** s cestou k databázi a tlačítky **Zkusit znovu** / **Zavřít aplikaci**. Připoj disk a klikni na *Zkusit znovu* — aplikace zopakuje celý start (DI kontejner, migrace, pluginy) bez nutnosti spouštět ji ručně znovu. CLI se v tomto případě jen ukončí s chybou.
+- **Opakování pokusu při startu** — když disk při spuštění GUI není připojený, aplikace neskončí, ale zobrazí dialog **Databáze není dostupná** s cestou k databázi a tlačítky **Zkusit znovu** / **Zavřít aplikaci**. Připoj disk a klikni na *Zkusit znovu* — aplikace zopakuje celý start (DI kontejner, migrace, pluginy) bez nutnosti spouštět ji ručně znovu. CLI retry nenabízí — jednorázový příkaz nemá na co čekat — ale vypíše stejnou informaci jako chybovou hlášku a skončí s exit code 1.
 
 Omezení:
 
@@ -726,7 +726,7 @@ Symptomy: při startu GUI se objeví dialog **Databáze není dostupná** s cest
 
 Příčina: `Database:Path` míří na disk/mount point, který v tuto chvíli není připojený (flash disk, síťové úložiště), nebo je adresář jen pro čtení.
 
-Řešení: připoj disk a klikni na **Zkusit znovu**. Pokud disk připojit nejde, uprav `Database:Path` v `appsettings.json`. Rozpoznávají se SQLite kódy 8 (`READONLY`), 10 (`IOERR`) a 14 (`CANTOPEN`) plus IO chyby při vytváření adresáře — jiné chyby při startu se hlásí jako neopravitelné a nabídnou jen zavření.
+Řešení: připoj disk a klikni na **Zkusit znovu** (v CLI spusť příkaz znovu). Pokud disk připojit nejde, uprav `Database:Path` v `appsettings.json`. Rozpoznávají se SQLite kódy 8 (`READONLY`), 10 (`IOERR`) a 14 (`CANTOPEN`) plus IO chyby při vytváření adresáře — jiné chyby při startu se hlásí jako neopravitelné a nabídnou jen zavření.
 
 ### Plugin se nenačítá
 

@@ -6,6 +6,7 @@ using Spectre.Console;
 using WorkTracker.Application;
 using WorkTracker.CLI.Commands;
 using WorkTracker.Infrastructure;
+using WorkTracker.Infrastructure.Data;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -31,17 +32,29 @@ builder.Services.AddSerilog(loggerConfiguration =>
 });
 
 // Services
-builder.Services.AddInfrastructure(builder.Configuration);
-// Note: IWorkEntryService and IWorklogSubmissionService are registered in Infrastructure layer
-builder.Services.AddTransient<CommandHandler>();
+IHost host;
+try
+{
+	builder.Services.AddInfrastructure(builder.Configuration);
+	// Note: IWorkEntryService and IWorklogSubmissionService are registered in Infrastructure layer
+	builder.Services.AddTransient<CommandHandler>();
 
-var host = builder.Build();
+	host = builder.Build();
 
-// Initialize database
-await WorkTracker.Infrastructure.DependencyInjection.InitializeDatabaseAsync(host.Services);
+	// Initialize database
+	await WorkTracker.Infrastructure.DependencyInjection.InitializeDatabaseAsync(host.Services);
 
-// Initialize plugins (loads embedded + external plugins, initializes all with configuration)
-await WorkTracker.Infrastructure.DependencyInjection.InitializePluginsAsync(host.Services, builder.Configuration);
+	// Initialize plugins (loads embedded + external plugins, initializes all with configuration)
+	await WorkTracker.Infrastructure.DependencyInjection.InitializePluginsAsync(host.Services, builder.Configuration);
+}
+catch (DatabaseUnavailableException ex)
+{
+	// Nothing is logged here — this can fail before the host (and Serilog) exists. Unlike the
+	// GUI there is nothing to retry: a one-shot command cannot wait for the drive to appear.
+	AnsiConsole.MarkupLine($"[red]Error:[/] Database is not available: {Markup.Escape(ex.DatabasePath)}");
+	AnsiConsole.MarkupLine("If it is on a removable drive, connect the drive and run the command again.");
+	return 1;
+}
 
 // Parse command line arguments
 if (args.Length == 0)
