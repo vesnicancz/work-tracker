@@ -521,6 +521,12 @@ Popis: {1}
   <data name="ButtonOK" xml:space="preserve">
     <value>OK</value>
   </data>
+  <data name="ButtonRetry" xml:space="preserve">
+    <value>Zkusit znovu</value>
+  </data>
+  <data name="ButtonCloseApplication" xml:space="preserve">
+    <value>Zavřít aplikaci</value>
+  </data>
 
   <!-- Ovládací prvky oken -->
   <data name="Minimize" xml:space="preserve">
@@ -708,5 +714,19 @@ Váš výkaz práce také ne.</value>
   </data>
   <data name="OverlapSplit" xml:space="preserve">
     <value>{0}: Bude rozdělen na dva záznamy</value>
+  </data>
+
+  <!-- Chyby při spuštění -->
+  <data name="StartupErrorTitle" xml:space="preserve">
+    <value>Chyba při spuštění</value>
+  </data>
+  <data name="StartupErrorMessage" xml:space="preserve">
+    <value>Aplikaci se nepodařilo spustit:&#xA;&#xA;{0}</value>
+  </data>
+  <data name="DatabaseUnavailableTitle" xml:space="preserve">
+    <value>Databáze není dostupná</value>
+  </data>
+  <data name="DatabaseUnavailableMessage" xml:space="preserve">
+    <value>Databázi se nepodařilo otevřít:&#xA;&#xA;{0}&#xA;&#xA;Pokud je uložená na výměnném disku, připojte ho a zvolte Zkusit znovu.</value>
   </data>
 </root>

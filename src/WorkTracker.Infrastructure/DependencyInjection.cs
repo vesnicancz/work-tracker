@@ -17,6 +17,11 @@ namespace WorkTracker.Infrastructure;
 
 public static class DependencyInjection
 {
+	// SQLite result codes that mean "the file is not reachable" rather than "the data is wrong".
+	private const int SqliteReadOnly = 8;
+	private const int SqliteIoError = 10;
+	private const int SqliteCantOpen = 14;
+
 	public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
 	{
 		// Application layer services
@@ -49,7 +54,7 @@ public static class DependencyInjection
 			}
 			catch (Exception ex)
 			{
-				throw new InvalidOperationException(
+				throw new DatabaseUnavailableException(dbPath,
 					$"Configured database directory '{dbDirectory}' is not accessible. " +
 					"If the database is on a removable drive, make sure it is connected and mounted.", ex);
 			}
@@ -136,12 +141,49 @@ public static class DependencyInjection
 		var contextFactory = serviceProvider.GetRequiredService<IDbContextFactory<WorkTrackerDbContext>>();
 		await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
-		// Force rollback-journal mode. WAL is persisted in the database file and leaves
-		// -wal/-shm side files on disk, which is fragile on removable exFAT drives
-		// (no filesystem journaling, abrupt removal). DELETE mode is a no-op if already set.
-		await context.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=DELETE;", cancellationToken);
+		try
+		{
+			// Force rollback-journal mode. WAL is persisted in the database file and leaves
+			// -wal/-shm side files on disk, which is fragile on removable exFAT drives
+			// (no filesystem journaling, abrupt removal). DELETE mode is a no-op if already set.
+			await context.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=DELETE;", cancellationToken);
 
-		await context.Database.MigrateAsync(cancellationToken);
+			await context.Database.MigrateAsync(cancellationToken);
+		}
+		catch (Exception ex) when (IsDatabaseOutOfReach(ex))
+		{
+			var dataSource = context.Database.GetDbConnection().DataSource;
+			throw new DatabaseUnavailableException(dataSource,
+				$"Database '{dataSource}' could not be opened. " +
+				"If the database is on a removable drive, make sure it is connected and mounted.", ex);
+		}
+	}
+
+	/// <summary>
+	/// Distinguishes an unreachable database file (unplugged removable drive, disconnected
+	/// network share, read-only media) from a genuine schema or data error. Only the former
+	/// is worth retrying, so only the former is reported as <see cref="DatabaseUnavailableException"/>.
+	/// </summary>
+	private static bool IsDatabaseOutOfReach(Exception exception)
+	{
+		for (var ex = exception; ex != null; ex = ex.InnerException)
+		{
+			var outOfReach = ex switch
+			{
+				SqliteException sqlite => sqlite.SqliteErrorCode is SqliteCantOpen or SqliteIoError or SqliteReadOnly,
+				// Covers DirectoryNotFoundException / FileNotFoundException / DriveNotFoundException
+				IOException => true,
+				UnauthorizedAccessException => true,
+				_ => false,
+			};
+
+			if (outOfReach)
+			{
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/// <summary>

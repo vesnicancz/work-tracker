@@ -557,6 +557,59 @@ public class DependencyInjectionTests : IAsyncDisposable
 		journalMode.Should().Be("delete");
 	}
 
+	[Fact]
+	public void AddInfrastructure_WhenDatabaseDirectoryCannotBeCreated_ShouldThrowDatabaseUnavailable()
+	{
+		// Arrange — a plain file where the database directory should be: creating a directory
+		// under it fails the same way an unplugged removable drive does.
+		var blockingFile = Path.Combine(Path.GetTempPath(), $"blocking_{Guid.NewGuid()}");
+		File.WriteAllText(blockingFile, "not a directory");
+		var dbPath = Path.Combine(blockingFile, "WorkTracker", "worktracker.db");
+		var config = new ConfigurationBuilder()
+			.AddInMemoryCollection(new Dictionary<string, string?> { ["Database:Path"] = dbPath })
+			.Build();
+
+		try
+		{
+			// Act
+			var act = () => _services.AddInfrastructure(config);
+
+			// Assert
+			act.Should().Throw<DatabaseUnavailableException>()
+				.Which.DatabasePath.Should().Be(dbPath);
+		}
+		finally
+		{
+			File.Delete(blockingFile);
+		}
+	}
+
+	[Fact]
+	public async Task InitializeDatabaseAsync_WhenDatabaseDirectoryDisappears_ShouldThrowDatabaseUnavailable()
+	{
+		// Arrange — registration succeeds, then the directory goes away (drive unplugged)
+		var dbDirectory = Path.Combine(Path.GetTempPath(), $"vanishing_{Guid.NewGuid()}");
+		var dbPath = Path.Combine(dbDirectory, "worktracker.db");
+		var config = new ConfigurationBuilder()
+			.AddInMemoryCollection(new Dictionary<string, string?>
+			{
+				["Database:Path"] = dbPath,
+				["Database:Pooling"] = "false"
+			})
+			.Build();
+
+		_services.AddInfrastructure(config);
+		_serviceProvider = _services.BuildServiceProvider();
+		Directory.Delete(dbDirectory, recursive: true);
+
+		// Act
+		var act = async () => await DependencyInjection.InitializeDatabaseAsync(_serviceProvider, TestContext.Current.CancellationToken);
+
+		// Assert
+		(await act.Should().ThrowAsync<DatabaseUnavailableException>())
+			.Which.DatabasePath.Should().Be(dbPath);
+	}
+
 	#endregion InitializeDatabaseAsync Tests
 
 	#region Plugin Directory Configuration Tests

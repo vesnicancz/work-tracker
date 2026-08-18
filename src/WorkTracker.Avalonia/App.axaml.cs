@@ -15,6 +15,7 @@ using WorkTracker.Avalonia.Services;
 using WorkTracker.Avalonia.ViewModels;
 using WorkTracker.Avalonia.Views;
 using WorkTracker.Infrastructure;
+using WorkTracker.Infrastructure.Data;
 using WorkTracker.UI.Shared;
 using WorkTracker.UI.Shared.Models;
 using WorkTracker.UI.Shared.Services;
@@ -74,125 +75,214 @@ public partial class App : global::Avalonia.Application
 		base.OnFrameworkInitializationCompleted();
 	}
 
+	/// <summary>
+	/// Bootstraps the application, offering the user a retry when startup failed for a reason
+	/// they can fix without restarting — most notably a database on a removable drive that has
+	/// not been plugged in yet.
+	/// </summary>
 	private async Task InitializeAsync(IClassicDesktopStyleApplicationLifetime desktop, LocalizationService localization, bool startMinimized)
 	{
+		while (true)
+		{
+			try
+			{
+				await BootstrapAsync(desktop, localization, startMinimized);
+				return;
+			}
+			catch (Exception ex)
+			{
+				LogErrorSafe(ex, "Initialization failed");
+
+				// Release the half-built host before retrying — it still holds the Serilog file
+				// lock and any SQLite handles that the next attempt needs.
+				await DisposeFailedHostAsync();
+
+				if (!await ShowStartupErrorAsync(desktop, localization, ex))
+				{
+					desktop.Shutdown();
+					return;
+				}
+			}
+		}
+	}
+
+	private async Task BootstrapAsync(IClassicDesktopStyleApplicationLifetime desktop, LocalizationService localization, bool startMinimized)
+	{
+		// Build host and bootstrap on a background thread (DI, DB migration, plugins)
+		_host = await Task.Run(() =>
+		{
+			var host = Host.CreateDefaultBuilder()
+				.ConfigureAppConfiguration((context, config) =>
+				{
+					config.SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
+						.AddJsonFile("appsettings.json", optional: false, reloadOnChange: false)
+						.AddJsonFile($"appsettings.{context.HostingEnvironment.EnvironmentName}.json", optional: true, reloadOnChange: false)
+						.AddEnvironmentVariables();
+				})
+				.ConfigureServices((context, services) =>
+					ConfigureAppServices(services, context.Configuration, localization))
+				.UseSerilog((context, loggerConfiguration) =>
+				{
+					loggerConfiguration
+						.MinimumLevel.Information()
+						.MinimumLevel.Override("Microsoft", Serilog.Events.LogEventLevel.Warning)
+						.MinimumLevel.Override("System", Serilog.Events.LogEventLevel.Warning)
+						.WriteTo.File(WorkTrackerPaths.LogFilePath,
+							rollingInterval: RollingInterval.Day,
+							retainedFileCountLimit: 14,
+							outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}");
+				})
+				.Build();
+
+			return host;
+		});
+
+		await _host.StartAsync();
+
+		// DB migration + worklog state (needed before showing data)
+		await Infrastructure.DependencyInjection.InitializeDatabaseAsync(_host.Services);
+		var worklogStateService = _host.Services.GetRequiredService<IWorklogStateService>();
+		await worklogStateService.InitializeAsync();
+
+		// Wire up services to the window on the UI thread
+		var viewModel = _host.Services.GetRequiredService<MainViewModel>();
+		var trayIconService = _host.Services.GetRequiredService<ITrayIconService>();
+		var settingsService = _host.Services.GetRequiredService<ISettingsService>();
+
+		var mainWindow = desktop.MainWindow as MainWindow;
+		if (mainWindow == null)
+		{
+			// startMinimized — window wasn't created yet; show briefly to create HWND for hotkey registration
+			mainWindow = new MainWindow { ShowInTaskbar = false, Opacity = 0 };
+			desktop.MainWindow = mainWindow;
+			try
+			{
+				mainWindow.Show();
+				mainWindow.Hide();
+			}
+			finally
+			{
+				mainWindow.ShowInTaskbar = true;
+				mainWindow.Opacity = 1;
+			}
+		}
+
+		mainWindow.Initialize(viewModel, trayIconService, settingsService);
+
+		// Initialize global hotkey (Ctrl+Shift+W) for new work entry dialog
+		_hotkeyService = _host.Services.GetRequiredService<IHotkeyService>();
+		_hotkeyService.HotkeyPressed += OnHotkeyPressed;
+		_hotkeyService.Register();
+
+		// Check for updates (non-blocking, fire-and-forget)
+		var updateCheckService = _host.Services.GetService<IUpdateCheckService>();
+		if (updateCheckService != null)
+		{
+			var updateLogger = _host.Services.GetRequiredService<ILoggerFactory>().CreateLogger<App>();
+			_ = updateCheckService.CheckForUpdateAsync()
+				.SafeFireAndForgetAsync(ex => updateLogger.LogWarning(ex, "Update check failed"));
+		}
+
+		// Load plugins in the background — not needed for initial UI
+		var pluginLogger = _host.Services.GetRequiredService<ILoggerFactory>().CreateLogger<App>();
+		var configuration = _host.Services.GetRequiredService<IConfiguration>();
+		var notificationService = _host.Services.GetRequiredService<INotificationService>();
+		_ = Task.Run(async () =>
+		{
+			try
+			{
+				await Infrastructure.DependencyInjection.InitializePluginsAsync(
+					_host.Services, configuration,
+					settingsService.Settings.EnabledPlugins,
+					settingsService.Settings.PluginConfigurations);
+
+				// Refresh suggestions now that plugins are loaded
+				await Dispatcher.UIThread.InvokeAsync(viewModel.NotifyPluginsLoaded);
+			}
+			catch (Exception pluginEx)
+			{
+				pluginLogger.LogError(pluginEx, "Plugin initialization failed");
+				notificationService.ShowError($"Plugin initialization failed: {pluginEx.Message}");
+			}
+		});
+	}
+
+	/// <summary>
+	/// Reports a failed bootstrap. A <see cref="DatabaseUnavailableException"/> is recoverable —
+	/// the user can connect the removable drive and try again — so it offers Retry/Close;
+	/// any other failure can only be acknowledged. Returns <c>true</c> when the user chose Retry.
+	/// </summary>
+	private static async Task<bool> ShowStartupErrorAsync(
+		IClassicDesktopStyleApplicationLifetime desktop, LocalizationService localization, Exception exception)
+	{
+		var canRetry = exception is DatabaseUnavailableException;
+
+		var (title, message) = exception is DatabaseUnavailableException databaseException
+			? (localization.GetString("DatabaseUnavailableTitle"),
+				localization.GetFormattedString("DatabaseUnavailableMessage", databaseException.DatabasePath))
+			: (localization.GetString("StartupErrorTitle"),
+				localization.GetFormattedString("StartupErrorMessage", exception.Message));
+
+		var errorWindow = new MessageBoxWindow(title, message,
+			canRetry ? MessageBoxButtons.RetryClose : MessageBoxButtons.Ok);
+
+		if (desktop.MainWindow is { IsVisible: true } ownerWindow)
+		{
+			await errorWindow.ShowDialog(ownerWindow);
+			return errorWindow.Result && canRetry;
+		}
+
+		// Started minimized — the error window is the only window on screen, so closing it for a
+		// retry would end the application under the default OnLastWindowClose shutdown mode.
+		var previousShutdownMode = desktop.ShutdownMode;
+		desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
 		try
 		{
-			// Build host and bootstrap on a background thread (DI, DB migration, plugins)
-			_host = await Task.Run(() =>
-			{
-				var host = Host.CreateDefaultBuilder()
-					.ConfigureAppConfiguration((context, config) =>
-					{
-						config.SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
-							.AddJsonFile("appsettings.json", optional: false, reloadOnChange: false)
-							.AddJsonFile($"appsettings.{context.HostingEnvironment.EnvironmentName}.json", optional: true, reloadOnChange: false)
-							.AddEnvironmentVariables();
-					})
-					.ConfigureServices((context, services) =>
-						ConfigureAppServices(services, context.Configuration, localization))
-					.UseSerilog((context, loggerConfiguration) =>
-					{
-						loggerConfiguration
-							.MinimumLevel.Information()
-							.MinimumLevel.Override("Microsoft", Serilog.Events.LogEventLevel.Warning)
-							.MinimumLevel.Override("System", Serilog.Events.LogEventLevel.Warning)
-							.WriteTo.File(WorkTrackerPaths.LogFilePath,
-								rollingInterval: RollingInterval.Day,
-								retainedFileCountLimit: 14,
-								outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}");
-					})
-					.Build();
+			// Without an owner the dialog defaults would hide it off-centre and off the taskbar
+			errorWindow.WindowStartupLocation = WindowStartupLocation.CenterScreen;
+			errorWindow.ShowInTaskbar = true;
+			desktop.MainWindow = errorWindow;
 
-				return host;
-			});
+			var closed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+			errorWindow.Closed += (_, _) => closed.TrySetResult();
+			errorWindow.Show();
+			errorWindow.Activate();
+			await closed.Task;
 
-			await _host.StartAsync();
+			return errorWindow.Result && canRetry;
+		}
+		finally
+		{
+			desktop.MainWindow = null;
+			desktop.ShutdownMode = previousShutdownMode;
+		}
+	}
 
-			// DB migration + worklog state (needed before showing data)
-			await Infrastructure.DependencyInjection.InitializeDatabaseAsync(_host.Services);
-			var worklogStateService = _host.Services.GetRequiredService<IWorklogStateService>();
-			await worklogStateService.InitializeAsync();
+	/// <summary>
+	/// Tears down a host left over from a failed bootstrap so the next attempt starts from a
+	/// clean container. Unlike <see cref="ShutdownCleanup"/> it resolves no services — they may
+	/// never have been constructed.
+	/// </summary>
+	private async Task DisposeFailedHostAsync()
+	{
+		var host = _host;
+		if (host == null)
+		{
+			return;
+		}
 
-			// Wire up services to the window on the UI thread
-			var viewModel = _host.Services.GetRequiredService<MainViewModel>();
-			var trayIconService = _host.Services.GetRequiredService<ITrayIconService>();
-			var settingsService = _host.Services.GetRequiredService<ISettingsService>();
-
-			var mainWindow = desktop.MainWindow as MainWindow;
-			if (mainWindow == null)
-			{
-				// startMinimized — window wasn't created yet; show briefly to create HWND for hotkey registration
-				mainWindow = new MainWindow { ShowInTaskbar = false, Opacity = 0 };
-				desktop.MainWindow = mainWindow;
-				try
-				{
-					mainWindow.Show();
-					mainWindow.Hide();
-				}
-				finally
-				{
-					mainWindow.ShowInTaskbar = true;
-					mainWindow.Opacity = 1;
-				}
-			}
-
-			mainWindow.Initialize(viewModel, trayIconService, settingsService);
-
-			// Initialize global hotkey (Ctrl+Shift+W) for new work entry dialog
-			_hotkeyService = _host.Services.GetRequiredService<IHotkeyService>();
-			_hotkeyService.HotkeyPressed += OnHotkeyPressed;
-			_hotkeyService.Register();
-
-			// Check for updates (non-blocking, fire-and-forget)
-			var updateCheckService = _host.Services.GetService<IUpdateCheckService>();
-			if (updateCheckService != null)
-			{
-				var updateLogger = _host.Services.GetRequiredService<ILoggerFactory>().CreateLogger<App>();
-				_ = updateCheckService.CheckForUpdateAsync()
-					.SafeFireAndForgetAsync(ex => updateLogger.LogWarning(ex, "Update check failed"));
-			}
-
-			// Load plugins in the background — not needed for initial UI
-			var pluginLogger = _host.Services.GetRequiredService<ILoggerFactory>().CreateLogger<App>();
-			var configuration = _host.Services.GetRequiredService<IConfiguration>();
-			var notificationService = _host.Services.GetRequiredService<INotificationService>();
-			_ = Task.Run(async () =>
-			{
-				try
-				{
-					await Infrastructure.DependencyInjection.InitializePluginsAsync(
-						_host.Services, configuration,
-						settingsService.Settings.EnabledPlugins,
-						settingsService.Settings.PluginConfigurations);
-
-					// Refresh suggestions now that plugins are loaded
-					await Dispatcher.UIThread.InvokeAsync(viewModel.NotifyPluginsLoaded);
-				}
-				catch (Exception pluginEx)
-				{
-					pluginLogger.LogError(pluginEx, "Plugin initialization failed");
-					notificationService.ShowError($"Plugin initialization failed: {pluginEx.Message}");
-				}
-			});
+		try
+		{
+			await host.StopAsync(TimeSpan.FromSeconds(5));
 		}
 		catch (Exception ex)
 		{
-			LogErrorSafe(ex, "Initialization failed");
-
-			// Show error dialog
-			var errorWindow = new MessageBoxWindow("Initialization Error",
-				$"Application failed to initialize:\n{ex.Message}", false);
-
-			if (desktop.MainWindow is Window ownerWindow)
-			{
-				await errorWindow.ShowDialog(ownerWindow);
-			}
-			else
-			{
-				desktop.MainWindow = errorWindow;
-				errorWindow.Show();
-			}
+			LogErrorSafe(ex, "Failed to stop host after initialization failure");
+		}
+		finally
+		{
+			host.Dispose();
+			_host = null;
 		}
 	}
 
