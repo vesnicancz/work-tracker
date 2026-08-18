@@ -521,6 +521,12 @@ Time: {2}</value>
   <data name="ButtonOK" xml:space="preserve">
     <value>OK</value>
   </data>
+  <data name="ButtonRetry" xml:space="preserve">
+    <value>Retry</value>
+  </data>
+  <data name="ButtonCloseApplication" xml:space="preserve">
+    <value>Close application</value>
+  </data>
 
   <!-- Window Controls -->
   <data name="Minimize" xml:space="preserve">
@@ -708,5 +714,19 @@ Neither is your timesheet.</value>
   </data>
   <data name="OverlapSplit" xml:space="preserve">
     <value>{0}: Will be split into two entries</value>
+  </data>
+
+  <!-- Startup errors -->
+  <data name="StartupErrorTitle" xml:space="preserve">
+    <value>Initialization Error</value>
+  </data>
+  <data name="StartupErrorMessage" xml:space="preserve">
+    <value>The application failed to start:&#xA;&#xA;{0}</value>
+  </data>
+  <data name="DatabaseUnavailableTitle" xml:space="preserve">
+    <value>Database Unavailable</value>
+  </data>
+  <data name="DatabaseUnavailableMessage" xml:space="preserve">
+    <value>The database could not be opened:&#xA;&#xA;{0}&#xA;&#xA;If it is stored on a removable drive, connect the drive and choose Retry.</value>
   </data>
 </root>

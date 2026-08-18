@@ -82,7 +82,7 @@ public sealed class DialogService : IDialogService
 
 	public async Task<bool> ShowConfirmationAsync(string message, string title = "Confirm")
 	{
-		var dialog = new MessageBoxWindow(title, message, true);
+		var dialog = new MessageBoxWindow(title, message, MessageBoxButtons.YesNo);
 		var mainWindow = GetMainWindow();
 		if (mainWindow != null)
 		{
@@ -94,7 +94,7 @@ public sealed class DialogService : IDialogService
 
 	public async Task ShowErrorAsync(string message, string title = "Error")
 	{
-		var dialog = new MessageBoxWindow(title, message, false);
+		var dialog = new MessageBoxWindow(title, message, MessageBoxButtons.Ok);
 		var mainWindow = GetMainWindow();
 		if (mainWindow != null)
 		{
@@ -104,7 +104,7 @@ public sealed class DialogService : IDialogService
 
 	public async Task ShowInformationAsync(string message, string title = "Information")
 	{
-		var dialog = new MessageBoxWindow(title, message, false);
+		var dialog = new MessageBoxWindow(title, message, MessageBoxButtons.Ok);
 		var mainWindow = GetMainWindow();
 		if (mainWindow != null)
 		{

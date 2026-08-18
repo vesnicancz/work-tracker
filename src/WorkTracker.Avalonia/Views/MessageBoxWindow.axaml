@@ -94,6 +94,27 @@
                             CornerRadius="4" />
                 </StackPanel>
 
+                <!-- Recoverable startup failure: let the user fix the cause and try again -->
+                <StackPanel x:Name="RetryPanel"
+                            IsVisible="False"
+                            Orientation="Horizontal"
+                            HorizontalAlignment="Right"
+                            Spacing="8">
+                    <Button x:Name="CloseAppButton"
+                            Content="{markup:Localize ButtonCloseApplication}"
+                            MinWidth="120"
+                            HorizontalContentAlignment="Center"
+                            Background="{DynamicResource ButtonSecondaryBg}"
+                            Foreground="{DynamicResource ButtonSecondaryFg}"
+                            CornerRadius="4" />
+                    <Button x:Name="RetryButton"
+                            Content="{markup:Localize ButtonRetry}"
+                            MinWidth="120"
+                            HorizontalContentAlignment="Center"
+                            Classes="accent"
+                            CornerRadius="4" />
+                </StackPanel>
+
             </StackPanel>
 
         </Grid>
