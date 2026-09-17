@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -12,6 +13,7 @@ using Serilog;
 using WorkTracker.Application;
 using WorkTracker.Application.Plugins;
 using WorkTracker.Avalonia.Services;
+using WorkTracker.Avalonia.Services.Linux;
 using WorkTracker.Avalonia.ViewModels;
 using WorkTracker.Avalonia.Views;
 using WorkTracker.Infrastructure;
@@ -152,18 +154,33 @@ public partial class App : global::Avalonia.Application
 		var mainWindow = desktop.MainWindow as MainWindow;
 		if (mainWindow == null)
 		{
-			// startMinimized — window wasn't created yet; show briefly to create HWND for hotkey registration
-			mainWindow = new MainWindow { ShowInTaskbar = false, Opacity = 0 };
+			// startMinimized — the window was not created in OnFrameworkInitializationCompleted.
+			// NOTE: assign MainWindow only from here (a background dispatcher post, i.e. after the
+			// main loop started). ClassicDesktopStyleApplicationLifetime.Start() calls
+			// MainWindow.Show() once, right after OnFrameworkInitializationCompleted returns.
+			mainWindow = new MainWindow();
 			desktop.MainWindow = mainWindow;
-			try
+
+			if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
 			{
-				mainWindow.Show();
-				mainWindow.Hide();
-			}
-			finally
-			{
-				mainWindow.ShowInTaskbar = true;
-				mainWindow.Opacity = 1;
+				// Win32 RegisterHotKey needs an HWND, so show the window invisibly once to be sure
+				// the handle is realized. Never do this on X11/Wayland: mapping and immediately
+				// unmapping a toplevel leaves a stale entry in the KDE task manager for the rest of
+				// the session, and global hotkeys are a no-op on Linux/macOS anyway.
+				// TODO: the HWND already exists after construction, so this show/hide is probably
+				// unnecessary — verify Ctrl+Shift+W with StartMinimized on Windows, then drop it.
+				mainWindow.ShowInTaskbar = false;
+				mainWindow.Opacity = 0;
+				try
+				{
+					mainWindow.Show();
+					mainWindow.Hide();
+				}
+				finally
+				{
+					mainWindow.ShowInTaskbar = true;
+					mainWindow.Opacity = 1;
+				}
 			}
 		}
 
@@ -173,6 +190,12 @@ public partial class App : global::Avalonia.Application
 		_hotkeyService = _host.Services.GetRequiredService<IHotkeyService>();
 		_hotkeyService.HotkeyPressed += OnHotkeyPressed;
 		_hotkeyService.Register();
+
+		// Register with the desktop environment (menu entry, icons) — non-blocking, best-effort
+		var desktopIntegration = _host.Services.GetRequiredService<IDesktopIntegrationService>();
+		var integrationLogger = _host.Services.GetRequiredService<ILoggerFactory>().CreateLogger<App>();
+		_ = desktopIntegration.EnsureInstalledAsync()
+			.SafeFireAndForgetAsync(ex => integrationLogger.LogWarning(ex, "Desktop integration failed"));
 
 		// Check for updates (non-blocking, fire-and-forget)
 		var updateCheckService = _host.Services.GetService<IUpdateCheckService>();
@@ -232,10 +255,8 @@ public partial class App : global::Avalonia.Application
 			return errorWindow.Result && canRetry;
 		}
 
-		// Started minimized — the error window is the only window on screen, so closing it for a
-		// retry would end the application under the default OnLastWindowClose shutdown mode.
-		var previousShutdownMode = desktop.ShutdownMode;
-		desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+		// Started minimized — the error window is the only window on screen. The lifetime runs in
+		// OnExplicitShutdown, so closing it for a retry cannot end the application.
 		try
 		{
 			// Without an owner the dialog defaults would hide it off-centre and off the taskbar
@@ -253,8 +274,8 @@ public partial class App : global::Avalonia.Application
 		}
 		finally
 		{
+			// The retry loop rebuilds the window only when MainWindow is null again.
 			desktop.MainWindow = null;
-			desktop.ShutdownMode = previousShutdownMode;
 		}
 	}
 
@@ -306,6 +327,7 @@ public partial class App : global::Avalonia.Application
 		services.AddSingleton<ITrayIconService, TrayIconService>();
 		services.AddSingleton<ISystemNotificationService, SystemNotificationService>();
 		services.AddSingleton<IAutostartManager, AutostartManager>();
+		services.AddSingleton<IDesktopIntegrationService, LinuxDesktopIntegrationService>();
 		services.AddSingleton<IHotkeyService, HotkeyService>();
 
 		services.AddSingleton<MainViewModel>();

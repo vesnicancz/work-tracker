@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using System.Security;
 using Microsoft.Extensions.Logging;
+using WorkTracker.Avalonia.Services.Linux;
 using WorkTracker.UI.Shared.Services;
 
 namespace WorkTracker.Avalonia.Services;
@@ -108,24 +109,18 @@ public sealed class AutostartManager : IAutostartManager
 
 	#region Linux
 
-	private static string LinuxDesktopFilePath
-	{
-		get
-		{
-			var configHome = Environment.GetEnvironmentVariable("XDG_CONFIG_HOME");
-			if (string.IsNullOrEmpty(configHome))
-			{
-				configHome = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".config");
-			}
-			return Path.Combine(configHome, "autostart", "WorkTracker.desktop");
-		}
-	}
+	private static string LinuxDesktopFilePath =>
+		Path.Combine(XdgDirectories.AutostartDirectory, DesktopEntry.FileName);
+
+	/// <summary>Entry written by versions that named the file after the app rather than its app id.</summary>
+	private static string LegacyLinuxDesktopFilePath =>
+		Path.Combine(XdgDirectories.AutostartDirectory, DesktopEntry.LegacyFileName);
 
 	private bool GetLinuxAutostart()
 	{
 		try
 		{
-			return File.Exists(LinuxDesktopFilePath);
+			return File.Exists(LinuxDesktopFilePath) || File.Exists(LegacyLinuxDesktopFilePath);
 		}
 		catch (Exception ex)
 		{
@@ -147,16 +142,9 @@ public sealed class AutostartManager : IAutostartManager
 					return;
 				}
 
-				var dir = Path.GetDirectoryName(LinuxDesktopFilePath)!;
-				Directory.CreateDirectory(dir);
-				File.WriteAllText(LinuxDesktopFilePath,
-$"""
-[Desktop Entry]
-Type=Application
-Name=WorkTracker
-Exec="{processPath}"
-X-GNOME-Autostart-enabled=true
-""");
+				Directory.CreateDirectory(XdgDirectories.AutostartDirectory);
+				File.WriteAllText(LinuxDesktopFilePath, DesktopEntry.BuildAutostartEntry(processPath));
+				DeleteLegacyLinuxAutostart();
 				_logger.LogInformation("Linux autostart enabled: {Path}", processPath);
 			}
 			else
@@ -165,12 +153,32 @@ X-GNOME-Autostart-enabled=true
 				{
 					File.Delete(LinuxDesktopFilePath);
 				}
+				DeleteLegacyLinuxAutostart();
 				_logger.LogInformation("Linux autostart disabled");
 			}
 		}
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Failed to set Linux autostart to {Enable}", enable);
+		}
+	}
+
+	/// <summary>
+	/// Removes the entry written under the old file name, so an upgrade does not leave the app
+	/// registered for autostart twice.
+	/// </summary>
+	private void DeleteLegacyLinuxAutostart()
+	{
+		try
+		{
+			if (File.Exists(LegacyLinuxDesktopFilePath))
+			{
+				File.Delete(LegacyLinuxDesktopFilePath);
+			}
+		}
+		catch (Exception ex)
+		{
+			_logger.LogWarning(ex, "Failed to remove the legacy Linux autostart entry");
 		}
 	}
 
