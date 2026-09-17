@@ -194,10 +194,10 @@
     <value>Spouštění</value>
   </data>
   <data name="StartWithWindows" xml:space="preserve">
-    <value>Spustit s Windows</value>
+    <value>Spustit po přihlášení</value>
   </data>
   <data name="StartWithWindowsDesc" xml:space="preserve">
-    <value>Automaticky spustit WorkTracker při startu Windows</value>
+    <value>Automaticky spustit WorkTracker po přihlášení do systému</value>
   </data>
   <data name="StartMinimized" xml:space="preserve">
     <value>Spustit minimalizovanou</value>

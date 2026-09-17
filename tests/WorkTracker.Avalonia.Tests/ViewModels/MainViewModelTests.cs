@@ -16,67 +16,12 @@ namespace WorkTracker.Avalonia.Tests.ViewModels;
 
 public class MainViewModelTests
 {
-	private static readonly DateTime LocalNow = new(2026, 1, 15, 12, 0, 0);
-
-	private sealed class Harness
-	{
-		public Mock<IDialogService> Dialogs { get; } = new();
-		public Mock<INotificationService> Notifications { get; } = new();
-		public Mock<IWorklogStateService> WorklogState { get; } = new();
-		public Mock<IWorkEntryEditOrchestrator> EditOrchestrator { get; } = new();
-		public Mock<IWorkSuggestionOrchestrator> SuggestionOrchestrator { get; } = new();
-		public Mock<IPomodoroService> PomodoroService { get; } = new();
-		public Mock<ISettingsService> Settings { get; } = new();
-		public Mock<ILocalizationService> Localization { get; } = new();
-		public Mock<IWorkEntryService> WorkEntryService { get; } = new();
-		public List<WorkEntry> Entries { get; } = new();
-
-		public Harness()
-		{
-			Settings.SetupGet(s => s.Settings).Returns(new ApplicationSettings());
-			Localization.Setup(l => l[It.IsAny<string>()]).Returns((string key) => key);
-			Localization.Setup(l => l.GetString(It.IsAny<string>())).Returns((string key) => key);
-			Localization.Setup(l => l.GetFormattedString(It.IsAny<string>(), It.IsAny<object[]>()))
-				.Returns((string key, object[] _) => key);
-			PomodoroService.Setup(p => p.GetSnapshot())
-				.Returns(new PomodoroSnapshot(PomodoroPhase.Work, TimeSpan.FromMinutes(25), 0, 4, false));
-			WorkEntryService
-				.Setup(s => s.GetWorkEntriesByDateAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-				.ReturnsAsync(() => Entries);
-		}
-
-		public MainViewModel CreateViewModel()
-		{
-			var serviceProvider = new Mock<IServiceProvider>();
-			serviceProvider.Setup(p => p.GetService(typeof(IWorkEntryService))).Returns(WorkEntryService.Object);
-			var scope = new Mock<IServiceScope>();
-			scope.SetupGet(s => s.ServiceProvider).Returns(serviceProvider.Object);
-			var scopeFactory = new Mock<IServiceScopeFactory>();
-			scopeFactory.Setup(f => f.CreateScope()).Returns(scope.Object);
-
-			var timeProvider = new Mock<TimeProvider>();
-			timeProvider.Setup(t => t.GetUtcNow()).Returns(new DateTimeOffset(LocalNow, TimeSpan.Zero));
-			timeProvider.SetupGet(t => t.LocalTimeZone).Returns(TimeZoneInfo.Utc);
-
-			return new MainViewModel(
-				scopeFactory.Object,
-				Dialogs.Object,
-				Notifications.Object,
-				WorklogState.Object,
-				EditOrchestrator.Object,
-				SuggestionOrchestrator.Object,
-				PomodoroService.Object,
-				Settings.Object,
-				Localization.Object,
-				timeProvider.Object,
-				NullLogger<MainViewModel>.Instance);
-		}
-	}
+	private static DateTime LocalNow => MainViewModelHarness.LocalNow;
 
 	[Fact]
 	public Task Constructor_LoadsEntriesForTodayAndComputesTotal() => UiThread.Dispatch(() =>
 	{
-		var harness = new Harness();
+		var harness = new MainViewModelHarness();
 		harness.Entries.Add(new WorkEntryBuilder().WithId(1).WithTimes(9, 10).Build());
 		harness.Entries.Add(new WorkEntryBuilder().WithId(2).WithTimes(10, 12).Build());
 
@@ -92,7 +37,7 @@ public class MainViewModelTests
 	[Fact]
 	public Task WorkInput_WithTicket_DetectsTicketAndDescription() => UiThread.Dispatch(() =>
 	{
-		var harness = new Harness();
+		var harness = new MainViewModelHarness();
 		using var vm = harness.CreateViewModel();
 
 		vm.WorkInput = "PROJ-123 Fix the bug";
@@ -104,7 +49,7 @@ public class MainViewModelTests
 	[Fact]
 	public Task WorkInput_WithoutTicket_DetectsDescriptionOnly() => UiThread.Dispatch(() =>
 	{
-		var harness = new Harness();
+		var harness = new MainViewModelHarness();
 		using var vm = harness.CreateViewModel();
 
 		vm.WorkInput = "just some work";
@@ -116,7 +61,7 @@ public class MainViewModelTests
 	[Fact]
 	public Task StartWorkCommand_CanExecute_RequiresNonEmptyInput() => UiThread.Dispatch(() =>
 	{
-		var harness = new Harness();
+		var harness = new MainViewModelHarness();
 		using var vm = harness.CreateViewModel();
 
 		vm.StartWorkCommand.CanExecute(null).Should().BeFalse();
@@ -129,7 +74,7 @@ public class MainViewModelTests
 	[Fact]
 	public Task StartWork_Success_ClearsInputAndNotifies() => UiThread.Dispatch(async () =>
 	{
-		var harness = new Harness();
+		var harness = new MainViewModelHarness();
 		harness.WorklogState
 			.Setup(s => s.StartTrackingAsync("PROJ-1", "Something", It.IsAny<CancellationToken>()))
 			.ReturnsAsync(Result.Success(new WorkEntryBuilder().Active().Build()));
@@ -147,7 +92,7 @@ public class MainViewModelTests
 	[Fact]
 	public Task StartWork_Failure_ShowsErrorAndKeepsInput() => UiThread.Dispatch(async () =>
 	{
-		var harness = new Harness();
+		var harness = new MainViewModelHarness();
 		harness.WorklogState
 			.Setup(s => s.StartTrackingAsync(It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(Result.Failure<WorkEntry>("overlap detected"));
@@ -164,7 +109,7 @@ public class MainViewModelTests
 	[Fact]
 	public Task StopWork_Success_Notifies() => UiThread.Dispatch(async () =>
 	{
-		var harness = new Harness();
+		var harness = new MainViewModelHarness();
 		harness.WorklogState.SetupGet(s => s.IsTracking).Returns(true);
 		harness.WorklogState
 			.Setup(s => s.StopTrackingAsync(It.IsAny<CancellationToken>()))
@@ -181,7 +126,7 @@ public class MainViewModelTests
 	[Fact]
 	public Task IsTrackingChanged_RaisesPropertyChangedAndUpdatesCanExecute() => UiThread.Dispatch(() =>
 	{
-		var harness = new Harness();
+		var harness = new MainViewModelHarness();
 		using var vm = harness.CreateViewModel();
 		var raised = new List<string?>();
 		vm.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
@@ -198,7 +143,7 @@ public class MainViewModelTests
 	[Fact]
 	public Task DeleteWorkEntry_Confirmed_DeletesAndNotifies() => UiThread.Dispatch(async () =>
 	{
-		var harness = new Harness();
+		var harness = new MainViewModelHarness();
 		var entry = new WorkEntryBuilder().WithId(42).WithTimes(9, 10).Build();
 		harness.Dialogs
 			.Setup(d => d.ShowConfirmationAsync(It.IsAny<string>(), It.IsAny<string>()))
@@ -217,7 +162,7 @@ public class MainViewModelTests
 	[Fact]
 	public Task DeleteWorkEntry_Declined_DoesNothing() => UiThread.Dispatch(async () =>
 	{
-		var harness = new Harness();
+		var harness = new MainViewModelHarness();
 		var entry = new WorkEntryBuilder().WithId(42).WithTimes(9, 10).Build();
 		harness.Dialogs
 			.Setup(d => d.ShowConfirmationAsync(It.IsAny<string>(), It.IsAny<string>()))
@@ -233,7 +178,7 @@ public class MainViewModelTests
 	[Fact]
 	public Task DayNavigation_ChangesSelectedDateAndRefreshes() => UiThread.Dispatch(() =>
 	{
-		var harness = new Harness();
+		var harness = new MainViewModelHarness();
 		using var vm = harness.CreateViewModel();
 
 		vm.PreviousDayCommand.Execute(null);
@@ -254,7 +199,7 @@ public class MainViewModelTests
 	[Fact]
 	public Task StartWorkFromHistory_CreatesNewEntryStartingNow() => UiThread.Dispatch(async () =>
 	{
-		var harness = new Harness();
+		var harness = new MainViewModelHarness();
 		var entry = new WorkEntryBuilder().WithId(7).WithTicketId("PROJ-7").WithDescription("Old work").WithTimes(9, 10).Build();
 		harness.EditOrchestrator
 			.Setup(o => o.SaveNewAsync("PROJ-7", LocalNow, null, "Old work", It.IsAny<CancellationToken>()))
