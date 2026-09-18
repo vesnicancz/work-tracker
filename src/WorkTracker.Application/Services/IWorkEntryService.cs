@@ -12,6 +12,8 @@ public interface IWorkEntryService
 
 	Task<WorkEntry?> GetActiveWorkAsync(CancellationToken cancellationToken = default);
 
+	Task<WorkEntry?> GetWorkEntryByIdAsync(int id, CancellationToken cancellationToken = default);
+
 	Task<IEnumerable<WorkEntry>> GetWorkEntriesByDateAsync(DateTime date, CancellationToken cancellationToken = default);
 
 	Task<IEnumerable<WorkEntry>> GetWorkEntriesByDateRangeAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default);

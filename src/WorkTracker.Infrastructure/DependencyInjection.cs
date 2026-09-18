@@ -7,6 +7,8 @@ using WorkTracker.Application;
 using WorkTracker.Application.Interfaces;
 using WorkTracker.Application.Plugins;
 using WorkTracker.Application.Services;
+using WorkTracker.Application.Settings;
+using WorkTracker.Infrastructure.Settings;
 using WorkTracker.Infrastructure.Plugins;
 using WorkTracker.Domain.Interfaces;
 using WorkTracker.Infrastructure.Data;
@@ -84,6 +86,7 @@ public static class DependencyInjection
 		// Secure storage — secrets stored in native OS credential store
 		// (Windows Credential Manager / macOS Keychain / Linux libsecret)
 		services.AddSingleton<ISecureStorage, CredentialStoreSecureStorage>();
+		services.AddSingleton<IPluginSettingsReader, PluginSettingsReader>();
 
 		// HttpClient factory for plugins
 		services.AddHttpClient();
