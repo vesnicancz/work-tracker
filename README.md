@@ -111,7 +111,7 @@ WorkTracker.CLI edit 5 --ticket=PROJ-456 --end=17:30 --desc="Nový popis"
 > - **Windows**: `WorkTracker.CLI.exe start …` (z PowerShellu / CMD), nebo `.\WorkTracker.CLI.exe start …` z lokální složky
 > - **Linux / macOS**: `./WorkTracker.CLI start …` z lokální složky, nebo `WorkTracker.CLI start …` pokud je v `PATH`
 >
-> **macOS a GUI:** Avalonia se na macOS distribuuje jako `WorkTracker.app`, ne jako holá binárka — pluginy tedy patří do `WorkTracker.app/Contents/MacOS/plugins/`. Build je podepsaný jen ad-hoc, takže stažený `.app` je v karanténě a Gatekeeper ho napoprvé nepustí: otevři ho jednou přes **pravý klik → Otevřít**, nebo spusť `xattr -dr com.apple.quarantine WorkTracker.app`. Potom už startuje normálně.
+> **macOS a GUI:** Avalonia se na macOS distribuuje jako `WorkTracker.app`, ne jako holá binárka. Do podepsaného bundlu se nezapisuje, takže pluginy tam nepatří — jdou do `~/Library/Application Support/WorkTracker/plugins/`. Build je podepsaný jen ad-hoc, takže stažený `.app` je v karanténě a Gatekeeper ho napoprvé nepustí: otevři ho jednou přes **pravý klik → Otevřít**, nebo spusť `xattr -dr com.apple.quarantine WorkTracker.app`. Potom už startuje normálně.
 >
 > **Poznámka k nápovědě:** Vestavěný help (`WorkTracker.CLI help`) používá v usage stringách historický název `worklog` (např. `Usage: worklog start [ticket-id] ...`). Je to stará relikvie — skutečná binárka se jmenuje `WorkTracker.CLI`, takže při volání nahraď `worklog` za `WorkTracker.CLI` (s `.exe`/`./` dle platformy).
 

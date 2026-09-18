@@ -119,7 +119,9 @@ public partial class App : global::Avalonia.Application
 			var host = Host.CreateDefaultBuilder()
 				.ConfigureAppConfiguration((context, config) =>
 				{
-					config.SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
+					// Not BaseDirectory: inside a macOS .app the shipped appsettings.json lives in
+					// Contents/Resources, because Contents/MacOS may hold nothing but signed code.
+					config.SetBasePath(WorkTrackerPaths.AppContentDirectory)
 						.AddJsonFile("appsettings.json", optional: false, reloadOnChange: false)
 						.AddJsonFile($"appsettings.{context.HostingEnvironment.EnvironmentName}.json", optional: true, reloadOnChange: false)
 						.AddEnvironmentVariables();

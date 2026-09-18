@@ -23,6 +23,42 @@ public static class WorkTrackerPaths
 			folder);
 	});
 
+	/// <summary>
+	/// Contents/ of the macOS .app bundle we are running from, or null anywhere else. A bundle is
+	/// not just a folder with a different name: Contents/MacOS may hold nothing but signed code
+	/// (a stray data file there fails <c>codesign --verify --strict</c> outright), and writing
+	/// anywhere inside the bundle invalidates the signature that Apple Silicon insists on. So the
+	/// two directories that AppContext.BaseDirectory would otherwise serve have to split apart.
+	/// </summary>
+	private static readonly Lazy<string?> _macAppBundleContents = new(() =>
+	{
+		if (!OperatingSystem.IsMacOS())
+		{
+			return null;
+		}
+
+		var baseDirectory = Path.TrimEndingDirectorySeparator(AppContext.BaseDirectory);
+		if (!string.Equals(Path.GetFileName(baseDirectory), "MacOS", StringComparison.Ordinal))
+		{
+			return null;
+		}
+
+		var contents = Path.GetDirectoryName(baseDirectory);
+		return contents is not null && File.Exists(Path.Combine(contents, "Info.plist"))
+			? contents
+			: null;
+	});
+
+	private static readonly Lazy<string> _appContentDirectory = new(() =>
+		_macAppBundleContents.Value is { } contents
+			? Path.Combine(contents, "Resources")
+			: AppContext.BaseDirectory);
+
+	private static readonly Lazy<string> _writableBaseDirectory = new(() =>
+		_macAppBundleContents.Value is not null
+			? AppDataDirectory
+			: AppContext.BaseDirectory);
+
 	private static readonly Lazy<string> _defaultDatabasePath = new(() =>
 		Path.Combine(AppDataDirectory, "worktracker.db"));
 
@@ -39,12 +75,27 @@ public static class WorkTrackerPaths
 		Path.Combine(AppDataDirectory, "keys"));
 
 	private static readonly Lazy<string> _defaultPluginsPath = new(() =>
-		Path.Combine(AppContext.BaseDirectory, "plugins"));
+		Path.Combine(WritableBaseDirectory, "plugins"));
 
 	/// <summary>
 	/// Root application data directory (e.g. %LocalAppData%\WorkTracker or %LocalAppData%\WorkTracker_Development).
 	/// </summary>
 	public static string AppDataDirectory => _appDataDirectory.Value;
+
+	/// <summary>
+	/// Directory holding the files shipped alongside the application (appsettings.json). Next to
+	/// the executable everywhere except inside a macOS .app, where it is Contents/Resources.
+	/// Read-only — see <see cref="WritableBaseDirectory"/> for anything the app creates.
+	/// </summary>
+	public static string AppContentDirectory => _appContentDirectory.Value;
+
+	/// <summary>
+	/// Base directory that relative, writable paths from configuration (plugin directories, a
+	/// relative database path) resolve against. The executable directory everywhere except inside
+	/// a macOS .app, where nothing may be written into the signed bundle and the app data
+	/// directory takes over.
+	/// </summary>
+	public static string WritableBaseDirectory => _writableBaseDirectory.Value;
 
 	/// <summary>
 	/// Default SQLite database path.
@@ -73,7 +124,7 @@ public static class WorkTrackerPaths
 	public static string MsalCacheDirectory => _msalCacheDirectory.Value;
 
 	/// <summary>
-	/// Default plugins directory (relative to executable).
+	/// Default plugins directory (relative to <see cref="WritableBaseDirectory"/>).
 	/// </summary>
 	public static string DefaultPluginsPath => _defaultPluginsPath.Value;
 
