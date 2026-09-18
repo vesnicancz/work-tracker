@@ -10,6 +10,30 @@ public static class CliArgumentParser
 {
 	public sealed record EditOptions(string? TicketId, DateTime? StartTime, DateTime? EndTime, string? Description);
 
+	/// <summary>
+	/// Removes the given switch tokens (matched whole and case-insensitively) from
+	/// <paramref name="args"/> and reports whether any of them was present. Switches are pulled
+	/// out before positional parsing so they may appear anywhere on the command line.
+	/// </summary>
+	public static string[] TakeSwitch(string[] args, out bool present, params string[] names)
+	{
+		var remaining = new List<string>(args.Length);
+		present = false;
+
+		foreach (var arg in args)
+		{
+			if (names.Contains(arg, StringComparer.OrdinalIgnoreCase))
+			{
+				present = true;
+				continue;
+			}
+
+			remaining.Add(arg);
+		}
+
+		return [.. remaining];
+	}
+
 	public static DateTime? ParseDateTime(string input)
 	{
 		// Try parsing as full DateTime first (e.g., "2025-10-30 14:30")
@@ -94,6 +118,31 @@ public static class CliArgumentParser
 		}
 
 		return (ticketId, description, startTime);
+	}
+
+	/// <summary>
+	/// Removes a "--name=value" option from <paramref name="args"/> and returns its value
+	/// (null when absent). The last occurrence wins. Like <see cref="TakeSwitch"/>, options are
+	/// pulled out before positional parsing so they may appear anywhere on the command line.
+	/// </summary>
+	public static string[] TakeOption(string[] args, out string? value, string name)
+	{
+		var prefix = name + "=";
+		var remaining = new List<string>(args.Length);
+		value = null;
+
+		foreach (var arg in args)
+		{
+			if (arg.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+			{
+				value = arg[prefix.Length..];
+				continue;
+			}
+
+			remaining.Add(arg);
+		}
+
+		return [.. remaining];
 	}
 
 	/// <summary>

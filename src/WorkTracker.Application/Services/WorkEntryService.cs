@@ -161,6 +161,11 @@ public sealed class WorkEntryService : IWorkEntryService
 		return await _repository.GetActiveWorkEntryAsync(cancellationToken);
 	}
 
+	public async Task<WorkEntry?> GetWorkEntryByIdAsync(int id, CancellationToken cancellationToken)
+	{
+		return await _repository.GetByIdAsync(id, cancellationToken);
+	}
+
 	public async Task<IEnumerable<WorkEntry>> GetWorkEntriesByDateAsync(DateTime date, CancellationToken cancellationToken)
 	{
 		return await _repository.GetByDateAsync(date, cancellationToken);

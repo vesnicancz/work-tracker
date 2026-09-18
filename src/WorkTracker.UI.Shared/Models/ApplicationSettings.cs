@@ -1,11 +1,17 @@
+using WorkTracker.Application.Settings;
 using WorkTracker.Plugin.Abstractions;
 
 namespace WorkTracker.UI.Shared.Models;
 
 /// <summary>
-/// Application settings model
+/// Application settings model.
+/// <para>
+/// Derives from <see cref="PluginSettings"/> so the plugin slice is declared once and stays
+/// byte-compatible with what the CLI reads; the inherited properties serialize flat, exactly
+/// as they did when they were declared here.
+/// </para>
 /// </summary>
-public class ApplicationSettings
+public class ApplicationSettings : PluginSettings
 {
 	/// <summary>
 	/// Last-selected submission mode in the Submit dialog. Persisted so the dialog
@@ -32,16 +38,6 @@ public class ApplicationSettings
 	/// Whether to check GitHub for newer releases on startup
 	/// </summary>
 	public bool CheckForUpdates { get; set; } = true;
-
-	/// <summary>
-	/// Plugin configurations (pluginId -> configuration dictionary)
-	/// </summary>
-	public Dictionary<string, Dictionary<string, string>> PluginConfigurations { get; set; } = new();
-
-	/// <summary>
-	/// Enabled plugins (pluginId -> enabled state)
-	/// </summary>
-	public Dictionary<string, bool> EnabledPlugins { get; set; } = new();
 
 	/// <summary>
 	/// Favorite work items for quick access from tray menu

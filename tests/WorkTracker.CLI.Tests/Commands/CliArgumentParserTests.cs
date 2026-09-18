@@ -176,6 +176,89 @@ public class CliArgumentParserTests
 
 	#endregion ParseEditOptions
 
+	#region TakeSwitch
+
+	[Theory]
+	[InlineData("--json")]
+	[InlineData("--JSON")]
+	public void TakeSwitch_RemovesMatchAndReportsPresent(string token)
+	{
+		var rest = CliArgumentParser.TakeSwitch(["list", token, "2025-10-30"], out var present, "--json");
+
+		present.Should().BeTrue();
+		rest.Should().Equal("list", "2025-10-30");
+	}
+
+	[Fact]
+	public void TakeSwitch_WithoutMatch_LeavesArgumentsIntact()
+	{
+		var rest = CliArgumentParser.TakeSwitch(["list", "2025-10-30"], out var present, "--json");
+
+		present.Should().BeFalse();
+		rest.Should().Equal("list", "2025-10-30");
+	}
+
+	[Fact]
+	public void TakeSwitch_MatchesAnyOfTheGivenAliases()
+	{
+		var rest = CliArgumentParser.TakeSwitch(["send", "week", "-y"], out var present, "--yes", "-y");
+
+		present.Should().BeTrue();
+		rest.Should().Equal("send", "week");
+	}
+
+	[Fact]
+	public void TakeSwitch_DoesNotMatchSwitchLikePrefixes()
+	{
+		// "--desc=--json" is a value, not the switch.
+		var rest = CliArgumentParser.TakeSwitch(["edit", "5", "--desc=--json"], out var present, "--json");
+
+		present.Should().BeFalse();
+		rest.Should().Equal("edit", "5", "--desc=--json");
+	}
+
+	#endregion TakeSwitch
+
+	#region TakeOption
+
+	[Fact]
+	public void TakeOption_ExtractsValueAndRemovesToken()
+	{
+		var rest = CliArgumentParser.TakeOption(["send", "week", "--provider=tempo.worklog"], out var value, "--provider");
+
+		value.Should().Be("tempo.worklog");
+		rest.Should().Equal("send", "week");
+	}
+
+	[Fact]
+	public void TakeOption_WithoutOption_YieldsNull()
+	{
+		var rest = CliArgumentParser.TakeOption(["send", "week"], out var value, "--provider");
+
+		value.Should().BeNull();
+		rest.Should().Equal("send", "week");
+	}
+
+	[Fact]
+	public void TakeOption_EmptyValue_IsPreservedNotTreatedAsAbsent()
+	{
+		var rest = CliArgumentParser.TakeOption(["send", "--provider="], out var value, "--provider");
+
+		value.Should().BeEmpty();
+		rest.Should().Equal("send");
+	}
+
+	[Fact]
+	public void TakeOption_LastOccurrenceWins()
+	{
+		var rest = CliArgumentParser.TakeOption(["send", "--provider=a", "--provider=b"], out var value, "--provider");
+
+		value.Should().Be("b");
+		rest.Should().Equal("send");
+	}
+
+	#endregion TakeOption
+
 	#region TryParseSendArguments
 
 	[Fact]
