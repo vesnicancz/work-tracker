@@ -34,7 +34,8 @@ public class SettingsWindowLanguageSmokeTests
 			settings.Object,
 			NullLogger<SettingsViewModel>.Instance,
 			new Mock<IAutostartManager>().Object,
-			localization);
+			localization,
+			new Mock<IThemeService>().Object);
 	}
 
 	[Fact]

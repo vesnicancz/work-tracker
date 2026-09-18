@@ -87,23 +87,25 @@ public class SettingsOrchestrator : ISettingsOrchestrator
 
 	public async Task SaveSettingsAsync(SettingsSaveRequest request, CancellationToken cancellationToken)
 	{
-		var settings = new ApplicationSettings
-		{
-			CloseWindowBehavior = request.CloseWindowBehavior,
-			StartWithWindows = request.StartWithWindows,
-			StartMinimized = request.StartMinimized,
-			CheckForUpdates = request.CheckForUpdates,
-			Theme = request.Theme ?? _settingsService.Settings.Theme,
-			FollowSystemTheme = request.FollowSystemTheme,
-			LightTheme = request.LightTheme ?? _settingsService.Settings.LightTheme,
-			DarkTheme = request.DarkTheme ?? _settingsService.Settings.DarkTheme,
-			// Normalize on the way in so only a valid code is ever written back to disk.
-			Language = LanguageCatalog.Normalize(request.Language ?? _settingsService.Settings.Language),
-			PluginConfigurations = new Dictionary<string, Dictionary<string, string>>(),
-			EnabledPlugins = new Dictionary<string, bool>(),
-			FavoriteWorkItems = request.FavoriteWorkItems,
-			Pomodoro = request.Pomodoro
-		};
+		// Start from a copy of what is stored rather than from a blank ApplicationSettings: the
+		// dialog does not own every setting (LastSubmissionMode is written by the Submit dialog),
+		// and anything it does not send back has to survive the save instead of resetting.
+		var settings = _settingsService.Settings.Clone();
+
+		settings.CloseWindowBehavior = request.CloseWindowBehavior;
+		settings.StartWithWindows = request.StartWithWindows;
+		settings.StartMinimized = request.StartMinimized;
+		settings.CheckForUpdates = request.CheckForUpdates;
+		settings.Theme = request.Theme ?? settings.Theme;
+		settings.FollowSystemTheme = request.FollowSystemTheme;
+		settings.LightTheme = request.LightTheme ?? settings.LightTheme;
+		settings.DarkTheme = request.DarkTheme ?? settings.DarkTheme;
+		// Normalize on the way in so only a valid code is ever written back to disk.
+		settings.Language = LanguageCatalog.Normalize(request.Language ?? settings.Language);
+		settings.PluginConfigurations = new Dictionary<string, Dictionary<string, string>>();
+		settings.EnabledPlugins = new Dictionary<string, bool>();
+		settings.FavoriteWorkItems = request.FavoriteWorkItems;
+		settings.Pomodoro = request.Pomodoro;
 
 		// Save plugin configurations and enabled state, encrypting sensitive values
 		foreach (var pluginVm in request.Plugins)
@@ -141,35 +143,68 @@ public class SettingsOrchestrator : ISettingsOrchestrator
 
 		_logger.LogInformation("Testing connection for plugin {PluginId}", plugin.Plugin.Metadata.Id);
 
+		// The test runs against the live plugin instance, so it has to initialize it with the
+		// dialog's unsaved values. Restore the stored configuration afterwards - otherwise a test
+		// followed by Cancel would leave the running plugin on settings the user never saved.
 		var tempConfig = new Dictionary<string, string>(plugin.Configuration);
-		bool initialized;
 		try
 		{
-			initialized = await plugin.Plugin.InitializeAsync(tempConfig, cancellationToken);
+			bool initialized;
+			try
+			{
+				initialized = await plugin.Plugin.InitializeAsync(tempConfig, cancellationToken);
+			}
+			catch (Exception ex)
+			{
+				_logger.LogWarning(ex, "Initialization failed for plugin {PluginId} during connection test", plugin.Plugin.Metadata.Id);
+				return $"✗ Connection failed: {ex.Message}";
+			}
+
+			if (!initialized)
+			{
+				_logger.LogWarning("Initialization failed for plugin {PluginId} during connection test", plugin.Plugin.Metadata.Id);
+				return "✗ Connection failed: Unable to initialize plugin with current configuration";
+			}
+
+			var result = await testablePlugin.TestConnectionAsync(progress, cancellationToken);
+
+			if (result.IsSuccess)
+			{
+				_logger.LogInformation("Connection test successful for {PluginId}", plugin.Plugin.Metadata.Id);
+				return "✓ Connection successful";
+			}
+
+			_logger.LogWarning("Connection test failed for {PluginId}: {Error}",
+				plugin.Plugin.Metadata.Id, result.Error);
+			return $"✗ Connection failed: {result.Error}";
+		}
+		finally
+		{
+			// Not the caller's token: a cancelled test still has to put the plugin back.
+			await RestoreSavedConfigurationAsync(plugin.Plugin, CancellationToken.None);
+		}
+	}
+
+	/// <summary>
+	/// Puts a plugin back on its persisted configuration after a connection test. A plugin with no
+	/// stored configuration yet is left alone - there is nothing to restore it to. Failures are
+	/// logged and swallowed: this runs in a finally block and must not replace the test's result.
+	/// </summary>
+	private async Task RestoreSavedConfigurationAsync(IPlugin plugin, CancellationToken cancellationToken)
+	{
+		if (!_settingsService.Settings.PluginConfigurations.TryGetValue(plugin.Metadata.Id, out var savedConfig))
+		{
+			return;
+		}
+
+		try
+		{
+			await plugin.InitializeAsync(new Dictionary<string, string>(savedConfig), cancellationToken);
 		}
 		catch (Exception ex)
 		{
-			_logger.LogWarning(ex, "Initialization failed for plugin {PluginId} during connection test", plugin.Plugin.Metadata.Id);
-			return $"✗ Connection failed: {ex.Message}";
+			_logger.LogWarning(ex, "Failed to restore saved configuration for plugin {PluginId} after a connection test", plugin.Metadata.Id);
 		}
-
-		if (!initialized)
-		{
-			_logger.LogWarning("Initialization failed for plugin {PluginId} during connection test", plugin.Plugin.Metadata.Id);
-			return "✗ Connection failed: Unable to initialize plugin with current configuration";
-		}
-
-		var result = await testablePlugin.TestConnectionAsync(progress, cancellationToken);
-
-		if (result.IsSuccess)
-		{
-			_logger.LogInformation("Connection test successful for {PluginId}", plugin.Plugin.Metadata.Id);
-			return "✓ Connection successful";
-		}
-
-		_logger.LogWarning("Connection test failed for {PluginId}: {Error}",
-			plugin.Plugin.Metadata.Id, result.Error);
-		return $"✗ Connection failed: {result.Error}";
 	}
 
 	private void ProtectSensitiveFields(IPlugin plugin, Dictionary<string, string> config)

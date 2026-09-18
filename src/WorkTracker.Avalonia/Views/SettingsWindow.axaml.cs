@@ -32,12 +32,12 @@ public partial class SettingsWindow : Window
 		};
 
 		// The titlebar X calls Close(false) directly, so Cancel() is not the only way out -
-		// undo the live language preview here to cover every dismissal path.
+		// undo the live previews (language and theme) here to cover every dismissal path.
 		Closed += (_, _) =>
 		{
 			if (DataContext is SettingsViewModel { DialogResult: false } vm)
 			{
-				vm.RevertLanguagePreview();
+				vm.RevertPreview();
 			}
 		};
 	}
