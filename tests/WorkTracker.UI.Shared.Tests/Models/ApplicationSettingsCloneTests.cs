@@ -15,6 +15,11 @@ public class ApplicationSettingsCloneTests
 	private static ApplicationSettings NonDefaultSettings() => new()
 	{
 		LastSubmissionMode = WorklogSubmissionMode.Aggregated,
+		LastSubmissionProviderId = "tempo",
+		SubmissionModeByProvider = new Dictionary<string, WorklogSubmissionMode>
+		{
+			["tempo"] = WorklogSubmissionMode.Timed
+		},
 		CloseWindowBehavior = CloseWindowBehavior.ExitApplication,
 		StartWithWindows = true,
 		StartMinimized = true,
@@ -85,10 +90,12 @@ public class ApplicationSettingsCloneTests
 		clone.FavoriteWorkItems.Add(new FavoriteWorkItem { Name = "Extra" });
 		clone.PluginConfigurations["tempo"]["Url"] = "https://changed.invalid";
 		clone.EnabledPlugins["tempo"] = false;
+		clone.SubmissionModeByProvider["tempo"] = WorklogSubmissionMode.Aggregated;
 
 		original.Pomodoro.WorkMinutes.Should().Be(50);
 		original.FavoriteWorkItems.Should().ContainSingle().Which.Name.Should().Be("Standup");
 		original.PluginConfigurations["tempo"]["Url"].Should().Be("https://example.invalid");
 		original.EnabledPlugins["tempo"].Should().BeTrue();
+		original.SubmissionModeByProvider["tempo"].Should().Be(WorklogSubmissionMode.Timed);
 	}
 }

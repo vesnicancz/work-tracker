@@ -77,16 +77,21 @@
                         <TextBlock Text="{markup:Localize SubmissionMode}"
                                    FontSize="12" Foreground="{DynamicResource TextMuted}"
                                    VerticalAlignment="Center" />
-                        <RadioButton GroupName="SubmissionModeGroup"
+                        <RadioButton x:Name="TimedModeRadio"
+                                     GroupName="SubmissionModeGroup"
                                      IsChecked="{Binding IsTimedMode, Mode=TwoWay}"
+                                     IsEnabled="{Binding CanUseTimedMode}"
                                      Content="{markup:Localize SubmissionModeTimed}"
                                      VerticalAlignment="Center" />
-                        <RadioButton GroupName="SubmissionModeGroup"
+                        <RadioButton x:Name="AggregatedModeRadio"
+                                     GroupName="SubmissionModeGroup"
                                      IsChecked="{Binding IsAggregatedMode, Mode=TwoWay}"
+                                     IsEnabled="{Binding CanUseAggregatedMode}"
                                      Content="{markup:Localize SubmissionModeAggregated}"
                                      VerticalAlignment="Center" />
                     </StackPanel>
                     <ComboBox Grid.Column="6"
+                              x:Name="ProviderComboBox"
                               ItemsSource="{Binding AvailableProviders}"
                               SelectedItem="{Binding SelectedProvider}"
                               DisplayMemberBinding="{ReflectionBinding Name}"

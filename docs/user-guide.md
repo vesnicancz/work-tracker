@@ -407,8 +407,8 @@ Otevře se po stisku **Odeslat záznamy práce** (v levém panelu dole).
 
 - **Date picker** — vybrané datum (výchozí: dnes).
 - **Checkbox „Odeslat celý týden“** — přepne mezi denním a týdenním režimem. V týdenním režimu dialog zobrazí záznamy seskupené podle dnů s barevně zvýrazněnými date headery.
-- **Mód** (radio buttony „Časový / Agregovaný“) — přepíná mezi dvěma režimy odesílání (viz níže). Volba se pamatuje mezi spuštěními aplikace.
-- **Dropdown s pluginem** (vpravo) — vybere provider, kam se záznamy odešlou (např. „Tempo Timesheets“). Dropdown se automaticky filtruje podle zvoleného módu — pluginy, které daný mód nepodporují, tam nejsou. Placeholder „Submit to…“ se zobrazí, dokud nic nevybereš.
+- **Mód** (radio buttony „Časový / Agregovaný“) — přepíná mezi dvěma režimy odesílání (viz níže). Mód, který vybraný plugin nepodporuje, je zašedlý. Volba se pamatuje zvlášť pro každý plugin: dialog se otevře na pluginu, kam jsi odesílal naposledy, v módu, který jsi u něj naposledy měl, a přepnutí pluginu v dropdownu rovnou přehodí i mód na ten jeho.
+- **Dropdown s pluginem** (vpravo) — vybere provider, kam se záznamy odešlou (např. „Tempo Timesheets“). Jsou v něm vždycky všechny dostupné pluginy, nezávisle na zvoleném módu — plugin je hlavní volba a mód se mu přizpůsobí. Placeholder „Submit to…“ se zobrazí, dokud nic nevybereš.
 
 #### Časový vs. Agregovaný mód
 

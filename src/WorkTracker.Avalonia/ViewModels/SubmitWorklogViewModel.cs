@@ -34,6 +34,7 @@ public class SubmitWorklogViewModel : ViewModelBase, IDisposable
 	private ProviderInfo? _selectedProvider;
 	private bool _hasFailedItems;
 	private WorklogSubmissionMode _selectedMode;
+	private bool _suppressSelectionSync;
 	private CancellationTokenSource? _loadPreviewCts;
 
 	public SubmitWorklogViewModel(
@@ -49,8 +50,6 @@ public class SubmitWorklogViewModel : ViewModelBase, IDisposable
 		_timeProvider = timeProvider;
 		_logger = logger;
 		_selectedDate = _timeProvider.GetLocalNow().Date;
-		var persistedMode = _settingsService.Settings.LastSubmissionMode;
-		_selectedMode = persistedMode.IsSingleMode() ? persistedMode : WorklogSubmissionMode.Timed;
 
 		SendCommand = new AsyncRelayCommand(SendAsync, CanSend);
 		RetryFailedCommand = new AsyncRelayCommand(RetryFailedAsync, CanRetryFailed);
@@ -60,17 +59,81 @@ public class SubmitWorklogViewModel : ViewModelBase, IDisposable
 		SelectAllCommand = new RelayCommand(SelectAll);
 
 		_allProviders = _orchestrator.LoadAvailableProviders();
-		RefreshProviderFilter();
+
+		// Every provider is listed, whatever the mode: the provider is the primary choice and the
+		// mode follows it (modes a provider cannot do are disabled in the dialog). Filtering the
+		// list by mode would hide the very provider the user is trying to switch to.
+		AvailableProviders = new ObservableCollection<ProviderInfo>(_allProviders);
+		RestorePersistedSelection();
 	}
 
-	private void RefreshProviderFilter()
+	/// <summary>
+	/// Reopens the dialog on the provider that was used last, in the mode that was last used with
+	/// <i>that</i> provider. Settings written before per-provider modes existed have no remembered
+	/// provider, so they fall back to the old behavior: the global mode decides, and the first
+	/// provider that supports it is selected.
+	/// </summary>
+	private void RestorePersistedSelection()
 	{
-		var previousId = SelectedProvider?.Id;
-		var filtered = _allProviders.Where(p => p.SupportedModes.HasFlag(_selectedMode)).ToList();
-		AvailableProviders = new ObservableCollection<ProviderInfo>(filtered);
+		var settings = _settingsService.Settings;
+		var globalMode = GlobalMode(settings);
 
-		// Preserve selection if compatible with the new filter; otherwise fall back to the first provider.
-		SelectedProvider = filtered.FirstOrDefault(p => p.Id == previousId) ?? filtered.FirstOrDefault();
+		var provider = _allProviders.FirstOrDefault(p => p.Id == settings.LastSubmissionProviderId)
+			?? _allProviders.FirstOrDefault(p => p.SupportedModes.HasFlag(globalMode))
+			?? _allProviders.FirstOrDefault();
+
+		_selectedMode = provider != null ? ResolveModeFor(provider) : globalMode;
+
+		// Nothing to persist while restoring, and the provider's own mode is already applied.
+		WithSuppressedSelectionSync(() => SelectedProvider = provider);
+	}
+
+	private static WorklogSubmissionMode GlobalMode(ApplicationSettings settings) =>
+		settings.LastSubmissionMode.IsSingleMode() ? settings.LastSubmissionMode : WorklogSubmissionMode.Timed;
+
+	/// <summary>
+	/// The mode to show for <paramref name="provider"/>: its own remembered mode when it is still
+	/// one the provider supports, otherwise the last global mode, otherwise any mode the provider
+	/// does support.
+	/// </summary>
+	private WorklogSubmissionMode ResolveModeFor(ProviderInfo provider)
+	{
+		var settings = _settingsService.Settings;
+
+		if (settings.SubmissionModeByProvider.TryGetValue(provider.Id, out var remembered) &&
+			remembered.IsSingleMode() &&
+			provider.SupportedModes.HasFlag(remembered))
+		{
+			return remembered;
+		}
+
+		var globalMode = GlobalMode(settings);
+		if (provider.SupportedModes.HasFlag(globalMode))
+		{
+			return globalMode;
+		}
+
+		if (provider.SupportedModes.HasFlag(WorklogSubmissionMode.Timed))
+		{
+			return WorklogSubmissionMode.Timed;
+		}
+
+		return provider.SupportedModes.HasFlag(WorklogSubmissionMode.Aggregated)
+			? WorklogSubmissionMode.Aggregated
+			: globalMode;
+	}
+
+	private void WithSuppressedSelectionSync(Action action)
+	{
+		_suppressSelectionSync = true;
+		try
+		{
+			action();
+		}
+		finally
+		{
+			_suppressSelectionSync = false;
+		}
 	}
 
 	#region Properties
@@ -154,11 +217,29 @@ public class SubmitWorklogViewModel : ViewModelBase, IDisposable
 		get => _selectedProvider;
 		set
 		{
-			if (SetProperty(ref _selectedProvider, value))
+			if (!SetProperty(ref _selectedProvider, value))
 			{
-				SendCommand.NotifyCanExecuteChanged();
-				RetryFailedCommand.NotifyCanExecuteChanged();
+				return;
 			}
+
+			OnPropertyChanged(nameof(CanUseTimedMode));
+			OnPropertyChanged(nameof(CanUseAggregatedMode));
+			SendCommand.NotifyCanExecuteChanged();
+			RetryFailedCommand.NotifyCanExecuteChanged();
+
+			// The selection made while restoring must not rewrite settings; its mode is already set.
+			if (_suppressSelectionSync || value == null)
+			{
+				return;
+			}
+
+			var mode = ResolveModeFor(value);
+			if (mode != _selectedMode)
+			{
+				ApplyMode(mode);
+			}
+
+			PersistSelection(value.Id, _selectedMode);
 		}
 	}
 
@@ -181,19 +262,59 @@ public class SubmitWorklogViewModel : ViewModelBase, IDisposable
 		get => _selectedMode;
 		set
 		{
-			if (SetProperty(ref _selectedMode, value))
+			if (_selectedMode == value)
+			{
+				return;
+			}
+
+			// The dialog disables a mode the selected provider cannot do, so this only guards
+			// against a programmatic set. Re-notify so a radio button that moved on its own snaps
+			// back to the mode that is actually in effect.
+			if (SelectedProvider != null && !SelectedProvider.SupportedModes.HasFlag(value))
 			{
 				OnPropertyChanged(nameof(IsTimedMode));
 				OnPropertyChanged(nameof(IsAggregatedMode));
-
-				var settings = _settingsService.Settings;
-				settings.LastSubmissionMode = value;
-				_ = PersistSettingsAsync(settings);
-
-				RefreshProviderFilter();
-				_ = LoadPreviewAsync();
+				return;
 			}
+
+			ApplyMode(value);
+			PersistSelection(SelectedProvider?.Id, value);
 		}
+	}
+
+	private void ApplyMode(WorklogSubmissionMode mode)
+	{
+		_selectedMode = mode;
+		OnPropertyChanged(nameof(SelectedMode));
+		OnPropertyChanged(nameof(IsTimedMode));
+		OnPropertyChanged(nameof(IsAggregatedMode));
+
+		_ = LoadPreviewAsync();
+	}
+
+	/// <summary>
+	/// Whether the selected provider can submit in <paramref name="mode"/>. With no provider
+	/// selected nothing is ruled out yet, so both modes stay available.
+	/// </summary>
+	private bool SupportsMode(WorklogSubmissionMode mode) =>
+		SelectedProvider?.SupportedModes.HasFlag(mode) ?? true;
+
+	/// <summary>
+	/// Stores the dialog's current choice: the provider to reopen on, the mode it was last used
+	/// with, and that same mode as the global fallback for providers not seen before.
+	/// </summary>
+	private void PersistSelection(string? providerId, WorklogSubmissionMode mode)
+	{
+		var settings = _settingsService.Settings;
+		settings.LastSubmissionMode = mode;
+
+		if (!string.IsNullOrEmpty(providerId))
+		{
+			settings.LastSubmissionProviderId = providerId;
+			settings.SubmissionModeByProvider[providerId] = mode;
+		}
+
+		_ = PersistSettingsAsync(settings);
 	}
 
 	private async Task PersistSettingsAsync(ApplicationSettings settings)
@@ -204,9 +325,19 @@ public class SubmitWorklogViewModel : ViewModelBase, IDisposable
 		}
 		catch (Exception ex)
 		{
-			_logger.LogError(ex, "Failed to persist LastSubmissionMode");
+			_logger.LogError(ex, "Failed to persist the submit dialog selection");
 		}
 	}
+
+	/// <summary>
+	/// Whether the Timed radio button is available for the selected provider.
+	/// </summary>
+	public bool CanUseTimedMode => SupportsMode(WorklogSubmissionMode.Timed);
+
+	/// <summary>
+	/// Whether the Aggregated radio button is available for the selected provider.
+	/// </summary>
+	public bool CanUseAggregatedMode => SupportsMode(WorklogSubmissionMode.Aggregated);
 
 	public bool IsTimedMode
 	{
@@ -332,6 +463,10 @@ public class SubmitWorklogViewModel : ViewModelBase, IDisposable
 		{
 			IsSending = true;
 			StatusMessage = _localization.GetFormattedString("SubmittingTo", SelectedProvider.Name);
+
+			// Covers the case where nothing in the dialog was touched: the selection restored on
+			// open was never written back, and submitting confirms it is the one to remember.
+			PersistSelection(SelectedProvider.Id, _selectedMode);
 
 			var outcome = await _orchestrator.SubmitAsync(PreviewItems, SelectedProvider.Id, SelectedProvider.Name, _selectedMode, CancellationToken.None);
 			HasFailedItems = outcome.HasFailedItems;
