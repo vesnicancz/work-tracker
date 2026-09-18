@@ -15,9 +15,26 @@ public class ApplicationSettings : PluginSettings
 {
 	/// <summary>
 	/// Last-selected submission mode in the Submit dialog. Persisted so the dialog
-	/// remembers the user's preferred mode across sessions.
+	/// remembers the user's preferred mode across sessions, and used as the fallback for a
+	/// provider that has no entry in <see cref="SubmissionModeByProvider"/> yet.
 	/// </summary>
 	public WorklogSubmissionMode LastSubmissionMode { get; set; } = WorklogSubmissionMode.Timed;
+
+	/// <summary>
+	/// Plugin id of the upload provider last used in the Submit dialog, so the dialog reopens on
+	/// the same provider. <c>null</c> when nothing has been submitted yet (or when the settings
+	/// file predates this property), in which case the dialog falls back to
+	/// <see cref="LastSubmissionMode"/> and the first compatible provider.
+	/// </summary>
+	public string? LastSubmissionProviderId { get; set; }
+
+	/// <summary>
+	/// Last-used submission mode per upload provider (pluginId -> mode). Selecting a provider in
+	/// the Submit dialog restores the mode that was last used with it; providers missing here fall
+	/// back to <see cref="LastSubmissionMode"/>, and an entry the provider no longer supports is
+	/// ignored.
+	/// </summary>
+	public Dictionary<string, WorklogSubmissionMode> SubmissionModeByProvider { get; set; } = new();
 
 	/// <summary>
 	/// Behavior when closing the main window
@@ -97,6 +114,8 @@ public class ApplicationSettings : PluginSettings
 	public ApplicationSettings Clone() => new()
 	{
 		LastSubmissionMode = LastSubmissionMode,
+		LastSubmissionProviderId = LastSubmissionProviderId,
+		SubmissionModeByProvider = new Dictionary<string, WorklogSubmissionMode>(SubmissionModeByProvider),
 		CloseWindowBehavior = CloseWindowBehavior,
 		StartWithWindows = StartWithWindows,
 		StartMinimized = StartMinimized,

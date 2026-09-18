@@ -81,7 +81,7 @@ public class SubmitWorklogViewModelTests
 		};
 
 	[Fact]
-	public void Constructor_RestoresPersistedSubmissionMode()
+	public void Constructor_NoRememberedProvider_RestoresGlobalModeAndAProviderThatSupportsIt()
 	{
 		var harness = new Harness();
 		harness.SettingsModel.LastSubmissionMode = WorklogSubmissionMode.Aggregated;
@@ -90,7 +90,7 @@ public class SubmitWorklogViewModelTests
 
 		vm.SelectedMode.Should().Be(WorklogSubmissionMode.Aggregated);
 		vm.IsAggregatedMode.Should().BeTrue();
-		vm.AvailableProviders.Should().ContainSingle(p => p.Id == "goran");
+		vm.SelectedProvider.Should().Be(BothModesProvider, "Tempo cannot do Aggregated");
 	}
 
 	[Fact]
@@ -106,22 +106,60 @@ public class SubmitWorklogViewModelTests
 	}
 
 	[Fact]
-	public void ModeChange_RefiltersProvidersAndPersistsSetting()
+	public void Constructor_RestoresRememberedProviderAndItsOwnMode()
 	{
 		var harness = new Harness();
+		harness.SettingsModel.LastSubmissionMode = WorklogSubmissionMode.Timed;
+		harness.SettingsModel.LastSubmissionProviderId = "goran";
+		harness.SettingsModel.SubmissionModeByProvider["goran"] = WorklogSubmissionMode.Aggregated;
+
 		using var vm = harness.CreateViewModel();
 
-		vm.SelectedMode = WorklogSubmissionMode.Aggregated;
-
-		vm.AvailableProviders.Should().ContainSingle(p => p.Id == "goran");
 		vm.SelectedProvider.Should().Be(BothModesProvider);
-		harness.SettingsModel.LastSubmissionMode.Should().Be(WorklogSubmissionMode.Aggregated);
-		harness.Settings.Verify(
-			s => s.SaveSettingsAsync(harness.SettingsModel, It.IsAny<CancellationToken>()), Times.Once);
+		vm.SelectedMode.Should().Be(WorklogSubmissionMode.Aggregated, "the mode is remembered per provider");
 	}
 
 	[Fact]
-	public void ModeChange_KeepsSelectedProviderWhenStillCompatible()
+	public void Constructor_UnknownRememberedProvider_FallsBackToGlobalMode()
+	{
+		var harness = new Harness();
+		harness.SettingsModel.LastSubmissionMode = WorklogSubmissionMode.Aggregated;
+		harness.SettingsModel.LastSubmissionProviderId = "uninstalled-plugin";
+
+		using var vm = harness.CreateViewModel();
+
+		vm.SelectedMode.Should().Be(WorklogSubmissionMode.Aggregated);
+		vm.SelectedProvider.Should().Be(BothModesProvider);
+	}
+
+	[Fact]
+	public void Constructor_RememberedModeNoLongerSupported_FallsBackToASupportedMode()
+	{
+		var harness = new Harness();
+		harness.SettingsModel.LastSubmissionMode = WorklogSubmissionMode.Aggregated;
+		harness.SettingsModel.LastSubmissionProviderId = "tempo";
+		harness.SettingsModel.SubmissionModeByProvider["tempo"] = WorklogSubmissionMode.Aggregated;
+
+		using var vm = harness.CreateViewModel();
+
+		vm.SelectedProvider.Should().Be(TimedOnlyProvider);
+		vm.SelectedMode.Should().Be(WorklogSubmissionMode.Timed, "Tempo only supports Timed");
+	}
+
+	[Fact]
+	public void Constructor_DoesNotPersistTheRestoredSelection()
+	{
+		var harness = new Harness();
+
+		using var vm = harness.CreateViewModel();
+
+		harness.SettingsModel.LastSubmissionProviderId.Should().BeNull();
+		harness.Settings.Verify(
+			s => s.SaveSettingsAsync(It.IsAny<ApplicationSettings>(), It.IsAny<CancellationToken>()), Times.Never);
+	}
+
+	[Fact]
+	public void AvailableProviders_AreNeverFilteredByTheSelectedMode()
 	{
 		var harness = new Harness();
 		using var vm = harness.CreateViewModel();
@@ -129,7 +167,153 @@ public class SubmitWorklogViewModelTests
 
 		vm.SelectedMode = WorklogSubmissionMode.Aggregated;
 
+		// Tempo cannot do Aggregated, but it stays listed — the provider is the primary choice and
+		// hiding it is what would make switching back to it impossible.
+		vm.AvailableProviders.Should().HaveCount(2);
 		vm.SelectedProvider.Should().Be(BothModesProvider);
+	}
+
+	[Fact]
+	public void CanUseMode_FollowsWhatTheSelectedProviderSupports()
+	{
+		var harness = new Harness();
+		using var vm = harness.CreateViewModel();
+
+		vm.SelectedProvider.Should().Be(TimedOnlyProvider);
+		vm.CanUseTimedMode.Should().BeTrue();
+		vm.CanUseAggregatedMode.Should().BeFalse();
+
+		vm.SelectedProvider = BothModesProvider;
+
+		vm.CanUseTimedMode.Should().BeTrue();
+		vm.CanUseAggregatedMode.Should().BeTrue();
+	}
+
+	[Fact]
+	public void ModeChange_UnsupportedByTheSelectedProvider_IsIgnored()
+	{
+		var harness = new Harness();
+		using var vm = harness.CreateViewModel();
+		vm.SelectedProvider.Should().Be(TimedOnlyProvider);
+
+		// The dialog disables this radio button; a programmatic set must not slip past it either.
+		vm.SelectedMode = WorklogSubmissionMode.Aggregated;
+
+		vm.SelectedMode.Should().Be(WorklogSubmissionMode.Timed);
+		vm.IsTimedMode.Should().BeTrue();
+		harness.Settings.Verify(
+			s => s.SaveSettingsAsync(It.IsAny<ApplicationSettings>(), It.IsAny<CancellationToken>()), Times.Never);
+	}
+
+	[Fact]
+	public void ModeChange_RemembersTheModeForTheSelectedProvider()
+	{
+		var harness = new Harness();
+		using var vm = harness.CreateViewModel();
+		vm.SelectedProvider = BothModesProvider;
+
+		vm.SelectedMode = WorklogSubmissionMode.Aggregated;
+
+		harness.SettingsModel.LastSubmissionMode.Should().Be(WorklogSubmissionMode.Aggregated);
+		harness.SettingsModel.LastSubmissionProviderId.Should().Be("goran");
+		harness.SettingsModel.SubmissionModeByProvider["goran"].Should().Be(WorklogSubmissionMode.Aggregated);
+	}
+
+	[Fact]
+	public void ProviderChange_RestoresTheModeRememberedForThatProvider()
+	{
+		var harness = new Harness();
+		harness.SettingsModel.LastSubmissionProviderId = "tempo";
+		harness.SettingsModel.SubmissionModeByProvider["goran"] = WorklogSubmissionMode.Aggregated;
+		using var vm = harness.CreateViewModel();
+		vm.SelectedMode.Should().Be(WorklogSubmissionMode.Timed);
+
+		vm.SelectedProvider = BothModesProvider;
+
+		vm.SelectedMode.Should().Be(WorklogSubmissionMode.Aggregated);
+		vm.SelectedProvider.Should().Be(BothModesProvider);
+	}
+
+	[Fact]
+	public void ProviderChange_ToAProviderThatCannotDoTheCurrentMode_SwitchesTheMode()
+	{
+		var harness = new Harness();
+		harness.SettingsModel.LastSubmissionProviderId = "goran";
+		harness.SettingsModel.SubmissionModeByProvider["goran"] = WorklogSubmissionMode.Aggregated;
+		using var vm = harness.CreateViewModel();
+		vm.SelectedMode.Should().Be(WorklogSubmissionMode.Aggregated);
+
+		vm.SelectedProvider = TimedOnlyProvider;
+
+		vm.SelectedMode.Should().Be(WorklogSubmissionMode.Timed);
+		harness.SettingsModel.SubmissionModeByProvider["goran"].Should()
+			.Be(WorklogSubmissionMode.Aggregated, "leaving Goran must not rewrite its mode");
+	}
+
+	[Fact]
+	public void ProviderChange_WithoutRememberedMode_KeepsCurrentMode()
+	{
+		var harness = new Harness();
+		using var vm = harness.CreateViewModel();
+
+		vm.SelectedProvider = BothModesProvider;
+
+		vm.SelectedMode.Should().Be(WorklogSubmissionMode.Timed);
+	}
+
+	[Fact]
+	public void ProviderChange_PersistsTheProviderAndItsMode()
+	{
+		var harness = new Harness();
+		using var vm = harness.CreateViewModel();
+
+		vm.SelectedProvider = BothModesProvider;
+
+		harness.SettingsModel.LastSubmissionProviderId.Should().Be("goran");
+		harness.SettingsModel.SubmissionModeByProvider["goran"].Should().Be(WorklogSubmissionMode.Timed);
+		harness.Settings.Verify(
+			s => s.SaveSettingsAsync(harness.SettingsModel, It.IsAny<CancellationToken>()), Times.Once);
+	}
+
+	[Fact]
+	public async Task Send_RemembersTheProviderAndModeItWasSentWith()
+	{
+		var harness = new Harness();
+		harness.PreviewItems.Add(Item());
+		harness.SettingsModel.LastSubmissionProviderId = "goran";
+		harness.SettingsModel.SubmissionModeByProvider["goran"] = WorklogSubmissionMode.Aggregated;
+		harness.Orchestrator
+			.Setup(o => o.SubmitAsync(It.IsAny<IReadOnlyList<WorklogPreviewItem>>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(new SubmissionOutcome(AllSucceeded: true, HasFailedItems: false, StatusMessage: "sent"));
+		using var vm = harness.CreateViewModel();
+		await vm.InitializeAsync(LocalNow.Date, isWeek: false);
+
+		// Nothing in the dialog is touched, so only the submit writes the selection back.
+		await vm.SendCommand.ExecuteAsync(null);
+
+		harness.SettingsModel.LastSubmissionProviderId.Should().Be("goran");
+		harness.SettingsModel.SubmissionModeByProvider["goran"].Should().Be(WorklogSubmissionMode.Aggregated);
+		harness.Settings.Verify(
+			s => s.SaveSettingsAsync(harness.SettingsModel, It.IsAny<CancellationToken>()), Times.Once);
+	}
+
+	[Fact]
+	public void SwitchingProvidersBackAndForth_KeepsEachProvidersOwnMode()
+	{
+		var harness = new Harness();
+		using var vm = harness.CreateViewModel();
+
+		// Goran is set to Aggregated...
+		vm.SelectedProvider = BothModesProvider;
+		vm.SelectedMode = WorklogSubmissionMode.Aggregated;
+
+		// ...and picking Tempo, which is Timed-only, switches the mode without touching Goran's.
+		vm.SelectedProvider = TimedOnlyProvider;
+		vm.SelectedMode.Should().Be(WorklogSubmissionMode.Timed);
+
+		// Back to Goran: Aggregated returns.
+		vm.SelectedProvider = BothModesProvider;
+		vm.SelectedMode.Should().Be(WorklogSubmissionMode.Aggregated);
 	}
 
 	[Fact]

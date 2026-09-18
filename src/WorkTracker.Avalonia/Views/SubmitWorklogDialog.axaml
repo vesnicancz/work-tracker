@@ -79,10 +79,12 @@
                                    VerticalAlignment="Center" />
                         <RadioButton GroupName="SubmissionModeGroup"
                                      IsChecked="{Binding IsTimedMode, Mode=TwoWay}"
+                                     IsEnabled="{Binding CanUseTimedMode}"
                                      Content="{markup:Localize SubmissionModeTimed}"
                                      VerticalAlignment="Center" />
                         <RadioButton GroupName="SubmissionModeGroup"
                                      IsChecked="{Binding IsAggregatedMode, Mode=TwoWay}"
+                                     IsEnabled="{Binding CanUseAggregatedMode}"
                                      Content="{markup:Localize SubmissionModeAggregated}"
                                      VerticalAlignment="Center" />
                     </StackPanel>
