@@ -13,63 +13,9 @@ namespace WorkTracker.Avalonia.Tests.ViewModels;
 
 public class SubmitWorklogViewModelTests
 {
-	private static readonly DateTime LocalNow = new(2026, 1, 15, 12, 0, 0);
-
-	private static readonly ProviderInfo TimedOnlyProvider = new()
-	{
-		Id = "tempo",
-		Name = "Tempo",
-		SupportedModes = WorklogSubmissionMode.Timed,
-	};
-
-	private static readonly ProviderInfo BothModesProvider = new()
-	{
-		Id = "goran",
-		Name = "Goran",
-		SupportedModes = WorklogSubmissionMode.Timed | WorklogSubmissionMode.Aggregated,
-	};
-
-	private sealed class Harness
-	{
-		public Mock<IWorklogSubmissionOrchestrator> Orchestrator { get; } = new();
-		public Mock<ISettingsService> Settings { get; } = new();
-		public ApplicationSettings SettingsModel { get; } = new();
-		public List<WorklogPreviewItem> PreviewItems { get; } = new();
-
-		public Harness()
-		{
-			Settings.SetupGet(s => s.Settings).Returns(SettingsModel);
-			Orchestrator.Setup(o => o.LoadAvailableProviders())
-				.Returns([TimedOnlyProvider, BothModesProvider]);
-			Orchestrator.Setup(o => o.FormatDuration(It.IsAny<int>()))
-				.Returns((int seconds) => $"{seconds}s");
-			Orchestrator
-				.Setup(o => o.LoadPreviewAsync(It.IsAny<DateTime>(), It.IsAny<bool>(), It.IsAny<WorklogSubmissionMode>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-				.ReturnsAsync(() => new PreviewLoadResult(
-					PreviewItems,
-					PreviewItems.Where(i => !i.IsDateHeader).Sum(i => i.Duration),
-					PreviewItems.Count(i => !i.IsDateHeader)));
-		}
-
-		public SubmitWorklogViewModel CreateViewModel()
-		{
-			var localization = new Mock<ILocalizationService>();
-			localization.Setup(l => l[It.IsAny<string>()]).Returns((string key) => key);
-			localization.Setup(l => l.GetFormattedString(It.IsAny<string>(), It.IsAny<object[]>()))
-				.Returns((string key, object[] _) => key);
-
-			var timeProvider = new Mock<TimeProvider>();
-			timeProvider.Setup(t => t.GetUtcNow()).Returns(new DateTimeOffset(LocalNow, TimeSpan.Zero));
-			timeProvider.SetupGet(t => t.LocalTimeZone).Returns(TimeZoneInfo.Utc);
-
-			return new SubmitWorklogViewModel(
-				Orchestrator.Object,
-				localization.Object,
-				Settings.Object,
-				timeProvider.Object,
-				NullLogger<SubmitWorklogViewModel>.Instance);
-		}
-	}
+	private static readonly DateTime LocalNow = SubmitWorklogViewModelHarness.LocalNow;
+	private static readonly ProviderInfo TimedOnlyProvider = SubmitWorklogViewModelHarness.TimedOnlyProvider;
+	private static readonly ProviderInfo BothModesProvider = SubmitWorklogViewModelHarness.BothModesProvider;
 
 	private static WorklogPreviewItem Item(int duration = 3600, bool selected = true) =>
 		new()
@@ -83,7 +29,7 @@ public class SubmitWorklogViewModelTests
 	[Fact]
 	public void Constructor_NoRememberedProvider_RestoresGlobalModeAndAProviderThatSupportsIt()
 	{
-		var harness = new Harness();
+		var harness = new SubmitWorklogViewModelHarness();
 		harness.SettingsModel.LastSubmissionMode = WorklogSubmissionMode.Aggregated;
 
 		using var vm = harness.CreateViewModel();
@@ -96,7 +42,7 @@ public class SubmitWorklogViewModelTests
 	[Fact]
 	public void Constructor_TimedMode_ListsAllProvidersAndSelectsFirst()
 	{
-		var harness = new Harness();
+		var harness = new SubmitWorklogViewModelHarness();
 
 		using var vm = harness.CreateViewModel();
 
@@ -108,7 +54,7 @@ public class SubmitWorklogViewModelTests
 	[Fact]
 	public void Constructor_RestoresRememberedProviderAndItsOwnMode()
 	{
-		var harness = new Harness();
+		var harness = new SubmitWorklogViewModelHarness();
 		harness.SettingsModel.LastSubmissionMode = WorklogSubmissionMode.Timed;
 		harness.SettingsModel.LastSubmissionProviderId = "goran";
 		harness.SettingsModel.SubmissionModeByProvider["goran"] = WorklogSubmissionMode.Aggregated;
@@ -122,7 +68,7 @@ public class SubmitWorklogViewModelTests
 	[Fact]
 	public void Constructor_UnknownRememberedProvider_FallsBackToGlobalMode()
 	{
-		var harness = new Harness();
+		var harness = new SubmitWorklogViewModelHarness();
 		harness.SettingsModel.LastSubmissionMode = WorklogSubmissionMode.Aggregated;
 		harness.SettingsModel.LastSubmissionProviderId = "uninstalled-plugin";
 
@@ -135,7 +81,7 @@ public class SubmitWorklogViewModelTests
 	[Fact]
 	public void Constructor_RememberedModeNoLongerSupported_FallsBackToASupportedMode()
 	{
-		var harness = new Harness();
+		var harness = new SubmitWorklogViewModelHarness();
 		harness.SettingsModel.LastSubmissionMode = WorklogSubmissionMode.Aggregated;
 		harness.SettingsModel.LastSubmissionProviderId = "tempo";
 		harness.SettingsModel.SubmissionModeByProvider["tempo"] = WorklogSubmissionMode.Aggregated;
@@ -149,7 +95,7 @@ public class SubmitWorklogViewModelTests
 	[Fact]
 	public void Constructor_DoesNotPersistTheRestoredSelection()
 	{
-		var harness = new Harness();
+		var harness = new SubmitWorklogViewModelHarness();
 
 		using var vm = harness.CreateViewModel();
 
@@ -161,7 +107,7 @@ public class SubmitWorklogViewModelTests
 	[Fact]
 	public void AvailableProviders_AreNeverFilteredByTheSelectedMode()
 	{
-		var harness = new Harness();
+		var harness = new SubmitWorklogViewModelHarness();
 		using var vm = harness.CreateViewModel();
 		vm.SelectedProvider = BothModesProvider;
 
@@ -176,7 +122,7 @@ public class SubmitWorklogViewModelTests
 	[Fact]
 	public void CanUseMode_FollowsWhatTheSelectedProviderSupports()
 	{
-		var harness = new Harness();
+		var harness = new SubmitWorklogViewModelHarness();
 		using var vm = harness.CreateViewModel();
 
 		vm.SelectedProvider.Should().Be(TimedOnlyProvider);
@@ -192,7 +138,7 @@ public class SubmitWorklogViewModelTests
 	[Fact]
 	public void ModeChange_UnsupportedByTheSelectedProvider_IsIgnored()
 	{
-		var harness = new Harness();
+		var harness = new SubmitWorklogViewModelHarness();
 		using var vm = harness.CreateViewModel();
 		vm.SelectedProvider.Should().Be(TimedOnlyProvider);
 
@@ -208,7 +154,7 @@ public class SubmitWorklogViewModelTests
 	[Fact]
 	public void ModeChange_RemembersTheModeForTheSelectedProvider()
 	{
-		var harness = new Harness();
+		var harness = new SubmitWorklogViewModelHarness();
 		using var vm = harness.CreateViewModel();
 		vm.SelectedProvider = BothModesProvider;
 
@@ -222,7 +168,7 @@ public class SubmitWorklogViewModelTests
 	[Fact]
 	public void ProviderChange_RestoresTheModeRememberedForThatProvider()
 	{
-		var harness = new Harness();
+		var harness = new SubmitWorklogViewModelHarness();
 		harness.SettingsModel.LastSubmissionProviderId = "tempo";
 		harness.SettingsModel.SubmissionModeByProvider["goran"] = WorklogSubmissionMode.Aggregated;
 		using var vm = harness.CreateViewModel();
@@ -237,7 +183,7 @@ public class SubmitWorklogViewModelTests
 	[Fact]
 	public void ProviderChange_ToAProviderThatCannotDoTheCurrentMode_SwitchesTheMode()
 	{
-		var harness = new Harness();
+		var harness = new SubmitWorklogViewModelHarness();
 		harness.SettingsModel.LastSubmissionProviderId = "goran";
 		harness.SettingsModel.SubmissionModeByProvider["goran"] = WorklogSubmissionMode.Aggregated;
 		using var vm = harness.CreateViewModel();
@@ -253,7 +199,7 @@ public class SubmitWorklogViewModelTests
 	[Fact]
 	public void ProviderChange_WithoutRememberedMode_KeepsCurrentMode()
 	{
-		var harness = new Harness();
+		var harness = new SubmitWorklogViewModelHarness();
 		using var vm = harness.CreateViewModel();
 
 		vm.SelectedProvider = BothModesProvider;
@@ -264,7 +210,7 @@ public class SubmitWorklogViewModelTests
 	[Fact]
 	public void ProviderChange_PersistsTheProviderAndItsMode()
 	{
-		var harness = new Harness();
+		var harness = new SubmitWorklogViewModelHarness();
 		using var vm = harness.CreateViewModel();
 
 		vm.SelectedProvider = BothModesProvider;
@@ -278,7 +224,7 @@ public class SubmitWorklogViewModelTests
 	[Fact]
 	public async Task Send_RemembersTheProviderAndModeItWasSentWith()
 	{
-		var harness = new Harness();
+		var harness = new SubmitWorklogViewModelHarness();
 		harness.PreviewItems.Add(Item());
 		harness.SettingsModel.LastSubmissionProviderId = "goran";
 		harness.SettingsModel.SubmissionModeByProvider["goran"] = WorklogSubmissionMode.Aggregated;
@@ -300,7 +246,7 @@ public class SubmitWorklogViewModelTests
 	[Fact]
 	public void SwitchingProvidersBackAndForth_KeepsEachProvidersOwnMode()
 	{
-		var harness = new Harness();
+		var harness = new SubmitWorklogViewModelHarness();
 		using var vm = harness.CreateViewModel();
 
 		// Goran is set to Aggregated...
@@ -319,7 +265,7 @@ public class SubmitWorklogViewModelTests
 	[Fact]
 	public async Task InitializeAsync_LoadsPreviewAndTotals()
 	{
-		var harness = new Harness();
+		var harness = new SubmitWorklogViewModelHarness();
 		harness.PreviewItems.Add(Item(duration: 3600));
 		harness.PreviewItems.Add(Item(duration: 1800));
 		using var vm = harness.CreateViewModel();
@@ -335,7 +281,7 @@ public class SubmitWorklogViewModelTests
 	[Fact]
 	public async Task CanSend_RequiresSelectedItemAndProvider()
 	{
-		var harness = new Harness();
+		var harness = new SubmitWorklogViewModelHarness();
 		using var vm = harness.CreateViewModel();
 
 		await vm.InitializeAsync(LocalNow.Date, isWeek: false);
@@ -352,7 +298,7 @@ public class SubmitWorklogViewModelTests
 	[Fact]
 	public async Task Send_AllSucceeded_SetsDialogResult()
 	{
-		var harness = new Harness();
+		var harness = new SubmitWorklogViewModelHarness();
 		harness.PreviewItems.Add(Item());
 		harness.Orchestrator
 			.Setup(o => o.SubmitAsync(It.IsAny<IReadOnlyList<WorklogPreviewItem>>(), "tempo", "Tempo", WorklogSubmissionMode.Timed, It.IsAny<CancellationToken>()))
@@ -371,7 +317,7 @@ public class SubmitWorklogViewModelTests
 	[Fact]
 	public async Task Send_WithFailures_EnablesRetry()
 	{
-		var harness = new Harness();
+		var harness = new SubmitWorklogViewModelHarness();
 		var item = Item();
 		harness.PreviewItems.Add(item);
 		harness.Orchestrator
@@ -392,7 +338,7 @@ public class SubmitWorklogViewModelTests
 	[Fact]
 	public async Task ItemDeselection_RecalculatesTotals()
 	{
-		var harness = new Harness();
+		var harness = new SubmitWorklogViewModelHarness();
 		var first = Item(duration: 3600);
 		var second = Item(duration: 1800);
 		harness.PreviewItems.Add(first);
