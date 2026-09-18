@@ -453,16 +453,27 @@ public class MyPlugin : WorkSuggestionPluginBase
 
 ## Lokalizace
 
-Texty UI jsou v `.resx` souborech v `src/WorkTracker.UI.Shared/Localization/`:
+Texty UI jsou v `.resx` souborech v `src/WorkTracker.UI.Shared/Resources/Localization/`:
 
 - `Strings.resx` — výchozí (angličtina)
 - `Strings.cs.resx` — čeština
+
+Který jazyk se použije, řídí `LanguageCatalog` (`UI.Shared/Models/`) — jediné místo, které převádí
+uloženou hodnotu `ApplicationSettings.Language` na `CultureInfo`. Hodnota je `"system"` (následuj OS,
+výchozí), nebo kód jazyka. Je to **string, ne enum**: neznámou hodnotu `LanguageCatalog.Normalize`
+degraduje zpět na `"system"`, zatímco enum by shodil deserializaci a `SettingsService` by se svým
+`catch` zahodil celý soubor nastavení.
+
+`LocalizationService` si v konstruktoru uloží `SystemCulture` — tj. OS kulturu — protože setter
+`CurrentCulture` přepisuje `CultureInfo.CurrentUICulture`, takže po prvním přepnutí už původní
+hodnota není k dispozici. Volba `"system"` se pak resolvuje právě proti tomuto snapshotu.
 
 ### Přidání nového jazyka
 
 1. Zkopíruj `Strings.resx` na `Strings.{culture}.resx` (např. `Strings.de.resx`).
 2. Přelož hodnoty.
-3. Přidej kulturu do `LocalizationService.AvailableCultures`.
+3. Přidej kód do `LanguageCatalog.SupportedLanguages` a nativní název do `LanguageCatalog.DisplayName`.
+   (`LocalizationService.AvailableCultures` z katalogu vychází, takže se doplní samo.)
 4. Build → `.resources.dll` se vygenerují automaticky do `bin/{Debug|Release}/{culture}/`.
 
 ### Použití v ViewModelech
@@ -482,7 +493,23 @@ V XAML se bindí přes indexer a `ILocalizationService` jako `DataContext`:
 <Button Content="{Binding Loc[Settings.Save]}" />
 ```
 
-Služba implementuje `INotifyPropertyChanged`, takže přepnutí jazyka v runtime regeneruje všechny bindingy.
+### Přepínání jazyka za běhu
+
+Uživatel jazyk volí v **Nastavení → Obecné → Jazyk** a změna se projeví okamžitě, bez restartu.
+Mechanismus má dvě poloviny a obě jsou nutné:
+
+- **XAML** — `{markup:Localize Key}` vrací binding na indexer `LocalizationService.Instance[Key]`.
+  Ten se obnoví jen tehdy, když `PropertyChanged` nese jméno **`"Item"`**, tedy CLR název indexeru.
+  Avalonia ho dohledává přes `GetDeclaredProperty`, takže prázdné jméno („všechno se změnilo")
+  ani konvenční `"Item[]"` **nefungují** — indexer by zůstal viset ve starém jazyce.
+  Hlídá to `LocalizeExtensionTests` a `LocalizationServiceTests.CurrentCulture_Changed_RaisesPropertyChangedForIndexer`.
+- **C#** — cokoliv, co si přeložený text uloží do pole, se samo neobnoví. Taková místa se musí
+  přihlásit k `ILocalizationService.PropertyChanged` a reagovat na **prázdné** jméno (to je signál
+  „změnil se jazyk" pro běžné konzumenty). Dnes to dělá `TrayIconService` (nativní položky menu)
+  a `MainViewModel` (počítané texty + cache fáze v `PomodoroViewModel`).
+
+Jazyk se aplikuje už v `App.ReadEarlySettings()`, tedy před konstrukcí prvního okna — jinak by
+při startu probliklo předchozí nastavení.
 
 ---
 

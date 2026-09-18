@@ -10,8 +10,8 @@
         x:DataType="vm:SettingsViewModel"
         mc:Ignorable="d"
         Title="{markup:Localize Settings}"
-        Width="640"
-        Height="700"
+        Width="650"
+        Height="750"
         WindowStartupLocation="CenterOwner"
         CanResize="False"
         ShowInTaskbar="False"
@@ -157,6 +157,17 @@
                                                   ItemsSource="{Binding AvailableDarkThemes}"
                                                   MinWidth="150" />
                                     </StackPanel>
+                                </StackPanel>
+
+                                <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center"
+                                            Margin="0,12,0,0">
+                                    <TextBlock Text="{markup:Localize Language}" FontWeight="Medium" VerticalAlignment="Center" />
+                                    <ComboBox SelectedItem="{Binding SelectedLanguage}"
+                                              ItemsSource="{Binding AvailableLanguages}"
+                                              DisplayMemberBinding="{ReflectionBinding DisplayName}"
+                                              MinWidth="150" />
+                                    <TextBlock Text="{markup:Localize LanguageDesc}" VerticalAlignment="Center"
+                                               Foreground="{DynamicResource TextMuted}" FontSize="11" />
                                 </StackPanel>
 
                             </StackPanel>

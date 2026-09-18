@@ -556,6 +556,17 @@ Time: {2}</value>
     <value>Night</value>
   </data>
 
+  <!-- Settings: Language -->
+  <data name="Language" xml:space="preserve">
+    <value>Language</value>
+  </data>
+  <data name="LanguageSystem" xml:space="preserve">
+    <value>System</value>
+  </data>
+  <data name="LanguageDesc" xml:space="preserve">
+    <value>Applies immediately — no restart needed.</value>
+  </data>
+
   <!-- Settings: About -->
   <data name="About" xml:space="preserve">
     <value>About</value>

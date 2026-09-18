@@ -49,8 +49,11 @@ public partial class App : global::Avalonia.Application
 
 		if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
 		{
-			// Read theme and startMinimized directly from settings.json (fast, no DI needed)
-			var (theme, followSystemTheme, lightTheme, darkTheme, startMinimized) = ReadEarlySettings();
+			// Read theme, language and startMinimized directly from settings.json (fast, no DI needed)
+			var (theme, followSystemTheme, lightTheme, darkTheme, startMinimized, language) = ReadEarlySettings();
+			// Before the first window is constructed - markup extensions resolve against this culture,
+			// so applying it later would flash the previous language.
+			localization.ApplyLanguage(language);
 			ApplyThemeMode(followSystemTheme, theme, lightTheme, darkTheme);
 
 			if (!startMinimized)
@@ -150,6 +153,10 @@ public partial class App : global::Avalonia.Application
 		var viewModel = _host.Services.GetRequiredService<MainViewModel>();
 		var trayIconService = _host.Services.GetRequiredService<ITrayIconService>();
 		var settingsService = _host.Services.GetRequiredService<ISettingsService>();
+
+		// Idempotent: re-apply from the fully deserialized settings, in case the early raw-JSON
+		// read fell back to its defaults while the real load succeeded.
+		_host.Services.GetRequiredService<ILocalizationService>().ApplyLanguage(settingsService.Settings.Language);
 
 		var mainWindow = desktop.MainWindow as MainWindow;
 		if (mainWindow == null)
@@ -337,17 +344,18 @@ public partial class App : global::Avalonia.Application
 	}
 
 	/// <summary>
-	/// Reads theme/follow-system/light/dark + startMinimized directly from settings.json
+	/// Reads theme/follow-system/light/dark + startMinimized + language directly from settings.json
 	/// without DI. This allows showing the correctly themed window before Host.Build() completes.
 	/// </summary>
-	private static (string theme, bool followSystemTheme, string lightTheme, string darkTheme, bool startMinimized) ReadEarlySettings()
+	private static (string theme, bool followSystemTheme, string lightTheme, string darkTheme, bool startMinimized, string language) ReadEarlySettings()
 	{
 		var defaults = (
 			theme: ApplicationSettings.DefaultTheme,
 			followSystemTheme: false,
 			lightTheme: ThemeCatalog.DefaultLightTheme,
 			darkTheme: ThemeCatalog.DefaultDarkTheme,
-			startMinimized: false);
+			startMinimized: false,
+			language: LanguageCatalog.SystemLanguage);
 
 		try
 		{
@@ -367,8 +375,13 @@ public partial class App : global::Avalonia.Application
 			var lightTheme = root.TryGetProperty("LightTheme", out var lt) ? lt.GetString() ?? defaults.lightTheme : defaults.lightTheme;
 			var darkTheme = root.TryGetProperty("DarkTheme", out var dt) ? dt.GetString() ?? defaults.darkTheme : defaults.darkTheme;
 			var startMinimized = root.TryGetProperty("StartMinimized", out var s) && s.GetBoolean();
+			// ValueKind guard: a non-string Language (hand-edited, or written by another tool) would
+			// throw from GetString and drop this whole method into its catch, losing the theme too.
+			var language = root.TryGetProperty("Language", out var lang) && lang.ValueKind == JsonValueKind.String
+				? lang.GetString() ?? defaults.language
+				: defaults.language;
 
-			return (theme, followSystem, lightTheme, darkTheme, startMinimized);
+			return (theme, followSystem, lightTheme, darkTheme, startMinimized, language);
 		}
 		catch
 		{

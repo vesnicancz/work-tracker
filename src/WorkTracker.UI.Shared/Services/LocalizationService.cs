@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Globalization;
 using System.Resources;
+using WorkTracker.UI.Shared.Models;
 using WorkTracker.UI.Shared.Resources.Localization;
 
 namespace WorkTracker.UI.Shared.Services;
@@ -10,8 +11,18 @@ namespace WorkTracker.UI.Shared.Services;
 /// </summary>
 public sealed class LocalizationService : ILocalizationService
 {
+	/// <summary>
+	/// CLR name of this type's string indexer. Avalonia's ReflectionIndexerNode - the node behind
+	/// every {markup:Localize} binding - only re-reads when PropertyChanged names a declared indexed
+	/// property, looked up with GetDeclaredProperty. It ignores the empty "everything changed" name,
+	/// and "Item[]" finds no such property, so this exact name is what repaints the UI.
+	/// </summary>
+	private const string IndexerPropertyName = "Item";
+
 	private readonly ResourceManager _resourceManager;
+	private readonly CultureInfo _systemCulture;
 	private CultureInfo _currentCulture;
+	private string _currentLanguage = LanguageCatalog.SystemLanguage;
 
 	/// <summary>
 	/// Static instance for use in XAML markup extensions (which cannot use DI).
@@ -24,7 +35,11 @@ public sealed class LocalizationService : ILocalizationService
 	public LocalizationService()
 	{
 		_resourceManager = new ResourceManager(typeof(Strings));
-		_currentCulture = CultureInfo.CurrentUICulture;
+		// Snapshot the OS culture before anything can overwrite CultureInfo.CurrentUICulture -
+		// the CurrentCulture setter does exactly that, so this is the only chance to capture what
+		// the "System" language option should resolve to for the rest of the process lifetime.
+		_systemCulture = CultureInfo.CurrentUICulture;
+		_currentCulture = _systemCulture;
 	}
 
 	/// <summary>
@@ -51,11 +66,20 @@ public sealed class LocalizationService : ILocalizationService
 	}
 
 	/// <inheritdoc />
-	public IEnumerable<CultureInfo> AvailableCultures => new[]
+	public CultureInfo SystemCulture => _systemCulture;
+
+	/// <inheritdoc />
+	public string CurrentLanguage => _currentLanguage;
+
+	/// <inheritdoc />
+	public void ApplyLanguage(string? languageCode)
 	{
-		new CultureInfo("en"),
-		new CultureInfo("cs")
-	};
+		_currentLanguage = LanguageCatalog.Normalize(languageCode);
+		CurrentCulture = LanguageCatalog.ResolveCulture(_currentLanguage, _systemCulture);
+	}
+
+	/// <inheritdoc />
+	public IEnumerable<CultureInfo> AvailableCultures => LanguageCatalog.SupportedCultures;
 
 	/// <inheritdoc />
 	public string GetString(string key)
@@ -95,7 +119,9 @@ public sealed class LocalizationService : ILocalizationService
 
 	private void OnLanguageChanged()
 	{
-		// Notify all subscribers that language has changed
+		// Indexer name first: this is what refreshes the XAML {markup:Localize} bindings.
+		PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(IndexerPropertyName));
+		// Empty name = "all properties changed" for plain property bindings and INPC consumers.
 		PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(string.Empty));
 	}
 }

@@ -321,6 +321,7 @@ Otevírá se kliknutím na **Nastavení** v levém dolním rohu hlavního okna. 
 - **Vzhled**:
   - **Sledovat systémové nastavení** — když je zapnuto, aplikace automaticky přepíná mezi denním a nočním motivem podle Windows/OS preference. V tomto režimu se zobrazí dva dropdowny **Den** (jen světlé motivy) a **Noc** (jen tmavé motivy).
   - **Motiv** — když je „Sledovat systém" vypnuto, použije se jeden zvolený motiv (Modern Blue, Dark, Light, Midnight, Purple, Abyss, Cobalt, Coral, Eclipse, Sandstone, Synthwave).
+- **Jazyk** — **Systém** (výchozí, podle OS), **Čeština** nebo **English**. Změna se projeví okamžitě, bez restartu. Viz [Jazyk](#jazyk).
 
 **Oblíbené** — správa oblíbených položek (viz [Oblíbené položky](#oblíbené-položky)):
 
@@ -666,11 +667,25 @@ Aktuálně jsou k dispozici:
 - **Čeština**
 - **Angličtina**
 
-Jazyk se určuje z **aktuální OS culture** (`CultureInfo.CurrentUICulture`) při startu aplikace — GUI nemá ruční přepínač. Pokud chceš jazyk změnit, přepni systémovou lokalizaci svého OS a aplikaci restartuj. Pro neznámé culture se použije angličtina jako fallback.
+Jazyk se vybírá v **Nastavení → Obecné → Jazyk**. Na výběr jsou tři možnosti:
+
+| Volba | Chování |
+|-------|---------|
+| **Systém** (výchozí) | Jazyk se určí z aktuální OS culture (`CultureInfo.CurrentUICulture`). Pro neznámé culture se použije angličtina jako fallback. |
+| **Čeština** | Vždy česky, bez ohledu na nastavení OS. |
+| **English** | Vždy anglicky, bez ohledu na nastavení OS. |
+
+**Změna se projeví okamžitě** — texty v otevřených oknech i v trayovém menu se přepnou hned,
+restart není potřeba. Pokud dialog Nastavení zavřeš tlačítkem **Zrušit** (nebo křížkem), vrátí se
+jazyk, se kterým jsi ho otevřel.
+
+Volba se ukládá do `settings.json` jako `"Language": "system" | "cs" | "en"`. Ruční přepsání na
+neznámou hodnotu nevadí — aplikace spadne zpět na systémový jazyk a ostatní nastavení zůstanou
+nedotčená.
 
 V CLI je UI pevně v angličtině.
 
-Nové jazyky lze přidat vložením `.resx` souboru do `src/WorkTracker.UI.Shared/Localization/`. Viz [developer-guide.md](developer-guide.md).
+Nové jazyky lze přidat vložením `.resx` souboru do `src/WorkTracker.UI.Shared/Resources/Localization/`. Viz [developer-guide.md](developer-guide.md).
 
 ### Motivy (pouze Avalonia)
 

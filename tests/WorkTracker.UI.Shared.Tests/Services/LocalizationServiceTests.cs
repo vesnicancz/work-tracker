@@ -1,5 +1,6 @@
 using System.Globalization;
 using FluentAssertions;
+using WorkTracker.UI.Shared.Models;
 using WorkTracker.UI.Shared.Services;
 
 namespace WorkTracker.UI.Shared.Tests.Services;
@@ -123,6 +124,76 @@ public class LocalizationServiceTests : IDisposable
 
 		czech.Should().NotStartWith("[");
 		english.Should().NotStartWith("[");
+	}
+
+	/// <summary>
+	/// Avalonia's ReflectionIndexerNode - the node behind every {markup:Localize} binding - looks the
+	/// changed property up with GetDeclaredProperty and ignores the empty "everything changed" name.
+	/// If this regresses, live language switching silently stops repainting the UI.
+	/// </summary>
+	[Fact]
+	public void CurrentCulture_Changed_RaisesPropertyChangedForIndexer()
+	{
+		var propertyNames = new List<string?>();
+		_sut.PropertyChanged += (_, e) => propertyNames.Add(e.PropertyName);
+
+		_sut.CurrentCulture = new CultureInfo("cs");
+
+		propertyNames.Should().Contain("Item");
+		typeof(LocalizationService).GetProperty("Item").Should()
+			.NotBeNull("the raised name must be the CLR indexer name Avalonia looks up");
+	}
+
+	#endregion
+
+	#region ApplyLanguage
+
+	[Fact]
+	public void ApplyLanguage_SupportedCode_SwitchesCultureAndLanguage()
+	{
+		_sut.ApplyLanguage("cs");
+
+		_sut.CurrentLanguage.Should().Be("cs");
+		_sut.CurrentCulture.TwoLetterISOLanguageName.Should().Be("cs");
+	}
+
+	[Theory]
+	[InlineData(null)]
+	[InlineData("")]
+	[InlineData("zz")]
+	public void ApplyLanguage_UnknownCode_FallsBackToSystem(string? code)
+	{
+		_sut.ApplyLanguage(code);
+
+		_sut.CurrentLanguage.Should().Be(LanguageCatalog.SystemLanguage);
+		_sut.CurrentCulture.Should().Be(_sut.SystemCulture);
+	}
+
+	/// <summary>
+	/// Switching away and back must land on the culture the OS had at startup. This fails if the
+	/// service ever re-reads CultureInfo.CurrentUICulture lazily, because its own setter overwrites it.
+	/// </summary>
+	[Fact]
+	public void ApplyLanguage_BackToSystem_RestoresOriginalSystemCulture()
+	{
+		var systemCulture = _sut.SystemCulture;
+
+		_sut.ApplyLanguage("cs");
+		_sut.ApplyLanguage(LanguageCatalog.SystemLanguage);
+
+		_sut.CurrentCulture.Should().Be(systemCulture);
+	}
+
+	[Fact]
+	public void ApplyLanguage_SameLanguageTwice_RaisesEventsOnlyOnce()
+	{
+		_sut.ApplyLanguage("cs");
+		var raised = 0;
+		_sut.PropertyChanged += (_, _) => raised++;
+
+		_sut.ApplyLanguage("cs");
+
+		raised.Should().Be(0);
 	}
 
 	#endregion

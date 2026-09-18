@@ -1,9 +1,11 @@
 using System.Collections.Concurrent;
+using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using Avalonia.Threading;
 using Material.Icons;
 using Material.Icons.Avalonia;
 using Microsoft.Extensions.Logging;
@@ -31,6 +33,9 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 	private readonly CancellationTokenSource _cts = new();
 	private NativeMenuItemSeparator? _favoritesSeparator;
 	private NativeMenuItem? _stopWorkItem;
+	private NativeMenuItem? _showItem;
+	private NativeMenuItem? _newEntryItem;
+	private NativeMenuItem? _exitItem;
 	private int _favoritesInsertIndex;
 
 	public TrayIconService(
@@ -57,16 +62,16 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 		_menu = new NativeMenu();
 
 		// Show window
-		var showItem = new NativeMenuItem(_localizationService["TrayShow"]);
-		showItem.Icon = RenderMenuIcon(MaterialIconKind.WindowRestore, Brushes.DarkSlateGray);
-		showItem.Click += (_, _) => ShowMainWindow();
-		_menu.Items.Add(showItem);
+		_showItem = new NativeMenuItem(_localizationService["TrayShow"]);
+		_showItem.Icon = RenderMenuIcon(MaterialIconKind.WindowRestore, Brushes.DarkSlateGray);
+		_showItem.Click += (_, _) => ShowMainWindow();
+		_menu.Items.Add(_showItem);
 
 		// New work entry
-		var newEntryItem = new NativeMenuItem(_localizationService["TrayNewWorkEntry"]);
-		newEntryItem.Icon = RenderMenuIcon(MaterialIconKind.Plus, Brushes.Green);
-		newEntryItem.Click += async (_, _) => await OpenNewWorkEntryAsync();
-		_menu.Items.Add(newEntryItem);
+		_newEntryItem = new NativeMenuItem(_localizationService["TrayNewWorkEntry"]);
+		_newEntryItem.Icon = RenderMenuIcon(MaterialIconKind.Plus, Brushes.Green);
+		_newEntryItem.Click += async (_, _) => await OpenNewWorkEntryAsync();
+		_menu.Items.Add(_newEntryItem);
 
 		// Stop work
 		_stopWorkItem = new NativeMenuItem(_localizationService["TrayStopWork"]);
@@ -85,9 +90,9 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 		_menu.Items.Add(new NativeMenuItemSeparator());
 
 		// Exit
-		var exitItem = new NativeMenuItem(_localizationService["TrayExit"]);
-		exitItem.Icon = RenderMenuIcon(MaterialIconKind.Power, Brushes.Crimson);
-		exitItem.Click += (_, _) =>
+		_exitItem = new NativeMenuItem(_localizationService["TrayExit"]);
+		_exitItem.Icon = RenderMenuIcon(MaterialIconKind.Power, Brushes.Crimson);
+		_exitItem.Click += (_, _) =>
 		{
 			if (global::Avalonia.Application.Current?.ApplicationLifetime
 				is IClassicDesktopStyleApplicationLifetime desktop)
@@ -95,7 +100,7 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 				desktop.Shutdown();
 			}
 		};
-		_menu.Items.Add(exitItem);
+		_menu.Items.Add(_exitItem);
 
 		_trayIcon = new TrayIcon
 		{
@@ -113,6 +118,8 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 		// Subscribe to tracking state changes
 		_worklogStateService.IsTrackingChanged += OnIsTrackingChanged;
 		SetActiveState(_worklogStateService.IsTracking);
+
+		_localizationService.PropertyChanged += OnLocalizationChanged;
 
 		_isInitialized = true;
 	}
@@ -185,6 +192,7 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 		_disposed = true;
 
 		_worklogStateService.IsTrackingChanged -= OnIsTrackingChanged;
+		_localizationService.PropertyChanged -= OnLocalizationChanged;
 		_cts.Cancel();
 		_cts.Dispose();
 		_trayIcon?.Dispose();
@@ -269,6 +277,59 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 	private void OnIsTrackingChanged(object? sender, bool isTracking)
 	{
 		SetActiveState(isTracking);
+	}
+
+	/// <summary>
+	/// Tray menu headers are native strings captured when the menu was built, so a live language
+	/// switch has to push the new text into them. Reacts only to the "all changed" signal - the
+	/// service also raises the indexer name for XAML bindings, which would double-fire this.
+	/// </summary>
+	private void OnLocalizationChanged(object? sender, PropertyChangedEventArgs e)
+	{
+		if (!string.IsNullOrEmpty(e.PropertyName))
+		{
+			return;
+		}
+
+		if (Dispatcher.UIThread.CheckAccess())
+		{
+			RefreshMenuTexts();
+		}
+		else
+		{
+			Dispatcher.UIThread.Post(RefreshMenuTexts);
+		}
+	}
+
+	private void RefreshMenuTexts()
+	{
+		if (_disposed || _menu == null)
+		{
+			return;
+		}
+
+		if (_showItem != null)
+		{
+			_showItem.Header = _localizationService["TrayShow"];
+		}
+
+		if (_newEntryItem != null)
+		{
+			_newEntryItem.Header = _localizationService["TrayNewWorkEntry"];
+		}
+
+		if (_stopWorkItem != null)
+		{
+			_stopWorkItem.Header = _localizationService["TrayStopWork"];
+		}
+
+		if (_exitItem != null)
+		{
+			_exitItem.Header = _localizationService["TrayExit"];
+		}
+
+		// Re-applies the tooltip in the new language.
+		SetActiveState(_worklogStateService.IsTracking);
 	}
 
 	private async Task StopWorkAsync()

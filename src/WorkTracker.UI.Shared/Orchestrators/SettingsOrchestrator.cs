@@ -97,6 +97,8 @@ public class SettingsOrchestrator : ISettingsOrchestrator
 			FollowSystemTheme = request.FollowSystemTheme,
 			LightTheme = request.LightTheme ?? _settingsService.Settings.LightTheme,
 			DarkTheme = request.DarkTheme ?? _settingsService.Settings.DarkTheme,
+			// Normalize on the way in so only a valid code is ever written back to disk.
+			Language = LanguageCatalog.Normalize(request.Language ?? _settingsService.Settings.Language),
 			PluginConfigurations = new Dictionary<string, Dictionary<string, string>>(),
 			EnabledPlugins = new Dictionary<string, bool>(),
 			FavoriteWorkItems = request.FavoriteWorkItems,

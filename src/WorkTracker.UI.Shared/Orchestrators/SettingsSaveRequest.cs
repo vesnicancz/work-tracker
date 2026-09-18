@@ -13,6 +13,7 @@ public class SettingsSaveRequest
 	public bool FollowSystemTheme { get; set; }
 	public string? LightTheme { get; set; }
 	public string? DarkTheme { get; set; }
+	public string? Language { get; set; }
 	public List<FavoriteWorkItem> FavoriteWorkItems { get; set; } = new();
 	public List<PluginViewModel> Plugins { get; set; } = new();
 	public PomodoroSettings Pomodoro { get; set; } = new();

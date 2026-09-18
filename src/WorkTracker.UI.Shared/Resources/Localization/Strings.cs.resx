@@ -556,6 +556,17 @@ Popis: {1}
     <value>Noc</value>
   </data>
 
+  <!-- Nastavení: Jazyk -->
+  <data name="Language" xml:space="preserve">
+    <value>Jazyk</value>
+  </data>
+  <data name="LanguageSystem" xml:space="preserve">
+    <value>Systém</value>
+  </data>
+  <data name="LanguageDesc" xml:space="preserve">
+    <value>Změna se projeví okamžitě — restart není potřeba.</value>
+  </data>
+
   <!-- Nastavení: O aplikaci -->
   <data name="About" xml:space="preserve">
     <value>O aplikaci</value>

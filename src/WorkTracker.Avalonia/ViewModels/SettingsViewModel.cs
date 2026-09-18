@@ -48,6 +48,8 @@ public class SettingsViewModel : ViewModelBase
 	private bool _followSystemTheme;
 	private string _selectedLightTheme = ThemeCatalog.DefaultLightTheme;
 	private string _selectedDarkTheme = ThemeCatalog.DefaultDarkTheme;
+	private readonly string _initialLanguage;
+	private LanguageOptionViewModel _selectedLanguage;
 
 	public SettingsViewModel(
 		ISettingsOrchestrator orchestrator,
@@ -71,6 +73,14 @@ public class SettingsViewModel : ViewModelBase
 		_followSystemTheme = _settingsService.Settings.FollowSystemTheme;
 		_selectedLightTheme = ResolveLightTheme(_settingsService.Settings.LightTheme);
 		_selectedDarkTheme = ResolveDarkTheme(_settingsService.Settings.DarkTheme);
+
+		_initialLanguage = LanguageCatalog.Normalize(_settingsService.Settings.Language);
+		AvailableLanguages =
+		[
+			new LanguageOptionViewModel(LanguageCatalog.SystemLanguage, localization, "LanguageSystem"),
+			.. LanguageCatalog.SupportedLanguages.Select(code => new LanguageOptionViewModel(code, localization))
+		];
+		_selectedLanguage = AvailableLanguages.First(option => option.Code == _initialLanguage);
 
 		// Load Pomodoro settings
 		var pomodoro = _settingsService.Settings.Pomodoro;
@@ -228,6 +238,50 @@ public class SettingsViewModel : ViewModelBase
 			{
 				ApplyThemePreview();
 			}
+		}
+	}
+
+	public IReadOnlyList<LanguageOptionViewModel> AvailableLanguages { get; }
+
+	public LanguageOptionViewModel SelectedLanguage
+	{
+		get => _selectedLanguage;
+		set
+		{
+			if (value is not null && SetProperty(ref _selectedLanguage, value))
+			{
+				ApplyLanguagePreview(value.Code);
+			}
+		}
+	}
+
+	/// <summary>
+	/// Switches the UI language immediately, mirroring the theme live preview. Persisted only on
+	/// Save; <see cref="RevertLanguagePreview"/> undoes it when the dialog is dismissed.
+	/// </summary>
+	private void ApplyLanguagePreview(string languageCode)
+	{
+		_localization.ApplyLanguage(languageCode);
+
+		// The service repaints XAML {markup:Localize} bindings; these refresh what this ViewModel
+		// computed from resources itself - the translated "System" label and AppVersionDisplay.
+		foreach (var option in AvailableLanguages)
+		{
+			option.RefreshDisplayName();
+		}
+
+		OnPropertyChanged(string.Empty);
+	}
+
+	/// <summary>
+	/// Restores the language the dialog opened with. Covers every dismissal path - Cancel and the
+	/// titlebar X, which closes the window without going through the command.
+	/// </summary>
+	public void RevertLanguagePreview()
+	{
+		if (SelectedLanguage.Code != _initialLanguage)
+		{
+			SelectedLanguage = AvailableLanguages.First(option => option.Code == _initialLanguage);
 		}
 	}
 
@@ -428,6 +482,7 @@ public class SettingsViewModel : ViewModelBase
 				FollowSystemTheme = FollowSystemTheme,
 				LightTheme = SelectedLightTheme,
 				DarkTheme = SelectedDarkTheme,
+				Language = SelectedLanguage.Code,
 				FavoriteWorkItems = FavoriteWorkItems.ToList(),
 				Plugins = Plugins.ToList(),
 				Pomodoro = new PomodoroSettings
@@ -456,6 +511,7 @@ public class SettingsViewModel : ViewModelBase
 
 	private void Cancel()
 	{
+		RevertLanguagePreview();
 		DialogResult = false;
 		CloseAction?.Invoke();
 	}
