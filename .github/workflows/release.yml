@@ -125,11 +125,31 @@ jobs:
           -p:DebugType=none
           -o publish/${{ matrix.artifact }}
 
-      - name: Archive (Linux/macOS)
-        if: runner.os != 'Windows'
+      # macOS gets the published output wrapped in an .app bundle: Finder and the Dock take the
+      # name and icon from it, the tray item and the notification backend both need its bundle
+      # identifier, and Apple Silicon refuses to launch an unsigned binary at all. The signature
+      # is ad-hoc — see build/macos/make-app-bundle.sh for what a Developer ID would change.
+      - name: Bundle and sign .app (macOS)
+        if: runner.os == 'macOS'
+        env:
+          VERSION_TAG: ${{ github.ref_name }}
+        run: >
+          build/macos/make-app-bundle.sh
+          publish/${{ matrix.artifact }}
+          publish/bundle/WorkTracker.app
+          "$VERSION_TAG"
+
+      - name: Archive (Linux)
+        if: runner.os == 'Linux'
         run: |
           cd publish/${{ matrix.artifact }}
           zip -r ../${{ matrix.artifact }}.zip .
+
+      # ditto rather than zip: it is what keeps the bundle's symlinks, and with them the code
+      # signature, intact through the archive.
+      - name: Archive (macOS)
+        if: runner.os == 'macOS'
+        run: ditto -c -k --sequesterRsrc --keepParent publish/bundle/WorkTracker.app publish/${{ matrix.artifact }}.zip
 
       - name: Archive (Windows)
         if: runner.os == 'Windows'

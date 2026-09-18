@@ -569,11 +569,36 @@ Trigger: push tagu `v*`. Jobs:
 
 1. **test** (ubuntu) — spustí celou test sadu před release.
 2. **publish-cli** (matrix: win-x64, linux-x64, osx-x64, osx-arm64) — `dotnet publish` s `PublishSingleFile=true`, `SelfContained=false`, zip artifact.
-3. **publish-avalonia** (matrix: win-x64, linux-x64, osx-x64, osx-arm64, win-arm64) — Avalonia pro všechny platformy.
+3. **publish-avalonia** (matrix: win-x64, linux-x64, osx-x64, osx-arm64, win-arm64) — Avalonia pro všechny platformy. Obě macOS varianty navíc projdou krokem *Bundle and sign .app* (viz níže).
 4. **publish-plugins** (matrix: Atlassian, Luxafor, GoranG3, Office365Calendar) — každý plugin samostatně.
 5. **release** — stáhne artifacty a vytvoří GitHub Release.
 
 Artifacty jsou framework‑dependent (bez runtime). Kdo chce self‑contained, buildí si sám.
+
+#### macOS `.app` bundle
+
+macOS artifacty nejsou holá binárka jako na ostatních platformách, ale `WorkTracker.app`. Bundle není kosmetika — bez něj Finder ani Dock nemají jméno a ikonu, tray ikona a notifikační backend (`UNUserNotificationCenter`) nemají bundle identifier, na který by se navázaly, a Apple Silicon nepodepsanou binárku odmítne spustit úplně.
+
+Sestavuje ho `build/macos/make-app-bundle.sh` (běží jen na macOS runneru, potřebuje `sips`, `iconutil`, `plutil` a `codesign`):
+
+```
+WorkTracker.app/
+└── Contents/
+    ├── Info.plist              # z build/macos/Info.plist, @VERSION@ se nahradí z tagu
+    ├── MacOS/                  # celý publish output — apphost, appsettings.json, plugins/
+    └── Resources/
+        └── WorkTracker.icns    # vygenerováno z resources/app-ico.png
+```
+
+Pluginy se tedy na macOS kopírují do `WorkTracker.app/Contents/MacOS/plugins/` — to je adresář, který `AppContext.BaseDirectory` uvnitř bundlu vrací.
+
+`CFBundleIdentifier` je `io.github.vesnicancz.WorkTracker`, tedy stejná identita jako `DesktopEntry.AppId` na Linuxu. `CFBundleShortVersionString` snese jen tři čísla oddělená tečkou, takže se z tagu odřízne prefix `v` i prerelease část (`v1.14.0-beta.1` → `1.14.0`).
+
+Archiv se balí přes `ditto`, ne `zip` — je to jediný archivátor, který v bundlu udrží symlinky a s nimi i platný podpis.
+
+**Podpis je ad-hoc** (`codesign --sign -`). To je maximum bez placeného Apple účtu: aplikace se na Apple Silicon vůbec spustí a nehlásí „is damaged", ale **není to průchod Gatekeeperem** — stažený build pořád chce jedno ruční *pravý klik → Otevřít* (nebo `xattr -dr com.apple.quarantine WorkTracker.app`).
+
+Přechod na skutečný podpis: naimportuj Developer ID certifikát do keychainu runneru a nastav `CODESIGN_IDENTITY` na jeho jméno. Skript pak sám přidá hardened runtime a `build/macos/entitlements.plist` (CoreCLR JIT potřebuje zapisovatelně‑spustitelnou paměť a single‑file host rozbaluje nepodepsané nativní knihovny). Zbývat bude už jen poslat archiv do `notarytool` a přilepit staple.
 
 ---
 
