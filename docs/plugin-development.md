@@ -792,8 +792,10 @@ Dokumentace: [plugins/goran-g3.md](plugins/goran-g3.md).
 ### `WorkTracker.Plugin.Luxafor`
 
 - **`IStatusIndicatorPlugin`** (ne worklog).
-- **Komunikace se zařízením** přes knihovnu **`DotLuxafor`** (NuGet package), která poskytuje `ILuxaforDeviceManager` / `ILuxaforDevice` API s metodami jako `SetColorAsync` a `TurnOffAsync`.
+- **Komunikace se zařízením** přes knihovnu **`DotLuxafor`** (lokální NuGet feed `packages/`), která poskytuje `ILuxaforDeviceManager` / `ILuxaforDevice` API s metodami jako `SetColorAsync` a `TurnOffAsync`.
 - **Lazy device open** — `OnInitializeAsync` jen naparsuje barvy z konfigurace, zařízení se otevírá až při prvním `SetStateAsync`.
+- **`ITestablePlugin`** i pro status indicator plugin — `StatusIndicatorPluginBase` ho nevyžaduje, ale plugin si ho přidá sám, takže se v Settings objeví **Test connection**, které rozsvítí LED a při neúspěchu řekne důvod (chybí udev pravidlo, zařízení drží jiná aplikace, …).
+- **Reopen po odpojení** — `IsConnected` u HID zařízení znamená jen „handle jsme nezavřeli", takže plugin po `LuxaforDeviceDisconnectedException` zařízení jednou znovu otevře (přes `ex.Descriptor`, s fallbackem na `Open()`) a příkaz zopakuje. Užitečný vzor pro každý plugin ovládající hardware.
 - **Konfigurovatelné barvy per Pomodoro fázi** — hex color pole s regex validací `^#[0-9A-Fa-f]{6}$`.
 - **Thread‑safe** s `SemaphoreSlim` — operace se zařízením nesmí běžet paralelně.
 
