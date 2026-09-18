@@ -85,4 +85,52 @@ public class ApplicationSettings
 	/// Pomodoro timer settings
 	/// </summary>
 	public PomodoroSettings Pomodoro { get; set; } = new();
+
+	/// <summary>
+	/// Returns an independent copy of these settings.
+	/// <para>
+	/// Callers that persist a subset of the settings (the Settings dialog owns most, but not all,
+	/// of them) start from this rather than from <c>new ApplicationSettings()</c>, so a property
+	/// they do not know about keeps its stored value instead of silently resetting to its default.
+	/// </para>
+	/// <para>
+	/// <b>Add every new property here.</b> <c>ApplicationSettingsCloneTests</c> fails the build if
+	/// you forget.
+	/// </para>
+	/// </summary>
+	public ApplicationSettings Clone() => new()
+	{
+		LastSubmissionMode = LastSubmissionMode,
+		CloseWindowBehavior = CloseWindowBehavior,
+		StartWithWindows = StartWithWindows,
+		StartMinimized = StartMinimized,
+		CheckForUpdates = CheckForUpdates,
+		PluginConfigurations = PluginConfigurations.ToDictionary(
+			pair => pair.Key,
+			pair => new Dictionary<string, string>(pair.Value)),
+		EnabledPlugins = new Dictionary<string, bool>(EnabledPlugins),
+		FavoriteWorkItems = FavoriteWorkItems.Select(item => new FavoriteWorkItem
+		{
+			Id = item.Id,
+			Name = item.Name,
+			TicketId = item.TicketId,
+			Description = item.Description,
+			ShowAsTemplate = item.ShowAsTemplate
+		}).ToList(),
+		Theme = Theme,
+		FollowSystemTheme = FollowSystemTheme,
+		LightTheme = LightTheme,
+		DarkTheme = DarkTheme,
+		Language = Language,
+		Pomodoro = new PomodoroSettings
+		{
+			Enabled = Pomodoro.Enabled,
+			WorkMinutes = Pomodoro.WorkMinutes,
+			ShortBreakMinutes = Pomodoro.ShortBreakMinutes,
+			LongBreakMinutes = Pomodoro.LongBreakMinutes,
+			PomodorosBeforeLongBreak = Pomodoro.PomodorosBeforeLongBreak,
+			AutoStartWorkTracking = Pomodoro.AutoStartWorkTracking,
+			AutoStopWorkTracking = Pomodoro.AutoStopWorkTracking
+		}
+	};
 }

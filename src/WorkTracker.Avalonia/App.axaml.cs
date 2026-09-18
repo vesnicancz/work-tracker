@@ -334,6 +334,7 @@ public partial class App : global::Avalonia.Application
 		services.AddSingleton<ITrayIconService, TrayIconService>();
 		services.AddSingleton<ISystemNotificationService, SystemNotificationService>();
 		services.AddSingleton<IAutostartManager, AutostartManager>();
+		services.AddSingleton<IThemeService, ThemeService>();
 		services.AddSingleton<IDesktopIntegrationService, LinuxDesktopIntegrationService>();
 		services.AddSingleton<IHotkeyService, HotkeyService>();
 

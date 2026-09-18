@@ -18,6 +18,7 @@ public class SettingsViewModel : ViewModelBase
 	private readonly ISettingsService _settingsService;
 	private readonly IAutostartManager _autostartManager;
 	private readonly ILocalizationService _localization;
+	private readonly IThemeService _themeService;
 	private readonly ILogger<SettingsViewModel> _logger;
 	private CloseWindowBehavior _closeWindowBehavior;
 	private bool _startWithWindows;
@@ -51,18 +52,27 @@ public class SettingsViewModel : ViewModelBase
 	private readonly string _initialLanguage;
 	private LanguageOptionViewModel _selectedLanguage;
 
+	// Snapshot of everything previewed live, taken before the user can touch anything, so every
+	// dismissal path can put the application back exactly where it found it.
+	private readonly bool _initialFollowSystemTheme;
+	private readonly string _initialTheme;
+	private readonly string _initialLightTheme;
+	private readonly string _initialDarkTheme;
+
 	public SettingsViewModel(
 		ISettingsOrchestrator orchestrator,
 		ISettingsService settingsService,
 		ILogger<SettingsViewModel> logger,
 		IAutostartManager autostartManager,
-		ILocalizationService localization)
+		ILocalizationService localization,
+		IThemeService themeService)
 	{
 		_orchestrator = orchestrator;
 		_settingsService = settingsService;
 		_logger = logger;
 		_autostartManager = autostartManager;
 		_localization = localization;
+		_themeService = themeService;
 
 		// Load current settings
 		_closeWindowBehavior = _settingsService.Settings.CloseWindowBehavior;
@@ -73,6 +83,11 @@ public class SettingsViewModel : ViewModelBase
 		_followSystemTheme = _settingsService.Settings.FollowSystemTheme;
 		_selectedLightTheme = ResolveLightTheme(_settingsService.Settings.LightTheme);
 		_selectedDarkTheme = ResolveDarkTheme(_settingsService.Settings.DarkTheme);
+
+		_initialFollowSystemTheme = _followSystemTheme;
+		_initialTheme = _selectedTheme;
+		_initialLightTheme = _selectedLightTheme;
+		_initialDarkTheme = _selectedDarkTheme;
 
 		_initialLanguage = LanguageCatalog.Normalize(_settingsService.Settings.Language);
 		AvailableLanguages =
@@ -257,7 +272,7 @@ public class SettingsViewModel : ViewModelBase
 
 	/// <summary>
 	/// Switches the UI language immediately, mirroring the theme live preview. Persisted only on
-	/// Save; <see cref="RevertLanguagePreview"/> undoes it when the dialog is dismissed.
+	/// Save; <see cref="RevertPreview"/> undoes it when the dialog is dismissed.
 	/// </summary>
 	private void ApplyLanguagePreview(string languageCode)
 	{
@@ -274,10 +289,18 @@ public class SettingsViewModel : ViewModelBase
 	}
 
 	/// <summary>
-	/// Restores the language the dialog opened with. Covers every dismissal path - Cancel and the
-	/// titlebar X, which closes the window without going through the command.
+	/// Undoes every live preview the dialog applied - language and theme alike - restoring the
+	/// state it opened with. Covers all dismissal paths: Cancel and the titlebar X, which closes
+	/// the window without going through the command. Safe to call twice; each revert is a no-op
+	/// when nothing changed.
 	/// </summary>
-	public void RevertLanguagePreview()
+	public void RevertPreview()
+	{
+		RevertLanguagePreview();
+		RevertThemePreview();
+	}
+
+	private void RevertLanguagePreview()
 	{
 		if (SelectedLanguage.Code != _initialLanguage)
 		{
@@ -285,9 +308,32 @@ public class SettingsViewModel : ViewModelBase
 		}
 	}
 
+	/// <summary>
+	/// Restores all four theme fields at once, then applies them in a single pass - going through
+	/// the public setters instead would repaint the app up to four times on the way back.
+	/// </summary>
+	private void RevertThemePreview()
+	{
+		if (_followSystemTheme == _initialFollowSystemTheme
+			&& _selectedTheme == _initialTheme
+			&& _selectedLightTheme == _initialLightTheme
+			&& _selectedDarkTheme == _initialDarkTheme)
+		{
+			return;
+		}
+
+		SetProperty(ref _followSystemTheme, _initialFollowSystemTheme, nameof(FollowSystemTheme));
+		SetProperty(ref _selectedTheme, _initialTheme, nameof(SelectedTheme));
+		SetProperty(ref _selectedLightTheme, _initialLightTheme, nameof(SelectedLightTheme));
+		SetProperty(ref _selectedDarkTheme, _initialDarkTheme, nameof(SelectedDarkTheme));
+		OnPropertyChanged(nameof(IsSingleThemeMode));
+
+		ApplyThemePreview();
+	}
+
 	private void ApplyThemePreview()
 	{
-		App.ApplyThemeMode(_followSystemTheme, _selectedTheme, _selectedLightTheme, _selectedDarkTheme);
+		_themeService.ApplyThemeMode(_followSystemTheme, _selectedTheme, _selectedLightTheme, _selectedDarkTheme);
 	}
 
 	private static string ResolveLightTheme(string? saved)
@@ -511,7 +557,7 @@ public class SettingsViewModel : ViewModelBase
 
 	private void Cancel()
 	{
-		RevertLanguagePreview();
+		RevertPreview();
 		DialogResult = false;
 		CloseAction?.Invoke();
 	}
@@ -547,14 +593,30 @@ public class SettingsViewModel : ViewModelBase
 
 	#region Favorites
 
+	/// <summary>
+	/// Copies each favorite instead of binding the live settings objects. Editing a favorite
+	/// mutates the item in place, so sharing instances with <see cref="ISettingsService.Settings"/>
+	/// would leak unsaved edits into the tray menu and into the next save made from anywhere else -
+	/// Cancel could not undo them. The copy keeps <see cref="FavoriteWorkItem.Id"/> so saving
+	/// still updates the same favorite rather than replacing it.
+	/// </summary>
 	private void LoadFavorites()
 	{
 		FavoriteWorkItems.Clear();
 		foreach (var favorite in _settingsService.Settings.FavoriteWorkItems)
 		{
-			FavoriteWorkItems.Add(favorite);
+			FavoriteWorkItems.Add(CopyOf(favorite));
 		}
 	}
+
+	private static FavoriteWorkItem CopyOf(FavoriteWorkItem source) => new()
+	{
+		Id = source.Id,
+		Name = source.Name,
+		TicketId = source.TicketId,
+		Description = source.Description,
+		ShowAsTemplate = source.ShowAsTemplate
+	};
 
 	private void AddFavorite()
 	{

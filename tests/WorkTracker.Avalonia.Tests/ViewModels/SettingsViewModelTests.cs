@@ -17,6 +17,7 @@ public class SettingsViewModelTests
 		public Mock<ISettingsService> Settings { get; } = new();
 		public Mock<IAutostartManager> Autostart { get; } = new();
 		public Mock<ILocalizationService> Localization { get; } = new();
+		public Mock<IThemeService> Theme { get; } = new();
 		public ApplicationSettings SettingsModel { get; } = new();
 
 		public Harness()
@@ -33,7 +34,8 @@ public class SettingsViewModelTests
 				Settings.Object,
 				NullLogger<SettingsViewModel>.Instance,
 				Autostart.Object,
-				Localization.Object);
+				Localization.Object,
+				Theme.Object);
 		}
 	}
 
@@ -119,14 +121,121 @@ public class SettingsViewModelTests
 	}
 
 	[Fact]
-	public void RevertLanguagePreview_WhenLanguageUnchanged_DoesNotReapply()
+	public void RevertPreview_WhenLanguageUnchanged_DoesNotReapply()
 	{
 		var harness = new Harness();
 		var vm = harness.CreateViewModel();
 
-		vm.RevertLanguagePreview();
+		vm.RevertPreview();
 
 		harness.Localization.Verify(l => l.ApplyLanguage(It.IsAny<string>()), Times.Never);
+	}
+
+	#endregion
+
+	#region Theme
+
+	[Fact]
+	public void SelectedTheme_Changed_AppliesImmediately()
+	{
+		var harness = new Harness();
+		var vm = harness.CreateViewModel();
+
+		vm.SelectedTheme = "Synthwave";
+
+		harness.Theme.Verify(t => t.ApplyThemeMode(false, "Synthwave", It.IsAny<string>(), It.IsAny<string>()), Times.Once);
+	}
+
+	[Fact]
+	public void Cancel_AfterThemeSwitch_RestoresOriginalTheme()
+	{
+		var harness = new Harness();
+		harness.SettingsModel.Theme = "One Dark";
+		var vm = harness.CreateViewModel();
+
+		vm.SelectedTheme = "Synthwave";
+		harness.Theme.Invocations.Clear();
+
+		vm.CancelCommand.Execute(null);
+
+		vm.SelectedTheme.Should().Be("One Dark");
+		harness.Theme.Verify(t => t.ApplyThemeMode(false, "One Dark", It.IsAny<string>(), It.IsAny<string>()), Times.Once);
+	}
+
+	[Fact]
+	public void Cancel_AfterFollowSystemSwitch_RestoresWholeThemeMode()
+	{
+		var harness = new Harness();
+		harness.SettingsModel.Theme = "One Dark";
+		harness.SettingsModel.FollowSystemTheme = false;
+		harness.SettingsModel.LightTheme = "Light";
+		harness.SettingsModel.DarkTheme = "Midnight";
+		var vm = harness.CreateViewModel();
+
+		vm.FollowSystemTheme = true;
+		vm.SelectedLightTheme = "Sandstone";
+		vm.SelectedDarkTheme = "Abyss";
+		harness.Theme.Invocations.Clear();
+
+		vm.CancelCommand.Execute(null);
+
+		vm.FollowSystemTheme.Should().BeFalse();
+		vm.SelectedLightTheme.Should().Be("Light");
+		vm.SelectedDarkTheme.Should().Be("Midnight");
+
+		// One repaint on the way back, not one per restored field.
+		harness.Theme.Verify(t => t.ApplyThemeMode(false, "One Dark", "Light", "Midnight"), Times.Once);
+		harness.Theme.VerifyNoOtherCalls();
+	}
+
+	[Fact]
+	public void RevertPreview_WhenThemeUnchanged_DoesNotReapply()
+	{
+		var harness = new Harness();
+		var vm = harness.CreateViewModel();
+		harness.Theme.Invocations.Clear();
+
+		vm.RevertPreview();
+
+		harness.Theme.VerifyNoOtherCalls();
+	}
+
+	[Fact]
+	public void RevertPreview_CalledTwice_AppliesRevertOnce()
+	{
+		// Cancel reverts, then the window's Closed handler reverts again on the way out.
+		var harness = new Harness();
+		harness.SettingsModel.Theme = "One Dark";
+		var vm = harness.CreateViewModel();
+		vm.SelectedTheme = "Synthwave";
+		harness.Theme.Invocations.Clear();
+
+		vm.RevertPreview();
+		vm.RevertPreview();
+
+		harness.Theme.Verify(t => t.ApplyThemeMode(false, "One Dark", It.IsAny<string>(), It.IsAny<string>()), Times.Once);
+	}
+
+	[Fact]
+	public async Task Save_AfterThemeSwitch_KeepsPreviewedTheme()
+	{
+		var harness = new Harness();
+		harness.SettingsModel.Theme = "One Dark";
+		SettingsSaveRequest? captured = null;
+		harness.Orchestrator
+			.Setup(o => o.SaveSettingsAsync(It.IsAny<SettingsSaveRequest>(), It.IsAny<CancellationToken>()))
+			.Callback((SettingsSaveRequest request, CancellationToken _) => captured = request)
+			.Returns(Task.CompletedTask);
+		var vm = harness.CreateViewModel();
+
+		vm.SelectedTheme = "Synthwave";
+		harness.Theme.Invocations.Clear();
+
+		await vm.SaveCommand.ExecuteAsync(null);
+
+		captured!.Theme.Should().Be("Synthwave");
+		// Saving keeps the preview, so there is nothing to revert.
+		harness.Theme.VerifyNoOtherCalls();
 	}
 
 	#endregion
@@ -290,5 +399,34 @@ public class SettingsViewModelTests
 
 		vm.HasPlugins.Should().BeFalse();
 		vm.TestConnectionCommand.CanExecute(null).Should().BeFalse();
+	}
+
+	[Fact]
+	public void EditingFavorite_DoesNotTouchStoredSettingsUntilSaved()
+	{
+		var harness = new Harness();
+		harness.SettingsModel.FavoriteWorkItems.Add(Favorite("Old name"));
+		var vm = harness.CreateViewModel();
+		vm.SelectedFavorite = vm.FavoriteWorkItems[0];
+
+		vm.EditingFavoriteName = "New name";
+		vm.SaveFavoriteCommand.Execute(null);
+
+		vm.FavoriteWorkItems[0].Name.Should().Be("New name");
+		harness.SettingsModel.FavoriteWorkItems[0].Name.Should()
+			.Be("Old name", "the dialog edits a copy, so Cancel leaves the stored favorite alone");
+	}
+
+	[Fact]
+	public void LoadedFavorites_KeepTheirIdSoSavingUpdatesRatherThanReplaces()
+	{
+		var harness = new Harness();
+		var stored = Favorite("Standup");
+		harness.SettingsModel.FavoriteWorkItems.Add(stored);
+
+		var vm = harness.CreateViewModel();
+
+		vm.FavoriteWorkItems[0].Should().NotBeSameAs(stored);
+		vm.FavoriteWorkItems[0].Id.Should().Be(stored.Id);
 	}
 }
