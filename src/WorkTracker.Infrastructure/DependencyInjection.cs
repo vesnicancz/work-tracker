@@ -39,11 +39,11 @@ public static class DependencyInjection
 		{
 			dbPath = dbPath.Trim();
 
-			// Resolve relative paths against the executable directory (consistent with plugin
+			// Resolve relative paths against the writable base directory (consistent with plugin
 			// directories); leave special SQLite data sources (":memory:", "file:" URIs) untouched
 			if (!dbPath.StartsWith(':') && !dbPath.StartsWith("file:", StringComparison.OrdinalIgnoreCase) && !Path.IsPathRooted(dbPath))
 			{
-				dbPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, dbPath));
+				dbPath = Path.GetFullPath(Path.Combine(WorkTrackerPaths.WritableBaseDirectory, dbPath));
 			}
 		}
 
@@ -100,7 +100,9 @@ public static class DependencyInjection
 			var pluginManager = new PluginManager(loggerFactory, httpClientFactory);
 
 			// Load plugin directories from configuration, default to "plugins" subfolder next to executable
-			// Relative paths are resolved against AppContext.BaseDirectory (the exe location)
+			// Relative paths are resolved against WorkTrackerPaths.WritableBaseDirectory — the exe
+			// location, except inside a macOS .app, where the directory is created below and so
+			// cannot sit in the signed bundle
 			var pluginDirs = configuration.GetSection("Plugins:Directories").Get<string[]>()
 				?? [WorkTrackerPaths.DefaultPluginsPath];
 
@@ -119,7 +121,7 @@ public static class DependencyInjection
 				var trimmedDir = dir.Trim();
 				var resolvedDir = Path.IsPathRooted(trimmedDir)
 					? trimmedDir
-					: Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, trimmedDir));
+					: Path.GetFullPath(Path.Combine(WorkTrackerPaths.WritableBaseDirectory, trimmedDir));
 
 				try
 				{

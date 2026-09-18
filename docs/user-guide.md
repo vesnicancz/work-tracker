@@ -39,7 +39,7 @@ Na stránce [Releases](https://github.com/vesnicancz/work-tracker/releases/lates
 
 1. Stáhni si balíček pro svůj operační systém a architekturu.
 2. Rozbal do libovolné složky.
-3. Chceš‑li pluginy, rozbal je do podsložky `plugins/` vedle spustitelného souboru.
+3. Chceš‑li pluginy, rozbal je do podsložky `plugins/` vedle spustitelného souboru. Na macOS, kde je GUI zabalené v `WorkTracker.app`, místo toho do `~/Library/Application Support/WorkTracker/plugins/` — do podepsaného bundlu se nezapisuje.
 4. Spusť aplikaci — databáze i nastavení se vytvoří automaticky při prvním startu.
 
 Balíčky jsou framework‑dependent (není zahrnutý .NET runtime). Je potřeba mít nainstalovaný **.NET 10 Runtime** (pro CLI stačí runtime, pro GUI je potřeba Desktop Runtime).
@@ -66,7 +66,7 @@ Při prvním startu aplikace:
 
 1. Vytvoří se adresář s uživatelskými daty (`%LocalAppData%\WorkTracker\` na Windows).
 2. Proběhne migrace SQLite databáze (`worktracker.db`).
-3. Načtou se pluginy ze složky `plugins/` vedle spustitelného souboru (typicky `{AppContext.BaseDirectory}/plugins`).
+3. Načtou se pluginy ze složky `plugins/` vedle spustitelného souboru (typicky `{AppContext.BaseDirectory}/plugins`; uvnitř macOS `.app` z `~/Library/Application Support/WorkTracker/plugins`).
 4. Pokud některý plugin nemá nastavenou konfiguraci, zůstane v seznamu, ale nebude aktivní.
 
 Doporučený postup pro nového uživatele:
@@ -766,7 +766,7 @@ Příčina: `Database:Path` míří na disk/mount point, který v tuto chvíli n
 ### Plugin se nenačítá
 
 1. Zkontroluj `logs/worktracker-YYYYMMDD.log` — `PluginLoader` loguje každý nalezený soubor a důvod, proč plugin nebyl načten.
-2. Ujisti se, že DLL pluginu je v podsložce `plugins/` vedle spustitelného souboru a jmenuje se `WorkTracker.Plugin.*.dll`.
+2. Ujisti se, že DLL pluginu je v podsložce `plugins/` vedle spustitelného souboru (na macOS v `~/Library/Application Support/WorkTracker/plugins/`) a jmenuje se `WorkTracker.Plugin.*.dll`.
 3. Pokud plugin cílí na jinou major verzi `WorkTracker.Plugin.Abstractions`, nebude kompatibilní — aktualizuj plugin.
 
 ### Ctrl+Shift+W na Linuxu nic nedělá

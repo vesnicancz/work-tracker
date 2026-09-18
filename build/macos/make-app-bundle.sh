@@ -55,10 +55,25 @@ echo "Bundling $publish_dir -> $app_path (version $version)"
 rm -rf "$app_path"
 mkdir -p "$app_path/Contents/MacOS" "$app_path/Contents/Resources"
 
-# The whole publish output lands next to the executable: AppContext.BaseDirectory is what the app
-# resolves appsettings.json and the plugins/ directory against, and inside a bundle that is
-# Contents/MacOS. ditto rather than cp, to carry symlinks and permissions across unchanged.
-ditto "$publish_dir" "$app_path/Contents/MacOS"
+# Contents/MacOS may hold nothing but code. codesign seals every file there as a nested code
+# object, so a plain data file such as appsettings.json makes --verify --strict fail with "code
+# object is not signed at all". Executables and native libraries go there; everything else is a
+# resource and belongs in Contents/Resources, which the app resolves via
+# WorkTrackerPaths.AppContentDirectory. ditto rather than cp, to carry permissions across unchanged.
+while IFS= read -r -d '' item; do
+	relative=${item#"$publish_dir"/}
+	case $relative in
+		"$executable_name" | *.dylib | *.so) destination=$app_path/Contents/MacOS/$relative ;;
+		*) destination=$app_path/Contents/Resources/$relative ;;
+	esac
+	mkdir -p "$(dirname "$destination")"
+	ditto "$item" "$destination"
+done < <(find "$publish_dir" \( -type f -o -type l \) -print0)
+
+if [[ ! -f "$app_path/Contents/MacOS/$executable_name" ]]; then
+	echo "error: $executable_name did not make it into the bundle" >&2
+	exit 1
+fi
 chmod +x "$app_path/Contents/MacOS/$executable_name"
 
 # iconutil insists on this exact set of names inside a .iconset directory. The source icon is

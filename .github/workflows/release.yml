@@ -40,6 +40,9 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     strategy:
+      # Without this a single broken RID cancels every sibling mid-restore, and the log then blames
+      # the cancellation rather than the one job that actually failed.
+      fail-fast: false
       matrix:
         include:
           - rid: win-x64
@@ -87,6 +90,7 @@ jobs:
     needs: test
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         include:
           - rid: win-x64
@@ -166,6 +170,7 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         include:
           - plugin: Atlassian

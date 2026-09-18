@@ -585,12 +585,22 @@ Sestavuje ho `build/macos/make-app-bundle.sh` (běží jen na macOS runneru, pot
 WorkTracker.app/
 └── Contents/
     ├── Info.plist              # z build/macos/Info.plist, @VERSION@ se nahradí z tagu
-    ├── MacOS/                  # celý publish output — apphost, appsettings.json, plugins/
+    ├── MacOS/                  # jen apphost a nativní knihovny (.dylib/.so)
     └── Resources/
+        ├── appsettings.json    # zbytek publish outputu
         └── WorkTracker.icns    # vygenerováno z resources/app-ico.png
 ```
 
-Pluginy se tedy na macOS kopírují do `WorkTracker.app/Contents/MacOS/plugins/` — to je adresář, který `AppContext.BaseDirectory` uvnitř bundlu vrací.
+**Do `Contents/MacOS/` patří výhradně kód.** `codesign` každý soubor v tomto adresáři pečetí jako vnořený code object, takže obyčejný datový soubor shodí `codesign --verify --strict` hláškou `code object is not signed at all / In subcomponent: …`. Skript proto publish output rozděluje: spustitelná binárka a nativní knihovny do `MacOS/`, všechno ostatní do `Resources/`.
+
+Aplikace tomu jde naproti dvojicí cest ve `WorkTrackerPaths` — mimo bundle obě vracejí `AppContext.BaseDirectory`, uvnitř bundlu se rozejdou:
+
+| Cesta | V bundlu | K čemu |
+|---|---|---|
+| `AppContentDirectory` | `Contents/Resources` | co se distribuuje s aplikací — `appsettings.json` |
+| `WritableBaseDirectory` | `~/Library/Application Support/WorkTracker` | co aplikace zakládá — `plugins/`, relativní cesta k databázi |
+
+Do podepsaného bundlu se nesmí zapisovat, a plugin adresář se při startu zakládá (`Directory.CreateDirectory`) — na macOS proto pluginy nepatří dovnitř `.app`, ale do `~/Library/Application Support/WorkTracker/plugins/`.
 
 `CFBundleIdentifier` je `io.github.vesnicancz.WorkTracker`, tedy stejná identita jako `DesktopEntry.AppId` na Linuxu. `CFBundleShortVersionString` snese jen tři čísla oddělená tečkou, takže se z tagu odřízne prefix `v` i prerelease část (`v1.14.0-beta.1` → `1.14.0`).
 
