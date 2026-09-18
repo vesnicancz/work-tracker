@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Microsoft.Extensions.Logging;
+using WorkTracker.Avalonia.Services.Linux;
 using WorkTracker.UI.Shared.Services;
 
 namespace WorkTracker.Avalonia.Services;
@@ -9,18 +10,31 @@ namespace WorkTracker.Avalonia.Services;
 /// <summary>
 /// Global hotkey service for Avalonia.
 /// Windows: Win32 RegisterHotKey via native window handle.
-/// Linux/macOS: not yet implemented (Register is no-op on unsupported platforms).
+/// Linux: the org.freedesktop.portal.GlobalShortcuts desktop portal, which covers Wayland (where a
+/// client cannot grab keys itself) and X11 alike, as long as the desktop implements it.
+/// macOS: not yet implemented (Register is a no-op there).
 /// </summary>
 public sealed class HotkeyService : IHotkeyService
 {
+	/// <summary>Id the portal reports back in its Activated signal; must stay stable across releases.</summary>
+	internal const string NewWorkEntryShortcutId = "new-work-entry";
+
+	/// <summary>
+	/// Ctrl+Shift+W in the freedesktop.org shortcuts syntax, matching the Windows binding. The key is
+	/// named after its unshifted keysym, so it is a lowercase 'w' even though Shift is held.
+	/// </summary>
+	internal const string NewWorkEntryTrigger = "CTRL+SHIFT+w";
+
 	private readonly ILogger<HotkeyService> _logger;
+	private readonly ILocalizationService _localization;
 	private bool _isRegistered;
 
 	public event EventHandler? HotkeyPressed;
 
-	public HotkeyService(ILogger<HotkeyService> logger)
+	public HotkeyService(ILogger<HotkeyService> logger, ILocalizationService localization)
 	{
 		_logger = logger;
+		_localization = localization;
 	}
 
 	public void Register()
@@ -36,8 +50,7 @@ public sealed class HotkeyService : IHotkeyService
 		}
 		else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
 		{
-			// TODO: Implement via X11 global key grab or DBus GlobalShortcuts portal
-			_logger.LogInformation("Global hotkeys not yet implemented on Linux");
+			RegisterLinux();
 		}
 		else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
 		{
@@ -48,6 +61,12 @@ public sealed class HotkeyService : IHotkeyService
 
 	public void Unregister()
 	{
+		if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+		{
+			UnregisterLinux();
+			return;
+		}
+
 		if (!_isRegistered)
 		{
 			return;
@@ -63,6 +82,91 @@ public sealed class HotkeyService : IHotkeyService
 	{
 		Unregister();
 	}
+
+	#region Linux implementation
+
+	/// <summary>
+	/// Portal session, kept for the lifetime of the registration: the shortcut is bound to the D-Bus
+	/// connection it was created on and disappears when that connection goes.
+	/// </summary>
+	private GlobalShortcutsPortal? _portal;
+
+	/// <summary>
+	/// Binding goes through D-Bus and may wait on a confirmation dialog, so it cannot happen inside
+	/// this synchronous call. Kept so shutdown can wait for it rather than racing it.
+	/// </summary>
+	private Task? _linuxRegistration;
+
+	private void RegisterLinux()
+	{
+		var portal = new GlobalShortcutsPortal(_logger);
+		portal.Activated += OnPortalActivated;
+		_portal = portal;
+
+		// Fire-and-forget: the app is perfectly usable while the desktop decides, and on a desktop
+		// with no GlobalShortcuts backend TryBindAsync just reports that and returns false.
+		_linuxRegistration = Task.Run(async () =>
+		{
+			var shortcut = new PortalShortcut(
+				NewWorkEntryShortcutId,
+				_localization.GetString("AddNewWorkEntry"),
+				NewWorkEntryTrigger);
+
+			if (await portal.TryBindAsync([shortcut]).ConfigureAwait(false))
+			{
+				_isRegistered = true;
+				_logger.LogInformation("Registered global shortcut {Trigger} through the desktop portal", NewWorkEntryTrigger);
+			}
+		});
+	}
+
+	private void UnregisterLinux()
+	{
+		var portal = _portal;
+		var registration = _linuxRegistration;
+
+		_portal = null;
+		_linuxRegistration = null;
+		_isRegistered = false;
+
+		if (portal == null)
+		{
+			return;
+		}
+
+		portal.Activated -= OnPortalActivated;
+
+		try
+		{
+			// Unregister runs on the shutdown path with no dispatcher pumping, so blocking here is
+			// safe; the bind is bounded by its own timeouts and cannot hold shutdown indefinitely.
+			registration?.GetAwaiter().GetResult();
+		}
+		catch (Exception ex)
+		{
+			_logger.LogDebug(ex, "Binding the global shortcut did not finish before shutdown");
+		}
+
+		try
+		{
+			portal.DisposeAsync().AsTask().GetAwaiter().GetResult();
+			_logger.LogInformation("Released the global shortcut");
+		}
+		catch (Exception ex)
+		{
+			_logger.LogWarning(ex, "Failed to release the global shortcut");
+		}
+	}
+
+	private void OnPortalActivated(string shortcutId)
+	{
+		if (shortcutId == NewWorkEntryShortcutId)
+		{
+			HotkeyPressed?.Invoke(this, EventArgs.Empty);
+		}
+	}
+
+	#endregion Linux implementation
 
 	#region Windows implementation
 

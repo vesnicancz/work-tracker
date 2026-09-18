@@ -31,6 +31,10 @@
     <PackageVersion Include="Avalonia.Fonts.Inter" Version="12.0.5" />
     <PackageVersion Include="Avalonia.Labs.Notifications" Version="12.0.2" />
     <PackageVersion Include="Avalonia.Themes.Fluent" Version="12.0.5" />
+    <!-- Transitive via Avalonia.FreeDesktop; referenced directly by the Avalonia project for the
+         GlobalShortcuts portal client. Pinned to the version Avalonia 12.0.5 resolves — see the
+         note above, moving it forward on its own would reintroduce the Labs.Notifications crash. -->
+    <PackageVersion Include="Tmds.DBus.Protocol" Version="0.92.0" />
     <!-- UI -->
     <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageVersion Include="Material.Icons.Avalonia" Version="3.0.2" />

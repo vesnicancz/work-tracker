@@ -305,7 +305,27 @@ Cross‑platform desktopová aplikace. Hlavní okno je rozdělené na **levý po
 
 Dvojklik na řádek otevře dialog editace záznamu.
 
-**Klávesová zkratka:** `Ctrl+Shift+W` pro vytvoření nového work itemu.
+**Klávesová zkratka:** `Ctrl+Shift+W` pro vytvoření nového work itemu. Na Linuxu ji registruje desktop, viz [Globální zkratka na Linuxu](#globální-zkratka-na-linuxu).
+
+### Globální zkratka na Linuxu
+
+Na Windows si zkratku registruje aplikace sama. Na Linuxu to nejde — pod Waylandem klient principiálně nevidí klávesy mířené do jiného okna — takže zkratku registruje **desktop** přes portál `org.freedesktop.portal.GlobalShortcuts`. Aplikace o ni jen požádá; co se skutečně nabinduje, rozhoduje desktop a uživatel.
+
+Praktické důsledky:
+
+- **Zkratka se objeví v nastavení desktopu** a dá se tam přebindovat nebo úplně zrušit. Na KDE Plasma je to *Systémová nastavení → Klávesové zkratky*, pod položkou WorkTracker. `Ctrl+Shift+W` je jen návrh; když ji má něco jiného zabrané, desktop může přiřadit jinou nebo žádnou.
+- **GNOME se před zaregistrováním zeptá** potvrzovacím dialogem. Dokud na něj neodpovíte, zkratka nefunguje — zbytek aplikace ale jede normálně.
+- **Potřebujete desktop, který portál umí.** KDE Plasma a GNOME 46+ ano; na wlroots kompozitorech je potřeba `xdg-desktop-portal-wlr` nebo `-hyprland`. Na desktopu bez podpory se do logu zapíše důvod a aplikace běží dál bez zkratky.
+- **Funguje i na X11**, protože portál řeší obě session. Vlastní X11 implementace (`XGrabKey`) v aplikaci není.
+
+#### Zkratka se po restartu ztratí
+
+Desktop si zkratku pamatuje podle **application ID**. To si portál odvodí z toho, jak byla aplikace spuštěná:
+
+- Spuštění **z menu nebo z autostartu** přes nainstalovaný `.desktop` soubor — session ji pustí v systemd scope pojmenovaném podle app id, portál ho přečte a zkratka se uloží pod `io.github.vesnicancz.WorkTracker`. Přežije restart aplikace i přebindování uživatelem.
+- Spuštění **ručně z terminálu** — portál nemá z čeho app id odvodit a založí náhodné jméno na jedno sezení. Zkratka v tom běhu funguje, ale po ukončení aplikace zmizí a příště se založí nová.
+
+Aplikace se portálu představí sama přes `org.freedesktop.host.portal.Registry`, což tenhle rozdíl smaže — to ale umí až xdg-desktop-portal 1.21 a novější. Na starším portálu je řešení pustit aplikaci normálně z menu nebo nechat zapnutý autostart; desktop entry si aplikace instaluje sama při prvním spuštění.
 
 ### Okno Nastavení
 
@@ -346,7 +366,7 @@ Otevírá se kliknutím na **Nastavení** v levém dolním rohu hlavního okna. 
 
 - Název aplikace a **verze** (`AppInfo.DisplayVersion`).
 - **Klávesové zkratky**:
-  - `Ctrl + Shift + W` — globální hotkey pro rychlé vytvoření work itemu (funguje i když okno není v popředí).
+  - `Ctrl + Shift + W` — globální hotkey pro rychlé vytvoření work itemu (funguje i když okno není v popředí). Na Linuxu závisí na desktop portálu — viz [Globální zkratka na Linuxu](#globální-zkratka-na-linuxu).
   - `Enter` — v textboxu rychlého startu potvrdí a spustí záznam.
 - **Rychlý přehled** — bullet seznam základních funkcí (jak začít trackovat, formát Jira kódu, k čemu jsou oblíbené, odesílání worklogů, system tray).
 - **System Info** — runtime verze (.NET), platforma (OS), UI framework.
@@ -748,6 +768,20 @@ Příčina: `Database:Path` míří na disk/mount point, který v tuto chvíli n
 1. Zkontroluj `logs/worktracker-YYYYMMDD.log` — `PluginLoader` loguje každý nalezený soubor a důvod, proč plugin nebyl načten.
 2. Ujisti se, že DLL pluginu je v podsložce `plugins/` vedle spustitelného souboru a jmenuje se `WorkTracker.Plugin.*.dll`.
 3. Pokud plugin cílí na jinou major verzi `WorkTracker.Plugin.Abstractions`, nebude kompatibilní — aktualizuj plugin.
+
+### Ctrl+Shift+W na Linuxu nic nedělá
+
+Zkratku na Linuxu neregistruje aplikace, ale desktop přes portál — podrobnosti a nastavení v [Globální zkratka na Linuxu](#globální-zkratka-na-linuxu). Rychlá diagnostika:
+
+1. Ověř, že desktop portál zkratky vůbec umí:
+   ```bash
+   busctl --user introspect org.freedesktop.portal.Desktop /org/freedesktop/portal/desktop \
+     org.freedesktop.portal.GlobalShortcuts
+   ```
+   Když objekt neexistuje, chybí backend portálu (`xdg-desktop-portal-kde`, `-gnome`, `-hyprland`, `-wlr`).
+2. Podívej se do logu — aplikace zapisuje, jestli se bind povedl, nebo proč ne.
+3. Zkontroluj nastavení zkratek v desktopu (na KDE *Systémová nastavení → Klávesové zkratky*, položka WorkTracker). Kombinaci mohlo něco jiného předběhnout; tady se dá přiřadit ručně.
+4. Pokud zkratka funguje jen do restartu aplikace, spouštíš ji nejspíš z terminálu — viz [Zkratka se po restartu ztratí](#zkratka-se-po-restartu-ztratí).
 
 ### MSAL device code flow neotevře browser
 
