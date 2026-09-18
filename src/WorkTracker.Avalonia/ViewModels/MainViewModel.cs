@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
@@ -80,6 +81,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 		Pomodoro.TickOnService += (_, _) =>
 			Dispatcher.UIThread.Post(() => Pomodoro.UpdateTimeDisplay());
 		App.ThemeChanged += OnThemeChanged;
+		_localization.PropertyChanged += OnLocalizationChanged;
 
 		// Initial sync with current service state (may already be running)
 		var initialPhase = pomodoroService.CurrentPhase;
@@ -508,6 +510,25 @@ public class MainViewModel : ViewModelBase, IDisposable
 		Dispatcher.UIThread.Post(() => UpdatePomodoroBrushes(_pomodoroService.CurrentPhase));
 	}
 
+	/// <summary>
+	/// XAML {markup:Localize} bindings repaint themselves, but strings this ViewModel computed from
+	/// resources cannot - ActiveTicketDisplay/ActiveDescriptionDisplay read the service on each get,
+	/// and PomodoroViewModel caches its phase label in a field. Both need a nudge after a switch.
+	/// </summary>
+	private void OnLocalizationChanged(object? sender, PropertyChangedEventArgs e)
+	{
+		if (!string.IsNullOrEmpty(e.PropertyName))
+		{
+			return;
+		}
+
+		Dispatcher.UIThread.Post(() =>
+		{
+			OnPropertyChanged(string.Empty);
+			Pomodoro.UpdatePhase(_pomodoroService.CurrentPhase);
+		});
+	}
+
 	private void UpdatePomodoroBrushes(PomodoroPhase phase)
 	{
 		var (bgKey, borderKey, fgKey) = phase switch
@@ -621,5 +642,6 @@ public class MainViewModel : ViewModelBase, IDisposable
 		_worklogStateService.WorkEntriesModified -= OnWorkEntriesModified;
 		Pomodoro.Dispose();
 		App.ThemeChanged -= OnThemeChanged;
+		_localization.PropertyChanged -= OnLocalizationChanged;
 	}
 }

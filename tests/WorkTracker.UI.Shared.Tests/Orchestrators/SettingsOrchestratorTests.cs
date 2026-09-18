@@ -229,6 +229,61 @@ public class SettingsOrchestratorTests
 	}
 
 	[Fact]
+	public async Task SaveSettingsAsync_PersistsLanguage()
+	{
+		var request = new SettingsSaveRequest
+		{
+			Language = "cs",
+			FavoriteWorkItems = new List<FavoriteWorkItem>(),
+			Plugins = new List<PluginViewModel>()
+		};
+
+		await _orchestrator.SaveSettingsAsync(request, TestContext.Current.CancellationToken);
+
+		_mockSettingsService.Verify(s => s.SaveSettingsAsync(
+			It.Is<ApplicationSettings>(a => a.Language == "cs"), It.IsAny<CancellationToken>()), Times.Once);
+	}
+
+	/// <summary>
+	/// SaveSettingsAsync rebuilds ApplicationSettings from scratch, so anything missing from the
+	/// request is silently dropped. Guards the language against that.
+	/// </summary>
+	[Fact]
+	public async Task SaveSettingsAsync_NullLanguage_PreservesExisting()
+	{
+		_mockSettingsService.Setup(s => s.Settings).Returns(new ApplicationSettings { Language = "en" });
+
+		var request = new SettingsSaveRequest
+		{
+			Language = null,
+			FavoriteWorkItems = new List<FavoriteWorkItem>(),
+			Plugins = new List<PluginViewModel>()
+		};
+
+		await _orchestrator.SaveSettingsAsync(request, TestContext.Current.CancellationToken);
+
+		_mockSettingsService.Verify(s => s.SaveSettingsAsync(
+			It.Is<ApplicationSettings>(a => a.Language == "en"), It.IsAny<CancellationToken>()), Times.Once);
+	}
+
+	[Fact]
+	public async Task SaveSettingsAsync_UnknownLanguage_NormalizesToSystem()
+	{
+		var request = new SettingsSaveRequest
+		{
+			Language = "klingon",
+			FavoriteWorkItems = new List<FavoriteWorkItem>(),
+			Plugins = new List<PluginViewModel>()
+		};
+
+		await _orchestrator.SaveSettingsAsync(request, TestContext.Current.CancellationToken);
+
+		_mockSettingsService.Verify(s => s.SaveSettingsAsync(
+			It.Is<ApplicationSettings>(a => a.Language == LanguageCatalog.SystemLanguage),
+			It.IsAny<CancellationToken>()), Times.Once);
+	}
+
+	[Fact]
 	public async Task SaveSettingsAsync_ProtectsPasswordFields()
 	{
 		var plugin = CreateMockPluginWithPasswordField("tempo", "Tempo", "ApiToken");

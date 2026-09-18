@@ -218,6 +218,42 @@ public class SettingsServiceTests : IDisposable
 
 	#endregion
 
+	#region Language
+
+	[Fact]
+	public void Constructor_NoSettingsFile_DefaultsToSystemLanguage()
+	{
+		var sut = CreateSut();
+
+		sut.Settings.Language.Should().Be(LanguageCatalog.SystemLanguage);
+	}
+
+	[Fact]
+	public void SaveSettings_Language_RoundTrips()
+	{
+		var sut = CreateSut();
+
+		sut.SaveSettings(new ApplicationSettings { Language = "cs" });
+
+		CreateSut().Settings.Language.Should().Be("cs");
+	}
+
+	/// <summary>
+	/// Language is a string, not an enum, precisely so an unrecognised value cannot throw during
+	/// deserialization - which would send LoadSettings into its catch and discard the whole file.
+	/// </summary>
+	[Fact]
+	public void Constructor_UnknownLanguage_KeepsRemainingSettings()
+	{
+		WriteRawSettingsFile("""{"Theme": "Dark", "Language": "klingon"}""");
+
+		var sut = CreateSut();
+
+		sut.Settings.Theme.Should().Be("Dark");
+	}
+
+	#endregion
+
 	#region Environment-specific path
 
 	[Fact]

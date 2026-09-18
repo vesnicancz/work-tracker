@@ -74,6 +74,14 @@ public class ApplicationSettings
 	public string DarkTheme { get; set; } = ThemeCatalog.DefaultDarkTheme;
 
 	/// <summary>
+	/// UI language: <see cref="LanguageCatalog.SystemLanguage"/> to follow the OS, or a shipped
+	/// language code ("cs", "en"). Stored as a string rather than an enum so a hand-edited or
+	/// future value can never fail deserialization and take every other setting down with it;
+	/// unknown values are normalized back to the system language when read.
+	/// </summary>
+	public string Language { get; set; } = LanguageCatalog.SystemLanguage;
+
+	/// <summary>
 	/// Pomodoro timer settings
 	/// </summary>
 	public PomodoroSettings Pomodoro { get; set; } = new();

@@ -19,6 +19,24 @@ public interface ILocalizationService : INotifyPropertyChanged
 	IEnumerable<CultureInfo> AvailableCultures { get; }
 
 	/// <summary>
+	/// Gets the operating system culture captured at startup, which the "system" language resolves to.
+	/// Kept separately because setting <see cref="CurrentCulture"/> overwrites the ambient one.
+	/// </summary>
+	CultureInfo SystemCulture { get; }
+
+	/// <summary>
+	/// Gets the currently applied language code ("system", or a code from
+	/// <see cref="Models.LanguageCatalog.SupportedLanguages"/>).
+	/// </summary>
+	string CurrentLanguage { get; }
+
+	/// <summary>
+	/// Applies a stored language code, switching the UI immediately. Unknown or empty values fall
+	/// back to the system language rather than throwing.
+	/// </summary>
+	void ApplyLanguage(string? languageCode);
+
+	/// <summary>
 	/// Gets a localized string by key
 	/// </summary>
 	string GetString(string key);

@@ -16,29 +16,120 @@ public class SettingsViewModelTests
 		public Mock<ISettingsOrchestrator> Orchestrator { get; } = new();
 		public Mock<ISettingsService> Settings { get; } = new();
 		public Mock<IAutostartManager> Autostart { get; } = new();
+		public Mock<ILocalizationService> Localization { get; } = new();
 		public ApplicationSettings SettingsModel { get; } = new();
 
 		public Harness()
 		{
 			Settings.SetupGet(s => s.Settings).Returns(SettingsModel);
 			Orchestrator.Setup(o => o.LoadPlugins()).Returns([]);
+			Localization.Setup(l => l[It.IsAny<string>()]).Returns((string key) => key);
 		}
 
 		public SettingsViewModel CreateViewModel()
 		{
-			var localization = new Mock<ILocalizationService>();
-			localization.Setup(l => l[It.IsAny<string>()]).Returns((string key) => key);
-
 			return new SettingsViewModel(
 				Orchestrator.Object,
 				Settings.Object,
 				NullLogger<SettingsViewModel>.Instance,
 				Autostart.Object,
-				localization.Object);
+				Localization.Object);
 		}
 	}
 
 	private static FavoriteWorkItem Favorite(string name) => new() { Name = name };
+
+	#region Language
+
+	[Fact]
+	public void Constructor_SeedsSelectedLanguageFromSettings()
+	{
+		var harness = new Harness();
+		harness.SettingsModel.Language = "cs";
+
+		var vm = harness.CreateViewModel();
+
+		vm.SelectedLanguage.Code.Should().Be("cs");
+	}
+
+	[Fact]
+	public void Constructor_UnknownStoredLanguage_FallsBackToSystem()
+	{
+		var harness = new Harness();
+		harness.SettingsModel.Language = "klingon";
+
+		var vm = harness.CreateViewModel();
+
+		vm.SelectedLanguage.Code.Should().Be(LanguageCatalog.SystemLanguage);
+	}
+
+	[Fact]
+	public void AvailableLanguages_AreSystemThenShippedLanguages()
+	{
+		var vm = new Harness().CreateViewModel();
+
+		vm.AvailableLanguages.Select(o => o.Code)
+			.Should().Equal(LanguageCatalog.SystemLanguage, "cs", "en");
+		vm.AvailableLanguages.Select(o => o.DisplayName)
+			.Should().Equal("LanguageSystem", "Čeština", "English");
+	}
+
+	[Fact]
+	public void SelectedLanguage_Changed_AppliesImmediately()
+	{
+		var harness = new Harness();
+		var vm = harness.CreateViewModel();
+
+		vm.SelectedLanguage = vm.AvailableLanguages.First(o => o.Code == "en");
+
+		harness.Localization.Verify(l => l.ApplyLanguage("en"), Times.Once);
+	}
+
+	[Fact]
+	public async Task Save_PassesSelectedLanguage()
+	{
+		var harness = new Harness();
+		SettingsSaveRequest? captured = null;
+		harness.Orchestrator
+			.Setup(o => o.SaveSettingsAsync(It.IsAny<SettingsSaveRequest>(), It.IsAny<CancellationToken>()))
+			.Callback((SettingsSaveRequest request, CancellationToken _) => captured = request)
+			.Returns(Task.CompletedTask);
+		var vm = harness.CreateViewModel();
+		vm.CloseAction = () => { };
+
+		vm.SelectedLanguage = vm.AvailableLanguages.First(o => o.Code == "en");
+		await vm.SaveCommand.ExecuteAsync(null);
+
+		captured!.Language.Should().Be("en");
+	}
+
+	[Fact]
+	public void Cancel_AfterLanguageSwitch_RestoresOriginalLanguage()
+	{
+		var harness = new Harness();
+		harness.SettingsModel.Language = "cs";
+		var vm = harness.CreateViewModel();
+		vm.CloseAction = () => { };
+
+		vm.SelectedLanguage = vm.AvailableLanguages.First(o => o.Code == "en");
+		vm.CancelCommand.Execute(null);
+
+		vm.SelectedLanguage.Code.Should().Be("cs");
+		harness.Localization.Verify(l => l.ApplyLanguage("cs"), Times.Once);
+	}
+
+	[Fact]
+	public void RevertLanguagePreview_WhenLanguageUnchanged_DoesNotReapply()
+	{
+		var harness = new Harness();
+		var vm = harness.CreateViewModel();
+
+		vm.RevertLanguagePreview();
+
+		harness.Localization.Verify(l => l.ApplyLanguage(It.IsAny<string>()), Times.Never);
+	}
+
+	#endregion
 
 	[Fact]
 	public void Constructor_LoadsCurrentSettings()
