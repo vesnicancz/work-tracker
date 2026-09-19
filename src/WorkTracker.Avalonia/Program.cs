@@ -10,6 +10,19 @@ class Program
 	[STAThread]
 	public static void Main(string[] args)
 	{
+#if DEBUG
+		// A Debug build must not share the installed application's data. Without this it writes to the
+		// same database, settings file and logs as the release install — and a development run with an
+		// empty plugins directory then saves its own emptiness over the real plugin configuration.
+		// Setting it here rather than in launchSettings.json covers every way a Debug build gets started:
+		// an IDE run configuration, dotnet run, or the built binary launched by hand. An explicit value
+		// still wins, so DOTNET_ENVIRONMENT=Production is how a Debug build is pointed at real data.
+		if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT")))
+		{
+			Environment.SetEnvironmentVariable("DOTNET_ENVIRONMENT", "Development");
+		}
+#endif
+
 		// OnExplicitShutdown: this is a tray-resident app whose main window may never be shown
 		// (StartMinimized) and is only hidden when closed, so it is not in the lifetime's window
 		// list. Under the default OnLastWindowClose a dialog opened from the tray menu would be
