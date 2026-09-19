@@ -113,7 +113,19 @@ Pozn.: `--` odděluje argumenty pro `dotnet run` od argumentů pro samotnou apli
 dotnet run --project src/WorkTracker.Avalonia
 ```
 
-Při prvním spuštění se vytvoří databáze. Pluginy se discoverují z adresáře vedle binárky — při debugování je to `src/WorkTracker.Avalonia/bin/Debug/net10.0/plugins/`, kam se plugin dostane buď přes `dotnet publish` plugin projektu do té složky, nebo ručním zkopírováním DLL.
+Při prvním spuštění se vytvoří databáze.
+
+**Debug build běží automaticky v prostředí `Development`.** Oba entry pointy (`src/WorkTracker.Avalonia/Program.cs`, `src/WorkTracker.CLI/Program.cs`) nastaví `DOTNET_ENVIRONMENT=Development`, pokud proměnná není nastavená zvenčí — platí to pro IDE, `dotnet run` i ručně spuštěnou binárku. Debug běh tím dostane vlastní data a nemůže přepsat nic, co patří nainstalované aplikaci:
+
+| | Debug (Development) | Release (Production) |
+|---|---|---|
+| Databáze | `bin/Debug/net10.0/worktracker-dev.db` | `Database:Path`, jinak `worktracker.db` v app data |
+| Nastavení, logy, klíče | `…/WorkTracker_Development/` | `…/WorkTracker/` |
+| Pluginy | `bin/Debug/.../plugins/` + `plugins/*/bin/Debug/net10.0/` | `plugins/` vedle binárky |
+
+Cesty pro Development definuje `appsettings.Development.json` (kopíruje se do outputu jen v Debug konfiguraci). Díky tomu debug běh vidí pluginy rovnou z jejich build outputu a není potřeba je nikam publikovat. Pustit debug build nad produkčními daty jde explicitním `DOTNET_ENVIRONMENT=Production`.
+
+> **Proč to tak je:** debug build s prázdnou `plugins/` složkou dřív sdílel `settings.json` s nainstalovanou aplikací, a uložení nastavení z něj smazalo konfiguraci všech pluginů. Izolace prostředí je první obrana, `SettingsService` je druhá — viz `RestorePluginStateNobodySpokeFor`.
 
 ### Plugin projekty
 

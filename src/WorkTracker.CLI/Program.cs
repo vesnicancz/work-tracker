@@ -9,6 +9,19 @@ using WorkTracker.CLI.Output;
 using WorkTracker.Infrastructure;
 using WorkTracker.Infrastructure.Data;
 
+#if DEBUG
+// A Debug build must not share the installed application's data. Without this it writes to the
+// same database, settings file and logs as the release install — and a development run with an
+// empty plugins directory then saves its own emptiness over the real plugin configuration.
+// Setting it here rather than in launchSettings.json covers every way a Debug build gets started:
+// an IDE run configuration, dotnet run, or the built binary launched by hand. An explicit value
+// still wins, so DOTNET_ENVIRONMENT=Production is how a Debug build is pointed at real data.
+if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT")))
+{
+	Environment.SetEnvironmentVariable("DOTNET_ENVIRONMENT", "Development");
+}
+#endif
+
 // Not the current directory, which is wherever the user happened to run the command from: the
 // CLI is meant to be on PATH (typically as a symlink), and its appsettings.json ships next to
 // the binary. The content root is what the default appsettings.json, appsettings.{Environment}

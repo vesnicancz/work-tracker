@@ -254,6 +254,129 @@ public class SettingsServiceTests : IDisposable
 
 	#endregion
 
+	#region Plugin state preservation
+
+	private static ApplicationSettings SettingsWithPlugins(params (string Id, string Token, bool Enabled)[] plugins)
+	{
+		var settings = new ApplicationSettings();
+		foreach (var (id, token, enabled) in plugins)
+		{
+			settings.PluginConfigurations[id] = new Dictionary<string, string> { ["ApiToken"] = token };
+			settings.EnabledPlugins[id] = enabled;
+		}
+
+		return settings;
+	}
+
+	/// <summary>
+	/// The regression that cost a real configuration: a development build with an empty plugins
+	/// directory loaded the settings, saved them back with no plugins in them, and wiped every
+	/// plugin's configuration and enabled state.
+	/// </summary>
+	[Fact]
+	public async Task SaveSettingsAsync_NoPluginsInRequest_KeepsStoredPluginState()
+	{
+		WriteSettingsFile(SettingsWithPlugins(("tempo.worklog", "CS:tempo.worklog:ApiToken", true)));
+		var sut = CreateSut();
+
+		var saved = sut.Settings.Clone();
+		saved.PluginConfigurations = new Dictionary<string, Dictionary<string, string>>();
+		saved.EnabledPlugins = new Dictionary<string, bool>();
+
+		await sut.SaveSettingsAsync(saved, TestContext.Current.CancellationToken);
+
+		var onDisk = JsonSerializer.Deserialize<ApplicationSettings>(
+			await File.ReadAllTextAsync(Path.Combine(_settingsDir, "settings.json"), TestContext.Current.CancellationToken))!;
+		onDisk.PluginConfigurations.Should().ContainKey("tempo.worklog");
+		onDisk.PluginConfigurations["tempo.worklog"]["ApiToken"].Should().Be("CS:tempo.worklog:ApiToken");
+		onDisk.EnabledPlugins["tempo.worklog"].Should().BeTrue();
+	}
+
+	[Fact]
+	public async Task SaveSettingsAsync_PluginInRequest_OverwritesStoredState()
+	{
+		WriteSettingsFile(SettingsWithPlugins(
+			("tempo.worklog", "CS:tempo.worklog:ApiToken", true),
+			("gorang3.worklog", "CS:gorang3.worklog:ApiToken", true)));
+		var sut = CreateSut();
+
+		// Only Tempo was loaded this time, and the user disabled it.
+		var saved = sut.Settings.Clone();
+		saved.PluginConfigurations = new Dictionary<string, Dictionary<string, string>>
+		{
+			["tempo.worklog"] = new() { ["ApiToken"] = "CS:tempo.worklog:ApiToken" },
+		};
+		saved.EnabledPlugins = new Dictionary<string, bool> { ["tempo.worklog"] = false };
+
+		await sut.SaveSettingsAsync(saved, TestContext.Current.CancellationToken);
+
+		var onDisk = JsonSerializer.Deserialize<ApplicationSettings>(
+			await File.ReadAllTextAsync(Path.Combine(_settingsDir, "settings.json"), TestContext.Current.CancellationToken))!;
+		onDisk.EnabledPlugins["tempo.worklog"].Should().BeFalse();
+		onDisk.EnabledPlugins["gorang3.worklog"].Should().BeTrue();
+	}
+
+	[Fact]
+	public void SaveSettings_NoPluginsInRequest_KeepsStoredPluginState()
+	{
+		WriteSettingsFile(SettingsWithPlugins(("tempo.worklog", "CS:tempo.worklog:ApiToken", true)));
+		var sut = CreateSut();
+
+		var saved = sut.Settings.Clone();
+		saved.PluginConfigurations = new Dictionary<string, Dictionary<string, string>>();
+		saved.EnabledPlugins = new Dictionary<string, bool>();
+
+		sut.SaveSettings(saved);
+
+		var onDisk = JsonSerializer.Deserialize<ApplicationSettings>(
+			File.ReadAllText(Path.Combine(_settingsDir, "settings.json")))!;
+		onDisk.PluginConfigurations.Should().ContainKey("tempo.worklog");
+		onDisk.EnabledPlugins["tempo.worklog"].Should().BeTrue();
+	}
+
+	/// <summary>
+	/// A plugin the caller never saw must go back to disk in the form it was read in - not the
+	/// decrypted one the service hands out in memory.
+	/// </summary>
+	[Fact]
+	public async Task SaveSettingsAsync_PreservedPluginConfiguration_StaysProtected()
+	{
+		_mockSecureStorage.Setup(s => s.Unprotect("CS:tempo.worklog:ApiToken")).Returns("plaintext-token");
+		WriteSettingsFile(SettingsWithPlugins(("tempo.worklog", "CS:tempo.worklog:ApiToken", true)));
+		var sut = CreateSut();
+
+		sut.Settings.PluginConfigurations["tempo.worklog"]["ApiToken"].Should().Be("plaintext-token");
+
+		var saved = sut.Settings.Clone();
+		saved.PluginConfigurations = new Dictionary<string, Dictionary<string, string>>();
+		saved.EnabledPlugins = new Dictionary<string, bool>();
+
+		await sut.SaveSettingsAsync(saved, TestContext.Current.CancellationToken);
+
+		var raw = await File.ReadAllTextAsync(Path.Combine(_settingsDir, "settings.json"), TestContext.Current.CancellationToken);
+		raw.Should().Contain("CS:tempo.worklog:ApiToken");
+		raw.Should().NotContain("plaintext-token");
+	}
+
+	[Fact]
+	public async Task SaveSettingsAsync_ExistingFile_KeepsPreviousContentsAsBackup()
+	{
+		WriteSettingsFile(SettingsWithPlugins(("tempo.worklog", "CS:tempo.worklog:ApiToken", true)));
+		var sut = CreateSut();
+
+		var saved = sut.Settings.Clone();
+		saved.Theme = "Dark";
+		await sut.SaveSettingsAsync(saved, TestContext.Current.CancellationToken);
+
+		var backupPath = Path.Combine(_settingsDir, "settings.json.bak");
+		File.Exists(backupPath).Should().BeTrue();
+		JsonSerializer.Deserialize<ApplicationSettings>(await File.ReadAllTextAsync(backupPath, TestContext.Current.CancellationToken))!
+			.Theme.Should().NotBe("Dark");
+		File.Exists(Path.Combine(_settingsDir, "settings.json.tmp")).Should().BeFalse();
+	}
+
+	#endregion
+
 	#region Environment-specific path
 
 	[Fact]

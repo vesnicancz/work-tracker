@@ -102,6 +102,10 @@ public class SettingsOrchestrator : ISettingsOrchestrator
 		settings.DarkTheme = request.DarkTheme ?? settings.DarkTheme;
 		// Normalize on the way in so only a valid code is ever written back to disk.
 		settings.Language = LanguageCatalog.Normalize(request.Language ?? settings.Language);
+		// Rebuilt from the request rather than merged into the clone, because the values there are
+		// the decrypted ones and would go back to disk in the clear. That only covers the plugins
+		// this instance loaded; SettingsService restores the entries of the ones it did not, still
+		// protected, so a run that found no plugins cannot wipe their configuration.
 		settings.PluginConfigurations = new Dictionary<string, Dictionary<string, string>>();
 		settings.EnabledPlugins = new Dictionary<string, bool>();
 		settings.FavoriteWorkItems = request.FavoriteWorkItems;
