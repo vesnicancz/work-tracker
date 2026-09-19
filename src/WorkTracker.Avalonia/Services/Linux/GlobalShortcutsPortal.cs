@@ -135,6 +135,16 @@ internal sealed class GlobalShortcutsPortal : IAsyncDisposable
 		await SubscribeToSessionAsync(connection, sessionHandle).ConfigureAwait(false);
 		_sessionHandle = sessionHandle;
 
+		// The desktop restores the shortcuts it already knows for this app id into the new session,
+		// so ask before binding: BindShortcuts is the call that may put UI in front of the user, and
+		// Plasma opens its shortcut settings for every single one — on every launch, until asked.
+		var alreadyBound = await ListShortcutsAsync(connection, sessionHandle, cancellationToken).ConfigureAwait(false);
+		if (alreadyBound != null && shortcuts.All(shortcut => alreadyBound.Contains(shortcut.Id)))
+		{
+			_logger.LogDebug("The portal restored {Count} shortcut(s) into the session; not binding again", shortcuts.Count);
+			return true;
+		}
+
 		if (!await BindShortcutsAsync(connection, sessionHandle, shortcuts, cancellationToken).ConfigureAwait(false))
 		{
 			await ResetAsync().ConfigureAwait(false);
@@ -285,6 +295,79 @@ internal sealed class GlobalShortcutsPortal : IAsyncDisposable
 		// session_handle is an object path that the portal has always sent as a plain string; it
 		// stays that way for compatibility, so accept both spellings.
 		return handle.Type == VariantValueType.ObjectPath ? handle.GetObjectPathAsString() : handle.GetString();
+	}
+
+	/// <summary>
+	/// Asks the portal which shortcuts this session already carries. A desktop that remembers our
+	/// bindings hands them back here, and then <c>BindShortcuts</c> — the call the portal is allowed
+	/// to interrupt the user over — has nothing left to ask for.
+	/// <para>
+	/// A portal that cannot answer leaves us no worse off than before: the caller falls back to
+	/// binding, which is what every launch used to do.
+	/// </para>
+	/// </summary>
+	private async Task<HashSet<string>?> ListShortcutsAsync(
+		DBusConnection connection,
+		string sessionHandle,
+		CancellationToken cancellationToken)
+	{
+		var handleToken = PortalHandles.NewToken();
+
+		MessageBuffer message;
+		var writer = connection.GetMessageWriter();
+		try
+		{
+			writer.WriteMethodCallHeader(
+				destination: PortalService,
+				path: PortalHandles.ObjectPath,
+				@interface: ShortcutsInterface,
+				member: "ListShortcuts",
+				signature: "oa{sv}",
+				flags: MessageFlags.None);
+
+			writer.WriteObjectPath(sessionHandle);
+
+			var options = writer.WriteDictionaryStart();
+			WriteStringOption(ref writer, "handle_token", handleToken);
+			writer.WriteDictionaryEnd(options);
+
+			message = writer.CreateMessage();
+		}
+		finally
+		{
+			writer.Dispose();
+		}
+
+		try
+		{
+			var response = await CallWithResponseAsync(connection, message, handleToken, s_callTimeout, cancellationToken)
+				.ConfigureAwait(false);
+
+			if (response.Code != PortalResponse.Success
+				|| !response.Results.TryGetValue("shortcuts", out var bound))
+			{
+				return null;
+			}
+
+			return ReadShortcutIds(bound);
+		}
+		catch (Exception ex) when (ex is not OperationCanceledException)
+		{
+			_logger.LogDebug(ex, "Could not list the shortcuts already bound to the session");
+			return null;
+		}
+	}
+
+	/// <summary>Reads the ids out of <c>a(sa{sv})</c> — the shortcut id is the first struct field.</summary>
+	private static HashSet<string> ReadShortcutIds(VariantValue shortcuts)
+	{
+		var ids = new HashSet<string>(StringComparer.Ordinal);
+		for (var i = 0; i < shortcuts.Count; i++)
+		{
+			ids.Add(shortcuts.GetItem(i).GetItem(0).GetString());
+		}
+
+		return ids;
 	}
 
 	private async Task<bool> BindShortcutsAsync(

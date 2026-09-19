@@ -28,6 +28,9 @@ public sealed class LinuxDesktopIntegrationService : IDesktopIntegrationService
 	private readonly string _applicationsDirectory;
 	private readonly string _iconsDirectory;
 	private readonly bool _refreshDesktopCaches;
+	private readonly Lock _installationLock = new();
+
+	private Task? _installation;
 
 	public LinuxDesktopIntegrationService(ILogger<LinuxDesktopIntegrationService> logger)
 		: this(logger, XdgDirectories.ApplicationsDirectory, XdgDirectories.IconsDirectory, refreshDesktopCaches: true)
@@ -47,7 +50,23 @@ public sealed class LinuxDesktopIntegrationService : IDesktopIntegrationService
 		_refreshDesktopCaches = refreshDesktopCaches;
 	}
 
+	/// <summary>
+	/// Installs once per process and hands every later caller the same task. Startup kicks this off
+	/// and the global shortcut waits on it, and both mean the one installation — repeating it would
+	/// rewrite the files underneath whoever is reading them.
+	/// <para>
+	/// The first caller's <paramref name="cancellationToken"/> is the one that governs the work.
+	/// </para>
+	/// </summary>
 	public Task EnsureInstalledAsync(CancellationToken cancellationToken = default)
+	{
+		lock (_installationLock)
+		{
+			return _installation ??= StartInstallAsync(cancellationToken);
+		}
+	}
+
+	private Task StartInstallAsync(CancellationToken cancellationToken)
 	{
 		if (!RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
 		{
@@ -67,6 +86,12 @@ public sealed class LinuxDesktopIntegrationService : IDesktopIntegrationService
 			return Task.CompletedTask;
 		}
 
+		if (IsBuildOutput(processPath))
+		{
+			_logger.LogDebug("Skipping desktop integration: running from a build output ({Path})", processPath);
+			return Task.CompletedTask;
+		}
+
 		return Task.Run(() => Install(processPath, cancellationToken), cancellationToken);
 	}
 
@@ -77,6 +102,31 @@ public sealed class LinuxDesktopIntegrationService : IDesktopIntegrationService
 	internal static bool IsSystemLocation(string processPath) =>
 		processPath.StartsWith("/usr/", StringComparison.Ordinal)
 		|| processPath.StartsWith("/opt/", StringComparison.Ordinal);
+
+	/// <summary>
+	/// A copy inside bin/Debug or bin/Release is a build being run during development. It would
+	/// otherwise point the menu entry at itself, and the next launch from the menu would start that
+	/// build instead of the installed one — with an empty plugins/ directory next to it.
+	/// </summary>
+	internal static bool IsBuildOutput(string processPath)
+	{
+		for (var directory = Path.GetDirectoryName(processPath); directory is not null; directory = Path.GetDirectoryName(directory))
+		{
+			var configuration = Path.GetFileName(directory);
+			if (configuration is not ("Debug" or "Release"))
+			{
+				continue;
+			}
+
+			var parent = Path.GetDirectoryName(directory);
+			if (parent is not null && Path.GetFileName(parent) == "bin")
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
 
 	internal void Install(string execPath, CancellationToken cancellationToken = default)
 	{
@@ -194,11 +244,17 @@ public sealed class LinuxDesktopIntegrationService : IDesktopIntegrationService
 	/// <summary>
 	/// Nudges the desktop into picking up the new entry and icons. KDE and GNOME both notice the files
 	/// on their own, so a missing or failing tool is not worth reporting.
+	/// <para>
+	/// Plasma notices in its own time, which is too late for the shortcut we are about to bind: the
+	/// portal reads our display name out of the service cache, and whatever it finds on the first
+	/// bind is the name the user is stuck with. So that one cache is rebuilt here and now.
+	/// </para>
 	/// </summary>
 	private void RefreshDesktopCaches()
 	{
 		RunIfAvailable("update-desktop-database", _applicationsDirectory);
 		RunIfAvailable("gtk-update-icon-cache", "-t", "-f", Path.Combine(_iconsDirectory, "hicolor"));
+		RunIfAvailable("kbuildsycoca6");
 	}
 
 	private void RunIfAvailable(string fileName, params string[] arguments)
