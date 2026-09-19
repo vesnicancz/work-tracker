@@ -90,7 +90,8 @@ Detailní průvodce prvním spuštěním a ovládáním najdeš v [docs/user-gui
 | `list [datum]` | Výpis záznamů pro zadaný den (výchozí: dnes) |
 | `edit <id> [--ticket=] [--start=] [--end=] [--desc=]` | Úprava existujícího záznamu |
 | `delete <id>` | Smazání záznamu |
-| `send [week] [datum]` | Odeslání worklogu do externího systému (náhled + potvrzení). **Pozor:** aktuální `WorkTracker.CLI` pluginy neenable-uje, takže tento příkaz v praxi skončí chybou „No worklog upload plugin available“. Pro reálné odesílání použij GUI. |
+| `send [week] [datum]` | Odeslání worklogu do externího systému (náhled + potvrzení). `--provider <id>` vybere konkrétní plugin, `--yes` přeskočí potvrzení |
+| `providers` | Výpis worklog upload pluginů a jejich enabled stavu |
 | `version`, `help` | Verze a nápověda |
 
 Příklady:
@@ -159,7 +160,7 @@ Citlivé údaje (API tokeny, hesla) aplikace ukládá přes `ISecureStorage` do 
 
 V souboru `settings.json` je na jejich místě uložený pouze placeholder `CS:{pluginId}:{fieldKey}`, nikdy plaintext. OAuth tokeny pro pluginy používající MSAL (Office 365 Calendar, Goran G3) jsou v zašifrované cache v `keys/` a při vypršení se obnovují přes **device code flow**.
 
-> **Pluginy v CLI:** Aktuální `WorkTracker.CLI` volá `InitializePluginsAsync` bez enabled‑plugin mapy, takže v CLI **zůstanou všechny pluginy vypnuté** a příkaz `send` skončí s „No worklog upload plugin available“. Konfigurace pluginů se tedy reálně dělá jen v GUI (Avalonia → **Nastavení → Pluginy**). Jednotlivé plugin docs v [docs/plugins/](docs/plugins/) obsahují ukázkové `appsettings.json` schéma pluginu jako referenci pro integrátory s vlastním hostem, ne jako funkční CLI fallback.
+> **Pluginy v CLI:** `WorkTracker.CLI` čte enabled stav i konfiguraci pluginů ze stejného `settings.json` jako GUI, takže `send` funguje i z terminálu. Zapínají a konfigurují se ale pouze v GUI (Avalonia → **Nastavení → Pluginy**) — CLI je jen používá. Co je zrovna k dispozici, ukáže `WorkTracker.CLI providers`. Jednotlivé plugin docs v [docs/plugins/](docs/plugins/) obsahují ukázkové `appsettings.json` schéma pluginu jako referenci pro integrátory s vlastním hostem.
 
 > **Bezpečnost:** Necommituj API tokeny do Gitu.
 

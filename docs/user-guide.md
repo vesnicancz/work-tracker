@@ -258,12 +258,12 @@ Postup (předpokládá, že je alespoň jeden worklog plugin povolený):
 1. Aplikace načte záznamy z databáze pro zvolený rozsah.
 2. Ukáže náhled v tabulce (ticket, start, konec, délka).
 3. Požádá o potvrzení — **`y/N`**.
-4. Zavolá první povolený `IWorklogUploadPlugin`. Pokud máš více worklog pluginů povolených, použije se první podle **interního pořadí načtení / povolení** (ne abecedně); pro výběr konkrétního pluginu použij GUI.
+4. Zavolá první povolený `IWorklogUploadPlugin`. Pokud máš více worklog pluginů povolených, použije se první podle **interního pořadí načtení / povolení** (ne abecedně); konkrétní plugin vybereš přes `--provider <id>`, jeho id vypíše `providers`.
 5. U týdenního odesílání se při částečném úspěchu vypíše seznam selhaných dnů a důvody.
 
 Neúplné záznamy (bez ticketu i popisu, nebo s nulovou délkou) jsou pluginem validátorem automaticky odfiltrovány s upozorněním.
 
-> **Pozor — omezení CLI:** Aktuální `WorkTracker.CLI` volá `InitializePluginsAsync` bez enabled‑plugin mapy, takže všechny worklog pluginy zůstanou vypnuté a `send` typicky skončí chybou `No worklog upload plugin available`. V praxi je odesílání worklogů momentálně dostupné spolehlivě **jen přes GUI**. Postup výše se uplatní buď ve vlastním hostu, který enable mapu předá, nebo až se CLI rozšíří o čtení enabled seznamu z configu.
+> **Pozor — konfigurace pluginů:** CLI pluginy načítá a povoluje podle `settings.json`, který zapisuje GUI. Zapnout a nastavit plugin proto jde jen v GUI; dokud tam žádný worklog plugin povolený není, skončí `send` chybou `No worklog upload plugin available`. Aktuální stav ukáže `WorkTracker.CLI providers`.
 
 ---
 
