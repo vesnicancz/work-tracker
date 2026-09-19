@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
@@ -10,14 +9,15 @@ using WorkTracker.CLI.Output;
 using WorkTracker.Infrastructure;
 using WorkTracker.Infrastructure.Data;
 
-var builder = Host.CreateApplicationBuilder(args);
-
-// Configuration
-builder.Configuration
-	.SetBasePath(Directory.GetCurrentDirectory())
-	.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-	.AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
-	.AddEnvironmentVariables();
+// Not the current directory, which is wherever the user happened to run the command from: the
+// CLI is meant to be on PATH (typically as a symlink), and its appsettings.json ships next to
+// the binary. The content root is what the default appsettings.json, appsettings.{Environment}
+// .json, environment variable and command line sources resolve against.
+var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
+{
+	Args = args,
+	ContentRootPath = WorkTrackerPaths.AppContentDirectory,
+});
 
 // Logging
 builder.Services.AddSerilog(loggerConfiguration =>
