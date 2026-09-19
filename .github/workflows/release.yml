@@ -20,7 +20,7 @@ jobs:
       # MinVer only recognises a three-part version tag. It ignores anything else and falls back to
       # the previous tag plus a patch bump, silently: v1.14 went out labelled 1.13.1, and every
       # installed copy kept offering itself as an update. Catch it here, in seconds, rather than
-      # after nine publish jobs have built archives under the wrong number.
+      # after a dozen publish jobs have built archives under the wrong number.
       - name: Check the tag is a three-part version
         env:
           TAG: ${{ github.ref_name }}
@@ -62,14 +62,17 @@ jobs:
       # Without this a single broken RID cancels every sibling mid-restore, and the log then blames
       # the cancellation rather than the one job that actually failed.
       fail-fast: false
+      # Same RID set as publish-avalonia, so a platform that gets the GUI also gets the CLI.
+      # Intel Macs are not built for: every Mac shipped since 2020 is Apple Silicon, and Rosetta
+      # runs the osx-arm64 build's .NET host for the rest.
       matrix:
         include:
           - rid: win-x64
             artifact: WorkTracker-CLI-win-x64
+          - rid: win-arm64
+            artifact: WorkTracker-CLI-win-arm64
           - rid: linux-x64
             artifact: WorkTracker-CLI-linux-x64
-          - rid: osx-x64
-            artifact: WorkTracker-CLI-osx-x64
           - rid: osx-arm64
             artifact: WorkTracker-CLI-osx-arm64
     steps:
@@ -115,18 +118,15 @@ jobs:
           - rid: win-x64
             os: windows-latest
             artifact: WorkTracker-Avalonia-win-x64
-          - rid: linux-x64
-            os: ubuntu-latest
-            artifact: WorkTracker-Avalonia-linux-x64
-          - rid: osx-x64
-            os: macos-latest
-            artifact: WorkTracker-Avalonia-osx-x64
-          - rid: osx-arm64
-            os: macos-latest
-            artifact: WorkTracker-Avalonia-osx-arm64
           - rid: win-arm64
             os: windows-latest
             artifact: WorkTracker-Avalonia-win-arm64
+          - rid: linux-x64
+            os: ubuntu-latest
+            artifact: WorkTracker-Avalonia-linux-x64
+          - rid: osx-arm64
+            os: macos-latest
+            artifact: WorkTracker-Avalonia-osx-arm64
     steps:
       - uses: actions/checkout@v6
         with:
