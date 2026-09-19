@@ -4,6 +4,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="WorkTracker.Application.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\WorkTracker.Domain\WorkTracker.Domain.csproj" />
     <ProjectReference Include="..\WorkTracker.Plugin.Abstractions\WorkTracker.Plugin.Abstractions.csproj" />
   </ItemGroup>
