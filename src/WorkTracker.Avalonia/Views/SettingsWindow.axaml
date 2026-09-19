@@ -585,23 +585,33 @@
                 </TabControl>
 
                 <!-- Bottom bar -->
-                <StackPanel Grid.Row="1" Orientation="Horizontal"
-                            HorizontalAlignment="Right"
-                            Spacing="8" Margin="20,0,20,14">
-                    <Button Content="{markup:Localize Cancel}"
-                            Command="{Binding CancelCommand}"
-                            Padding="20,8"
-                            Background="{DynamicResource ButtonSecondaryBg}"
-                            Foreground="{DynamicResource ButtonSecondaryFg}" />
-                    <Button Command="{Binding SaveCommand}"
-                            Padding="20,8"
-                            Classes="accent">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <material:MaterialIcon Kind="ContentSave" Width="16" Height="16" />
-                            <TextBlock Text="{markup:Localize Save}" FontWeight="SemiBold" />
-                        </StackPanel>
-                    </Button>
-                </StackPanel>
+                <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="20,0,20,14">
+
+                    <!-- Why the save did not go through; the dialog stays open when it fails -->
+                    <TextBlock Grid.Column="0"
+                               Text="{Binding SaveError}"
+                               IsVisible="{Binding HasSaveError}"
+                               Foreground="{DynamicResource ErrorBrush}"
+                               FontSize="12" TextWrapping="Wrap"
+                               VerticalAlignment="Center" Margin="0,0,12,0" />
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                        <Button Content="{markup:Localize Cancel}"
+                                Command="{Binding CancelCommand}"
+                                Padding="20,8"
+                                Background="{DynamicResource ButtonSecondaryBg}"
+                                Foreground="{DynamicResource ButtonSecondaryFg}" />
+                        <Button Command="{Binding SaveCommand}"
+                                Padding="20,8"
+                                Classes="accent">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <material:MaterialIcon Kind="ContentSave" Width="16" Height="16" />
+                                <TextBlock Text="{markup:Localize Save}" FontWeight="SemiBold" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+
+                </Grid>
 
             </Grid>
 

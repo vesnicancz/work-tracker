@@ -351,6 +351,9 @@
   <data name="FailedToOpenSettings" xml:space="preserve">
     <value>Failed to open settings: {0}</value>
   </data>
+  <data name="SettingsSaveFailed" xml:space="preserve">
+    <value>Could not save the settings: {0}</value>
+  </data>
   <data name="WorklogsSubmittedSuccessfully" xml:space="preserve">
     <value>Worklogs submitted successfully</value>
   </data>

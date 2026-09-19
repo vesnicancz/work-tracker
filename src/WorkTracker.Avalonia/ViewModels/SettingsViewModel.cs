@@ -27,6 +27,7 @@ public class SettingsViewModel : ViewModelBase
 	private PluginViewModel? _selectedPlugin;
 	private string? _testConnectionResult;
 	private bool _isTestingConnection;
+	private string? _saveError;
 
 	// Pomodoro
 	private bool _pomodoroEnabled;
@@ -380,6 +381,24 @@ public class SettingsViewModel : ViewModelBase
 		}
 	}
 
+	/// <summary>
+	/// Why the last Save did not go through. A failed save leaves the dialog open, so without a
+	/// message on it the button looks like it did nothing at all - the reason only reached the log.
+	/// </summary>
+	public string? SaveError
+	{
+		get => _saveError;
+		private set
+		{
+			if (SetProperty(ref _saveError, value))
+			{
+				OnPropertyChanged(nameof(HasSaveError));
+			}
+		}
+	}
+
+	public bool HasSaveError => !string.IsNullOrEmpty(_saveError);
+
 	// Favorites properties
 	public ObservableCollection<FavoriteWorkItem> FavoriteWorkItems { get; } = new();
 
@@ -516,6 +535,8 @@ public class SettingsViewModel : ViewModelBase
 
 	private async Task SaveAsync()
 	{
+		SaveError = null;
+
 		try
 		{
 			var request = new SettingsSaveRequest
@@ -551,6 +572,7 @@ public class SettingsViewModel : ViewModelBase
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Failed to save settings");
+			SaveError = _localization.GetFormattedString("SettingsSaveFailed", ex.Message);
 			DialogResult = false;
 		}
 	}

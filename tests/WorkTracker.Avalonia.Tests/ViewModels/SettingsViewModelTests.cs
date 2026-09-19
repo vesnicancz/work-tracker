@@ -25,6 +25,8 @@ public class SettingsViewModelTests
 			Settings.SetupGet(s => s.Settings).Returns(SettingsModel);
 			Orchestrator.Setup(o => o.LoadPlugins()).Returns([]);
 			Localization.Setup(l => l[It.IsAny<string>()]).Returns((string key) => key);
+			Localization.Setup(l => l.GetFormattedString(It.IsAny<string>(), It.IsAny<object[]>()))
+				.Returns((string key, object[] args) => $"{key}: {string.Join(", ", args)}");
 		}
 
 		public SettingsViewModel CreateViewModel()
@@ -429,4 +431,44 @@ public class SettingsViewModelTests
 		vm.FavoriteWorkItems[0].Should().NotBeSameAs(stored);
 		vm.FavoriteWorkItems[0].Id.Should().Be(stored.Id);
 	}
+
+	#region Saving
+
+	[Fact]
+	public async Task Save_WhenItFails_ReportsWhyAndLeavesTheDialogOpen()
+	{
+		var harness = new Harness();
+		harness.Orchestrator
+			.Setup(o => o.SaveSettingsAsync(It.IsAny<SettingsSaveRequest>(), It.IsAny<CancellationToken>()))
+			.ThrowsAsync(new InvalidOperationException("No credential store has been selected."));
+		var closed = false;
+		var vm = harness.CreateViewModel();
+		vm.CloseAction = () => closed = true;
+
+		await vm.SaveCommand.ExecuteAsync(null);
+
+		closed.Should().BeFalse("a failed save has nothing to close the dialog over");
+		vm.HasSaveError.Should().BeTrue();
+		vm.SaveError.Should().Contain("No credential store has been selected.");
+	}
+
+	[Fact]
+	public async Task Save_AfterAFailedAttempt_ClearsTheMessageWhenItSucceeds()
+	{
+		var harness = new Harness();
+		harness.Orchestrator
+			.SetupSequence(o => o.SaveSettingsAsync(It.IsAny<SettingsSaveRequest>(), It.IsAny<CancellationToken>()))
+			.ThrowsAsync(new InvalidOperationException("keyring unavailable"))
+			.Returns(Task.CompletedTask);
+		var vm = harness.CreateViewModel();
+		vm.CloseAction = () => { };
+
+		await vm.SaveCommand.ExecuteAsync(null);
+		await vm.SaveCommand.ExecuteAsync(null);
+
+		vm.HasSaveError.Should().BeFalse();
+		vm.SaveError.Should().BeNull();
+	}
+
+	#endregion
 }
