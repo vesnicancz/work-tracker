@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using Avalonia.Labs.Notifications;
+using Avalonia.Threading;
 using Microsoft.Extensions.Logging;
 using WorkTracker.UI.Shared.Services;
 
@@ -26,38 +27,67 @@ public sealed class SystemNotificationService : ISystemNotificationService, IDis
 	public Task ShowNotificationAsync(string title, string message) =>
 		ShowNotificationAsync(title, message, null);
 
-	public Task ShowNotificationAsync(string title, string message, string? actionUrl)
+	/// <summary>
+	/// Shows a notification, moving to the UI thread first when it has to.
+	/// <para>
+	/// The Linux notification manager is thread-affine: off the UI thread its CreateNotification
+	/// hands back null rather than throwing, and nothing at all reaches the notification portal.
+	/// Both callers are fire-and-forget — the update check resumes on the thread pool after its
+	/// HTTP request, the Pomodoro service posts from a timer — so on Linux no notification this
+	/// application asked for was ever delivered. Windows tolerates the background thread, which is
+	/// why the same code appeared to work there.
+	/// </para>
+	/// </summary>
+	public async Task ShowNotificationAsync(string title, string message, string? actionUrl)
 	{
 		try
 		{
-			var manager = NativeNotificationManager.Current;
-			if (manager == null)
+			if (Dispatcher.UIThread.CheckAccess())
 			{
-				return Task.CompletedTask;
+				Show(title, message, actionUrl);
+				return;
 			}
 
-			var notification = manager.CreateNotification(null);
-			if (notification == null)
-			{
-				return Task.CompletedTask;
-			}
-
-			notification.Title = title;
-			notification.Message = message;
-
-			if (!string.IsNullOrEmpty(actionUrl))
-			{
-				_pendingActionUrls[notification.Id] = actionUrl;
-			}
-
-			notification.Show();
+			await Dispatcher.UIThread.InvokeAsync(() => Show(title, message, actionUrl));
 		}
 		catch (Exception ex)
 		{
 			_logger.LogWarning(ex, "Failed to show system notification");
 		}
+	}
 
-		return Task.CompletedTask;
+	/// <summary>
+	/// Hands the notification to the platform. Runs on the UI thread. A notification that cannot be
+	/// created is logged rather than dropped in silence: both of these used to be a bare return,
+	/// which is why a notification that never appeared left nothing behind to explain it.
+	/// </summary>
+	private void Show(string title, string message, string? actionUrl)
+	{
+		var manager = NativeNotificationManager.Current;
+		if (manager == null)
+		{
+			_logger.LogWarning(
+				"No native notification manager is registered; dropping the notification {Title}", title);
+			return;
+		}
+
+		var notification = manager.CreateNotification(null);
+		if (notification == null)
+		{
+			_logger.LogWarning(
+				"{Manager} created no notification; dropping {Title}", manager.GetType().Name, title);
+			return;
+		}
+
+		notification.Title = title;
+		notification.Message = message;
+
+		if (!string.IsNullOrEmpty(actionUrl))
+		{
+			_pendingActionUrls[notification.Id] = actionUrl;
+		}
+
+		notification.Show();
 	}
 
 	public void Dispose()
