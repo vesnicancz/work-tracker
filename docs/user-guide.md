@@ -31,8 +31,8 @@ Na stránce [Releases](https://github.com/vesnicancz/work-tracker/releases/lates
 
 | Balíček | Obsah | Podporované RID |
 |---------|-------|-----------------|
-| `WorkTracker-CLI-{rid}.zip` | Konzolová aplikace | `win-x64`, `linux-x64`, `osx-x64`, `osx-arm64` |
-| `WorkTracker-Avalonia-{rid}.zip` | Cross‑platform GUI | `win-x64`, `win-arm64`, `linux-x64`, `osx-x64`, `osx-arm64` |
+| `WorkTracker-CLI-{rid}.zip` | Konzolová aplikace | `win-x64`, `win-arm64`, `linux-x64`, `osx-arm64` |
+| `WorkTracker-Avalonia-{rid}.zip` | Cross‑platform GUI | `win-x64`, `win-arm64`, `linux-x64`, `osx-arm64` |
 | `WorkTracker.Plugin.{Name}.zip` | Platformně neutrální pluginy (Atlassian, GoranG3, Luxafor, Office365Calendar) | — |
 
 **Postup:**
@@ -56,7 +56,7 @@ dotnet publish src/WorkTracker.CLI      -c Release -r win-x64 --self-contained f
 
 Publikované soubory najdeš v `src/<Projekt>/bin/Release/net10.0/<rid>/publish/`.
 
-RID (runtime identifier) si zvol podle své platformy: `win-x64`, `win-arm64`, `linux-x64`, `osx-x64`, `osx-arm64`.
+RID (runtime identifier) si zvol podle své platformy: `win-x64`, `win-arm64`, `linux-x64`, `osx-arm64`. Na Intel Macu si můžeš z těchto zdrojů vybuildit `osx-x64` sám, releasy ho nenabízejí.
 
 ---
 
