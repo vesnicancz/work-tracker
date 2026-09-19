@@ -64,23 +64,61 @@ public class SystemNotificationServiceTests
 		public void Close() { }
 	}
 
-	private static async Task WithManagerAsync(ThreadAffineManager manager, Func<Task> body)
+	/// <summary>
+	/// Runs <paramref name="body"/> on a thread of its own and waits for it, so that "off the UI
+	/// thread" is a fact about the caller rather than about how the thread pool felt like scheduling.
+	/// </summary>
+	private static Task OffTheUiThreadAsync(Func<Task> body)
 	{
-		// Touch the headless session first: Dispatcher.UIThread binds to whichever thread reaches it
-		// first, and that has to be the session's, not the test's, or standing "off the UI thread"
-		// below would be a lie.
-		await UiThread.Dispatch(() => { });
+		var finished = new TaskCompletionSource();
 
-		NativeNotificationManager.RegisterNativeNotificationManager(manager);
-		try
+		var thread = new Thread(() =>
 		{
-			await body();
-		}
-		finally
+			try
+			{
+				body().GetAwaiter().GetResult();
+				finished.SetResult();
+			}
+			catch (Exception ex)
+			{
+				finished.SetException(ex);
+			}
+		})
 		{
-			NativeNotificationManager.RegisterNativeNotificationManager(null!);
-		}
+			IsBackground = true,
+			Name = "off-ui-thread caller",
+		};
+
+		thread.Start();
+
+		return finished.Task;
 	}
+
+	/// <summary>
+	/// Registers the manager and runs <paramref name="body"/> inside one headless session dispatch.
+	/// <para>
+	/// The body has to run <em>inside</em> the dispatch, not merely after one. Dispatcher.UIThread
+	/// identifies the session's thread only while a dispatch is in flight; outside one it binds to
+	/// whichever thread asks it, so CheckAccess() answers True everywhere and a caller that genuinely
+	/// did step off the UI thread is told that it did not. What used to decide this test was whether
+	/// some other test in the assembly happened to have a dispatch in flight at that moment — it
+	/// passed on a machine with cores to spare and went red on the two-core CI runner, and it fails
+	/// every time if you run this class on its own.
+	/// </para>
+	/// </summary>
+	private static Task WithManagerAsync(ThreadAffineManager manager, Func<Task> body) =>
+		UiThread.Dispatch(async () =>
+		{
+			NativeNotificationManager.RegisterNativeNotificationManager(manager);
+			try
+			{
+				await body();
+			}
+			finally
+			{
+				NativeNotificationManager.RegisterNativeNotificationManager(null!);
+			}
+		});
 
 	/// <summary>
 	/// The regression this guards: both callers are fire-and-forget and resume on the thread pool —
@@ -92,9 +130,9 @@ public class SystemNotificationServiceTests
 	{
 		var manager = new ThreadAffineManager();
 
-		// Task.Run, not a bare await: awaiting the headless session hands the continuation back to
-		// its dispatcher, so without this the "background" caller would already be on the UI thread.
-		await WithManagerAsync(manager, () => Task.Run(async () =>
+		// A thread of its own: the body runs on the session's UI thread, so the "background" caller
+		// has to be put somewhere that demonstrably is not it.
+		await WithManagerAsync(manager, () => OffTheUiThreadAsync(async () =>
 		{
 			var service = new SystemNotificationService(NullLogger<SystemNotificationService>.Instance);
 
@@ -114,11 +152,16 @@ public class SystemNotificationServiceTests
 	{
 		var manager = new ThreadAffineManager();
 
-		await WithManagerAsync(manager, () => UiThread.Dispatch(async () =>
+		// No dispatch of its own: WithManagerAsync already runs this on the UI thread.
+		await WithManagerAsync(manager, async () =>
 		{
 			var service = new SystemNotificationService(NullLogger<SystemNotificationService>.Instance);
+
+			Dispatcher.UIThread.CheckAccess().Should()
+				.BeTrue("this test has to stand where the Pomodoro timer's UI callback stands");
+
 			await service.ShowNotificationAsync("WorkTracker", "Pomodoro finished");
-		}));
+		});
 
 		manager.CreatedOnUiThread.Should().BeTrue();
 		manager.Shown.Should().Equal("WorkTracker");
