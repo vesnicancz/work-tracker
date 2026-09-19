@@ -580,8 +580,10 @@ Běží na `ubuntu-latest` — všechny projekty cílí na cross‑platform `net
 Trigger: push tagu `v*`. Jobs:
 
 1. **test** (ubuntu) — spustí celou test sadu před release.
-2. **publish-cli** (matrix: win-x64, linux-x64, osx-x64, osx-arm64) — `dotnet publish` s `PublishSingleFile=true`, `SelfContained=false`, zip artifact.
-3. **publish-avalonia** (matrix: win-x64, linux-x64, osx-x64, osx-arm64, win-arm64) — Avalonia pro všechny platformy. Obě macOS varianty navíc projdou krokem *Bundle and sign .app* (viz níže).
+2. **publish-cli** (matrix: win-x64, win-arm64, linux-x64, osx-arm64) — `dotnet publish` s `PublishSingleFile=true`, `SelfContained=false`, zip artifact.
+3. **publish-avalonia** (matrix: win-x64, win-arm64, linux-x64, osx-arm64) — Avalonia pro všechny platformy. macOS varianta navíc projde krokem *Bundle and sign .app* (viz níže).
+
+   Obě matice mají stejnou sadu RID: co dostane GUI, dostane i CLI. Intel Macy (`osx-x64`) se nebuildí — Macy se prodávají s Apple Siliconem od roku 2020 a na těch starších rozjede .NET host z `osx-arm64` buildu Rosetta.
 4. **publish-plugins** (matrix: Atlassian, Luxafor, GoranG3, Office365Calendar) — každý plugin samostatně.
 5. **release** — stáhne artifacty a vytvoří GitHub Release.
 
