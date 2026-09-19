@@ -351,6 +351,9 @@
   <data name="FailedToOpenSettings" xml:space="preserve">
     <value>Nepodařilo se otevřít nastavení: {0}</value>
   </data>
+  <data name="SettingsSaveFailed" xml:space="preserve">
+    <value>Nastavení se nepodařilo uložit: {0}</value>
+  </data>
   <data name="WorklogsSubmittedSuccessfully" xml:space="preserve">
     <value>Záznamy práce úspěšně odeslány</value>
   </data>

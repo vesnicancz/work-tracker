@@ -12,13 +12,65 @@ public sealed class CredentialStoreSecureStorage : ISecureStorage
 {
 	private const string Prefix = "CS:";
 	private const string AccountName = "WorkTracker";
+	private const string BackingStoreVariable = "GCM_CREDENTIAL_STORE";
+	private const string SecretServiceStore = "secretservice";
 	private readonly ICredentialStore _store;
 	private readonly ILogger<CredentialStoreSecureStorage> _logger;
 
 	public CredentialStoreSecureStorage(ILogger<CredentialStoreSecureStorage> logger)
 	{
-		_store = CredentialManager.Create(AccountName);
 		_logger = logger;
+		SelectLinuxBackingStore(logger);
+		_store = CredentialManager.Create(AccountName);
+	}
+
+	/// <summary>
+	/// Names a backing store on Linux, where the credential manager has no default and refuses to
+	/// store anything until one is chosen - saving a plugin's token failed with "No credential
+	/// store has been selected". Windows and macOS resolve to the Credential Manager and the
+	/// Keychain by themselves and are left untouched.
+	/// <para>
+	/// A store the user configured - through <c>GCM_CREDENTIAL_STORE</c> or git's
+	/// <c>credential.credentialStore</c> - always wins. The variable is set on this process only,
+	/// and only before the store is created, because that is when the choice is read.
+	/// </para>
+	/// </summary>
+	private static void SelectLinuxBackingStore(ILogger logger)
+	{
+		if (!OperatingSystem.IsLinux())
+		{
+			return;
+		}
+
+		try
+		{
+			using var context = CredentialManager.CreateContext(AccountName);
+
+			if (!string.IsNullOrWhiteSpace(context.Settings.CredentialBackingStore))
+			{
+				return;
+			}
+
+			// The freedesktop Secret Service is what a desktop session provides - GNOME Keyring,
+			// KWallet. Outside one (the CLI over SSH) there is nothing sensible to guess, so the
+			// setting stays empty and the credential manager's own error lists every store it
+			// accepts instead of us picking a worse one.
+			if (!context.SessionManager.IsDesktopSession)
+			{
+				logger.LogWarning(
+					"No credential store is configured and this is not a desktop session; " +
+					"set {Variable} to store plugin secrets", BackingStoreVariable);
+				return;
+			}
+
+			Environment.SetEnvironmentVariable(BackingStoreVariable, SecretServiceStore);
+			logger.LogInformation("Storing plugin secrets in the {Store} credential store", SecretServiceStore);
+		}
+		catch (Exception ex)
+		{
+			// Only the choice failed; the store below still works if the platform has a default.
+			logger.LogWarning(ex, "Could not determine which credential store to use");
+		}
 	}
 
 	public string Protect(string plainText, string pluginId, string fieldKey)
