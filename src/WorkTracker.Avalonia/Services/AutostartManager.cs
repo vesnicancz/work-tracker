@@ -186,8 +186,13 @@ public sealed class AutostartManager : IAutostartManager
 
 	#region macOS
 
+	// DoNotVerify for the same reason as in XdgDirectories: the default option answers with an empty
+	// string for a home that does not exist, and the plist would then be written relative to the
+	// working directory, where no session manager will ever look for it.
 	private static string MacOSPlistFilePath =>
-		Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Library", "LaunchAgents", "com.worktracker.plist");
+		Path.Combine(
+			Environment.GetFolderPath(Environment.SpecialFolder.UserProfile, Environment.SpecialFolderOption.DoNotVerify),
+			"Library", "LaunchAgents", "com.worktracker.plist");
 
 	private bool GetMacOSAutostart()
 	{

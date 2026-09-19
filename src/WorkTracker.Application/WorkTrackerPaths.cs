@@ -7,21 +7,45 @@ namespace WorkTracker.Application;
 /// </summary>
 public static class WorkTrackerPaths
 {
-	private static readonly Lazy<string> _appDataDirectory = new(() =>
+	private static readonly Lazy<string> _appDataDirectory = new(() => BuildAppDataDirectory(
+		// DoNotVerify, not the default: on Unix the default option verifies the directory and
+		// hands back an empty string when ~/.local/share does not exist yet — a fresh account, a
+		// service user, a container. Path.Combine then turns "WorkTracker" into a relative path and
+		// the database, the settings and the logs are created wherever the process happened to be
+		// started from, a new empty set per working directory.
+		Environment.GetFolderPath(
+			Environment.SpecialFolder.LocalApplicationData,
+			Environment.SpecialFolderOption.DoNotVerify),
+		Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT")
+			?? Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")));
+
+	/// <summary>
+	/// Builds the application data directory from the platform's local application data directory
+	/// and the hosting environment name. Anything other than Production gets its own suffixed
+	/// directory, so a Development run cannot touch the installed application's data.
+	/// </summary>
+	/// <remarks>
+	/// The result is always rooted. Should the platform fail to name a local application data
+	/// directory at all, the executable's own directory stands in: writing beside the binary is a
+	/// poor home for user data, but it is at least one fixed place, where a relative path silently
+	/// scatters a separate database per working directory.
+	/// </remarks>
+	internal static string BuildAppDataDirectory(string localApplicationData, string? environmentName)
 	{
 		var folder = "WorkTracker";
-		var env = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT")
-			?? Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
 
-		if (!string.IsNullOrEmpty(env) && !env.Equals("Production", StringComparison.OrdinalIgnoreCase))
+		if (!string.IsNullOrEmpty(environmentName)
+			&& !environmentName.Equals("Production", StringComparison.OrdinalIgnoreCase))
 		{
-			folder += $"_{env}";
+			folder += $"_{environmentName}";
 		}
 
-		return Path.Combine(
-			Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-			folder);
-	});
+		var root = string.IsNullOrWhiteSpace(localApplicationData)
+			? AppContext.BaseDirectory
+			: localApplicationData;
+
+		return Path.Combine(root, folder);
+	}
 
 	/// <summary>
 	/// Contents/ of the macOS .app bundle we are running from, or null anywhere else. A bundle is

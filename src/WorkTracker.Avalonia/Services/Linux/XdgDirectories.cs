@@ -20,7 +20,16 @@ internal static class XdgDirectories
 	{
 		var value = Environment.GetEnvironmentVariable(variable);
 		return string.IsNullOrEmpty(value)
-			? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), relativeFallback)
+			? Path.Combine(HomeDirectory, relativeFallback)
 			: value;
 	}
+
+	/// <summary>
+	/// DoNotVerify, not the default: the default option verifies the directory and returns an empty
+	/// string for a home that does not exist, which would leave every path here relative and write
+	/// the desktop entry and the icons into the process's working directory instead.
+	/// </summary>
+	private static string HomeDirectory => Environment.GetFolderPath(
+		Environment.SpecialFolder.UserProfile,
+		Environment.SpecialFolderOption.DoNotVerify);
 }
