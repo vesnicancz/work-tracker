@@ -16,6 +16,11 @@ jobs:
   verify-tag:
     name: Verify tag format
     runs-on: ubuntu-latest
+    # Every job here carries a timeout, because without one it inherits Actions' six-hour default and
+    # a hung job holds the release up for the rest of the day. The numbers are generous multiples of
+    # what the jobs actually take (measured on v1.14.7: this one 2s, tests 60s, CLI ~30s, plugins
+    # ~24s, the release job 21s, and Avalonia 119s at its slowest on Windows).
+    timeout-minutes: 5
     steps:
       # MinVer only recognises a three-part version tag. It ignores anything else and falls back to
       # the previous tag plus a patch bump, silently: v1.14 went out labelled 1.13.1, and every
@@ -35,6 +40,7 @@ jobs:
     name: Run tests
     needs: verify-tag
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
         with:
@@ -58,6 +64,7 @@ jobs:
     name: Publish CLI (${{ matrix.rid }})
     needs: test
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     strategy:
       # Without this a single broken RID cancels every sibling mid-restore, and the log then blames
       # the cancellation rather than the one job that actually failed.
@@ -111,6 +118,9 @@ jobs:
     name: Publish Avalonia (${{ matrix.rid }})
     needs: test
     runs-on: ${{ matrix.os }}
+    # Twice the others: this is the only job that also runs on Windows and macOS runners, where the
+    # publish is slower and the macOS leg additionally builds and signs the .app bundle.
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -188,6 +198,7 @@ jobs:
     name: Publish Plugin (${{ matrix.plugin }})
     needs: test
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
@@ -236,6 +247,7 @@ jobs:
     name: Create GitHub Release
     needs: [publish-cli, publish-avalonia, publish-plugins]
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
 
