@@ -58,6 +58,17 @@ public class LinuxDesktopIntegrationServiceTests : IDisposable
 		File.ReadAllText(EntryPath).Should().Contain("Exec=\"/home/user/apps/WorkTracker\"");
 	}
 
+	[Fact]
+	public void EnsureInstalledAsync_HandsEveryCallerTheSameInstallation()
+	{
+		var service = CreateService();
+
+		var first = service.EnsureInstalledAsync(TestContext.Current.CancellationToken);
+		var second = service.EnsureInstalledAsync(TestContext.Current.CancellationToken);
+
+		second.Should().BeSameAs(first, "the shortcut binding waits on the very installation startup began");
+	}
+
 	[Theory]
 	[InlineData("/usr/bin/WorkTracker", true)]
 	[InlineData("/opt/worktracker/WorkTracker", true)]
@@ -65,6 +76,16 @@ public class LinuxDesktopIntegrationServiceTests : IDisposable
 	public void IsSystemLocation_DetectsPackageManagedCopies(string processPath, bool expected)
 	{
 		LinuxDesktopIntegrationService.IsSystemLocation(processPath).Should().Be(expected);
+	}
+
+	[Theory]
+	[InlineData("/home/user/src/WorkTracker.Avalonia/bin/Debug/net10.0/WorkTracker.Avalonia", true)]
+	[InlineData("/home/user/src/WorkTracker.Avalonia/bin/Release/net10.0/linux-x64/publish/WorkTracker.Avalonia", true)]
+	[InlineData("/home/user/.local/lib/worktracker/WorkTracker.Avalonia", false)]
+	[InlineData("/home/user/Debug/WorkTracker.Avalonia", false)]
+	public void IsBuildOutput_DetectsDevelopmentRuns(string processPath, bool expected)
+	{
+		LinuxDesktopIntegrationService.IsBuildOutput(processPath).Should().Be(expected);
 	}
 
 	public void Dispose()

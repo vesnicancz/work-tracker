@@ -27,14 +27,19 @@ public sealed class HotkeyService : IHotkeyService
 
 	private readonly ILogger<HotkeyService> _logger;
 	private readonly ILocalizationService _localization;
+	private readonly IDesktopIntegrationService _desktopIntegration;
 	private bool _isRegistered;
 
 	public event EventHandler? HotkeyPressed;
 
-	public HotkeyService(ILogger<HotkeyService> logger, ILocalizationService localization)
+	public HotkeyService(
+		ILogger<HotkeyService> logger,
+		ILocalizationService localization,
+		IDesktopIntegrationService desktopIntegration)
 	{
 		_logger = logger;
 		_localization = localization;
+		_desktopIntegration = desktopIntegration;
 	}
 
 	public void Register()
@@ -107,6 +112,19 @@ public sealed class HotkeyService : IHotkeyService
 		// with no GlobalShortcuts backend TryBindAsync just reports that and returns false.
 		_linuxRegistration = Task.Run(async () =>
 		{
+			// The desktop files the shortcut under our app id and takes the name it shows in the
+			// system shortcut settings from the installed desktop entry — once, when the shortcut is
+			// first bound. Bind before that entry exists and the user is left looking at
+			// "io.github.vesnicancz.WorkTracker" for good, so let the installation finish first.
+			try
+			{
+				await _desktopIntegration.EnsureInstalledAsync().ConfigureAwait(false);
+			}
+			catch (Exception ex)
+			{
+				_logger.LogDebug(ex, "Desktop integration did not finish before binding the shortcut");
+			}
+
 			var shortcut = new PortalShortcut(
 				NewWorkEntryShortcutId,
 				_localization.GetString("AddNewWorkEntry"),
