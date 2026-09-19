@@ -20,6 +20,22 @@
     <MinVerTagPrefix>v</MinVerTagPrefix>
   </PropertyGroup>
 
+  <!--
+    SkiaSharp and HarfBuzzSharp ship a native .pdb beside their Windows .dll, and a package's
+    native runtime asset is published whole - DebugType=none only silences the managed symbols the
+    compiler would emit, so those two rode along into every win-x64 and win-arm64 release: 105 MB
+    of native symbols next to a 61 MB executable, useful only to someone debugging inside Skia.
+    They are dropped only where the build already asked for no symbols at all, so an ordinary
+    publish still keeps everything it had.
+  -->
+  <Target Name="RemoveNativeSymbolsFromPublish"
+          AfterTargets="ComputeResolvedFilesToPublishList"
+          Condition="'$(DebugType)' == 'none'">
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(Extension)' == '.pdb'" />
+    </ItemGroup>
+  </Target>
+
   <!-- Create an empty plugins/ directory in the publish output for executable projects -->
   <Target Name="CreatePluginsDir" AfterTargets="Publish" Condition="'$(OutputType)' == 'Exe' Or '$(OutputType)' == 'WinExe'">
     <MakeDir Directories="$(PublishDir)plugins" />
