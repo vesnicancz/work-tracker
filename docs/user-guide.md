@@ -521,7 +521,7 @@ Hlavička skupiny obsahuje:
 - **Badge s počtem** nalezených návrhů.
 - Malý progress bar, když plugin právě zpracovává search dotaz.
 
-Kliknutím na hlavičku skupinu rozbalíš nebo sbalíš (`ToggleGroupCommand`). Obsah rozbalené skupiny:
+Kliknutím na hlavičku skupinu rozbalíš nebo sbalíš (`ToggleGroupCommand`). Rozbalená je vždy právě jedna skupina a aplikace si ji pamatuje — ukládá se do `settings.json` jako `LastExpandedSuggestionPluginId`, takže dialog se příště otevře na té samé skupině, i po restartu. Když plugin mezitím zmizí, rozbalí se první skupina v pořadí. Obsah rozbalené skupiny:
 
 - **Chybová hláška** v červeném panelu, pokud plugin vrátil `PluginResult.Failure` (např. 401, síť nedostupná, neplatná konfigurace).
 - **Vyhledávací pole** — zobrazuje se **pouze** u pluginů s `SupportsSearch = true` (typicky Jira). Při psaní s debouncem zavolá `SearchAsync(query)` toho konkrétního pluginu.
