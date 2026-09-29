@@ -1,4 +1,4 @@
-using System.Net.Http.Headers;
+﻿using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
@@ -16,6 +16,12 @@ public sealed class Office365CalendarPlugin(
 	: WorkSuggestionPluginBase(logger)
 {
 	private static readonly TimeSpan HttpTimeout = TimeSpan.FromSeconds(30);
+
+	/// <summary>Events per Graph response. Without $top Graph defaults to 10, which silently hides busy days.</summary>
+	private const int PageSize = 250;
+
+	/// <summary>Safety cap on @odata.nextLink follows so a pathological calendar cannot loop forever.</summary>
+	private const int MaxPages = 10;
 	private static readonly string[] GraphScopes = ["Calendars.Read", "User.Read"];
 
 	private static class ConfigKeys
@@ -152,63 +158,49 @@ public sealed class Office365CalendarPlugin(
 				$"?startDateTime={startDateTime}" +
 				$"&endDateTime={endDateTime}" +
 				$"&$select=subject,start,end,webLink,id,isAllDay" +
-				$"&$orderby=start/dateTime";
+				$"&$orderby=start/dateTime" +
+				$"&$top={PageSize}";
 
-			using var response = await SendAuthenticatedAsync(HttpMethod.Get, url, token, cancellationToken);
+			var suggestions = new List<WorkSuggestion>();
+			string? nextUrl = url;
+			var pagesFetched = 0;
 
-			if (!response.IsSuccessStatusCode)
+			while (nextUrl != null && pagesFetched < MaxPages)
 			{
-				var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
-				Logger.LogWarning("Graph API calendarView failed with {StatusCode}: {Body}", (int)response.StatusCode, errorBody);
-				return PluginResult<IReadOnlyList<WorkSuggestion>>.Failure(
-					$"Calendar fetch failed ({(int)response.StatusCode}): {errorBody}", PluginErrorCategory.Network);
+				using var response = await SendAuthenticatedAsync(HttpMethod.Get, nextUrl, token, cancellationToken);
+
+				if (!response.IsSuccessStatusCode)
+				{
+					var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
+					Logger.LogWarning("Graph API calendarView failed with {StatusCode}: {Body}", (int)response.StatusCode, errorBody);
+					return PluginResult<IReadOnlyList<WorkSuggestion>>.Failure(
+						$"Calendar fetch failed ({(int)response.StatusCode}): {errorBody}", PluginErrorCategory.Network);
+				}
+
+				var json = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken);
+
+				if (json.TryGetProperty("value", out var events))
+				{
+					foreach (var evt in events.EnumerateArray())
+					{
+						var suggestion = MapEvent(evt);
+						if (suggestion != null)
+						{
+							suggestions.Add(suggestion);
+						}
+					}
+				}
+
+				pagesFetched++;
+				// Graph returns at most PageSize events per response; follow @odata.nextLink
+				// until the day is exhausted, otherwise later meetings silently disappear.
+				nextUrl = json.TryGetProperty("@odata.nextLink", out var nextLink) ? nextLink.GetString() : null;
 			}
 
-			var json = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken);
-			var suggestions = new List<WorkSuggestion>();
-
-			if (json.TryGetProperty("value", out var events))
+			if (nextUrl != null)
 			{
-				foreach (var evt in events.EnumerateArray())
-				{
-					var isAllDay = evt.TryGetProperty("isAllDay", out var allDayProp) && allDayProp.GetBoolean();
-					if (isAllDay && !_includeAllDayEvents)
-					{
-						continue;
-					}
-
-					var subject = evt.GetProperty("subject").GetString() ?? "(No subject)";
-					var eventId = evt.GetProperty("id").GetString() ?? "";
-					var webLink = evt.TryGetProperty("webLink", out var linkProp) ? linkProp.GetString() : null;
-
-					DateTime? startTime = null;
-					DateTime? endTime = null;
-
-					if (!isAllDay)
-					{
-						if (evt.TryGetProperty("start", out var startObj) &&
-							startObj.TryGetProperty("dateTime", out var startDt))
-						{
-							startTime = DateTime.Parse(startDt.GetString()!, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind);
-						}
-
-						if (evt.TryGetProperty("end", out var endObj) &&
-							endObj.TryGetProperty("dateTime", out var endDt))
-						{
-							endTime = DateTime.Parse(endDt.GetString()!, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind);
-						}
-					}
-
-					suggestions.Add(new WorkSuggestion
-					{
-						Title = subject,
-						StartTime = startTime,
-						EndTime = endTime,
-						Source = "O365 Calendar",
-						SourceId = eventId,
-						SourceUrl = webLink
-					});
-				}
+				Logger.LogWarning("Calendar for {Date} has more than {MaxPages} pages of events; results are truncated.",
+					date.ToShortDateString(), MaxPages);
 			}
 
 			Logger.LogInformation("Fetched {Count} calendar suggestions for {Date}", suggestions.Count, date.ToShortDateString());
@@ -223,6 +215,47 @@ public sealed class Office365CalendarPlugin(
 			Logger.LogError(ex, "Failed to fetch calendar suggestions");
 			return PluginResult<IReadOnlyList<WorkSuggestion>>.Failure($"Failed to fetch calendar: {ex.Message}");
 		}
+	}
+
+	private WorkSuggestion? MapEvent(JsonElement evt)
+	{
+		var isAllDay = evt.TryGetProperty("isAllDay", out var allDayProp) && allDayProp.GetBoolean();
+		if (isAllDay && !_includeAllDayEvents)
+		{
+			return null;
+		}
+
+		var subject = evt.GetProperty("subject").GetString() ?? "(No subject)";
+		var eventId = evt.GetProperty("id").GetString() ?? "";
+		var webLink = evt.TryGetProperty("webLink", out var linkProp) ? linkProp.GetString() : null;
+
+		DateTime? startTime = null;
+		DateTime? endTime = null;
+
+		if (!isAllDay)
+		{
+			if (evt.TryGetProperty("start", out var startObj) &&
+				startObj.TryGetProperty("dateTime", out var startDt))
+			{
+				startTime = DateTime.Parse(startDt.GetString()!, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind);
+			}
+
+			if (evt.TryGetProperty("end", out var endObj) &&
+				endObj.TryGetProperty("dateTime", out var endDt))
+			{
+				endTime = DateTime.Parse(endDt.GetString()!, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind);
+			}
+		}
+
+		return new WorkSuggestion
+		{
+			Title = subject,
+			StartTime = startTime,
+			EndTime = endTime,
+			Source = "O365 Calendar",
+			SourceId = eventId,
+			SourceUrl = webLink
+		};
 	}
 
 	private async Task<HttpResponseMessage> SendAuthenticatedAsync(HttpMethod method, string url, string token, CancellationToken cancellationToken)

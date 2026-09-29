@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Text.Json;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -39,7 +39,18 @@ public class Office365CalendarPluginTests : IAsyncDisposable
 	}
 
 	private static string CalendarEventsJson(params object[] events) =>
-		JsonSerializer.Serialize(new { value = events });
+		CalendarEventsJson(events, nextLink: null);
+
+	private static string CalendarEventsJson(object[] events, string? nextLink)
+	{
+		var payload = new Dictionary<string, object?> { ["value"] = events };
+		if (nextLink != null)
+		{
+			payload["@odata.nextLink"] = nextLink;
+		}
+
+		return JsonSerializer.Serialize(payload);
+	}
 
 	private static object CalendarEvent(
 		string subject = "Test Meeting",
@@ -317,6 +328,40 @@ public class Office365CalendarPluginTests : IAsyncDisposable
 	}
 
 	[Fact]
+	public async Task GetSuggestionsAsync_RequestsExplicitPageSize()
+	{
+		SetupCalendarResponse(CalendarEventsJson());
+		await InitializePluginAsync();
+
+		await _plugin.GetSuggestionsAsync(new DateTime(2026, 4, 1), TestContext.Current.CancellationToken);
+
+		_httpHandler.RequestedUrls.Should().ContainSingle()
+			.Which.Should().Contain("$top=", "without $top Graph silently caps the day at its default page size");
+	}
+
+	[Fact]
+	public async Task GetSuggestionsAsync_FollowsNextLink_ReturnsEventsFromAllPages()
+	{
+		var firstPage = CalendarEventsJson(
+			[CalendarEvent("Page 1 Meeting", "evt-1", "2026-04-01T09:00:00", "2026-04-01T10:00:00")],
+			nextLink: "https://graph.microsoft.com/v1.0/me/calendarView?$skiptoken=abc");
+		var secondPage = CalendarEventsJson(
+			CalendarEvent("Page 2 Meeting", "evt-2", "2026-04-01T11:00:00", "2026-04-01T12:00:00"));
+
+		_httpHandler.EnqueueGet(firstPage);
+		_httpHandler.EnqueueGet(secondPage);
+		await InitializePluginAsync();
+
+		var result = await _plugin.GetSuggestionsAsync(new DateTime(2026, 4, 1), TestContext.Current.CancellationToken);
+
+		result.IsSuccess.Should().BeTrue();
+		result.Value.Should().HaveCount(2);
+		result.Value!.Select(s => s.Title).Should().BeEquivalentTo(["Page 1 Meeting", "Page 2 Meeting"]);
+		_httpHandler.RequestedUrls.Should().HaveCount(2);
+		_httpHandler.RequestedUrls[1].Should().Contain("$skiptoken=abc");
+	}
+
+	[Fact]
 	public async Task GetSuggestionsAsync_NotInitialized_Throws()
 	{
 		var act = () => _plugin.GetSuggestionsAsync(new DateTime(2026, 4, 1), TestContext.Current.CancellationToken);
@@ -452,6 +497,14 @@ internal sealed class MockHttpHandler : HttpMessageHandler
 {
 	private readonly Dictionary<string, (string Body, HttpStatusCode Status)> _getResponses = new();
 	private readonly List<(string Prefix, string Body, HttpStatusCode Status)> _getPrefixResponses = new();
+	private readonly Queue<(string Body, HttpStatusCode Status)> _getQueue = new();
+
+	public List<string> RequestedUrls { get; } = [];
+
+	public void EnqueueGet(string responseBody, HttpStatusCode statusCode = HttpStatusCode.OK)
+	{
+		_getQueue.Enqueue((responseBody, statusCode));
+	}
 
 	public void SetupGet(string pathAndQuery, string responseBody, HttpStatusCode statusCode = HttpStatusCode.OK)
 	{
@@ -466,9 +519,19 @@ internal sealed class MockHttpHandler : HttpMessageHandler
 	protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
 	{
 		var pathAndQuery = request.RequestUri!.PathAndQuery;
+		RequestedUrls.Add(request.RequestUri.ToString());
 
 		if (request.Method == HttpMethod.Get)
 		{
+			if (_getQueue.Count > 0)
+			{
+				var (queuedBody, queuedStatus) = _getQueue.Dequeue();
+				return Task.FromResult(new HttpResponseMessage(queuedStatus)
+				{
+					Content = new StringContent(queuedBody, System.Text.Encoding.UTF8, "application/json")
+				});
+			}
+
 			if (_getResponses.TryGetValue(pathAndQuery, out var exact))
 			{
 				return Task.FromResult(new HttpResponseMessage(exact.Status)
