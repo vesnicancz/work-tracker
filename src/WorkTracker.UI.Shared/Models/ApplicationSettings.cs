@@ -37,6 +37,14 @@ public class ApplicationSettings : PluginSettings
 	public Dictionary<string, WorklogSubmissionMode> SubmissionModeByProvider { get; set; } = new();
 
 	/// <summary>
+	/// Plugin id of the suggestion group the Suggestions dialog last had expanded, so the dialog
+	/// reopens on the same group after a restart. <c>null</c> when the dialog has never been opened
+	/// (or when the settings file predates this property), in which case the first group is expanded;
+	/// a plugin that is no longer installed is ignored the same way.
+	/// </summary>
+	public string? LastExpandedSuggestionPluginId { get; set; }
+
+	/// <summary>
 	/// Behavior when closing the main window
 	/// </summary>
 	public CloseWindowBehavior CloseWindowBehavior { get; set; } = CloseWindowBehavior.MinimizeToTray;
@@ -116,6 +124,7 @@ public class ApplicationSettings : PluginSettings
 		LastSubmissionMode = LastSubmissionMode,
 		LastSubmissionProviderId = LastSubmissionProviderId,
 		SubmissionModeByProvider = new Dictionary<string, WorklogSubmissionMode>(SubmissionModeByProvider),
+		LastExpandedSuggestionPluginId = LastExpandedSuggestionPluginId,
 		CloseWindowBehavior = CloseWindowBehavior,
 		StartWithWindows = StartWithWindows,
 		StartMinimized = StartMinimized,

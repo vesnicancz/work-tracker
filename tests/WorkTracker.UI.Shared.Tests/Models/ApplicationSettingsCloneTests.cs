@@ -20,6 +20,7 @@ public class ApplicationSettingsCloneTests
 		{
 			["tempo"] = WorklogSubmissionMode.Timed
 		},
+		LastExpandedSuggestionPluginId = "jira-suggestions",
 		CloseWindowBehavior = CloseWindowBehavior.ExitApplication,
 		StartWithWindows = true,
 		StartMinimized = true,
