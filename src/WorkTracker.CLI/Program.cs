@@ -260,72 +260,72 @@ static int ShowHelp()
 [yellow]COMMANDS:[/]
 
   [cyan]start[/] [[ticket-id]] [[description]] [[start-time]]
-	Start working on a task (with optional Jira ticket code and description)
-	Jira code format: PROJECT-123 (automatically detected at the beginning)
-	Example: worklog start PROJ-123
-	Example: worklog start PROJ-123 Working on authentication
-	Example: worklog start PROJ-123 Bug fix 09:00
-	Example: worklog start ""Working on documentation""
-	Example: worklog start ""Working on documentation"" ""2025-10-30 09:00""
+    Start working on a task (with optional Jira ticket code and description)
+    Jira code format: PROJECT-123 (automatically detected at the beginning)
+    Example: worklog start PROJ-123
+    Example: worklog start PROJ-123 Working on authentication
+    Example: worklog start PROJ-123 Bug fix 09:00
+    Example: worklog start ""Working on documentation""
+    Example: worklog start ""Working on documentation"" ""2025-10-30 09:00""
 
   [cyan]stop[/] [[end-time]]
-	Stop the active work entry
-	Example: worklog stop
-	Example: worklog stop 17:30
-	Example: worklog stop ""2025-10-30 17:30""
+    Stop the active work entry
+    Example: worklog stop
+    Example: worklog stop 17:30
+    Example: worklog stop ""2025-10-30 17:30""
 
   [cyan]status[/] [[--json]]
-	Show the currently active work entry
-	Example: worklog status
-	Example: worklog status --json
+    Show the currently active work entry
+    Example: worklog status
+    Example: worklog status --json
 
   [cyan]list[/] [[date]] [[--json]]
-	List work entries for a specific date (default: today)
-	Example: worklog list
-	Example: worklog list 2025-10-30
-	Example: worklog list --json
+    List work entries for a specific date (default: today)
+    Example: worklog list
+    Example: worklog list 2025-10-30
+    Example: worklog list --json
 
   [cyan]edit[/] <id> [[options]]
-	Edit an existing work entry
-	Options:
-	  --ticket=<ticket>      Change Jira ticket ID (optional)
-	  --start=<time>         Change start time
-	  --end=<time>           Change end time
-	  --desc=<description>   Set or update description
-	Example: worklog edit 5 --ticket=PROJ-124 --end=17:30
-	Example: worklog edit 5 --desc=""Updated description""
-	Example: worklog edit 5 --start=""2025-10-30 09:00"" --end=""2025-10-30 17:30""
+    Edit an existing work entry
+    Options:
+      --ticket=<ticket>      Change Jira ticket ID (optional)
+      --start=<time>         Change start time
+      --end=<time>           Change end time
+      --desc=<description>   Set or update description
+    Example: worklog edit 5 --ticket=PROJ-124 --end=17:30
+    Example: worklog edit 5 --desc=""Updated description""
+    Example: worklog edit 5 --start=""2025-10-30 09:00"" --end=""2025-10-30 17:30""
 
   [cyan]delete[/] <id>
-	Delete a work entry
-	Example: worklog delete 5
+    Delete a work entry
+    Example: worklog delete 5
 
   [cyan]providers[/]
-	List installed worklog upload plugins and whether they are enabled
-	Example: worklog providers
-	Example: worklog providers --json
+    List installed worklog upload plugins and whether they are enabled
+    Example: worklog providers
+    Example: worklog providers --json
 
   [cyan]send[/] [[week]] [[date]] [[--yes]] [[--provider=<id>]]
-	Send work entries to the enabled worklog plugin (default: today)
-	Example: worklog send                    Send today's entries
-	Example: worklog send 2025-10-30         Send specific day
-	Example: worklog send week               Send current week
-	Example: worklog send week 2025-10-30    Send week containing date
-	Example: worklog send week --yes         Skip the confirmation prompt
-	Example: worklog send --provider=tempo.worklog
-	                                         Send via a specific provider
+    Send work entries to the enabled worklog plugin (default: today)
+    Example: worklog send                    Send today's entries
+    Example: worklog send 2025-10-30         Send specific day
+    Example: worklog send week               Send current week
+    Example: worklog send week 2025-10-30    Send week containing date
+    Example: worklog send week --yes         Skip the confirmation prompt
+    Example: worklog send --provider=tempo.worklog
+                                             Send via a specific provider
 
   [cyan]help[/]
-	Show this help message
+    Show this help message
 
 [yellow]SCRIPTING:[/]
 
-	--json          Print machine-readable JSON on stdout (list, status, providers)
-	--yes/-y        Skip the confirmation prompt (send)
-	--provider=<id> Pick a worklog provider (see: worklog providers)
+    --json          Print machine-readable JSON on stdout (list, status, providers)
+    --yes/-y        Skip the confirmation prompt (send)
+    --provider=<id> Pick a worklog provider (see: worklog providers)
 
-	Results go to stdout, errors and warnings to stderr; exit code is 0 on
-	success and 1 on failure.
+    Results go to stdout, errors and warnings to stderr; exit code is 0 on
+    success and 1 on failure.
 "))
 	{
 		Header = new PanelHeader("[green]WorkTracker Help[/]"),
