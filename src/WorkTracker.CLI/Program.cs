@@ -83,8 +83,14 @@ catch (DatabaseUnavailableException ex)
 }
 
 args = CliArgumentParser.TakeSwitch(args, out var jsonOutput, "--json");
+args = CliArgumentParser.TakeSwitch(args, out var plainOutput, "--plain");
 args = CliArgumentParser.TakeSwitch(args, out var assumeYes, "--yes", "-y");
 args = CliArgumentParser.TakeOption(args, out var providerId, "--provider");
+
+// A pipe or a file gets one record per line instead of a table that wraps at 80 columns.
+var outputFormat = jsonOutput ? OutputFormat.Json
+	: plainOutput || Console.IsOutputRedirected ? OutputFormat.Plain
+	: OutputFormat.Table;
 
 // Parse command line arguments
 if (args.Length == 0)
@@ -104,12 +110,12 @@ try
 	{
 		"start" => await HandleStartCommand(commandHandler, args),
 		"stop" => await HandleStopCommand(commandHandler, args),
-		"status" => await commandHandler.HandleStatusCommand(jsonOutput),
-		"list" => await HandleListCommand(commandHandler, args, jsonOutput),
+		"status" => await commandHandler.HandleStatusCommand(outputFormat),
+		"list" => await HandleListCommand(commandHandler, args, outputFormat),
 		"edit" => await HandleEditCommand(commandHandler, args),
 		"delete" => await HandleDeleteCommand(commandHandler, args),
 		"send" => await HandleSendCommand(commandHandler, args, assumeYes, providerId),
-		"providers" => commandHandler.HandleProvidersCommand(jsonOutput),
+		"providers" => commandHandler.HandleProvidersCommand(outputFormat),
 		"version" or "--version" or "-v" => ShowVersion(),
 		"help" or "--help" or "-h" => ShowHelp(),
 		_ => ShowUnknownCommand(command)
@@ -162,7 +168,7 @@ static async Task<int> HandleStopCommand(CommandHandler handler, string[] args)
 	return await handler.HandleStopCommand(endTime);
 }
 
-static async Task<int> HandleListCommand(CommandHandler handler, string[] args, bool json)
+static async Task<int> HandleListCommand(CommandHandler handler, string[] args, OutputFormat format)
 {
 	DateTime? date = null;
 
@@ -179,7 +185,7 @@ static async Task<int> HandleListCommand(CommandHandler handler, string[] args, 
 		}
 	}
 
-	return await handler.HandleListCommand(date, json);
+	return await handler.HandleListCommand(date, format);
 }
 
 static async Task<int> HandleEditCommand(CommandHandler handler, string[] args)
@@ -320,9 +326,18 @@ static int ShowHelp()
 
 [yellow]SCRIPTING:[/]
 
-    --json          Print machine-readable JSON on stdout (list, status, providers)
+    --json          Print JSON on stdout (list, status, providers)
+    --plain         One record per line, tab-separated, no header
+                    (list, status, providers); automatic when stdout
+                    is piped or redirected
     --yes/-y        Skip the confirmation prompt (send)
     --provider=<id> Pick a worklog provider (see: worklog providers)
+
+    Plain columns (missing value is -, durations in whole minutes):
+      list, status  id ticket description start end minutes state
+      providers     id name enabled|disabled
+
+    Example: worklog list | grep PROJ-123
 
     Results go to stdout, errors and warnings to stderr; exit code is 0 on
     success and 1 on failure.

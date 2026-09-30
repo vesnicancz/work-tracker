@@ -175,8 +175,14 @@ list  [datum]                      Výpis záznamů za den
 edit  <id> [options]               Upravit existující záznam
 delete <id>                        Smazat záznam
 send  [week] [datum]               Odeslat worklog do externího systému
+providers                          Výpis worklog pluginů a jejich stavu
 version                            Verze aplikace
 help                               Tato nápověda
+
+--json                             JSON výstup (list, status, providers)
+--plain                            Řádkový výstup pro pipe (list, status, providers)
+--yes, -y                          Přeskočit potvrzení (send)
+--provider=<id>                    Vybrat worklog plugin (send)
 ```
 
 ### Parsování `start`
@@ -264,6 +270,30 @@ Postup (předpokládá, že je alespoň jeden worklog plugin povolený):
 Neúplné záznamy (bez ticketu i popisu, nebo s nulovou délkou) jsou pluginem validátorem automaticky odfiltrovány s upozorněním.
 
 > **Pozor — konfigurace pluginů:** CLI pluginy načítá a povoluje podle `settings.json`, který zapisuje GUI. Zapnout a nastavit plugin proto jde jen v GUI; dokud tam žádný worklog plugin povolený není, skončí `send` chybou `No worklog upload plugin available`. Aktuální stav ukáže `WorkTracker.CLI providers`.
+
+### Výstup pro skripty a pipe
+
+Příkazy `list`, `status` a `providers` mají kromě tabulky ještě dva formáty pro skripty:
+
+- **`--json`**: JSON se stabilní strukturou. Pole se jen přidávají, nikdy se nepřejmenovávají ani neodebírají.
+- **`--plain`**: jeden záznam na řádek, sloupce oddělené TABem, bez hlavičky, barev a rámečků. Chybějící hodnota je `-`, délky jsou v celých minutách.
+
+Když stdout nesměřuje do terminálu (pipe, přesměrování do souboru), CLI přepne na `--plain` **samo**. V terminálu ho vynutíš přepínačem. Pokud je zadaný `--json`, má přednost.
+
+| Příkaz | Sloupce |
+|--------|---------|
+| `list` | id, ticket, popis, start, konec, minuty, `active`/`completed` |
+| `status` | totéž jako `list`, minuty jsou doposud uběhlá doba. Bez aktivního záznamu je výstup prázdný. |
+| `providers` | id, název, `enabled`/`disabled` |
+
+```bash
+WorkTracker.CLI list | grep PROJ-123                                       # záznamy jednoho ticketu
+WorkTracker.CLI list 2026-04-08 | awk -F'\t' '$6!="-"{s+=$6} END{print s}'  # součet minut za den
+WorkTracker.CLI list | wc -l                                               # počet záznamů
+WorkTracker.CLI providers | cut -f1                                        # jen id pluginů
+```
+
+Chyby a upozornění jdou vždy na stderr, takže se do dat nepřimíchají.
 
 ---
 

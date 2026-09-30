@@ -169,7 +169,7 @@ public sealed class CommandHandlerTests : IDisposable
 		_workEntryService.Setup(s => s.GetActiveWorkAsync(It.IsAny<CancellationToken>()))
 			.ReturnsAsync((WorkEntry?)null);
 
-		var exitCode = await _handler.HandleStatusCommand(json: true);
+		var exitCode = await _handler.HandleStatusCommand(format: OutputFormat.Json);
 
 		exitCode.Should().Be(0);
 		var root = JsonDocument.Parse(_data.ToString()).RootElement;
@@ -190,7 +190,7 @@ public sealed class CommandHandlerTests : IDisposable
 				.Active()
 				.Build());
 
-		var exitCode = await _handler.HandleStatusCommand(json: true);
+		var exitCode = await _handler.HandleStatusCommand(format: OutputFormat.Json);
 
 		exitCode.Should().Be(0);
 		var root = JsonDocument.Parse(_data.ToString()).RootElement;
@@ -198,6 +198,37 @@ public sealed class CommandHandlerTests : IDisposable
 		root.GetProperty("elapsedMinutes").GetInt32().Should().Be(120);
 		root.GetProperty("entry").GetProperty("id").GetInt32().Should().Be(7);
 		root.GetProperty("entry").GetProperty("ticketId").GetString().Should().Be("PROJ-42");
+	}
+
+	[Fact]
+	public async Task Status_Plain_ActiveEntry_WritesOneLineWithElapsedMinutes()
+	{
+		_workEntryService.Setup(s => s.GetActiveWorkAsync(It.IsAny<CancellationToken>()))
+			.ReturnsAsync(new WorkEntryBuilder()
+				.WithId(7)
+				.WithTicketId("PROJ-42")
+				.WithDescription("Fix")
+				.WithStartTime(LocalNow.AddHours(-2))
+				.Active()
+				.Build());
+
+		var exitCode = await _handler.HandleStatusCommand(OutputFormat.Plain);
+
+		exitCode.Should().Be(0);
+		_data.ToString().Should().Be("7\tPROJ-42\tFix\t10:00\t-\t120\tactive" + Environment.NewLine);
+		_console.Output.Should().BeEmpty();
+	}
+
+	[Fact]
+	public async Task Status_Plain_NoActiveEntry_WritesNothing()
+	{
+		_workEntryService.Setup(s => s.GetActiveWorkAsync(It.IsAny<CancellationToken>()))
+			.ReturnsAsync((WorkEntry?)null);
+
+		var exitCode = await _handler.HandleStatusCommand(OutputFormat.Plain);
+
+		exitCode.Should().Be(0);
+		AllOutput.Should().BeEmpty();
 	}
 
 	#endregion Status
@@ -239,7 +270,7 @@ public sealed class CommandHandlerTests : IDisposable
 			.Setup(s => s.GetWorkEntriesByDateAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync([CompletedEntry(1, 9, 10), CompletedEntry(2, 10, 12)]);
 
-		var exitCode = await _handler.HandleListCommand(LocalNow.Date, json: true);
+		var exitCode = await _handler.HandleListCommand(LocalNow.Date, OutputFormat.Json);
 
 		exitCode.Should().Be(0);
 		var root = JsonDocument.Parse(_data.ToString()).RootElement;
@@ -257,7 +288,7 @@ public sealed class CommandHandlerTests : IDisposable
 			.Setup(s => s.GetWorkEntriesByDateAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync([]);
 
-		var exitCode = await _handler.HandleListCommand(json: true);
+		var exitCode = await _handler.HandleListCommand(format: OutputFormat.Json);
 
 		exitCode.Should().Be(0);
 		var root = JsonDocument.Parse(_data.ToString()).RootElement;
@@ -274,11 +305,69 @@ public sealed class CommandHandlerTests : IDisposable
 			.Setup(s => s.GetWorkEntriesByDateAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync([new WorkEntryBuilder().WithId(1).WithTicketId("PROJ-1").WithTimes(9, 10).WithDescription("[urgent] fix").Build()]);
 
-		var exitCode = await _handler.HandleListCommand(LocalNow.Date, json: true);
+		var exitCode = await _handler.HandleListCommand(LocalNow.Date, OutputFormat.Json);
 
 		exitCode.Should().Be(0);
 		var root = JsonDocument.Parse(_data.ToString()).RootElement;
 		root.GetProperty("entries")[0].GetProperty("description").GetString().Should().Be("[urgent] fix");
+	}
+
+	[Fact]
+	public async Task List_Plain_WritesOneTabSeparatedLinePerEntry()
+	{
+		_workEntryService
+			.Setup(s => s.GetWorkEntriesByDateAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync([
+				new WorkEntryBuilder().WithId(1).WithTicketId("PROJ-1").WithDescription("Review").WithTimes(9, 10).Build(),
+				new WorkEntryBuilder().WithId(2).WithTicketId(null).WithStartTime(LocalNow.AddHours(-1)).Active().Build()
+			]);
+
+		var exitCode = await _handler.HandleListCommand(LocalNow.Date, OutputFormat.Plain);
+
+		exitCode.Should().Be(0);
+		_data.ToString().Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries).Should().Equal(
+			"1\tPROJ-1\tReview\t09:00\t10:00\t60\tcompleted",
+			"2\t-\t-\t11:00\t-\t-\tactive");
+		_console.Output.Should().BeEmpty("plain mode has no header or total line");
+	}
+
+	[Fact]
+	public async Task List_Plain_KeepsMultiLineDescriptionOnOneLine()
+	{
+		_workEntryService
+			.Setup(s => s.GetWorkEntriesByDateAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync([new WorkEntryBuilder().WithId(1).WithTicketId("PROJ-1").WithTimes(9, 10).WithDescription("a\tb\r\nc\nd").Build()]);
+
+		var exitCode = await _handler.HandleListCommand(LocalNow.Date, OutputFormat.Plain);
+
+		exitCode.Should().Be(0);
+		_data.ToString().Should().Be("1\tPROJ-1\ta b c d\t09:00\t10:00\t60\tcompleted" + Environment.NewLine);
+	}
+
+	[Fact]
+	public async Task List_Plain_KeepsMarkupCharactersVerbatim()
+	{
+		_workEntryService
+			.Setup(s => s.GetWorkEntriesByDateAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync([new WorkEntryBuilder().WithId(1).WithTicketId("PROJ-1").WithTimes(9, 10).WithDescription("[urgent] fix").Build()]);
+
+		var exitCode = await _handler.HandleListCommand(LocalNow.Date, OutputFormat.Plain);
+
+		exitCode.Should().Be(0);
+		_data.ToString().Should().Contain("\t[urgent] fix\t");
+	}
+
+	[Fact]
+	public async Task List_Plain_NoEntries_WritesNothing()
+	{
+		_workEntryService
+			.Setup(s => s.GetWorkEntriesByDateAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync([]);
+
+		var exitCode = await _handler.HandleListCommand(format: OutputFormat.Plain);
+
+		exitCode.Should().Be(0);
+		AllOutput.Should().BeEmpty("an empty day must count as zero lines");
 	}
 
 	#endregion List
@@ -462,7 +551,7 @@ public sealed class CommandHandlerTests : IDisposable
 		var tempo = UploadPlugin("tempo.worklog", "Tempo Timesheets");
 		SetupPlugins([tempo], [tempo]);
 
-		var exitCode = _handler.HandleProvidersCommand(json: true);
+		var exitCode = _handler.HandleProvidersCommand(format: OutputFormat.Json);
 
 		exitCode.Should().Be(0);
 		var root = JsonDocument.Parse(_data.ToString()).RootElement;
@@ -470,6 +559,35 @@ public sealed class CommandHandlerTests : IDisposable
 		root[0].GetProperty("id").GetString().Should().Be("tempo.worklog");
 		root[0].GetProperty("name").GetString().Should().Be("Tempo Timesheets");
 		root[0].GetProperty("enabled").GetBoolean().Should().BeTrue();
+		_console.Output.Should().BeEmpty();
+	}
+
+	[Fact]
+	public void Providers_Plain_WritesOneLinePerProvider()
+	{
+		var tempo = UploadPlugin("tempo.worklog", "Tempo Timesheets");
+		var goran = UploadPlugin("gorang3.worklog", "GoranG3");
+		SetupPlugins([tempo, goran], [goran]);
+
+		var exitCode = _handler.HandleProvidersCommand(OutputFormat.Plain);
+
+		exitCode.Should().Be(0);
+		_data.ToString().Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries).Should().Equal(
+			"gorang3.worklog\tGoranG3\tenabled",
+			"tempo.worklog\tTempo Timesheets\tdisabled");
+		_console.Output.Should().BeEmpty();
+	}
+
+	[Fact]
+	public void Providers_Plain_NoneEnabled_HintGoesToStderr()
+	{
+		SetupPlugins([UploadPlugin("tempo.worklog", "Tempo Timesheets")], []);
+
+		var exitCode = _handler.HandleProvidersCommand(OutputFormat.Plain);
+
+		exitCode.Should().Be(0);
+		_data.ToString().Should().Be("tempo.worklog\tTempo Timesheets\tdisabled" + Environment.NewLine);
+		_errorConsole.Output.Should().Contain("No provider is enabled");
 		_console.Output.Should().BeEmpty();
 	}
 
