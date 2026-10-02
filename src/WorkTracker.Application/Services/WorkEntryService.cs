@@ -33,27 +33,20 @@ public sealed class WorkEntryService : IWorkEntryService
 		_logger.LogInformation("Starting work on ticket {TicketId} with description {Description}", ticketId, description);
 
 		var now = Now;
-
-		// Only auto-stop previous work if we're creating an active entry (no endTime)
-		if (!endTime.HasValue)
-		{
-			// Check if there's already an active work entry
-			var activeEntry = await _repository.GetActiveWorkEntryAsync(cancellationToken);
-			if (activeEntry != null)
-			{
-				// Auto-stop + create in a single transaction
-				return await StartWorkWithAutoStopAsync(activeEntry, ticketId, startTime, description, now, cancellationToken);
-			}
-		}
-
+		var roundedNow = DateTimeHelper.RoundToMinute(now);
 		var workEntry = WorkEntry.Create(
 			ticketId,
 			DateTimeHelper.RoundToMinute(startTime ?? now),
 			DateTimeHelper.RoundToMinute(endTime),
 			description,
-			DateTimeHelper.RoundToMinute(now));
+			roundedNow);
 
-		var validation = await ValidateNewEntryAsync(workEntry, _repository, excludeEntryId: null, cancellationToken);
+		if (!endTime.HasValue)
+		{
+			return await StartOpenEndedWorkAsync(workEntry, roundedNow, cancellationToken);
+		}
+
+		var validation = await ValidateNewEntryAsync(workEntry, cancellationToken);
 		if (validation.IsFailure)
 		{
 			return validation;
@@ -65,31 +58,46 @@ public sealed class WorkEntryService : IWorkEntryService
 		return Result.Success(result);
 	}
 
-	private async Task<Result<WorkEntry>> StartWorkWithAutoStopAsync(
-		WorkEntry activeEntry, string? ticketId, DateTime? startTime, string? description,
-		DateTime now, CancellationToken cancellationToken)
+	/// <summary>
+	/// Starts an entry without an end time. Such an entry only claims its start instant, so entries
+	/// planned for later (e.g. an upcoming meeting) don't block it - they are checked again once it
+	/// gets stopped. Whatever is still running at that instant, the active entry as well as a meeting
+	/// with a set end time, gets closed there, in the same transaction as the new entry.
+	/// </summary>
+	private async Task<Result<WorkEntry>> StartOpenEndedWorkAsync(WorkEntry workEntry, DateTime roundedNow, CancellationToken cancellationToken)
 	{
-		_logger.LogInformation("Auto-stopping previous work on ticket {PreviousTicketId}", activeEntry.TicketId);
+		if (!workEntry.IsValid())
+		{
+			_logger.LogWarning("Invalid work entry data for ticket {TicketId} ({StartTime} - {EndTime})", workEntry.TicketId, workEntry.StartTime, workEntry.EndTime);
+			return Result.Failure<WorkEntry>(InvalidEntryError);
+		}
+
+		var overlapping = await _repository.GetOverlappingEntriesAsync(null, workEntry.StartTime, null, cancellationToken);
+
+		// Closing an entry at the new start only works for one that began before it. One starting at
+		// the same minute would shrink to nothing, and an open-ended one starting later can't be closed
+		// before it began.
+		if (overlapping.Any(e => e.StartTime >= workEntry.StartTime && (e.EndTime == null || e.StartTime == workEntry.StartTime)))
+		{
+			_logger.LogWarning("Work entry overlaps with existing entry for ticket {TicketId} ({StartTime} - {EndTime})", workEntry.TicketId, workEntry.StartTime, workEntry.EndTime);
+			return Result.Failure<WorkEntry>(OverlapError);
+		}
+
+		var running = overlapping.Where(e => e.StartTime < workEntry.StartTime).ToList();
+		if (running.Count == 0)
+		{
+			var added = await _repository.AddAsync(workEntry, cancellationToken);
+			_logger.LogInformation("Work started successfully with ID {Id}", added.Id);
+			return Result.Success(added);
+		}
 
 		await using var uow = await _unitOfWorkFactory.CreateAsync(cancellationToken);
 
-		activeEntry.Stop(DateTimeHelper.RoundToMinute(startTime ?? now), DateTimeHelper.RoundToMinute(now));
-		await uow.WorkEntries.UpdateAsync(activeEntry, cancellationToken);
-
-		var workEntry = WorkEntry.Create(
-			ticketId,
-			DateTimeHelper.RoundToMinute(startTime ?? now),
-			null,
-			description,
-			DateTimeHelper.RoundToMinute(now));
-
-		// Exclude the auto-stopped entry from the overlap check: its Stop() update is only in the
-		// EF change tracker, not yet flushed to DB. LINQ queries run against DB state and would
-		// otherwise still see it as EndTime=null (ongoing) and falsely report an overlap.
-		var validation = await ValidateNewEntryAsync(workEntry, uow.WorkEntries, excludeEntryId: activeEntry.Id, cancellationToken);
-		if (validation.IsFailure)
+		foreach (var entry in running)
 		{
-			return validation;
+			_logger.LogInformation("Auto-stopping previous work {Id} on ticket {PreviousTicketId}", entry.Id, entry.TicketId);
+			entry.Stop(workEntry.StartTime, roundedNow);
+			await uow.WorkEntries.UpdateAsync(entry, cancellationToken);
 		}
 
 		var result = await uow.WorkEntries.AddAsync(workEntry, cancellationToken);
@@ -100,13 +108,9 @@ public sealed class WorkEntryService : IWorkEntryService
 	}
 
 	/// <summary>
-	/// Validates a freshly-created entry (structural + overlap check) against the given repository.
-	/// The repository parameter allows callers to share a UoW scope when needed.
-	/// When <paramref name="excludeEntryId"/> is set, that entry is excluded from the overlap query —
-	/// used e.g. in the auto-stop path where the active entry has pending-but-unflushed changes
-	/// that would otherwise cause a false-positive overlap against stale DB state.
+	/// Validates a freshly-created entry with an end time (structural + overlap check).
 	/// </summary>
-	private async Task<Result<WorkEntry>> ValidateNewEntryAsync(WorkEntry workEntry, IWorkEntryRepository repository, int? excludeEntryId, CancellationToken cancellationToken)
+	private async Task<Result<WorkEntry>> ValidateNewEntryAsync(WorkEntry workEntry, CancellationToken cancellationToken)
 	{
 		if (!workEntry.IsValid())
 		{
@@ -114,7 +118,7 @@ public sealed class WorkEntryService : IWorkEntryService
 			return Result.Failure<WorkEntry>(InvalidEntryError);
 		}
 
-		if (await repository.HasOverlappingEntriesAsync(excludeEntryId, workEntry.StartTime, workEntry.EndTime, cancellationToken))
+		if (await _repository.HasOverlappingEntriesAsync(null, workEntry.StartTime, workEntry.EndTime, cancellationToken))
 		{
 			_logger.LogWarning("Work entry overlaps with existing entry for ticket {TicketId} ({StartTime} - {EndTime})", workEntry.TicketId, workEntry.StartTime, workEntry.EndTime);
 			return Result.Failure<WorkEntry>(OverlapError);
