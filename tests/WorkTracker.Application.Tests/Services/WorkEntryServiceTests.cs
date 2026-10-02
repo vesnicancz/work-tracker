@@ -31,21 +31,29 @@ public class WorkEntryServiceTests
 		_service = new WorkEntryService(_mockRepository.Object, _mockUnitOfWorkFactory.Object, TimeProvider.System, _mockLogger.Object);
 	}
 
+	private void SetupEntriesFromStart(params WorkEntry[] entries)
+	{
+		_mockRepository
+			.Setup(r => r.GetOverlappingEntriesAsync(null, It.IsAny<DateTime>(), null, It.IsAny<CancellationToken>()))
+			.ReturnsAsync(entries);
+		_mockRepository
+			.Setup(r => r.AddAsync(It.IsAny<WorkEntry>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync((WorkEntry entry, CancellationToken _) => entry);
+	}
+
+	private static DateTime CurrentMinute()
+	{
+		var now = DateTime.Now;
+		return new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute, 0);
+	}
+
 	[Fact]
 	public async Task StartWorkAsync_WithValidTicketId_ShouldReturnSuccess()
 	{
 		// Arrange
 		var ticketId = "PROJ-123";
 		var description = "Working on feature";
-		_mockRepository
-			.Setup(r => r.GetActiveWorkEntryAsync(It.IsAny<CancellationToken>()))
-			.ReturnsAsync((WorkEntry?)null);
-		_mockRepository
-			.Setup(r => r.HasOverlappingEntriesAsync(It.IsAny<int?>(), It.IsAny<DateTime>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
-			.ReturnsAsync(false);
-		_mockRepository
-			.Setup(r => r.AddAsync(It.IsAny<WorkEntry>(), It.IsAny<CancellationToken>()))
-			.ReturnsAsync((WorkEntry entry, CancellationToken _) => entry);
+		SetupEntriesFromStart();
 
 		// Act
 		var result = await _service.StartWorkAsync(ticketId, null, description, cancellationToken: TestContext.Current.CancellationToken);
@@ -62,11 +70,6 @@ public class WorkEntryServiceTests
 	[Fact]
 	public async Task StartWorkAsync_WithoutTicketIdAndDescription_ShouldReturnFailure()
 	{
-		// Arrange
-		_mockRepository
-			.Setup(r => r.GetActiveWorkEntryAsync(It.IsAny<CancellationToken>()))
-			.ReturnsAsync((WorkEntry?)null);
-
 		// Act
 		var result = await _service.StartWorkAsync(null, null, null, cancellationToken: TestContext.Current.CancellationToken);
 
@@ -80,44 +83,121 @@ public class WorkEntryServiceTests
 	public async Task StartWorkAsync_WithActiveEntry_ShouldAutoStopPrevious()
 	{
 		// Arrange
-		var existingEntry = WorkEntry.Reconstitute(1, "PROJ-100", DateTime.Now.AddHours(-2), null, null, true, DateTime.MinValue);
-		_mockRepository
-			.Setup(r => r.GetActiveWorkEntryAsync(It.IsAny<CancellationToken>()))
-			.ReturnsAsync(existingEntry);
-		_mockRepository
-			.Setup(r => r.HasOverlappingEntriesAsync(It.IsAny<int?>(), It.IsAny<DateTime>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
-			.ReturnsAsync(false);
-		_mockRepository
-			.Setup(r => r.AddAsync(It.IsAny<WorkEntry>(), It.IsAny<CancellationToken>()))
-			.ReturnsAsync((WorkEntry entry, CancellationToken _) => entry);
+		var start = CurrentMinute();
+		var existingEntry = WorkEntry.Reconstitute(1, "PROJ-100", start.AddHours(-2), null, null, true, DateTime.MinValue);
+		SetupEntriesFromStart(existingEntry);
 
 		// Act
-		var result = await _service.StartWorkAsync("PROJ-123", null, "New work", cancellationToken: TestContext.Current.CancellationToken);
+		var result = await _service.StartWorkAsync("PROJ-123", start, "New work", cancellationToken: TestContext.Current.CancellationToken);
 
 		// Assert
 		result.IsSuccess.Should().BeTrue();
 		_mockRepository.Verify(r => r.UpdateAsync(It.Is<WorkEntry>(e =>
-			e.Id == 1 && e.IsActive == false && e.EndTime.HasValue), It.IsAny<CancellationToken>()), Times.Once);
+			e.Id == 1 && e.IsActive == false && e.EndTime == start), It.IsAny<CancellationToken>()), Times.Once);
 		_mockRepository.Verify(r => r.AddAsync(It.IsAny<WorkEntry>(), It.IsAny<CancellationToken>()), Times.Once);
-		// The overlap check must explicitly exclude the active entry — its Stop() update is only
-		// in the EF change tracker, not flushed to DB, so without the exclusion the stale DB
-		// state (EndTime=null) would falsely report it as overlapping.
-		_mockRepository.Verify(r => r.HasOverlappingEntriesAsync(1, It.IsAny<DateTime>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()), Times.Once);
 	}
 
 	[Fact]
-	public async Task StartWorkAsync_WithOverlappingEntry_ShouldReturnFailure()
+	public async Task StartWorkAsync_DuringMeetingWithEndTime_ShouldEndMeetingAtStart()
+	{
+		// Arrange — a meeting taken over from the calendar has its end set up front, so it is not
+		// the active entry, but it is still running when the new work starts
+		var start = CurrentMinute();
+		var meeting = WorkEntry.Reconstitute(1, null, start.AddMinutes(-30), start.AddMinutes(30), "Standup", false, DateTime.MinValue);
+		SetupEntriesFromStart(meeting);
+
+		// Act
+		var result = await _service.StartWorkAsync("PROJ-123", start, "New work", cancellationToken: TestContext.Current.CancellationToken);
+
+		// Assert
+		result.IsSuccess.Should().BeTrue();
+		result.Value.IsActive.Should().BeTrue();
+		_mockRepository.Verify(r => r.UpdateAsync(It.Is<WorkEntry>(e => e.Id == 1 && e.EndTime == start), It.IsAny<CancellationToken>()), Times.Once);
+		_mockUnitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+	}
+
+	[Fact]
+	public async Task StartWorkAsync_WithActiveEntryAndRunningMeeting_ShouldEndBothAtStart()
 	{
 		// Arrange
+		var start = CurrentMinute();
+		var active = WorkEntry.Reconstitute(1, "PROJ-100", start.AddHours(-2), null, null, true, DateTime.MinValue);
+		var meeting = WorkEntry.Reconstitute(2, null, start.AddMinutes(-30), start.AddMinutes(30), "Standup", false, DateTime.MinValue);
+		SetupEntriesFromStart(active, meeting);
+
+		// Act
+		var result = await _service.StartWorkAsync("PROJ-123", start, "New work", cancellationToken: TestContext.Current.CancellationToken);
+
+		// Assert
+		result.IsSuccess.Should().BeTrue();
+		_mockRepository.Verify(r => r.UpdateAsync(It.Is<WorkEntry>(e => e.Id == 1 && e.EndTime == start), It.IsAny<CancellationToken>()), Times.Once);
+		_mockRepository.Verify(r => r.UpdateAsync(It.Is<WorkEntry>(e => e.Id == 2 && e.EndTime == start), It.IsAny<CancellationToken>()), Times.Once);
+		_mockUnitOfWorkFactory.Verify(f => f.CreateAsync(It.IsAny<CancellationToken>()), Times.Once);
+	}
+
+	[Fact]
+	public async Task StartWorkAsync_WithMeetingPlannedLater_ShouldStartAndLeaveMeetingAlone()
+	{
+		// Arrange — an open-ended entry only claims its start; the later meeting is checked on stop
+		var start = CurrentMinute();
+		var meeting = WorkEntry.Reconstitute(1, null, start.AddHours(2), start.AddHours(3), "Review", false, DateTime.MinValue);
+		SetupEntriesFromStart(meeting);
+
+		// Act
+		var result = await _service.StartWorkAsync("PROJ-123", start, "New work", cancellationToken: TestContext.Current.CancellationToken);
+
+		// Assert
+		result.IsSuccess.Should().BeTrue();
+		_mockRepository.Verify(r => r.UpdateAsync(It.IsAny<WorkEntry>(), It.IsAny<CancellationToken>()), Times.Never);
+		_mockRepository.Verify(r => r.AddAsync(It.IsAny<WorkEntry>(), It.IsAny<CancellationToken>()), Times.Once);
+	}
+
+	[Fact]
+	public async Task StartWorkAsync_WithEntryStartingSameMinute_ShouldReturnFailure()
+	{
+		// Arrange — closing it at the new start would leave it with zero length
+		var start = CurrentMinute();
+		var meeting = WorkEntry.Reconstitute(1, null, start, start.AddHours(1), "Standup", false, DateTime.MinValue);
+		SetupEntriesFromStart(meeting);
+
+		// Act
+		var result = await _service.StartWorkAsync("PROJ-123", start, "Test", cancellationToken: TestContext.Current.CancellationToken);
+
+		// Assert
+		result.IsFailure.Should().BeTrue();
+		result.Error.Should().Contain("overlaps");
+		_mockRepository.Verify(r => r.AddAsync(It.IsAny<WorkEntry>(), It.IsAny<CancellationToken>()), Times.Never);
+	}
+
+	[Fact]
+	public async Task StartWorkAsync_BeforeActiveEntryStarted_ShouldReturnFailure()
+	{
+		// Arrange — the active entry can't be closed before it began
+		var start = CurrentMinute().AddHours(-3);
+		var active = WorkEntry.Reconstitute(1, "PROJ-100", start.AddHours(1), null, null, true, DateTime.MinValue);
+		SetupEntriesFromStart(active);
+
+		// Act
+		var result = await _service.StartWorkAsync("PROJ-123", start, "Test", cancellationToken: TestContext.Current.CancellationToken);
+
+		// Assert
+		result.IsFailure.Should().BeTrue();
+		result.Error.Should().Contain("overlaps");
+		_mockRepository.Verify(r => r.UpdateAsync(It.IsAny<WorkEntry>(), It.IsAny<CancellationToken>()), Times.Never);
+		_mockRepository.Verify(r => r.AddAsync(It.IsAny<WorkEntry>(), It.IsAny<CancellationToken>()), Times.Never);
+	}
+
+	[Fact]
+	public async Task StartWorkAsync_WithEndTime_OverlappingEntry_ShouldReturnFailure()
+	{
+		// Arrange
+		var start = CurrentMinute().AddHours(-2);
 		_mockRepository
-			.Setup(r => r.GetActiveWorkEntryAsync(It.IsAny<CancellationToken>()))
-			.ReturnsAsync((WorkEntry?)null);
-		_mockRepository
-			.Setup(r => r.HasOverlappingEntriesAsync(It.IsAny<int?>(), It.IsAny<DateTime>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+			.Setup(r => r.HasOverlappingEntriesAsync(null, start, start.AddHours(1), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(true);
 
 		// Act
-		var result = await _service.StartWorkAsync("PROJ-123", null, "Test", cancellationToken: TestContext.Current.CancellationToken);
+		var result = await _service.StartWorkAsync("PROJ-123", start, "Test", start.AddHours(1), TestContext.Current.CancellationToken);
 
 		// Assert
 		result.IsFailure.Should().BeTrue();
@@ -811,16 +891,8 @@ public class WorkEntryServiceTests
 	public async Task StartWorkAsync_WithActiveEntry_AutoStopUsesTransaction()
 	{
 		// Arrange — auto-stop + create must be atomic
-		var existingEntry = WorkEntry.Reconstitute(1, "PROJ-100", DateTime.Now.AddHours(-2), null, null, true, DateTime.MinValue);
-		_mockRepository
-			.Setup(r => r.GetActiveWorkEntryAsync(It.IsAny<CancellationToken>()))
-			.ReturnsAsync(existingEntry);
-		_mockRepository
-			.Setup(r => r.HasOverlappingEntriesAsync(It.IsAny<int?>(), It.IsAny<DateTime>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
-			.ReturnsAsync(false);
-		_mockRepository
-			.Setup(r => r.AddAsync(It.IsAny<WorkEntry>(), It.IsAny<CancellationToken>()))
-			.ReturnsAsync((WorkEntry entry, CancellationToken _) => entry);
+		var existingEntry = WorkEntry.Reconstitute(1, "PROJ-100", CurrentMinute().AddHours(-2), null, null, true, DateTime.MinValue);
+		SetupEntriesFromStart(existingEntry);
 
 		// Act
 		var result = await _service.StartWorkAsync("PROJ-123", null, "New work", cancellationToken: TestContext.Current.CancellationToken);
@@ -832,18 +904,10 @@ public class WorkEntryServiceTests
 	}
 
 	[Fact]
-	public async Task StartWorkAsync_WithoutActiveEntry_DoesNotUseUnitOfWork()
+	public async Task StartWorkAsync_WithNothingRunning_DoesNotUseUnitOfWork()
 	{
-		// Arrange — no active entry → single-operation path, no UoW needed
-		_mockRepository
-			.Setup(r => r.GetActiveWorkEntryAsync(It.IsAny<CancellationToken>()))
-			.ReturnsAsync((WorkEntry?)null);
-		_mockRepository
-			.Setup(r => r.HasOverlappingEntriesAsync(It.IsAny<int?>(), It.IsAny<DateTime>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
-			.ReturnsAsync(false);
-		_mockRepository
-			.Setup(r => r.AddAsync(It.IsAny<WorkEntry>(), It.IsAny<CancellationToken>()))
-			.ReturnsAsync((WorkEntry entry, CancellationToken _) => entry);
+		// Arrange — nothing to close → single-operation path, no UoW needed
+		SetupEntriesFromStart();
 
 		// Act
 		var result = await _service.StartWorkAsync("PROJ-123", null, "Work", cancellationToken: TestContext.Current.CancellationToken);
@@ -854,40 +918,31 @@ public class WorkEntryServiceTests
 	}
 
 	[Fact]
-	public async Task StartWorkAsync_WithActiveEntry_NewEntryOverlaps_DoesNotCommitAutoStop()
+	public async Task StartWorkAsync_WithActiveEntry_NewEntryOverlaps_DoesNotStopActiveEntry()
 	{
-		// Arrange — active entry exists, but the new entry overlaps with something else.
-		// Without UoW, the auto-stop would be committed before the overlap check fails,
-		// leaving the previous entry incorrectly stopped. With UoW, dispose rolls everything back.
-		var existingEntry = WorkEntry.Reconstitute(1, "PROJ-100", DateTime.Now.AddHours(-2), null, null, true, DateTime.MinValue);
-		_mockRepository
-			.Setup(r => r.GetActiveWorkEntryAsync(It.IsAny<CancellationToken>()))
-			.ReturnsAsync(existingEntry);
-		_mockRepository
-			.Setup(r => r.HasOverlappingEntriesAsync(It.IsAny<int?>(), It.IsAny<DateTime>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
-			.ReturnsAsync(true);
+		// Arrange — active entry exists, but another entry starts at the very same minute as the new one.
+		// The conflict is found before anything is written, so the active entry stays running.
+		var start = CurrentMinute();
+		var active = WorkEntry.Reconstitute(1, "PROJ-100", start.AddHours(-2), null, null, true, DateTime.MinValue);
+		var meeting = WorkEntry.Reconstitute(2, null, start, start.AddHours(1), "Standup", false, DateTime.MinValue);
+		SetupEntriesFromStart(active, meeting);
 
 		// Act
-		var result = await _service.StartWorkAsync("PROJ-123", null, "Conflicting work", cancellationToken: TestContext.Current.CancellationToken);
+		var result = await _service.StartWorkAsync("PROJ-123", start, "Conflicting work", cancellationToken: TestContext.Current.CancellationToken);
 
 		// Assert
 		result.IsFailure.Should().BeTrue();
 		result.Error.Should().Contain("overlap");
-		// UoW was opened (auto-stop path taken) but SaveChanges must NOT be called
-		_mockUnitOfWorkFactory.Verify(f => f.CreateAsync(It.IsAny<CancellationToken>()), Times.Once);
-		_mockUnitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
-		_mockUnitOfWork.Verify(u => u.DisposeAsync(), Times.Once);
+		_mockUnitOfWorkFactory.Verify(f => f.CreateAsync(It.IsAny<CancellationToken>()), Times.Never);
+		_mockRepository.Verify(r => r.UpdateAsync(It.IsAny<WorkEntry>(), It.IsAny<CancellationToken>()), Times.Never);
 	}
 
 	[Fact]
-	public async Task StartWorkAsync_WithActiveEntry_NewEntryInvalid_DoesNotCommitAutoStop()
+	public async Task StartWorkAsync_WithActiveEntry_NewEntryInvalid_DoesNotStopActiveEntry()
 	{
-		// Arrange — active entry exists, but the new entry has no ticketId and no description → invalid.
-		// With UoW, auto-stop must be rolled back when the new entry fails validation.
-		var existingEntry = WorkEntry.Reconstitute(1, "PROJ-100", DateTime.Now.AddHours(-2), null, null, true, DateTime.MinValue);
-		_mockRepository
-			.Setup(r => r.GetActiveWorkEntryAsync(It.IsAny<CancellationToken>()))
-			.ReturnsAsync(existingEntry);
+		// Arrange — active entry exists, but the new entry has no ticketId and no description → invalid
+		var existingEntry = WorkEntry.Reconstitute(1, "PROJ-100", CurrentMinute().AddHours(-2), null, null, true, DateTime.MinValue);
+		SetupEntriesFromStart(existingEntry);
 
 		// Act — pass null ticketId AND null description → WorkEntry.IsValid() returns false
 		var result = await _service.StartWorkAsync(null, null, null, cancellationToken: TestContext.Current.CancellationToken);
@@ -895,8 +950,7 @@ public class WorkEntryServiceTests
 		// Assert
 		result.IsFailure.Should().BeTrue();
 		result.Error.Should().Contain("Both ticket ID and description cannot be empty");
-		_mockUnitOfWorkFactory.Verify(f => f.CreateAsync(It.IsAny<CancellationToken>()), Times.Once);
-		_mockUnitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
-		_mockUnitOfWork.Verify(u => u.DisposeAsync(), Times.Once);
+		_mockUnitOfWorkFactory.Verify(f => f.CreateAsync(It.IsAny<CancellationToken>()), Times.Never);
+		_mockRepository.Verify(r => r.UpdateAsync(It.IsAny<WorkEntry>(), It.IsAny<CancellationToken>()), Times.Never);
 	}
 }

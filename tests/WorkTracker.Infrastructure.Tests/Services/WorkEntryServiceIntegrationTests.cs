@@ -53,9 +53,7 @@ public sealed class WorkEntryServiceIntegrationTests : IAsyncLifetime
 		}
 		var activeId = activeEntry.Id;
 
-		// Act — start new work; auto-stop path must succeed.
-		// Regression: before the fix, this returned OverlapError because the old entry's Stop()
-		// was only in the EF change tracker and the overlap query still saw EndTime=null in DB.
+		// Act — start new work; auto-stop path must succeed
 		var result = await _service.StartWorkAsync("PROJ-NEW", null, "New work", cancellationToken: TestContext.Current.CancellationToken);
 
 		// Assert — new entry created, old entry stopped, both persisted atomically
@@ -88,8 +86,7 @@ public sealed class WorkEntryServiceIntegrationTests : IAsyncLifetime
 		}
 		var activeId = activeEntry.Id;
 
-		// Act — pass null ticketId AND null description → new entry is invalid.
-		// Auto-stop was already applied to the tracker; UoW dispose must roll it back via transaction rollback.
+		// Act — pass null ticketId AND null description → new entry is invalid, the active one must stay running
 		var result = await _service.StartWorkAsync(null, null, null, cancellationToken: TestContext.Current.CancellationToken);
 
 		// Assert
@@ -97,8 +94,64 @@ public sealed class WorkEntryServiceIntegrationTests : IAsyncLifetime
 
 		using var verify = _fixture.CreateVerificationContext();
 		var stillActive = await verify.WorkEntries.AsNoTracking().FirstAsync(e => e.Id == activeId, TestContext.Current.CancellationToken);
-		stillActive.IsActive.Should().BeTrue("UoW rollback must undo the pending Stop()");
+		stillActive.IsActive.Should().BeTrue("an invalid new entry must not stop the active one");
 		stillActive.EndTime.Should().BeNull();
+	}
+
+	[Fact]
+	public async Task StartWorkAsync_DuringMeetingWithEndTime_EndsMeetingAndStartsNewWork()
+	{
+		// Arrange — a meeting with its end set up front (e.g. taken over from the calendar) is running
+		var start = new DateTime(2026, 1, 15, 10, 0, 0);
+		var meeting = WorkEntry.Create(null, start.AddMinutes(-30), start.AddMinutes(30), "Standup", start);
+		using (var seed = _fixture.CreateVerificationContext())
+		{
+			await seed.WorkEntries.AddAsync(meeting, TestContext.Current.CancellationToken);
+			await seed.SaveChangesAsync(TestContext.Current.CancellationToken);
+		}
+
+		// Act — regression: this used to fail with OverlapError, the open-ended new entry clashed with the meeting
+		var result = await _service.StartWorkAsync("PROJ-NEW", start, "New work", cancellationToken: TestContext.Current.CancellationToken);
+
+		// Assert
+		result.IsSuccess.Should().BeTrue(result.IsFailure ? result.Error : "the running meeting should be ended");
+
+		using var verify = _fixture.CreateVerificationContext();
+		var all = await verify.WorkEntries.AsNoTracking().OrderBy(e => e.StartTime).ToListAsync(TestContext.Current.CancellationToken);
+		all.Should().HaveCount(2);
+		all[0].Description.Should().Be("Standup");
+		all[0].EndTime.Should().Be(start);
+		all[1].TicketId.Should().Be("PROJ-NEW");
+		all[1].IsActive.Should().BeTrue();
+	}
+
+	[Fact]
+	public async Task StartWorkAsync_WithActiveEntryAndMeetingPlannedLater_AutoStopsAndKeepsMeeting()
+	{
+		// Arrange — active work plus a meeting later in the day
+		var start = new DateTime(2026, 1, 15, 10, 0, 0);
+		var active = WorkEntry.Create("PROJ-OLD", start.AddHours(-2), null, "Old work", start.AddHours(-2));
+		var meeting = WorkEntry.Create(null, start.AddHours(4), start.AddHours(5), "Review", start);
+		using (var seed = _fixture.CreateVerificationContext())
+		{
+			await seed.WorkEntries.AddRangeAsync([active, meeting], TestContext.Current.CancellationToken);
+			await seed.SaveChangesAsync(TestContext.Current.CancellationToken);
+		}
+
+		// Act — regression: the open-ended new entry used to count as running forever and hit the later meeting
+		var result = await _service.StartWorkAsync("PROJ-NEW", start, "New work", cancellationToken: TestContext.Current.CancellationToken);
+
+		// Assert
+		result.IsSuccess.Should().BeTrue(result.IsFailure ? result.Error : "a later meeting must not block starting work");
+
+		using var verify = _fixture.CreateVerificationContext();
+		var all = await verify.WorkEntries.AsNoTracking().OrderBy(e => e.StartTime).ToListAsync(TestContext.Current.CancellationToken);
+		all.Should().HaveCount(3);
+		all[0].EndTime.Should().Be(start);
+		all[1].TicketId.Should().Be("PROJ-NEW");
+		all[1].IsActive.Should().BeTrue();
+		all[2].StartTime.Should().Be(start.AddHours(4));
+		all[2].EndTime.Should().Be(start.AddHours(5));
 	}
 
 	[Fact]
