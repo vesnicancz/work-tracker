@@ -93,6 +93,9 @@
         <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
         <Setter Property="BorderBrush" Value="{DynamicResource InputBorder}" />
         <Setter Property="Padding" Value="7,5,7,5" />
+        <!-- The picker forwards its focus to its inner TextBox, so as a tab stop of its own it traps
+             Shift+Tab: leaving the TextBox backwards lands on the picker, which hands focus straight back. -->
+        <Setter Property="KeyboardNavigation.IsTabStop" Value="False" />
     </Style>
 
     <!-- Calendar popup: readable text on themed background -->
