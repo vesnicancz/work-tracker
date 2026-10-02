@@ -102,16 +102,27 @@ public sealed class CommandHandler
 		}
 	}
 
-	public async Task<int> HandleStatusCommand(bool json = false)
+	public async Task<int> HandleStatusCommand(OutputFormat format = OutputFormat.Table)
 	{
 		try
 		{
 			var activeEntry = await _workEntryService.GetActiveWorkAsync();
 
-			if (json)
+			if (format == OutputFormat.Json)
 			{
 				CliConsole.Data.WriteLine(JsonOutput.Serialize(
 					JsonOutput.ToStatusJson(activeEntry, _timeProvider.GetLocalNow().DateTime)));
+				return 0;
+			}
+
+			if (format == OutputFormat.Plain)
+			{
+				if (activeEntry != null)
+				{
+					var elapsedMinutes = (int)(_timeProvider.GetLocalNow().DateTime - activeEntry.StartTime).TotalMinutes;
+					CliConsole.Data.WriteLine(PlainOutput.FormatEntry(activeEntry, elapsedMinutes));
+				}
+
 				return 0;
 			}
 
@@ -150,16 +161,26 @@ public sealed class CommandHandler
 		}
 	}
 
-	public async Task<int> HandleListCommand(DateTime? date = null, bool json = false)
+	public async Task<int> HandleListCommand(DateTime? date = null, OutputFormat format = OutputFormat.Table)
 	{
 		try
 		{
 			var targetDate = date ?? _timeProvider.GetLocalNow().Date;
 			var entries = await _workEntryService.GetWorkEntriesByDateAsync(targetDate);
 
-			if (json)
+			if (format == OutputFormat.Json)
 			{
 				CliConsole.Data.WriteLine(JsonOutput.Serialize(JsonOutput.ToListJson(targetDate, entries)));
+				return 0;
+			}
+
+			if (format == OutputFormat.Plain)
+			{
+				foreach (var entry in entries)
+				{
+					CliConsole.Data.WriteLine(PlainOutput.FormatEntry(entry));
+				}
+
 				return 0;
 			}
 
@@ -303,7 +324,7 @@ public sealed class CommandHandler
 	/// Lists the worklog upload plugins, disabled ones included — a plugin that is installed but
 	/// not enabled in the GUI is the usual reason "send" reports no provider.
 	/// </summary>
-	public int HandleProvidersCommand(bool json = false)
+	public int HandleProvidersCommand(OutputFormat format = OutputFormat.Table)
 	{
 		try
 		{
@@ -317,10 +338,30 @@ public sealed class CommandHandler
 				.ThenBy(p => p.Id, StringComparer.OrdinalIgnoreCase)
 				.ToList();
 
-			if (json)
+			if (format == OutputFormat.Json)
 			{
 				CliConsole.Data.WriteLine(JsonOutput.Serialize(
 					providers.Select(p => new JsonOutput.ProviderJson(p.Id, p.Name, p.Enabled)).ToList()));
+				return 0;
+			}
+
+			if (format == OutputFormat.Plain)
+			{
+				foreach (var (id, name, enabled) in providers)
+				{
+					CliConsole.Data.WriteLine(PlainOutput.FormatProvider(id, name, enabled));
+				}
+
+				// Hints go to stderr here so they never end up among the records.
+				if (providers.Count == 0)
+				{
+					CliConsole.Error.MarkupLine("[yellow]No worklog upload plugins installed[/]");
+				}
+				else if (!providers.Any(p => p.Enabled))
+				{
+					CliConsole.Error.MarkupLine("[yellow]No provider is enabled[/] — enable one in the desktop app's settings.");
+				}
+
 				return 0;
 			}
 

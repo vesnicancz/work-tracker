@@ -94,6 +94,8 @@ Detailní průvodce prvním spuštěním a ovládáním najdeš v [docs/user-gui
 | `providers` | Výpis worklog upload pluginů a jejich enabled stavu |
 | `version`, `help` | Verze a nápověda |
 
+Výstup `list`, `status` a `providers` jde i do skriptů: `--json` vypíše JSON a `--plain` jeden záznam na řádek, se sloupci oddělenými TABem a bez hlavičky. Když stdout míří do pipe nebo souboru, CLI přepne na `--plain` samo, takže funguje třeba `WorkTracker.CLI list | grep PROJ-123`. Podrobnosti jsou v [uživatelské příručce](docs/user-guide.md#výstup-pro-skripty-a-pipe).
+
 Příklady:
 
 ```bash
