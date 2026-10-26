@@ -52,7 +52,12 @@ class Program
 			.WithAppNotifications(new AppNotificationOptions
 			{
 				AppName = "WorkTracker",
-				AppUserModelId = "Vesnicancz.WorkTracker"
+				AppUserModelId = "Vesnicancz.WorkTracker",
+				// Linux only: registers the app with the portal under the id of our installed desktop
+				// entry. Without it the portal guesses the id from the systemd scope, which is empty
+				// when the app is started from a terminal (or the IDE's when started from one), and
+				// GNOME Shell then rejects every notification. Ignored where the portal can't register.
+				AppId = DesktopEntry.AppId
 			})
 			.LogToTrace();
 }

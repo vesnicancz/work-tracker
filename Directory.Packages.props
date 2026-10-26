@@ -21,17 +21,16 @@
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.14" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.14" />
     <!-- Avalonia — held at 12.0.x on purpose. Avalonia 12.1 requires Tmds.DBus.Protocol >= 0.94.1,
-         which dropped DBusConnection.AsConnection(); Avalonia.Labs.Notifications 12.0.2 (the newest
-         release, built against Avalonia 12.0.1) calls it, so on 12.1 the app dies at startup on Linux
-         with a MissingMethodException from WithAppNotifications. Pinning the DBus package back down
-         is refused by NuGet (NU1109). Labs.Notifications 12.1.0 (2026-10-26) does not fix it: it still
-         targets Avalonia 12.0.1 and Tmds.DBus.Protocol 0.92.0, and its net8.0 build still calls
-         AsConnection(). Move up only once a Labs.Notifications release drops that call. -->
+         which dropped DBusConnection.AsConnection(); Avalonia.Labs.Notifications calls it (still in
+         12.1.0, which despite the name is built against Avalonia 12.0.1 and Tmds.DBus.Protocol 0.92.0),
+         so on 12.1 the app dies at startup on Linux with a MissingMethodException from
+         WithAppNotifications. Pinning the DBus package back down is refused by NuGet (NU1109). Move up
+         only once a Labs.Notifications release drops that call. -->
     <PackageVersion Include="Avalonia" Version="12.0.5" />
     <PackageVersion Include="Avalonia.Controls.DataGrid" Version="12.0.1" />
     <PackageVersion Include="Avalonia.Desktop" Version="12.0.5" />
     <PackageVersion Include="Avalonia.Fonts.Inter" Version="12.0.5" />
-    <PackageVersion Include="Avalonia.Labs.Notifications" Version="12.0.2" />
+    <PackageVersion Include="Avalonia.Labs.Notifications" Version="12.1.0" />
     <PackageVersion Include="Avalonia.Themes.Fluent" Version="12.0.5" />
     <!-- Transitive via Avalonia.FreeDesktop; referenced directly by the Avalonia project for the
          GlobalShortcuts portal client. Pinned to the version Avalonia 12.0.5 resolves — see the
