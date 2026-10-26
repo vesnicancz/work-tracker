@@ -351,6 +351,10 @@
   <data name="FailedToOpenSettings" xml:space="preserve">
     <value>Nepodařilo se otevřít nastavení: {0}</value>
   </data>
+  <data name="PluginConfigurationInvalid" xml:space="preserve">
+    <value>Konfigurace pluginu není platná:
+{0}</value>
+  </data>
   <data name="SettingsSaveFailed" xml:space="preserve">
     <value>Nastavení se nepodařilo uložit: {0}</value>
   </data>
@@ -578,7 +582,7 @@ Popis: {1}
     <value>Klávesové zkratky</value>
   </data>
   <data name="AboutGlobalHotkeyDesc" xml:space="preserve">
-    <value>Zobrazit/skrýt okno (globální zkratka)</value>
+    <value>Nový záznam práce (globální zkratka)</value>
   </data>
   <data name="AboutEnterKeyDesc" xml:space="preserve">
     <value>Spustit sledování z vstupního pole</value>
@@ -599,7 +603,7 @@ Popis: {1}
     <value>PROJ-123 je automaticky rozpoznáno ze vstupu</value>
   </data>
   <data name="AboutFavoritesDesc" xml:space="preserve">
-    <value>Rychlé spuštění častých úkolů z postranního panelu nebo nabídky v liště</value>
+    <value>Rychlé spuštění častých úkolů z nabídky v systémové liště</value>
   </data>
   <data name="AboutSubmitWorklogs" xml:space="preserve">
     <value>Odeslání záznamů</value>

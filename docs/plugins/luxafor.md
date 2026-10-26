@@ -21,7 +21,7 @@ Plugin ovládá fyzický LED indikátor Luxafor a přepíná jeho barvu podle ak
 | `long_break_color` | `Text` | ❌ | `#0000FF` (modrá) | Barva během dlouhé pauzy |
 | `turn_off_on_startup` | `Checkbox` | ❌ | `false` | Po startu aplikace zařízení zhasne (řeší rušivé červené svícení po bootu OS) |
 
-Pole deklarují validační regex `^#[0-9A-Fa-f]{6}$`, ale protože nejsou povinná, `PluginBase` ho nevyhodnotí (regex kontroluje jen u polí s `IsRequired`). Hodnotu, kterou DotLuxafor neumí přečíst jako hex barvu, plugin tiše nahradí výchozí barvou. Plugin v UI chybí color picker; hodnoty se zadávají jako text. Běžné volby:
+Pole jsou nepovinná: prázdné použije výchozí barvu. Vyplněná hodnota musí odpovídat regexu `^#[0-9A-Fa-f]{6}$`, jinak Nastavení neuloží a ukáže chybu (a plugin by se s takovou konfigurací ani neinicializoval). Plugin v UI chybí color picker; hodnoty se zadávají jako text. Běžné volby:
 
 | Barva | Hex |
 |-------|-----|

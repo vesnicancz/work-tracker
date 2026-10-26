@@ -142,7 +142,7 @@ public class LuxaforStatusIndicatorPluginTests : IAsyncDisposable
 	}
 
 	[Fact]
-	public async Task InitializeAsync_InvalidHexColor_StillSucceeds_UsesFallback()
+	public async Task ValidateConfigurationAsync_InvalidHexColor_FailsForEachField()
 	{
 		var config = new Dictionary<string, string>
 		{
@@ -151,9 +151,20 @@ public class LuxaforStatusIndicatorPluginTests : IAsyncDisposable
 			["long_break_color"] = "#ZZZ"
 		};
 
+		var result = await _plugin.ValidateConfigurationAsync(config, TestContext.Current.CancellationToken);
+
+		result.IsValid.Should().BeFalse();
+		result.Errors.Should().HaveCount(3);
+	}
+
+	[Fact]
+	public async Task InitializeAsync_InvalidHexColor_Fails()
+	{
+		var config = new Dictionary<string, string> { ["work_color"] = "invalid" };
+
 		var result = await _plugin.InitializeAsync(config, TestContext.Current.CancellationToken);
 
-		result.Should().BeTrue();
+		result.Should().BeFalse();
 	}
 
 	[Fact]

@@ -445,6 +445,18 @@
 
                                             <!-- Config fields -->
                                             <ItemsControl ItemsSource="{Binding SelectedPlugin.ConfigurationFields}">
+                                                <ItemsControl.Styles>
+                                                    <!-- The field type decides how the one TextBox behaves: a secret is masked
+                                                         (with Fluent's reveal button), a multi-line value gets room to wrap. -->
+                                                    <Style Selector="TextBox.password">
+                                                        <Setter Property="PasswordChar" Value="●" />
+                                                    </Style>
+                                                    <Style Selector="TextBox.multiline">
+                                                        <Setter Property="AcceptsReturn" Value="True" />
+                                                        <Setter Property="TextWrapping" Value="Wrap" />
+                                                        <Setter Property="MinHeight" Value="64" />
+                                                    </Style>
+                                                </ItemsControl.Styles>
                                                 <ItemsControl.ItemTemplate>
                                                     <DataTemplate x:DataType="shared:ConfigurationFieldViewModel">
                                                         <StackPanel Margin="0,0,0,8" Spacing="3">
@@ -452,12 +464,20 @@
                                                                 <TextBlock Text="{Binding Label}" FontSize="12" FontWeight="Medium" />
                                                                 <TextBox Text="{Binding Value, Mode=TwoWay}"
                                                                          PlaceholderText="{Binding Placeholder}"
+                                                                         Classes.password="{Binding IsPassword}"
+                                                                         Classes.revealPasswordButton="{Binding IsPassword}"
+                                                                         Classes.multiline="{Binding IsMultiline}"
                                                                          FontSize="12" />
                                                             </StackPanel>
                                                             <CheckBox IsVisible="{Binding IsCheckbox}"
                                                                       IsChecked="{Binding BoolValue, Mode=TwoWay}"
                                                                       Content="{Binding Label}"
                                                                       FontSize="12" />
+                                                            <TextBlock IsVisible="{Binding HasDescription}"
+                                                                       Text="{Binding Description}"
+                                                                       Foreground="{DynamicResource TextMuted}"
+                                                                       FontSize="11"
+                                                                       TextWrapping="Wrap" />
                                                         </StackPanel>
                                                     </DataTemplate>
                                                 </ItemsControl.ItemTemplate>

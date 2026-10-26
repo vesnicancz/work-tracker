@@ -85,6 +85,23 @@ public class SettingsOrchestrator : ISettingsOrchestrator
 		return plugins;
 	}
 
+	public async Task<IReadOnlyList<string>> ValidatePluginConfigurationsAsync(IEnumerable<PluginViewModel> plugins, CancellationToken cancellationToken)
+	{
+		// Only enabled plugins: a disabled one is never initialized, so a half-filled configuration
+		// left on it must not block saving everything else.
+		var errors = new List<string>();
+		foreach (var plugin in plugins.Where(p => p.IsEnabled))
+		{
+			var result = await plugin.Plugin.ValidateConfigurationAsync(new Dictionary<string, string>(plugin.Configuration), cancellationToken);
+			if (!result.IsValid)
+			{
+				errors.AddRange(result.Errors.Select(error => $"{plugin.Name}: {error}"));
+			}
+		}
+
+		return errors;
+	}
+
 	public async Task SaveSettingsAsync(SettingsSaveRequest request, CancellationToken cancellationToken)
 	{
 		// Start from a copy of what is stored rather than from a blank ApplicationSettings: the
@@ -146,6 +163,14 @@ public class SettingsOrchestrator : ISettingsOrchestrator
 		}
 
 		_logger.LogInformation("Testing connection for plugin {PluginId}", plugin.Plugin.Metadata.Id);
+
+		// Initialization below fails on an invalid configuration too, but only says that it failed.
+		// Checking first lets the result name the field that is wrong.
+		var validation = await plugin.Plugin.ValidateConfigurationAsync(new Dictionary<string, string>(plugin.Configuration), cancellationToken);
+		if (!validation.IsValid)
+		{
+			return $"✗ {string.Join(Environment.NewLine, validation.Errors)}";
+		}
 
 		// The test runs against the live plugin instance, so it has to initialize it with the
 		// dialog's unsaved values. Restore the stored configuration afterwards - otherwise a test

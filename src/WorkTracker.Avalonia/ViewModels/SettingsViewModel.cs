@@ -539,6 +539,15 @@ public class SettingsViewModel : ViewModelBase
 
 		try
 		{
+			// A plugin with an invalid configuration would fail to initialize after the save, and
+			// that failure only reaches the log. Refusing the save keeps the dialog open on it instead.
+			var pluginErrors = await _orchestrator.ValidatePluginConfigurationsAsync(Plugins, CancellationToken.None);
+			if (pluginErrors.Count != 0)
+			{
+				SaveError = _localization.GetFormattedString("PluginConfigurationInvalid", string.Join(Environment.NewLine, pluginErrors));
+				return;
+			}
+
 			var request = new SettingsSaveRequest
 			{
 				CloseWindowBehavior = CloseWindowBehavior,
