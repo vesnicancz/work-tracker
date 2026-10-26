@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Microsoft.Extensions.Logging;
 using WorkTracker.Avalonia.Services.Linux;
+using WorkTracker.Avalonia.Services.MacOS;
 using WorkTracker.UI.Shared.Services;
 
 namespace WorkTracker.Avalonia.Services;
@@ -12,7 +13,7 @@ namespace WorkTracker.Avalonia.Services;
 /// Windows: Win32 RegisterHotKey via native window handle.
 /// Linux: the org.freedesktop.portal.GlobalShortcuts desktop portal, which covers Wayland (where a
 /// client cannot grab keys itself) and X11 alike, as long as the desktop implements it.
-/// macOS: not yet implemented (Register is a no-op there).
+/// macOS: Carbon RegisterEventHotKey, which needs no Accessibility permission.
 /// </summary>
 public sealed class HotkeyService : IHotkeyService
 {
@@ -59,8 +60,7 @@ public sealed class HotkeyService : IHotkeyService
 		}
 		else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
 		{
-			// TODO: Implement via CGEventTap or NSEvent.addGlobalMonitorForEvents
-			_logger.LogInformation("Global hotkeys not yet implemented on macOS");
+			RegisterMacOS();
 		}
 	}
 
@@ -80,6 +80,10 @@ public sealed class HotkeyService : IHotkeyService
 		if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
 		{
 			UnregisterWindows();
+		}
+		else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+		{
+			UnregisterMacOS();
 		}
 	}
 
@@ -185,6 +189,50 @@ public sealed class HotkeyService : IHotkeyService
 	}
 
 	#endregion Linux implementation
+
+	#region macOS implementation
+
+	private CarbonHotKey? _macHotKey;
+
+	/// <summary>
+	/// Control+Shift+W, the same keys as on Windows and Linux. Command+Shift+W would be the more
+	/// Mac-like choice, but it is "close window" or "close all" in Finder, Safari and most other apps,
+	/// and a global hotkey would take it away from all of them.
+	/// </summary>
+	private void RegisterMacOS()
+	{
+		var hotKey = new CarbonHotKey(_logger, (uint)HotkeyId);
+		if (!hotKey.TryRegister(CarbonHotKey.KeyCodeW, CarbonHotKey.ControlKey | CarbonHotKey.ShiftKey))
+		{
+			hotKey.Dispose();
+			return;
+		}
+
+		hotKey.Pressed += OnMacHotKeyPressed;
+		_macHotKey = hotKey;
+		_isRegistered = true;
+		_logger.LogInformation("Registered global hotkey Control+Shift+W");
+	}
+
+	private void UnregisterMacOS()
+	{
+		if (_macHotKey != null)
+		{
+			_macHotKey.Pressed -= OnMacHotKeyPressed;
+			_macHotKey.Dispose();
+			_macHotKey = null;
+		}
+
+		_isRegistered = false;
+		_logger.LogInformation("Unregistered global hotkey");
+	}
+
+	private void OnMacHotKeyPressed()
+	{
+		HotkeyPressed?.Invoke(this, EventArgs.Empty);
+	}
+
+	#endregion macOS implementation
 
 	#region Windows implementation
 

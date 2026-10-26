@@ -175,7 +175,7 @@ public partial class App : global::Avalonia.Application
 				// Win32 RegisterHotKey needs an HWND, so show the window invisibly once to be sure
 				// the handle is realized. Never do this on X11/Wayland: mapping and immediately
 				// unmapping a toplevel leaves a stale entry in the KDE task manager for the rest of
-				// the session, and global hotkeys are a no-op on Linux/macOS anyway.
+				// the session, and the Linux and macOS hotkeys need no window at all.
 				// TODO: the HWND already exists after construction, so this show/hide is probably
 				// unnecessary — verify Ctrl+Shift+W with StartMinimized on Windows, then drop it.
 				mainWindow.ShowInTaskbar = false;
