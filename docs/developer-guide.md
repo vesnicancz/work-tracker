@@ -601,7 +601,7 @@ Interní názvy Actions artifactů (`matrix.artifact`) se do releasu nepropisuj�
 
 #### macOS `.app` bundle
 
-macOS artifacty nejsou holá binárka jako na ostatních platformách, ale `WorkTracker.app`. Bundle není kosmetika — bez něj Finder ani Dock nemají jméno a ikonu, tray ikona a notifikační backend (`UNUserNotificationCenter`) nemají bundle identifier, na který by se navázaly, a Apple Silicon nepodepsanou binárku odmítne spustit úplně.
+GUI pro macOS není holá binárka jako na ostatních platformách, ale `WorkTracker.app` (CLI pro macOS zůstává zip s binárkou). Bundle není kosmetika — bez něj Finder ani Dock nemají jméno a ikonu, tray ikona a notifikační backend (`UNUserNotificationCenter`) nemají bundle identifier, na který by se navázaly, a Apple Silicon nepodepsanou binárku odmítne spustit úplně.
 
 Sestavuje ho `build/macos/make-app-bundle.sh` (běží jen na macOS runneru, potřebuje `sips`, `iconutil`, `plutil` a `codesign`):
 
@@ -628,7 +628,7 @@ Do podepsaného bundlu se nesmí zapisovat, a plugin adresář se při startu za
 
 `CFBundleIdentifier` je `io.github.vesnicancz.WorkTracker`, tedy stejná identita jako `DesktopEntry.AppId` na Linuxu. `CFBundleShortVersionString` snese jen tři čísla oddělená tečkou, takže se z tagu odřízne prefix `v` i prerelease část (`v1.14.0-beta.1` → `1.14.0`).
 
-Do releasu jde bundle jako disk image `WorkTracker-{verze}-macos-arm64.dmg`, ne jako zip: po otevření ukáže okno s aplikací a zástupcem `Applications`, takže instalace je jedno přetažení, jak to uživatel na Macu čeká. Skript staví bundle rovnou do `publish/dmg/`, workflow k němu přidá symlink na `/Applications` a `hdiutil create -format UDZO` z té složky udělá svazek beze změny — symlinky a podpis bundlu přežijí. `hdiutil` na hostovaných runnerech občas selže s `Resource busy`, proto ho krok zkouší až třikrát.
+Do releasu jde bundle jako disk image `WorkTracker-{verze}-macos-arm64.dmg`, ne jako zip: po otevření ukáže okno s aplikací a zástupcem `Applications`, takže instalace je jedno přetažení, jak to uživatel na Macu čeká. Workflow nechá skript postavit bundle rovnou do `publish/dmg/`, přidá k němu symlink na `/Applications` a `hdiutil create -format UDZO` z té složky udělá svazek beze změny — symlinky a podpis bundlu přežijí. `hdiutil` na hostovaných runnerech občas selže s `Resource busy`, proto ho krok zkouší až třikrát.
 
 **Podpis je ad-hoc** (`codesign --sign -`). To je maximum bez placeného Apple účtu: aplikace se na Apple Silicon vůbec spustí a nehlásí „is damaged", ale **není to průchod Gatekeeperem** — stažený build pořád chce jedno ruční povolení: od macOS 15 v *Nastavení systému → Soukromí a zabezpečení → Přesto otevřít*, na starších *pravý klik → Otevřít*, kdekoli `xattr -dr com.apple.quarantine /Applications/WorkTracker.app`.
 
