@@ -581,13 +581,23 @@ Trigger: push tagu `v*`. Jobs:
 
 1. **test** (ubuntu) — spustí celou test sadu před release.
 2. **publish-cli** (matrix: win-x64, win-arm64, linux-x64, osx-arm64) — `dotnet publish` s `PublishSingleFile=true`, `SelfContained=false`, zip artifact.
-3. **publish-avalonia** (matrix: win-x64, win-arm64, linux-x64, osx-arm64) — Avalonia pro všechny platformy. macOS varianta navíc projde krokem *Bundle and sign .app* (viz níže).
+3. **publish-avalonia** (matrix: win-x64, win-arm64, linux-x64, osx-arm64) — Avalonia pro všechny platformy. macOS varianta navíc projde krokem *Bundle and sign .app* a místo zipu se z ní balí `.dmg` (viz níže).
 
    Obě matice mají stejnou sadu RID: co dostane GUI, dostane i CLI. Intel Macy (`osx-x64`) se nebuildí — Macy se prodávají s Apple Siliconem od roku 2020 a na těch starších rozjede .NET host z `osx-arm64` buildu Rosetta.
 4. **publish-plugins** (matrix: Atlassian, Luxafor, GoranG3, Office365Calendar) — každý plugin samostatně.
 5. **release** — stáhne artifacty a vytvoří GitHub Release.
 
 Artifacty jsou framework‑dependent (bez runtime). Kdo chce self‑contained, buildí si sám.
+
+Názvy assetů v releasu jsou psané pro uživatele, ne podle RID: obsahují verzi z tagu (bez `v`) a čitelnou platformu (`windows-x64`, `windows-arm64`, `linux-x64`, `macos-arm64`, mapuje ji pole `platform` v matici):
+
+| Job | Asset |
+|---|---|
+| publish-avalonia | `WorkTracker-1.15.0-windows-x64.zip`, …, `WorkTracker-1.15.0-macos-arm64.dmg` |
+| publish-cli | `WorkTracker-CLI-1.15.0-windows-x64.zip`, … |
+| publish-plugins | `WorkTracker-Plugin-Atlassian-1.15.0.zip`, … (složka uvnitř zůstává `WorkTracker.Plugin.Atlassian`) |
+
+Interní názvy Actions artifactů (`matrix.artifact`) se do releasu nepropisují.
 
 #### macOS `.app` bundle
 
@@ -618,9 +628,9 @@ Do podepsaného bundlu se nesmí zapisovat, a plugin adresář se při startu za
 
 `CFBundleIdentifier` je `io.github.vesnicancz.WorkTracker`, tedy stejná identita jako `DesktopEntry.AppId` na Linuxu. `CFBundleShortVersionString` snese jen tři čísla oddělená tečkou, takže se z tagu odřízne prefix `v` i prerelease část (`v1.14.0-beta.1` → `1.14.0`).
 
-Archiv se balí přes `ditto`, ne `zip` — je to jediný archivátor, který v bundlu udrží symlinky a s nimi i platný podpis.
+Do releasu jde bundle jako disk image `WorkTracker-{verze}-macos-arm64.dmg`, ne jako zip: po otevření ukáže okno s aplikací a zástupcem `Applications`, takže instalace je jedno přetažení, jak to uživatel na Macu čeká. Skript staví bundle rovnou do `publish/dmg/`, workflow k němu přidá symlink na `/Applications` a `hdiutil create -format UDZO` z té složky udělá svazek beze změny — symlinky a podpis bundlu přežijí. `hdiutil` na hostovaných runnerech občas selže s `Resource busy`, proto ho krok zkouší až třikrát.
 
-**Podpis je ad-hoc** (`codesign --sign -`). To je maximum bez placeného Apple účtu: aplikace se na Apple Silicon vůbec spustí a nehlásí „is damaged", ale **není to průchod Gatekeeperem** — stažený build pořád chce jedno ruční *pravý klik → Otevřít* (nebo `xattr -dr com.apple.quarantine WorkTracker.app`).
+**Podpis je ad-hoc** (`codesign --sign -`). To je maximum bez placeného Apple účtu: aplikace se na Apple Silicon vůbec spustí a nehlásí „is damaged", ale **není to průchod Gatekeeperem** — stažený build pořád chce jedno ruční povolení: od macOS 15 v *Nastavení systému → Soukromí a zabezpečení → Přesto otevřít*, na starších *pravý klik → Otevřít*, kdekoli `xattr -dr com.apple.quarantine /Applications/WorkTracker.app`.
 
 Přechod na skutečný podpis: naimportuj Developer ID certifikát do keychainu runneru a nastav `CODESIGN_IDENTITY` na jeho jméno. Skript pak sám přidá hardened runtime a `build/macos/entitlements.plist` (CoreCLR JIT potřebuje zapisovatelně‑spustitelnou paměť a single‑file host rozbaluje nepodepsané nativní knihovny). Zbývat bude už jen poslat archiv do `notarytool` a přilepit staple.
 

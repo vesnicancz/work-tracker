@@ -29,20 +29,34 @@ Průvodce ovládáním WorkTrackeru od prvního spuštění až po pokročilé f
 
 Na stránce [Releases](https://github.com/vesnicancz/work-tracker/releases/latest) jsou k dispozici předem připravené balíčky pro všechny podporované platformy:
 
-| Balíček | Obsah | Podporované RID |
-|---------|-------|-----------------|
-| `WorkTracker-CLI-{rid}.zip` | Konzolová aplikace | `win-x64`, `win-arm64`, `linux-x64`, `osx-arm64` |
-| `WorkTracker-Avalonia-{rid}.zip` | Cross‑platform GUI | `win-x64`, `win-arm64`, `linux-x64`, `osx-arm64` |
-| `WorkTracker.Plugin.{Name}.zip` | Platformně neutrální pluginy (Atlassian, GoranG3, Luxafor, Office365Calendar) | — |
+| Balíček | Obsah | Platformy |
+|---------|-------|-----------|
+| `WorkTracker-{verze}-{platforma}.zip` / `.dmg` | GUI aplikace (na macOS jako `.dmg`) | `windows-x64`, `windows-arm64`, `linux-x64`, `macos-arm64` |
+| `WorkTracker-CLI-{verze}-{platforma}.zip` | Konzolová aplikace | `windows-x64`, `windows-arm64`, `linux-x64`, `macos-arm64` |
+| `WorkTracker-Plugin-{Name}-{verze}.zip` | Platformně neutrální pluginy (Atlassian, GoranG3, Luxafor, Office365Calendar) | — |
 
-**Postup:**
+`macos-arm64` je build pro Macy s Apple Siliconem (M1 a novější).
+
+**Postup (Windows, Linux):**
 
 1. Stáhni si balíček pro svůj operační systém a architekturu.
 2. Rozbal do libovolné složky.
-3. Chceš‑li pluginy, rozbal je do podsložky `plugins/` vedle spustitelného souboru. Na macOS, kde je GUI zabalené v `WorkTracker.app`, místo toho do `~/Library/Application Support/WorkTracker/plugins/` — do podepsaného bundlu se nezapisuje.
+3. Chceš‑li pluginy, rozbal je do podsložky `plugins/` vedle spustitelného souboru.
 4. Spusť aplikaci — databáze i nastavení se vytvoří automaticky při prvním startu.
 
-Balíčky jsou framework‑dependent (není zahrnutý .NET runtime). Je potřeba mít nainstalovaný **.NET 10 Runtime** (pro CLI stačí runtime, pro GUI je potřeba Desktop Runtime).
+**Postup (macOS):**
+
+1. Stáhni `WorkTracker-{verze}-macos-arm64.dmg` a otevři ho.
+2. V okně, které se objeví, přetáhni **WorkTracker** na zástupce **Applications**. Pak můžeš disk vysunout a `.dmg` smazat.
+3. Při prvním spuštění tě zastaví Gatekeeper — build je podepsaný jen ad-hoc, ne certifikátem Apple Developer ID. Povol ho jednou:
+   - **macOS 15 (Sequoia) a novější:** spusť WorkTracker, v dialogu „WorkTracker nebyl otevřen“ klikni na **Hotovo**. Pak otevři **Nastavení systému → Soukromí a zabezpečení**, sjeď dolů k hlášce o WorkTrackeru, klikni na **Přesto otevřít** a potvrď heslem. Pravý klik → Otevřít tu už nefunguje, Apple tuhle zkratku v macOS 15 zrušil.
+   - **macOS 14 a starší:** ve Finderu na aplikaci klikni pravým tlačítkem → **Otevřít** a v dialogu znovu **Otevřít**.
+   - **Z Terminálu (kterákoli verze):** `xattr -dr com.apple.quarantine /Applications/WorkTracker.app`
+
+   Potom už aplikace startuje normálně. Každá nově stažená verze ale potřebuje povolení znovu.
+4. Pluginy rozbal do `~/Library/Application Support/WorkTracker/plugins/` — do podepsaného bundlu `WorkTracker.app` se nezapisuje.
+
+Balíčky jsou framework‑dependent (není zahrnutý .NET runtime). Je potřeba mít nainstalovaný **.NET 10 Runtime**.
 
 ### Build ze zdrojových kódů
 
@@ -766,7 +780,7 @@ Pokud zaškrtnete **Sledovat systémové nastavení**, aplikace si načte aktuá
 Aplikace při startu (jednou za 24 hodin) kontroluje GitHub Releases API na dostupnost novější verze. Pokud najde vyšší verzi než `AppInfo.Version`:
 
 - Zobrazí nenápadný banner v hlavním okně s odkazem na release notes a tlačítkem **Download**.
-- Automatické stažení/instalace **není** implementovaná — uživatel musí balíček stáhnout a rozbalit ručně. Aplikace tento krok úmyslně nedelá, aby neřešila UAC, code signing a rollback.
+- Automatické stažení/instalace **není** implementovaná — uživatel musí balíček stáhnout a rozbalit (na macOS přetáhnout z `.dmg` do Applications) ručně. Aplikace tento krok úmyslně nedelá, aby neřešila UAC, code signing a rollback.
 
 Kontrolu lze vypnout v **Settings → General → Check for updates**.
 

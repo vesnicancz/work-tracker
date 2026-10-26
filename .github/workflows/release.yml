@@ -75,12 +75,16 @@ jobs:
       matrix:
         include:
           - rid: win-x64
+            platform: windows-x64
             artifact: WorkTracker-CLI-win-x64
           - rid: win-arm64
+            platform: windows-arm64
             artifact: WorkTracker-CLI-win-arm64
           - rid: linux-x64
+            platform: linux-x64
             artifact: WorkTracker-CLI-linux-x64
           - rid: osx-arm64
+            platform: macos-arm64
             artifact: WorkTracker-CLI-osx-arm64
     steps:
       - uses: actions/checkout@v6
@@ -103,16 +107,21 @@ jobs:
           -p:DebugType=none
           -o publish/${{ matrix.artifact }}
 
+      # See the same step in publish-avalonia for the naming scheme.
+      - name: Name the asset
+        run: echo "ASSET=WorkTracker-CLI-${GITHUB_REF_NAME#v}-${{ matrix.platform }}" >> "$GITHUB_ENV"
+
       - name: Archive
         run: |
+          mkdir -p publish/out
           cd publish/${{ matrix.artifact }}
-          zip -r ../${{ matrix.artifact }}.zip .
+          zip -r "../out/$ASSET.zip" .
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.artifact }}
-          path: publish/${{ matrix.artifact }}.zip
+          path: publish/out/*
 
   publish-avalonia:
     name: Publish Avalonia (${{ matrix.rid }})
@@ -127,15 +136,19 @@ jobs:
         include:
           - rid: win-x64
             os: windows-latest
+            platform: windows-x64
             artifact: WorkTracker-Avalonia-win-x64
           - rid: win-arm64
             os: windows-latest
+            platform: windows-arm64
             artifact: WorkTracker-Avalonia-win-arm64
           - rid: linux-x64
             os: ubuntu-latest
+            platform: linux-x64
             artifact: WorkTracker-Avalonia-linux-x64
           - rid: osx-arm64
             os: macos-latest
+            platform: macos-arm64
             artifact: WorkTracker-Avalonia-osx-arm64
     steps:
       - uses: actions/checkout@v6
@@ -169,30 +182,54 @@ jobs:
         run: >
           build/macos/make-app-bundle.sh
           publish/${{ matrix.artifact }}
-          publish/bundle/WorkTracker.app
+          publish/dmg/WorkTracker.app
           "$VERSION_TAG"
+
+      # The file name is all people go by on the release page, so it carries what they look for
+      # (product, version, OS, CPU) instead of the RID: WorkTracker-1.15.0-macos-arm64.dmg. The
+      # GUI is the plain "WorkTracker"; the CLI and the plugins say what they are.
+      - name: Name the asset
+        shell: bash
+        run: echo "ASSET=WorkTracker-${GITHUB_REF_NAME#v}-${{ matrix.platform }}" >> "$GITHUB_ENV"
 
       - name: Archive (Linux)
         if: runner.os == 'Linux'
         run: |
+          mkdir -p publish/out
           cd publish/${{ matrix.artifact }}
-          zip -r ../${{ matrix.artifact }}.zip .
+          zip -r "../out/$ASSET.zip" .
 
-      # ditto rather than zip: it is what keeps the bundle's symlinks, and with them the code
-      # signature, intact through the archive.
-      - name: Archive (macOS)
+      # A disk image rather than a zip, because that is what a Mac user expects: it opens as a
+      # window with the app next to an Applications shortcut, and installing is a single drag.
+      # The bundle step built the app straight into the staging folder, which hdiutil turns into
+      # the volume as-is, symlinks and code signature included.
+      - name: Package disk image (macOS)
         if: runner.os == 'macOS'
-        run: ditto -c -k --sequesterRsrc --keepParent publish/bundle/WorkTracker.app publish/${{ matrix.artifact }}.zip
+        run: |
+          ln -s /Applications publish/dmg/Applications
+          mkdir -p publish/out
+          # hdiutil on hosted runners now and then fails with "Resource busy" for no reason of
+          # ours; a second attempt goes through.
+          for attempt in 1 2 3; do
+            if hdiutil create -volname WorkTracker -srcfolder publish/dmg -format UDZO -ov "publish/out/$ASSET.dmg"; then
+              exit 0
+            fi
+            echo "hdiutil create failed (attempt $attempt), retrying"
+            sleep 10
+          done
+          exit 1
 
       - name: Archive (Windows)
         if: runner.os == 'Windows'
-        run: Compress-Archive -Path publish/${{ matrix.artifact }}/* -DestinationPath publish/${{ matrix.artifact }}.zip
+        run: |
+          New-Item -ItemType Directory -Force publish/out | Out-Null
+          Compress-Archive -Path publish/${{ matrix.artifact }}/* -DestinationPath "publish/out/$env:ASSET.zip"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.artifact }}
-          path: publish/${{ matrix.artifact }}.zip
+          path: publish/out/*
 
   publish-plugins:
     name: Publish Plugin (${{ matrix.plugin }})
@@ -232,16 +269,23 @@ jobs:
           -p:DebugType=none
           -o publish/${{ matrix.artifact }}
 
+      # See the same step in publish-avalonia for the naming scheme. Plugins are platform-neutral,
+      # so there is no platform suffix. Only the zip is renamed: the folder inside keeps the
+      # assembly name, which is what ends up under plugins/.
+      - name: Name the asset
+        run: echo "ASSET=WorkTracker-Plugin-${{ matrix.plugin }}-${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+
       - name: Archive
         run: |
+          mkdir -p publish/out
           cd publish
-          zip -r ${{ matrix.artifact }}.zip ${{ matrix.artifact }}
+          zip -r "out/$ASSET.zip" ${{ matrix.artifact }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.artifact }}
-          path: publish/${{ matrix.artifact }}.zip
+          path: publish/out/*
 
   release:
     name: Create GitHub Release
@@ -261,4 +305,4 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           generate_release_notes: true
-          files: artifacts/*.zip
+          files: artifacts/*
