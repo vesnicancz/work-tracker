@@ -230,7 +230,7 @@ public abstract class PluginBase(ILogger logger) : IPlugin
     protected virtual Task OnShutdownAsync() => Task.CompletedTask;
     protected virtual Task<PluginValidationResult> OnValidateConfigurationAsync(
         IDictionary<string, string> configuration,
-        CancellationToken cancellationToken) => /* default: vrací Success(); hook pro dodatečná pravidla nad rámec základní validace (IsRequired, u povinných polí i regex), kterou dělá ValidateConfigurationAsync před zavoláním tohoto hooku */;
+        CancellationToken cancellationToken) => /* default: vrací Success(); hook pro dodatečná pravidla nad rámec základní validace (IsRequired, typ pole, regex), kterou dělá ValidateConfigurationAsync před zavoláním tohoto hooku */;
     protected virtual ValueTask OnDisposeAsync() => ValueTask.CompletedTask;
 
     // Helpery:
@@ -242,11 +242,13 @@ public abstract class PluginBase(ILogger logger) : IPlugin
 
 > `OnInitializeAsync` dostává `configuration` dict jako parametr. V rámci hooků můžeš použít buď tento parametr, nebo `base.Configuration` (jsou identické — base class si dict uloží před voláním hooku). Používej `GetRequiredConfigValue` / `GetConfigValue`, které čtou z `Configuration` a dávají konzistentní error reporting.
 
-**Výchozí validace** (`ValidateConfigurationAsync`, běží při každé `InitializeAsync`) prochází **jen pole s `IsRequired = true`** a u nich kontroluje:
-- hodnota je přítomná a neprázdná,
-- pokud má pole `ValidationPattern`, hodnota mu odpovídá (regex s timeoutem 1 s); chybová hláška je z `ValidationMessage`.
+**Výchozí validace** (`ValidateConfigurationAsync`) běží při každé `InitializeAsync`, před uložením Nastavení (u povolených pluginů) a před testem připojení. Prochází všechna pole:
+- povinné pole (`IsRequired = true`) musí mít neprázdnou hodnotu,
+- prázdné nepovinné pole se dál nekontroluje,
+- vyplněná hodnota musí odpovídat typu pole (`Url` = absolutní http/https URL, `Email` = e‑mailová adresa, `Number` = číslo v invariantní kultuře, `Checkbox` = `true`/`false`),
+- pokud má pole `ValidationPattern`, vyplněná hodnota mu musí odpovídat (regex s timeoutem 1 s); chybová hláška je z `ValidationMessage`.
 
-U nepovinných polí se `ValidationPattern` zatím **nevyhodnocuje**. Formát volitelné hodnoty proto kontroluj v `OnValidateConfigurationAsync` (viz [§ Vlastní validace](#vlastní-validace)).
+Nastavení s chybou neuloží a chyby ukáže v dialogu, test připojení je vypíše místo výsledku. Pravidla, která typ ani regex nevyjádří, patří do `OnValidateConfigurationAsync` (viz [§ Vlastní validace](#vlastní-validace)).
 
 ### `WorklogUploadPluginBase`
 
@@ -326,20 +328,17 @@ Plugin popisuje svou konfiguraci deklarativně přes `PluginConfigurationField`.
 
 ### Typy polí
 
-V Nastavení se zatím všechny typy kromě `Checkbox` zobrazují jako stejný jednořádkový textbox s popiskem (`Label`) a placeholderem (`Placeholder`). `Type` tak ovlivňuje hlavně ukládání:
+Každé pole má v Nastavení popisek (`Label`), placeholder (`Placeholder`) a pod sebou šedý text s `Description`, pokud ho vyplníš. `Type` určuje ovládací prvek a validaci:
 
-| Typ | V Nastavení | Poznámka |
-|-----|-------------|----------|
-| `Text` | Textbox | Výchozí |
-| `Password` | Textbox (**nemaskovaný**) | Hodnota se ukládá do secure storage |
-| `Url` | Textbox | Formát se nekontroluje — použij `ValidationPattern` u povinného pole, nebo `OnValidateConfigurationAsync` |
-| `Number` | Textbox | Totéž; hodnotu parsuj sám |
-| `Email` | Textbox | Totéž |
-| `MultilineText` | Textbox (jednořádkový) | |
-| `Checkbox` | Checkbox | Ukládá se jako `"true"` / `"false"` |
-| `Dropdown` | Textbox | `PluginConfigurationField` nemá jak definovat volby |
-
-`Description` pole se v Nastavení zatím nezobrazuje. Nápovědu, kterou uživatel musí vidět, dej do `Label` nebo `Placeholder`.
+| Typ | V Nastavení | Validace vyplněné hodnoty |
+|-----|-------------|---------------------------|
+| `Text` | Textbox | — (výchozí typ) |
+| `Password` | Maskovaný textbox s tlačítkem pro zobrazení | — ; hodnota se ukládá do secure storage |
+| `Url` | Textbox | Absolutní `http`/`https` URL |
+| `Number` | Textbox | Číslo (`decimal`, invariantní kultura); celé číslo nebo rozsah hlídej regexem či v `OnValidateConfigurationAsync` |
+| `Email` | Textbox | E‑mailová adresa (`MailAddress.TryCreate`) |
+| `MultilineText` | Víceřádkový textbox (Enter = nový řádek, zalamuje) | — |
+| `Checkbox` | Checkbox | `true` / `false`; ukládá se jako `"true"` / `"false"` |
 
 ### Příklad: konfigurace ve stylu Jira pluginu
 
@@ -355,7 +354,7 @@ public override IReadOnlyList<PluginConfigurationField> GetConfigurationFields()
         Type = PluginConfigurationFieldType.Url,
         IsRequired = true,
         Placeholder = "https://vase-firma.atlassian.net",
-        ValidationPattern = @"^https://.*",    // vyhodnotí se, protože pole je povinné
+        ValidationPattern = @"^https://.*",    // typ Url pustí i http://, regex trvá na HTTPS
         ValidationMessage = "Zadej HTTPS URL.",
     },
     new PluginConfigurationField
@@ -388,7 +387,7 @@ public override IReadOnlyList<PluginConfigurationField> GetConfigurationFields()
         Type = PluginConfigurationFieldType.Number,
         IsRequired = false,
         DefaultValue = "20",
-        // ValidationPattern by se u nepovinného pole nevyhodnotil — formát hlídá OnValidateConfigurationAsync níže.
+        ValidationPattern = @"^\d+$",          // kontroluje se, jen když je pole vyplněné
     },
 ];
 ```
@@ -415,7 +414,7 @@ protected override async Task<bool> OnInitializeAsync(
 
 ### Vlastní validace
 
-Pokud výchozí validace nestačí (typicky formát nepovinného pole), přepiš `OnValidateConfigurationAsync`. Volá se až po úspěšné výchozí validaci:
+Pokud výchozí validace nestačí (typicky pravidlo, které typ pole ani regex nevyjádří — rozsah čísla, závislost mezi poli), přepiš `OnValidateConfigurationAsync`. Volá se až po úspěšné výchozí validaci:
 
 ```csharp
 protected override async Task<PluginValidationResult> OnValidateConfigurationAsync(
@@ -837,7 +836,7 @@ Dokumentace: [plugins/goran-g3.md](plugins/goran-g3.md).
 - **Lazy device open** — `OnInitializeAsync` jen naparsuje barvy z konfigurace, zařízení se otevírá až při prvním `SetStateAsync` nebo testu připojení. Výjimka: se zapnutým `turn_off_on_startup` pošle první inicializace `Idle`, takže zařízení otevře hned.
 - **`ITestablePlugin`** i pro status indicator plugin — `StatusIndicatorPluginBase` ho nevyžaduje, ale plugin si ho přidá sám, takže se v Nastavení objeví **Otestovat připojení**, které rozsvítí LED a při neúspěchu řekne důvod (chybí udev pravidlo, zařízení drží jiná aplikace, …).
 - **Reopen po odpojení** — `IsConnected` u HID zařízení znamená jen „handle jsme nezavřeli", takže plugin po `LuxaforDeviceDisconnectedException` zařízení jednou znovu otevře (přes `ex.Descriptor`, s fallbackem na `Open()`) a příkaz zopakuje. Užitečný vzor pro každý plugin ovládající hardware.
-- **Konfigurovatelné barvy per Pomodoro fázi** — hex color pole s deklarovaným `ValidationPattern` `^#[0-9A-Fa-f]{6}$`. Pole nejsou povinná, takže `PluginBase` regex nevyhodnotí; neplatná hodnota tiše spadne na výchozí barvu (`ParseColor`).
+- **Konfigurovatelné barvy per Pomodoro fázi** — nepovinná hex color pole s `ValidationPattern` `^#[0-9A-Fa-f]{6}$`. Prázdné pole použije výchozí barvu, vyplněné musí regexu odpovídat.
 - **Thread‑safe** s `SemaphoreSlim` — hlídá stav pluginu (otevírání a zavírání zařízení, poslední stav), aby se souběžná volání nepraly o handle.
 
 Dokumentace: [plugins/luxafor.md](plugins/luxafor.md).

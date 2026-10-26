@@ -24,6 +24,8 @@ public class SettingsViewModelTests
 		{
 			Settings.SetupGet(s => s.Settings).Returns(SettingsModel);
 			Orchestrator.Setup(o => o.LoadPlugins()).Returns([]);
+			Orchestrator.Setup(o => o.ValidatePluginConfigurationsAsync(It.IsAny<IEnumerable<PluginViewModel>>(), It.IsAny<CancellationToken>()))
+				.ReturnsAsync([]);
 			Localization.Setup(l => l[It.IsAny<string>()]).Returns((string key) => key);
 			Localization.Setup(l => l.GetFormattedString(It.IsAny<string>(), It.IsAny<object[]>()))
 				.Returns((string key, object[] args) => $"{key}: {string.Join(", ", args)}");
@@ -450,6 +452,25 @@ public class SettingsViewModelTests
 		closed.Should().BeFalse("a failed save has nothing to close the dialog over");
 		vm.HasSaveError.Should().BeTrue();
 		vm.SaveError.Should().Contain("No credential store has been selected.");
+	}
+
+	[Fact]
+	public async Task Save_WithInvalidPluginConfiguration_ShowsTheErrorsAndDoesNotSave()
+	{
+		var harness = new Harness();
+		harness.Orchestrator
+			.Setup(o => o.ValidatePluginConfigurationsAsync(It.IsAny<IEnumerable<PluginViewModel>>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(["Luxafor: Bad colour"]);
+		var closed = false;
+		var vm = harness.CreateViewModel();
+		vm.CloseAction = () => closed = true;
+
+		await vm.SaveCommand.ExecuteAsync(null);
+
+		closed.Should().BeFalse();
+		vm.SaveError.Should().Contain("PluginConfigurationInvalid").And.Contain("Luxafor: Bad colour");
+		harness.Orchestrator.Verify(
+			o => o.SaveSettingsAsync(It.IsAny<SettingsSaveRequest>(), It.IsAny<CancellationToken>()), Times.Never);
 	}
 
 	[Fact]

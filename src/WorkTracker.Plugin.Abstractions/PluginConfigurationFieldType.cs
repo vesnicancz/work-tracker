@@ -11,6 +11,5 @@ public enum PluginConfigurationFieldType
 	Number,
 	Email,
 	MultilineText,
-	Checkbox,
-	Dropdown
+	Checkbox
 }

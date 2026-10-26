@@ -154,13 +154,37 @@ public class ConfigurationFieldViewModelTests
 	}
 
 	[Theory]
+	[InlineData(PluginConfigurationFieldType.Password, true, false)]
+	[InlineData(PluginConfigurationFieldType.MultilineText, false, true)]
+	[InlineData(PluginConfigurationFieldType.Text, false, false)]
+	[InlineData(PluginConfigurationFieldType.Url, false, false)]
+	public void IsPasswordAndIsMultiline_FollowFieldType(PluginConfigurationFieldType type, bool isPassword, bool isMultiline)
+	{
+		var (vm, _) = CreateVm(CreateField(type: type));
+
+		vm.IsPassword.Should().Be(isPassword);
+		vm.IsMultiline.Should().Be(isMultiline);
+	}
+
+	[Theory]
+	[InlineData("Your Jira API token", true)]
+	[InlineData("", false)]
+	[InlineData(null, false)]
+	public void HasDescription_ReflectsFieldDescription(string? description, bool expected)
+	{
+		var field = new PluginConfigurationField { Key = "Token", Label = "Token", Description = description };
+		var (vm, _) = CreateVm(field);
+
+		vm.HasDescription.Should().Be(expected);
+	}
+
+	[Theory]
 	[InlineData(PluginConfigurationFieldType.Text)]
 	[InlineData(PluginConfigurationFieldType.Password)]
 	[InlineData(PluginConfigurationFieldType.Url)]
 	[InlineData(PluginConfigurationFieldType.Number)]
 	[InlineData(PluginConfigurationFieldType.Email)]
 	[InlineData(PluginConfigurationFieldType.MultilineText)]
-	[InlineData(PluginConfigurationFieldType.Dropdown)]
 	public void IsTextInput_WhenTypeNotCheckbox_ReturnsTrue(PluginConfigurationFieldType type)
 	{
 		var (vm, _) = CreateVm(CreateField(type: type));

@@ -440,7 +440,8 @@ public sealed class CommandHandler
 
 			CliConsole.Out.Write(table);
 
-			if (!assumeYes && !CliConsole.Out.Confirm("\nSend these entries to Tempo?"))
+			var provider = Markup.Escape(DescribeProvider(providerId));
+			if (!assumeYes && !CliConsole.Out.Confirm($"\nSend these entries to {provider}?"))
 			{
 				CliConsole.Out.MarkupLine("[yellow]Cancelled[/]");
 				return 0;
@@ -452,12 +453,12 @@ public sealed class CommandHandler
 
 			if (result.IsSuccess)
 			{
-				CliConsole.Out.MarkupLine($"[green]✓[/] Successfully sent {result.Value.SuccessfulEntries} entries to Tempo");
+				CliConsole.Out.MarkupLine($"[green]✓[/] Successfully sent {result.Value.SuccessfulEntries} entries to {provider}");
 				return 0;
 			}
 			else
 			{
-				CliConsole.Error.MarkupLine($"[red]✗ Failed to send entries to Tempo:[/] {Markup.Escape(result.Error)}");
+				CliConsole.Error.MarkupLine($"[red]✗ Failed to send entries to {provider}:[/] {Markup.Escape(result.Error)}");
 				return 1;
 			}
 		}
@@ -466,6 +467,21 @@ public sealed class CommandHandler
 			CliConsole.Error.MarkupLine($"[red]✗ Error:[/] {Markup.Escape(ex.Message)}");
 			return 1;
 		}
+	}
+
+	/// <summary>
+	/// Names the plugin a send goes to, for the prompt and the result. Without --provider the
+	/// submission service takes the first enabled upload plugin, so this picks the same one. An id
+	/// that matches nothing is shown as given; the submission then fails and says so.
+	/// </summary>
+	private string DescribeProvider(string? providerId)
+	{
+		var providers = _submissionService.GetAvailableProviders();
+		var provider = providerId == null
+			? providers.FirstOrDefault()
+			: providers.FirstOrDefault(p => p.Id == providerId);
+
+		return provider?.Name ?? providerId ?? "the worklog provider";
 	}
 
 	private async Task<int> HandleSendWeekCommand(DateTime? date = null, bool assumeYes = false, string? providerId = null)
@@ -525,7 +541,8 @@ public sealed class CommandHandler
 
 			CliConsole.Out.MarkupLine($"\n[bold]Total:[/] {totalEntries} entries, {totalMinutes / 60}h {totalMinutes % 60}m");
 
-			if (!assumeYes && !CliConsole.Out.Confirm("\nSend all these entries to Tempo?"))
+			var provider = Markup.Escape(DescribeProvider(providerId));
+			if (!assumeYes && !CliConsole.Out.Confirm($"\nSend all these entries to {provider}?"))
 			{
 				CliConsole.Out.MarkupLine("[yellow]Cancelled[/]");
 				return 0;
@@ -538,7 +555,7 @@ public sealed class CommandHandler
 			if (result.IsSuccess)
 			{
 				var submissionResult = result.Value;
-				CliConsole.Out.MarkupLine($"[green]✓[/] Successfully sent {submissionResult.SuccessfulEntries} entries to Tempo");
+				CliConsole.Out.MarkupLine($"[green]✓[/] Successfully sent {submissionResult.SuccessfulEntries} entries to {provider}");
 
 				if (submissionResult.HasPartialSuccess)
 				{
@@ -553,7 +570,7 @@ public sealed class CommandHandler
 			}
 			else
 			{
-				CliConsole.Error.MarkupLine($"[red]✗ Failed to send entries to Tempo:[/] {Markup.Escape(result.Error)}");
+				CliConsole.Error.MarkupLine($"[red]✗ Failed to send entries to {provider}:[/] {Markup.Escape(result.Error)}");
 				return 1;
 			}
 		}

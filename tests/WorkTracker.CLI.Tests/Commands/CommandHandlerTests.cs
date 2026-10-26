@@ -608,6 +608,51 @@ public sealed class CommandHandlerTests : IDisposable
 		};
 
 	[Fact]
+	public async Task Send_NamesTheProviderTheEntriesGoTo()
+	{
+		_console.Interactive();
+		_console.Input.PushTextWithEnter("y");
+		_submissionService
+			.Setup(s => s.GetAvailableProviders())
+			.Returns([new ProviderInfo { Id = "gorang3.worklog", Name = "Goran G3 Timesheets", SupportedModes = WorklogSubmissionMode.Timed }]);
+		_submissionService
+			.Setup(s => s.PreviewDailyWorklogAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(PreviewWith(Worklog()));
+		_submissionService
+			.Setup(s => s.SubmitDailyWorklogAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(Result.Success(new SubmissionResult { TotalEntries = 1, SuccessfulEntries = 1 }));
+
+		var exitCode = await _handler.HandleSendCommand(LocalNow.Date);
+
+		exitCode.Should().Be(0);
+		_console.Output.Should().Contain("Send these entries to Goran G3 Timesheets?")
+			.And.Contain("Successfully sent 1 entries to Goran G3 Timesheets")
+			.And.NotContain("Tempo");
+	}
+
+	[Fact]
+	public async Task SendWeek_WithProviderId_NamesThatProvider()
+	{
+		_submissionService
+			.Setup(s => s.GetAvailableProviders())
+			.Returns([
+				new ProviderInfo { Id = "tempo.worklog", Name = "Tempo Timesheets", SupportedModes = WorklogSubmissionMode.Timed },
+				new ProviderInfo { Id = "gorang3.worklog", Name = "Goran G3 Timesheets", SupportedModes = WorklogSubmissionMode.Timed }
+			]);
+		_submissionService
+			.Setup(s => s.PreviewWeeklyWorklogAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(new Dictionary<DateTime, WorklogSubmissionDto> { [LocalNow.Date] = PreviewWith(Worklog()) });
+		_submissionService
+			.Setup(s => s.SubmitWeeklyWorklogAsync(It.IsAny<DateTime>(), "gorang3.worklog", It.IsAny<CancellationToken>()))
+			.ReturnsAsync(Result.Failure<SubmissionResult>("Server down"));
+
+		var exitCode = await _handler.HandleSendCommand(LocalNow.Date, isWeek: true, assumeYes: true, providerId: "gorang3.worklog");
+
+		exitCode.Should().Be(1);
+		_errorConsole.Output.Should().Contain("Failed to send entries to Goran G3 Timesheets");
+	}
+
+	[Fact]
 	public async Task Send_AssumeYes_SubmitsWithoutPrompting()
 	{
 		// The console is left non-interactive on purpose: a prompt here would throw, which is

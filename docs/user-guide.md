@@ -411,7 +411,7 @@ Otevírá se kliknutím na **Nastavení** v levém dolním rohu hlavního okna. 
 
 - Název aplikace a **verze** (`AppInfo.DisplayVersion`).
 - **Klávesové zkratky**:
-  - `Ctrl + Shift + W` — globální hotkey pro rychlé vytvoření work itemu (funguje i když okno není v popředí). Na Linuxu závisí na desktop portálu — viz [Globální zkratka na Linuxu](#globální-zkratka-na-linuxu); na macOS zatím není implementovaná. Popisek v záložce uvádí „Zobrazit/skrýt okno“, zkratka ale otevírá dialog nového záznamu.
+  - `Ctrl + Shift + W` — globální hotkey pro rychlé vytvoření work itemu (funguje i když okno není v popředí). Na Linuxu závisí na desktop portálu — viz [Globální zkratka na Linuxu](#globální-zkratka-na-linuxu); na macOS zatím není implementovaná.
   - `Enter` — v textboxu rychlého startu potvrdí a spustí záznam.
 - **Stručný přehled** — bullet seznam základních funkcí (jak začít trackovat, formát Jira kódu, k čemu jsou oblíbené, odesílání worklogů, system tray).
 - **Systém** — runtime verze (.NET), platforma (OS), UI framework.
@@ -494,18 +494,19 @@ Pluginy se konfigurují v GUI přes **Nastavení → Pluginy**. Každý plugin v
 
 ### Typy polí
 
-V Nastavení se zatím vykreslí jen dva druhy ovládacích prvků: `Checkbox` jako zaškrtávátko a **všechny ostatní typy jako stejný jednořádkový textbox**. Typ pole tedy vzhled neovlivňuje — hodnota typu `Password` se při psaní nemaskuje, `MultilineText` je jednořádkový, `Number` ani `Dropdown` nemají vlastní ovládací prvek a `Url`/`Email` se podle typu nevalidují (jen podle případného regexu `ValidationPattern`, a ten se vyhodnocuje jen u povinných polí). Popis pole (`Description`) se v UI nezobrazuje.
+Pod každým polem je šedým písmem jeho popis od pluginu, pokud nějaký má. Vzhled a kontrola pole se řídí jeho typem:
 
-| Typ | Co dělá navíc | Příklad |
-|-----|---------------|---------|
-| `Text` | — | Jira email, project code |
-| `Password` | ukládá se do secure storage | API token |
-| `Url` | — | `https://api.tempo.io/4` |
-| `Number` | — | `MaxResults` |
-| `Email` | — | Jira login email |
-| `MultilineText` | — | JQL filtr |
+| Typ | Jak vypadá a co se kontroluje | Příklad |
+|-----|-------------------------------|---------|
+| `Text` | obyčejný textbox | Jira email, project code |
+| `Password` | maskovaný textbox s tlačítkem pro zobrazení; ukládá se do secure storage | API token |
+| `Url` | textbox; musí to být celá `http`/`https` adresa | `https://api.tempo.io/4` |
+| `Number` | textbox; musí to být číslo | `MaxResults` |
+| `Email` | textbox; musí to být e‑mailová adresa | Jira login email |
+| `MultilineText` | víceřádkový textbox, Enter vloží nový řádek | JQL filtr |
 | `Checkbox` | zaškrtávátko, ukládá se jako `true`/`false` | `IncludeAllDayEvents` |
-| `Dropdown` | — (volby zatím nejde definovat) | — |
+
+Kontroluje se jen vyplněná hodnota (a u povinných polí, že vyplněná je); plugin může přidat vlastní pravidla, třeba regex. Když je u povoleného pluginu něco špatně, **Uložit** nastavení neuloží a nad tlačítky vypíše, které pole a proč. **Otestovat připojení** v tom případě vypíše tytéž chyby místo testu.
 
 ### Secure storage
 
@@ -654,7 +655,7 @@ Luxafor integrace je dokumentovaná v [plugins/luxafor.md](plugins/luxafor.md).
 
 1. Otevři **Nastavení → Oblíbené** a klikni na **Přidat**.
 2. Zadej název, ticket (volitelně), popis.
-3. Favorite se objeví v system tray menu (i když je okno zavřené). V hlavním okně oblíbené nejsou — popisek v záložce O aplikaci, který zmiňuje postranní panel, je nepřesný.
+3. Favorite se objeví v system tray menu (i když je okno zavřené). V hlavním okně oblíbené nejsou.
 
 `FavoriteWorkItem` je uložený v `settings.json` (bez tokenů, jen metadata) a persistuje se napříč restarty.
 

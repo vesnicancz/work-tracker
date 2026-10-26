@@ -32,6 +32,8 @@ public static class MockPluginFactory
 		var mock = new Mock<IPlugin>();
 		mock.Setup(p => p.Metadata).Returns(CreateMetadata(id, name));
 		mock.Setup(p => p.GetConfigurationFields()).Returns(fields);
+		mock.Setup(p => p.ValidateConfigurationAsync(It.IsAny<IDictionary<string, string>>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(PluginValidationResult.Success());
 		return mock;
 	}
 
@@ -45,6 +47,8 @@ public static class MockPluginFactory
 		mock.Setup(p => p.GetConfigurationFields()).Returns(fields);
 		mock.Setup(p => p.InitializeAsync(It.IsAny<IDictionary<string, string>>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(true);
+		mock.Setup(p => p.ValidateConfigurationAsync(It.IsAny<IDictionary<string, string>>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(PluginValidationResult.Success());
 		return mock;
 	}
 
@@ -59,6 +63,8 @@ public static class MockPluginFactory
 		mock.Setup(p => p.SupportsSearch).Returns(supportsSearch);
 		mock.Setup(p => p.InitializeAsync(It.IsAny<IDictionary<string, string>>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(true);
+		mock.Setup(p => p.ValidateConfigurationAsync(It.IsAny<IDictionary<string, string>>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(PluginValidationResult.Success());
 		return mock;
 	}
 
@@ -71,6 +77,8 @@ public static class MockPluginFactory
 		mock.Setup(p => p.GetConfigurationFields()).Returns([]);
 		mock.Setup(p => p.InitializeAsync(It.IsAny<IDictionary<string, string>>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(true);
+		mock.Setup(p => p.ValidateConfigurationAsync(It.IsAny<IDictionary<string, string>>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(PluginValidationResult.Success());
 		return mock;
 	}
 }

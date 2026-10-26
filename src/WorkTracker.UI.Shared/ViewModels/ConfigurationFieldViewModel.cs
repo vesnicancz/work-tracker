@@ -24,8 +24,12 @@ public class ConfigurationFieldViewModel : ObservableObject
 	public PluginConfigurationFieldType Type => _field.Type;
 	public bool IsRequired => _field.IsRequired;
 
+	public bool HasDescription => !string.IsNullOrWhiteSpace(Description);
+
 	public bool IsCheckbox => Type == PluginConfigurationFieldType.Checkbox;
 	public bool IsTextInput => !IsCheckbox;
+	public bool IsPassword => Type == PluginConfigurationFieldType.Password;
+	public bool IsMultiline => Type == PluginConfigurationFieldType.MultilineText;
 
 	public string Value
 	{

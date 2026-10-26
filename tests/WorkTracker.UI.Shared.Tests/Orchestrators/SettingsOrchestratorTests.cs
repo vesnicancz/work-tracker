@@ -381,7 +381,64 @@ public class SettingsOrchestratorTests
 		result.Should().Contain("Auth failed");
 	}
 
+	[Fact]
+	public async Task TestConnectionAsync_InvalidConfiguration_ReportsErrorsWithoutInitializing()
+	{
+		var worklogPlugin = MockPluginFactory.CreateWorklogPlugin("tempo", "Tempo");
+		worklogPlugin.Setup(p => p.ValidateConfigurationAsync(It.IsAny<IDictionary<string, string>>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(PluginValidationResult.Failure("Field 'API URL' must be an absolute http or https URL"));
+
+		var vm = new PluginViewModel(worklogPlugin.Object);
+
+		var result = await _orchestrator.TestConnectionAsync(vm, null, TestContext.Current.CancellationToken);
+
+		result.Should().StartWith("✗").And.Contain("Field 'API URL' must be an absolute http or https URL");
+		worklogPlugin.Verify(p => p.InitializeAsync(It.IsAny<IDictionary<string, string>>(), It.IsAny<CancellationToken>()), Times.Never);
+		worklogPlugin.Verify(p => p.TestConnectionAsync(It.IsAny<IProgress<string>?>(), It.IsAny<CancellationToken>()), Times.Never);
+	}
+
 	#endregion TestConnectionAsync
+
+	#region ValidatePluginConfigurationsAsync
+
+	[Fact]
+	public async Task ValidatePluginConfigurationsAsync_AllValid_ReturnsEmpty()
+	{
+		var vm = new PluginViewModel(MockPluginFactory.CreatePlugin("tempo", "Tempo").Object) { IsEnabled = true };
+
+		var errors = await _orchestrator.ValidatePluginConfigurationsAsync([vm], TestContext.Current.CancellationToken);
+
+		errors.Should().BeEmpty();
+	}
+
+	[Fact]
+	public async Task ValidatePluginConfigurationsAsync_EnabledPluginInvalid_PrefixesErrorsWithPluginName()
+	{
+		var plugin = MockPluginFactory.CreatePlugin("luxafor", "Luxafor");
+		plugin.Setup(p => p.ValidateConfigurationAsync(It.IsAny<IDictionary<string, string>>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(PluginValidationResult.Failure("Bad colour", "Bad timeout"));
+		var vm = new PluginViewModel(plugin.Object) { IsEnabled = true };
+
+		var errors = await _orchestrator.ValidatePluginConfigurationsAsync([vm], TestContext.Current.CancellationToken);
+
+		errors.Should().Equal("Luxafor: Bad colour", "Luxafor: Bad timeout");
+	}
+
+	[Fact]
+	public async Task ValidatePluginConfigurationsAsync_DisabledPlugin_IsNotValidated()
+	{
+		var plugin = MockPluginFactory.CreatePlugin("luxafor", "Luxafor");
+		plugin.Setup(p => p.ValidateConfigurationAsync(It.IsAny<IDictionary<string, string>>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(PluginValidationResult.Failure("Bad colour"));
+		var vm = new PluginViewModel(plugin.Object) { IsEnabled = false };
+
+		var errors = await _orchestrator.ValidatePluginConfigurationsAsync([vm], TestContext.Current.CancellationToken);
+
+		errors.Should().BeEmpty();
+		plugin.Verify(p => p.ValidateConfigurationAsync(It.IsAny<IDictionary<string, string>>(), It.IsAny<CancellationToken>()), Times.Never);
+	}
+
+	#endregion ValidatePluginConfigurationsAsync
 
 	private static Mock<IPlugin> CreateMockPluginWithPasswordField(string id, string name, string passwordFieldKey)
 	{

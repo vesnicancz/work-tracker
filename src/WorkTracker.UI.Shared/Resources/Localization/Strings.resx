@@ -351,6 +351,10 @@
   <data name="FailedToOpenSettings" xml:space="preserve">
     <value>Failed to open settings: {0}</value>
   </data>
+  <data name="PluginConfigurationInvalid" xml:space="preserve">
+    <value>Plugin configuration is not valid:
+{0}</value>
+  </data>
   <data name="SettingsSaveFailed" xml:space="preserve">
     <value>Could not save the settings: {0}</value>
   </data>
@@ -578,7 +582,7 @@ Time: {2}</value>
     <value>Keyboard Shortcuts</value>
   </data>
   <data name="AboutGlobalHotkeyDesc" xml:space="preserve">
-    <value>Show/hide window (global hotkey)</value>
+    <value>New work entry (global hotkey)</value>
   </data>
   <data name="AboutEnterKeyDesc" xml:space="preserve">
     <value>Start tracking from the input field</value>
@@ -599,7 +603,7 @@ Time: {2}</value>
     <value>PROJ-123 is detected automatically from input</value>
   </data>
   <data name="AboutFavoritesDesc" xml:space="preserve">
-    <value>Quick-start frequent tasks from the sidebar or tray menu</value>
+    <value>Quick-start frequent tasks from the tray menu</value>
   </data>
   <data name="AboutSubmitWorklogs" xml:space="preserve">
     <value>Submit worklogs</value>

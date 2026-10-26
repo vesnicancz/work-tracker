@@ -88,11 +88,23 @@ public abstract class PluginBase(ILogger logger) : IPlugin
 	{
 		var errors = new List<string>();
 
-		foreach (var field in GetConfigurationFields().Where(f => f.IsRequired))
+		// Every field with a value is checked, not only the required ones: an optional field is
+		// optional to fill in, but whatever is in it still has to be well-formed.
+		foreach (var field in GetConfigurationFields())
 		{
 			if (!configuration.TryGetValue(field.Key, out var value) || string.IsNullOrWhiteSpace(value))
 			{
-				errors.Add($"Required field '{field.Label}' is missing or empty");
+				if (field.IsRequired)
+				{
+					errors.Add($"Required field '{field.Label}' is missing or empty");
+				}
+				continue;
+			}
+
+			var typeError = ValidateFieldType(field, value);
+			if (typeError != null)
+			{
+				errors.Add(typeError);
 			}
 			else if (!string.IsNullOrEmpty(field.ValidationPattern))
 			{
@@ -120,6 +132,28 @@ public abstract class PluginBase(ILogger logger) : IPlugin
 		}
 
 		return await OnValidateConfigurationAsync(configuration, cancellationToken);
+	}
+
+	/// <summary>
+	/// Checks a non-empty value against what its <see cref="PluginConfigurationField.Type"/> promises.
+	/// Text-like types accept anything; a plugin that needs more uses <see cref="PluginConfigurationField.ValidationPattern"/>.
+	/// </summary>
+	private static string? ValidateFieldType(PluginConfigurationField field, string value)
+	{
+		return field.Type switch
+		{
+			PluginConfigurationFieldType.Url when !Uri.TryCreate(value, UriKind.Absolute, out var uri)
+				|| (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
+				=> $"Field '{field.Label}' must be an absolute http or https URL",
+			PluginConfigurationFieldType.Email when !System.Net.Mail.MailAddress.TryCreate(value, out _)
+				=> $"Field '{field.Label}' must be an email address",
+			PluginConfigurationFieldType.Number when !decimal.TryParse(value, System.Globalization.NumberStyles.Number,
+				System.Globalization.CultureInfo.InvariantCulture, out _)
+				=> $"Field '{field.Label}' must be a number",
+			PluginConfigurationFieldType.Checkbox when !bool.TryParse(value, out _)
+				=> $"Field '{field.Label}' must be true or false",
+			_ => null
+		};
 	}
 
 	protected string? GetConfigValue(string key)
