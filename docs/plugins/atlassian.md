@@ -50,7 +50,7 @@ Plugin si ho umí zjistit sám — stačí nechat pole prázdné. Pokud ho chce�
 
 Při volání `UploadWorklogAsync(entry)`:
 
-1. **Překlad Jira issue key → issue ID** — Tempo vyžaduje numerické ID, ne klíč `PROJ-123`. Plugin volá Jira REST API `GET /rest/api/3/issue/{key}` a extrahuje `id` z response.
+1. **Překlad Jira issue key → issue ID** — Tempo vyžaduje numerické ID, ne klíč `PROJ-123`. Plugin volá Jira REST API `GET /rest/api/3/issue/{key}?fields=id` a extrahuje `id` z response.
 2. **Cache** — výsledek se ukládá do `ConcurrentDictionary<string, (int Id, DateTime CachedAt)>` s TTL **1 hodina**. Platnost se vyhodnocuje jako `UtcNow - CachedAt < CacheTtl`. Opakované submity stejného ticketu během hodiny nepingají Jira.
 3. **POST worklog** — `POST /worklogs` s payloadem:
    ```json
@@ -63,7 +63,7 @@ Při volání `UploadWorklogAsync(entry)`:
      "description": "Bug fix v autentizaci"
    }
    ```
-4. **Retry** — na 408/429/500–504 až 2× s exponenciálním backoffem. První retry čeká ~2 s, druhý ~4 s (formule `2^(attempt+1)` sekund). Ostatní HTTP chyby (401, 403, 404, 400…) se neretryují a propagují se okamžitě. **Pozor:** aktuální `TempoWorklogPlugin.UploadWorklogAsync` kategorizuje všechny neúspěšné HTTP statusy obecně jako `PluginErrorCategory.Network`, ne podle jednotlivých status code (401 tedy nedostane kategorii `Authentication`, jak by leckoho napadlo).
+4. **Retry** — na 408/429/500/502/503/504 až 2× (celkem tedy max. 3 pokusy) s exponenciálním backoffem. První retry čeká ~2 s, druhý ~4 s (formule `2^(attempt+1)` sekund). Ostatní HTTP chyby (401, 403, 404, 400…) se neretryují a propagují se okamžitě. **Pozor:** aktuální `TempoWorklogPlugin.UploadWorklogAsync` kategorizuje všechny neúspěšné HTTP statusy obecně jako `PluginErrorCategory.Network`, ne podle jednotlivých status code (401 tedy nedostane kategorii `Authentication`, jak by leckoho napadlo). Výjimky (timeout, výpadek sítě) dostanou výchozí kategorii `Internal`, nepřeložitelný ticket `NotFound` a chybějící ticket nebo nulová délka `Validation`.
 
 ### Submission módy
 
@@ -96,9 +96,9 @@ Stiskem **Test connection** v Settings plugin aktuálně:
 | Symptom | Příčina | Řešení |
 |---------|---------|--------|
 | `401 Unauthorized` z Tempa | Neplatný token | Vygeneruj nový |
-| `403 Forbidden` | Token nemá scope `worklog_write` | Při generování tokenu vyber všechny scopes |
+| `403 Forbidden` | Token nemá oprávnění k zápisu worklogů | Vygeneruj token s oprávněním pro zápis worklogů |
 | `404 Not Found` při uploadu | Ticket key neexistuje / překlep | Zkontroluj ticket v Jiře |
-| `400 Bad Request` — `Invalid startDate` | Timezone konflikt (server vs. klient) | Plugin formátuje datum v local time — pokud Tempo instance má nastavený UTC, občas dochází k +1 den. Issue známý, workaround v roadmapě. |
+| `400 Bad Request` — `Invalid startDate` | Timezone konflikt (server vs. klient) | Plugin posílá datum tak, jak je v záznamu (lokální čas, bez převodu na UTC) — pokud Tempo instance počítá v UTC, může se worklog posunout o den. |
 
 ---
 
@@ -140,13 +140,13 @@ assignee = currentUser() AND issuetype = Bug AND priority >= High
 assignee = currentUser() AND updated >= startOfDay()
 ```
 
-**Search JQL** se použije, když v Suggestions dialogu napíšeš do search pole text. Aplikace nahradí `{query}` za escapovaný text. Příklad:
+**Search JQL** se použije, když v Suggestions dialogu napíšeš do search pole text. Plugin nahradí `{query}` textem upraveným pro JQL řetězec v uvozovkách (escapuje `\` a `"`, odstraní `*` a konce řádků) — `{query}` proto dávej do uvozovek. Příklad:
 
 ```jql
 text ~ "{query}" AND project in (PROJ, WORK) ORDER BY updated DESC
 ```
 
-Search je dostupný **vždy** — `JiraSuggestionsPlugin.SupportsSearch` je pevně `true`. Pokud `SearchJqlFilter` nenastavíš, plugin pro search zfabrikuje defaultní text matching nad `JqlFilter`: přidá klauzuli typu `(key ~ "{query}*" OR summary ~ "{query}*" OR text ~ "{query}*")` k tvému základnímu filtru (zachová i `ORDER BY`, pokud tam je). Vlastní `SearchJqlFilter` se hodí, když chceš nad search pole něco přesnějšího (např. scope na konkrétní projekt nebo status).
+Search je dostupný **vždy** — `JiraSuggestionsPlugin.SupportsSearch` je pevně `true`. Pokud `SearchJqlFilter` nenastavíš, nebo v něm chybí `{query}`, plugin vezme základní filtr (`SearchJqlFilter`, jinak `JqlFilter`), obalí ho závorkou a přidá `AND (key ~ "{query}*" OR summary ~ "{query}*" OR text ~ "{query}*")`. Existující `ORDER BY` zachová, jinak doplní `ORDER BY updated DESC`. Vlastní `SearchJqlFilter` se hodí, když chceš nad search pole něco přesnějšího (např. scope na konkrétní projekt nebo status).
 
 ### Jak se vrácené issues mapují na `WorkSuggestion`
 
@@ -169,7 +169,7 @@ Stejně jako Tempo plugin volá **jen** `_jiraClient.TestConnectionAsync` (pingn
 
 ## Plugin config schéma (`appsettings.json`)
 
-> **Pozor:** Tohle je **referenční schéma** struktury plugin configu, jakou přijímá metoda `InitializePluginsAsync`. **Není to funkční CLI fallback** — aktuální `WorkTracker.CLI` volá `InitializePluginsAsync` bez enabled‑plugin mapy, takže i když hodnoty vložíš do `appsettings.json`, pluginy zůstanou vypnuté a `send` skončí s „No worklog upload plugin available“. Primárně konfiguruj Atlassian plugin v GUI (**Nastavení → Pluginy**). Schéma níže je užitečné, pokud si píšeš vlastního hosta nad `WorkTracker.Infrastructure` a voláš `InitializePluginsAsync(host.Services, configuration, enabledPlugins: {...})` sám.
+> **Pozor:** Samotné `appsettings.json` plugin **nezapne**. Enabled stav i konfiguraci pluginů čte GUI i `WorkTracker.CLI` z uživatelského `settings.json`, který zapisuje GUI — plugin proto povol a nastav v GUI (**Nastavení → Pluginy**), pak funguje i `send` v CLI. Sekce `Plugins` v `appsettings.json` slouží jen jako záložní konfigurace pro plugin, který v `settings.json` žádnou nemá.
 
 ```json
 {
@@ -200,4 +200,4 @@ Stejně jako Tempo plugin volá **jen** `_jiraClient.TestConnectionAsync` (pingn
 > dotnet user-secrets set "Plugins:tempo.worklog:TempoApiToken" "vas-token"
 > ```
 
-Aplikace při startu načte hodnoty z configu jako **výchozí** pro pluginy, ale uživatelské nastavení v `settings.json` (pokud existuje) má přednost.
+Aplikace při startu načte hodnoty z configu jako **výchozí** pro pluginy. Pokud má plugin konfiguraci v `settings.json`, použije se celá místo sekce z `appsettings.json` — neslučuje se po jednotlivých klíčích.

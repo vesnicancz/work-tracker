@@ -27,7 +27,7 @@ Praktický průvodce pro vývojáře, kteří chtějí pracovat na samotném Wor
 
 ## Prerekvizity
 
-- **.NET 10 SDK** — projekt používá C# 13, nullable reference types a `TreatWarningsAsErrors = true`. Starší SDK build neprojde.
+- **.NET 10 SDK** — projekt používá C# 14 (výchozí pro .NET 10, `LangVersion` se nenastavuje), nullable reference types a `TreatWarningsAsErrors = true`. Starší SDK build neprojde.
 - **Git**
 - **IDE** — Rider nebo Visual Studio 2022+. VS Code s C# Dev Kit také funguje.
 - **SQLite browser** (volitelné) — DB Browser for SQLite nebo `sqlite3` CLI pro ad‑hoc inspekci `worktracker.db`.
@@ -80,19 +80,23 @@ work-tracker/
 │   ├── WorkTracker.Plugin.GoranG3.Tests/
 │   ├── WorkTracker.Plugin.Luxafor.Tests/
 │   ├── WorkTracker.Plugin.Office365Calendar.Tests/
-│   └── WorkTracker.Tests.Common/         # Sdílené test helpery, in-memory DbContext
+│   └── WorkTracker.Tests.Common/         # Sdílené test helpery (WorkEntryBuilder, MockPluginFactory)
 ├── docs/
 ├── resources/
+├── build/macos/                          # Info.plist, entitlements, make-app-bundle.sh
+├── packages/                             # Lokální NuGet feed (DotLuxafor .nupkg)
 ├── .github/workflows/
 │   ├── dotnet.yml                        # Build + test na PR/push
-│   └── release.yml                       # Multi-platform publish na git tag v*
-├── Directory.Build.props                 # Nullable, warnings as errors, C# 13
+│   ├── release.yml                       # Multi-platform publish na git tag v*
+│   └── assign-pr-author.yml              # Přiřadí PR jeho autorovi
+├── Directory.Build.props                 # net10.0, Nullable, TreatWarningsAsErrors, MinVer
 ├── Directory.Packages.props              # Central Package Management
+├── nuget.config                          # Zdroje balíčků (vč. lokálního packages/)
 ├── global.json                           # SDK pinning
 └── WorkTracker.slnx                      # Solution (XML formát)
 ```
 
-Solution je v novém `.slnx` formátu (XML, ne `.sln`). Rider 2024.x+ a VS 17.12+ ho otevřou přímo; starší verze potřebují převod.
+Solution je v novém `.slnx` formátu (XML, ne `.sln`). Aktuální Rider a Visual Studio 2022 ho otevřou přímo; starší verze potřebují převod.
 
 ---
 
@@ -121,7 +125,7 @@ Při prvním spuštění se vytvoří databáze.
 |---|---|---|
 | Databáze | `bin/Debug/net10.0/worktracker-dev.db` | `Database:Path`, jinak `worktracker.db` v app data |
 | Nastavení, logy, klíče | `…/WorkTracker_Development/` | `…/WorkTracker/` |
-| Pluginy | `bin/Debug/.../plugins/` + `plugins/*/bin/Debug/net10.0/` | `plugins/` vedle binárky |
+| Pluginy | `bin/Debug/.../plugins/` + `plugins/*/bin/Debug/net10.0/` | `plugins/` vedle binárky (v macOS `.app` `~/Library/Application Support/WorkTracker/plugins/`) |
 
 Cesty pro Development definuje `appsettings.Development.json` (kopíruje se do outputu jen v Debug konfiguraci). Díky tomu debug běh vidí pluginy rovnou z jejich build outputu a není potřeba je nikam publikovat. Pustit debug build nad produkčními daty jde explicitním `DOTNET_ENVIRONMENT=Production`.
 
@@ -135,18 +139,13 @@ Pluginy samy nejsou spustitelné. Build:
 dotnet build plugins/WorkTracker.Plugin.Atlassian
 ```
 
-A pro lokální testování v Avalonia:
-
-```bash
-dotnet publish plugins/WorkTracker.Plugin.Atlassian -c Debug \
-  -o src/WorkTracker.Avalonia/bin/Debug/net10.0/plugins/Atlassian
-```
+Pro lokální testování v Avalonia nic dalšího není potřeba: Development konfigurace (`appsettings.Development.json`, `Plugins:Directories`) načítá všechny čtyři pluginy přímo z jejich `plugins/*/bin/Debug/net10.0`. Nový plugin tam stačí přidat do seznamu. `dotnet publish` pluginu do `bin/Debug/net10.0/plugins/` má smysl, jen když chceš vyzkoušet rozložení jako po instalaci.
 
 ---
 
 ## Testy
 
-Projekt má ~870 testů v xUnit + Moq + FluentAssertions.
+Projekt má přes 1 100 testů v xUnit v3 + Moq + FluentAssertions.
 
 ### Spuštění
 
@@ -168,13 +167,13 @@ dotnet test -- --filter-method "*OverlapResolution*"
 
 ### Rozlišení unit vs. integration
 
-- **Unit testy** (většina) — mock všech závislostí, bez DbContextu. `Domain.Tests`, `Application.Tests`, `UI.Shared.Tests`, plugin testy.
-- **Integration testy** (menšina) — `Infrastructure.Tests` používá in‑memory SQLite (`Microsoft.Data.Sqlite` s `:memory:` connection) pro reálný EF Core tok. Helper pro stvoření `DbContextFactory` je v `WorkTracker.Tests.Common`.
+- **Unit testy** (většina) — mock všech závislostí, bez DbContextu. `Domain.Tests`, `Application.Tests`, `UI.Shared.Tests`, `CLI.Tests` (Spectre.Console.Testing), plugin testy. `Avalonia.Tests` jsou headless UI testy (Avalonia.Headless).
+- **Integration testy** (menšina) — `Infrastructure.Tests` používá in‑memory SQLite (`Microsoft.Data.Sqlite` s `:memory:` connection) pro reálný EF Core tok. Helper (`SqliteInMemoryFixture` + `TestDbContextFactory`) je v `WorkTracker.Infrastructure.Tests/Helpers`.
 
 ### xUnit konvence v projektu
 
 - Třídy se jmenují `{SystemUnderTest}Tests`.
-- Metody `{Method}_{Scenario}_{ExpectedResult}`, např. `StartWorkAsync_WithEmptyTicketAndDescription_ReturnsFailure`.
+- Metody `{Method}_{Scenario}_{ExpectedResult}`, většinou ve tvaru `Should…`, např. `StartWorkAsync_WithoutTicketIdAndDescription_ShouldReturnFailure`.
 - `[Fact]` pro jednotlivé případy, `[Theory]` + `[InlineData]` pro parametrizaci.
 - **Žádné `[Setup]` jako v NUnitu** — xUnit používá konstruktor třídy a `IDisposable`/`IAsyncLifetime` pro cleanup. Fixtures (`IClassFixture<T>`) pro sdílený stav mezi testy ve třídě.
 - `FluentAssertions` všude: `result.IsSuccess.Should().BeTrue();`, `entries.Should().HaveCount(3);`
@@ -186,13 +185,17 @@ Moq. Mocky se tvoří explicitně v konstruktoru testovací třídy, ne přes Au
 ```csharp
 public class WorkEntryServiceTests
 {
-    private readonly Mock<IWorkEntryRepository> _repoMock = new();
-    private readonly Mock<IUnitOfWorkFactory> _uowFactoryMock = new();
-    private readonly WorkEntryService _sut;
+    private readonly Mock<IWorkEntryRepository> _mockRepository = new();
+    private readonly Mock<IUnitOfWork> _mockUnitOfWork = new();
+    private readonly Mock<IUnitOfWorkFactory> _mockUnitOfWorkFactory = new();
+    private readonly Mock<ILogger<WorkEntryService>> _mockLogger = new();
+    private readonly WorkEntryService _service;
 
     public WorkEntryServiceTests()
     {
-        _sut = new WorkEntryService(_repoMock.Object, _uowFactoryMock.Object, TimeProvider.System);
+        _mockUnitOfWork.Setup(u => u.WorkEntries).Returns(_mockRepository.Object);
+        _mockUnitOfWorkFactory.Setup(f => f.CreateAsync(It.IsAny<CancellationToken>())).ReturnsAsync(_mockUnitOfWork.Object);
+        _service = new WorkEntryService(_mockRepository.Object, _mockUnitOfWorkFactory.Object, TimeProvider.System, _mockLogger.Object);
     }
 }
 ```
@@ -201,28 +204,28 @@ public class WorkEntryServiceTests
 
 ## Migrace databáze
 
-EF Core migrace se generují s Infrastructure jako target projektem a CLI jako startup projektem:
+EF Core migrace se generují s Infrastructure jako target projektem a Avalonia jako startup projektem (jen ta referencuje `Microsoft.EntityFrameworkCore.Design`, který EF Tools ve startup projektu vyžadují):
 
 ```bash
 # Nová migrace
 dotnet ef migrations add AddNewColumn \
   --project src/WorkTracker.Infrastructure \
-  --startup-project src/WorkTracker.CLI
+  --startup-project src/WorkTracker.Avalonia
 
-# Aplikovat (smaže + znovu z migrations)
+# Aplikovat čekající migrace
 dotnet ef database update \
   --project src/WorkTracker.Infrastructure \
-  --startup-project src/WorkTracker.CLI
+  --startup-project src/WorkTracker.Avalonia
 
 # Zpět o jednu migraci
 dotnet ef database update PreviousMigrationName \
   --project src/WorkTracker.Infrastructure \
-  --startup-project src/WorkTracker.CLI
+  --startup-project src/WorkTracker.Avalonia
 
 # Vygenerovat SQL script (užitečné pro review)
 dotnet ef migrations script \
   --project src/WorkTracker.Infrastructure \
-  --startup-project src/WorkTracker.CLI
+  --startup-project src/WorkTracker.Avalonia
 ```
 
 **Runtime migrace** — aplikace při startu volá `DependencyInjection.InitializeDatabaseAsync`, která spustí `DbContext.Database.MigrateAsync()`. Žádný ruční `dotnet ef database update` na produkci.
@@ -265,10 +268,10 @@ dotnet list package --outdated
 
 ## Coding standards
 
-Konvence vynucené přes `.editorconfig` + `Directory.Build.props`:
+Konvence z `.editorconfig` + `Directory.Build.props`. Pravidla stylu a pojmenování z `.editorconfig` hlídá IDE — `EnforceCodeStyleInBuild` je vypnuté, takže je build nevynucuje:
 
-- **C# 13**, **nullable reference types** enabled
-- **`TreatWarningsAsErrors = true`** — warningy jsou errory v CI
+- **C# 14**, **nullable reference types** enabled
+- **`TreatWarningsAsErrors = true`** — compiler a analyzer warningy jsou errory (i v CI)
 - **`_camelCase`** pro privátní fieldy, `PascalCase` pro typy, metody, public members
 - **`IName`** pro interfaces
 - **Tabs** pro indentaci (viz `.editorconfig`)
@@ -288,7 +291,7 @@ if (result.IsFailure) return result;
 ### Async
 
 - Všechny I/O metody jsou async. `Task<T>` nebo `ValueTask<T>`.
-- `CancellationToken` jako **poslední parametr**, bez default value (`= default`) kromě okrajových případů, kde nemá volající co předat.
+- `CancellationToken` jako **poslední parametr**. V novém kódu bez default value (`= default`), pokud nemá volající opravdu co předat. Starší API (`IWorkEntryRepository`, `IWorkEntryService`, část Plugin.Abstractions) ho zatím mají.
 - Pojmenování: metoda končí `Async`.
 
 ### Error handling
@@ -322,47 +325,38 @@ Když máš pochybnosti, volíme **menší, přímočařejší řešení**.
 - Operace upravuje **víc než jeden záznam** a částečný úspěch by byl nekonzistentní.
 - Potřebuješ **atomicitu** mezi repositoryi (typicky ještě není aplikovatelné, protože máme jen jedno `IWorkEntryRepository`, ale architektura je připravená).
 
-### Příklad: start s auto‑stop předchozího záznamu
+### Příklad: start s auto‑stop běžících záznamů
+
+Zjednodušeně podle `WorkEntryService.StartOpenEndedWorkAsync` — nový záznam bez konce uzavře všechno, co v okamžiku jeho začátku ještě běží (aktivní záznam i meeting s pevným koncem):
 
 ```csharp
-public async Task<Result<WorkEntry>> StartWorkAsync(
-    string? ticketId, DateTime? startTime, string? description,
-    DateTime? endTime, CancellationToken ct)
+var overlapping = await _repository.GetOverlappingEntriesAsync(null, workEntry.StartTime, null, ct);
+var running = overlapping.Where(e => e.StartTime < workEntry.StartTime).ToList();
+if (running.Count == 0)
 {
-    // …validace…
-
-    var effectiveStart = startTime ?? _timeProvider.GetLocalNow().DateTime;
-
-    await using var uow = await _uowFactory.CreateAsync(ct);
-
-    // 1) Zastav aktivní záznam, pokud existuje
-    var active = await uow.WorkEntries.GetActiveAsync(ct);
-    if (active != null)
-    {
-        active.EndTime = effectiveStart;
-        active.IsActive = false;
-        await uow.WorkEntries.UpdateAsync(active, ct);
-    }
-
-    // 2) Vytvoř nový
-    var entry = new WorkEntry
-    {
-        TicketId = ticketId,
-        Description = description,
-        StartTime = effectiveStart,
-        IsActive = endTime == null,
-        EndTime = endTime,
-    };
-    await uow.WorkEntries.AddAsync(entry, ct);
-
-    // 3) Commit — oboje nebo nic
-    await uow.SaveChangesAsync(ct);
-
-    return Result<WorkEntry>.Success(entry);
+    // Nic neběží — jediný zápis, UoW netřeba
+    return Result.Success(await _repository.AddAsync(workEntry, ct));
 }
+
+await using var uow = await _unitOfWorkFactory.CreateAsync(ct);
+
+// 1) Uzavři běžící záznamy v okamžiku začátku nového
+foreach (var entry in running)
+{
+    entry.Stop(workEntry.StartTime, now);
+    await uow.WorkEntries.UpdateAsync(entry, ct);
+}
+
+// 2) Přidej nový (vzniklý přes WorkEntry.Create(...))
+var result = await uow.WorkEntries.AddAsync(workEntry, ct);
+
+// 3) Commit — všechno nebo nic
+await uow.SaveChangesAsync(ct);
+
+return Result.Success(result);
 ```
 
-Pokud metodu dispose‑uješ bez `SaveChangesAsync`, transakce se **rollbackne**.
+Pokud UoW dispose‑uješ bez `SaveChangesAsync`, transakce se **rollbackne**.
 
 ### Single‑operation: bez UoW
 
@@ -391,8 +385,8 @@ public interface ISecureStorage
 
 ### Kdy se používá
 
-- Při ukládání plugin konfigurace v `SettingsService` — pole typu `Password` (nebo API tokeny) se před serializací prožene `Protect`.
-- Při čtení před předáním pluginu se pole prožene `Unprotect`.
+- Při ukládání plugin konfigurace v `SettingsOrchestrator` (`ProtectSensitiveFields`) — pole typu `Password` se před serializací prožene `Protect`; prázdná hodnota položku ze storu odstraní (`Remove`).
+- Při čtení (`SettingsService`, v CLI `PluginSettingsReader`) se pole prožene `Unprotect`, než se předá pluginu.
 
 ### Plugin sám nepotřebuje vědět
 
@@ -402,11 +396,11 @@ Plugin dostává ve `Configuration` už rozbalené plaintext hodnoty. Nemusí im
 
 ## MSAL a device code flow
 
-Pluginy autentizující se přes Microsoft Entra ID používají **device code flow**. Důvod viz [architecture.md](architecture.md) a paměť o MSAL deadlocku v Avalonia.
+Pluginy autentizující se přes Microsoft Entra ID používají **device code flow**. Důvod: `AcquireTokenInteractive` (přihlášení přes browser s callbackem) v Avalonia deadlockuje; device code flow žádný callback do aplikace nepotřebuje.
 
 ### Infrastructure: MsalTokenProviderFactory
 
-`MsalTokenProviderFactory` je registrovaná jako singleton v DI a vystavená pluginům přes `ITokenProviderFactory`. Plugin si vyžádá token provider:
+`MsalTokenProviderFactory` je registrovaná jako singleton v plugin `ServiceCollection` uvnitř `PluginManager` (ne v aplikačním containeru) a vystavená pluginům přes `ITokenProviderFactory`. Plugin si vyžádá token provider:
 
 ```csharp
 public class MyPlugin : WorkSuggestionPluginBase
@@ -431,26 +425,18 @@ public class MyPlugin : WorkSuggestionPluginBase
         return true;
     }
 
-    // Na žádost o token:
-    private async Task<string?> GetTokenAsync(IProgress<string>? progress, CancellationToken ct)
-    {
-        var token = await _tokenProvider!.AcquireTokenSilentAsync(ct);
-        if (token != null)
-        {
-            return token;
-        }
-
-        // Silent selhalo (nebo cache prázdná) — spusť device code flow
-        return await _tokenProvider.AcquireTokenInteractiveAsync(progress, ct);
-    }
+    // Na žádost o token — sám nejdřív zkusí silent token z cache,
+    // device code flow spustí, až když silent selže:
+    private Task<string?> GetTokenAsync(IProgress<string>? progress, CancellationToken ct)
+        => _tokenProvider!.AcquireTokenInteractiveAsync(progress, ct);
 }
 ```
 
 ### Device code flow — co vidí uživatel
 
-1. Plugin zavolá `AcquireTokenInteractiveAsync(progress, ct)`.
+1. Plugin zavolá `AcquireTokenInteractiveAsync(progress, ct)`. Ten nejdřív zkusí `AcquireTokenSilentAsync`; když je token v cache, vrátí ho a další kroky odpadnou.
 2. MSAL vygeneruje user code a verification URL.
-3. `MsalTokenProvider` zavolá `progress?.Report("Go to https://microsoft.com/devicelogin and enter code ABC-123")`.
+3. `MsalTokenProvider` zavolá `progress?.Report("⏳ Open browser and enter code: ABC-123\nhttps://microsoft.com/devicelogin")`.
 4. Zároveň se pokusí otevřít browser přes `Process.Start`.
 5. Uživatel v browseru zadá code a přihlásí se.
 6. MSAL mezitím pollne Entra a vrátí token.
@@ -459,7 +445,7 @@ public class MyPlugin : WorkSuggestionPluginBase
 
 - Cache soubor je v `%LocalAppData%\WorkTracker\keys\` s názvem `msal_{safeKey}.bin`, kde `safeKey = Convert.ToHexString(SHA256(tenantId:clientId))`.
 - Šifrování: **DPAPI** (Windows), **Keychain** (macOS), **libsecret** (Linux) přes `Microsoft.Identity.Client.Extensions.Msal`.
-- Fallback: pokud encrypted cache není dostupná (headless Linux bez secret service), MSAL použije nechráněný soubor `msal_{safeKey}_plain.bin` — plugin zaloguje warning.
+- Fallback: pokud encrypted cache není dostupná (headless Linux bez secret service), MSAL použije nechráněný soubor `msal_{safeKey}_plain.bin` — `MsalTokenProviderFactory` zaloguje warning „Encrypted token cache not available, falling back to unprotected file“.
 
 ---
 
@@ -490,19 +476,16 @@ hodnota není k dispozici. Volba `"system"` se pak resolvuje právě proti tomut
 
 ### Použití v ViewModelech
 
-```csharp
-public partial class SettingsViewModel : ObservableObject
-{
-    private readonly ILocalizationService _loc;
+Klíče jsou ploché (`Save`, `NoTicket`, …), bez prefixů. ViewModel dostane `ILocalizationService` přes konstruktor a sahá na indexer, pro texty s parametry na `GetFormattedString`:
 
-    public string SaveButtonText => _loc["Settings.Save"];
-}
+```csharp
+public string ActiveTicketDisplay => ActiveWork?.TicketId ?? _localization["NoTicket"];
 ```
 
-V XAML se bindí přes indexer a `ILocalizationService` jako `DataContext`:
+V XAML se používá markup extension, která binduje na `LocalizationService.Instance` — `DataContext` nehraje roli:
 
 ```xml
-<Button Content="{Binding Loc[Settings.Save]}" />
+<TextBlock Text="{markup:Localize Save}" />
 ```
 
 ### Přepínání jazyka za běhu
@@ -520,8 +503,8 @@ Mechanismus má dvě poloviny a obě jsou nutné:
   „změnil se jazyk" pro běžné konzumenty). Dnes to dělá `TrayIconService` (nativní položky menu)
   a `MainViewModel` (počítané texty + cache fáze v `PomodoroViewModel`).
 
-Jazyk se aplikuje už v `App.ReadEarlySettings()`, tedy před konstrukcí prvního okna — jinak by
-při startu probliklo předchozí nastavení.
+Jazyk se načte v `App.ReadEarlySettings()` a hned aplikuje přes `localization.ApplyLanguage(...)`,
+tedy před konstrukcí prvního okna — jinak by při startu probliklo předchozí nastavení.
 
 ---
 
@@ -531,18 +514,21 @@ Projekt používá **Serilog**, zapojený přes `Microsoft.Extensions.Logging` i
 
 ### Konfigurace
 
-V `CLI/Program.cs` a `Avalonia/App.axaml.cs`:
+V `CLI/Program.cs` (GUI v `Avalonia/App.axaml.cs` má totéž bez Console sinku a s `WorkTrackerPaths.LogFilePath`, tj. `worktracker-.log`):
 
 ```csharp
 loggerConfiguration
     .MinimumLevel.Information()
     .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
     .MinimumLevel.Override("System", LogEventLevel.Warning)
-    .WriteTo.Console(restrictedToMinimumLevel: LogEventLevel.Warning)
+    .WriteTo.Console(
+        restrictedToMinimumLevel: LogEventLevel.Warning,
+        standardErrorFromLevel: LogEventLevel.Warning)
     .WriteTo.File(
-        WorkTrackerPaths.LogFilePath,  // %LocalAppData%\WorkTracker\logs\worktracker-.log
+        WorkTrackerPaths.CliLogFilePath,  // %LocalAppData%\WorkTracker\logs\worktracker-cli-.log
         rollingInterval: RollingInterval.Day,
-        retainedFileCountLimit: 14);
+        retainedFileCountLimit: 14,
+        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}");
 ```
 
 ### Konvence
@@ -567,7 +553,7 @@ loggerConfiguration
 
 Push + PR na `master`:
 
-1. `actions/checkout@v5`
+1. `actions/checkout@v6`
 2. `actions/setup-dotnet@v5` s `.NET 10.0.x`
 3. `dotnet restore`
 4. `dotnet build --no-restore`
@@ -579,13 +565,14 @@ Běží na `ubuntu-latest` — všechny projekty cílí na cross‑platform `net
 
 Trigger: push tagu `v*`. Jobs:
 
-1. **test** (ubuntu) — spustí celou test sadu před release.
-2. **publish-cli** (matrix: win-x64, win-arm64, linux-x64, osx-arm64) — `dotnet publish` s `PublishSingleFile=true`, `SelfContained=false`, zip artifact.
-3. **publish-avalonia** (matrix: win-x64, win-arm64, linux-x64, osx-arm64) — Avalonia pro všechny platformy. macOS varianta navíc projde krokem *Bundle and sign .app* a místo zipu se z ní balí `.dmg` (viz níže).
+1. **verify-tag** (ubuntu) — ověří, že tag je tříčíselná verze (`vX.Y.Z`, volitelně `-prerelease`). Jiný tag MinVer tiše ignoruje a release by vyšel pod číslem předchozího tagu.
+2. **test** (ubuntu) — spustí celou test sadu před release.
+3. **publish-cli** (matrix: win-x64, win-arm64, linux-x64, osx-arm64) — `dotnet publish` s `PublishSingleFile=true`, `SelfContained=false`, zip artifact.
+4. **publish-avalonia** (matrix: win-x64, win-arm64, linux-x64, osx-arm64) — Avalonia pro všechny platformy. macOS varianta navíc projde krokem *Bundle and sign .app* a místo zipu se z ní balí `.dmg` (viz níže).
 
    Obě matice mají stejnou sadu RID: co dostane GUI, dostane i CLI. Intel Macy (`osx-x64`) se nebuildí — Macy se prodávají s Apple Siliconem od roku 2020 a na těch starších rozjede .NET host z `osx-arm64` buildu Rosetta.
-4. **publish-plugins** (matrix: Atlassian, Luxafor, GoranG3, Office365Calendar) — každý plugin samostatně.
-5. **release** — stáhne artifacty a vytvoří GitHub Release.
+5. **publish-plugins** (matrix: Atlassian, Luxafor, GoranG3, Office365Calendar) — každý plugin samostatně.
+6. **release** — stáhne artifacty a vytvoří rovnou publikovaný GitHub Release s automaticky vygenerovanými poznámkami (`generate_release_notes`).
 
 Artifacty jsou framework‑dependent (bez runtime). Kdo chce self‑contained, buildí si sám.
 
@@ -632,29 +619,24 @@ Do releasu jde bundle jako disk image `WorkTracker-{verze}-macos-arm64.dmg`, ne 
 
 **Podpis je ad-hoc** (`codesign --sign -`). To je maximum bez placeného Apple účtu: aplikace se na Apple Silicon vůbec spustí a nehlásí „is damaged", ale **není to průchod Gatekeeperem** — stažený build pořád chce jedno ruční povolení: od macOS 15 v *Nastavení systému → Soukromí a zabezpečení → Přesto otevřít*, na starších *pravý klik → Otevřít*, kdekoli `xattr -dr com.apple.quarantine /Applications/WorkTracker.app`.
 
-Přechod na skutečný podpis: naimportuj Developer ID certifikát do keychainu runneru a nastav `CODESIGN_IDENTITY` na jeho jméno. Skript pak sám přidá hardened runtime a `build/macos/entitlements.plist` (CoreCLR JIT potřebuje zapisovatelně‑spustitelnou paměť a single‑file host rozbaluje nepodepsané nativní knihovny). Zbývat bude už jen poslat archiv do `notarytool` a přilepit staple.
+Přechod na skutečný podpis: naimportuj Developer ID certifikát do keychainu runneru a v kroku *Bundle and sign .app* předej skriptu `CODESIGN_IDENTITY` s jeho jménem přes `env:` (třeba ze secretu) — dnes tam workflow posílá jen `VERSION_TAG`. Skript pak sám přidá hardened runtime a `build/macos/entitlements.plist` (CoreCLR JIT potřebuje zapisovatelně‑spustitelnou paměť a single‑file host rozbaluje nepodepsané nativní knihovny). Zbývat bude už jen poslat archiv do `notarytool` a přilepit staple.
 
 ---
 
 ## Release process
 
-1. **Aktualizuj verzi** v `Directory.Build.props`:
+Verzi neurčuje žádný soubor v repu — počítá ji **MinVer** z git tagu (`MinVerTagPrefix` = `v` v `Directory.Build.props`). Nic se ručně nebumpuje.
 
-   ```xml
-   <Version>1.2.3</Version>
-   <InformationalVersion>1.2.3</InformationalVersion>
-   ```
-
-2. **Commit + push** na master.
-3. **Vytvoř tag**:
+1. **Ujisti se**, že commit, který chceš vydat, je na `master`.
+2. **Vytvoř tag** — tříčíselný `vMAJOR.MINOR.PATCH`, volitelně s prerelease částí (`v1.2.3-beta.1`):
 
    ```bash
    git tag v1.2.3
    git push origin v1.2.3
    ```
 
-4. **CI** spustí `release.yml`, zkompiluje všechny platformy a vytvoří GitHub Release s artifacty.
-5. **Release notes** — edituj rovnou na GitHubu po vytvoření releasu (CI vytváří draft / prázdný release). Dělíme podle: Features, Fixes, Plugins, Chores.
+3. **CI** spustí `release.yml`: job `verify-tag` odmítne tag v jiném tvaru, pak proběhnou testy, publish všech platforem a vznikne rovnou publikovaný GitHub Release s artifacty.
+4. **Release notes** vygeneruje GitHub automaticky (`generate_release_notes`). Pokud chceš, uprav je po vydání ručně.
 
 ---
 
@@ -666,7 +648,7 @@ Přechod na skutečný podpis: naimportuj Developer ID certifikát do keychainu 
 
 - **CS8600 / CS8603** — nullability. Oprava: `?`, `!`, nebo skutečná null guard.
 - **CS0618** — obsolete API. Obvykle je v error message už předepsaný migration path.
-- **Analyzer warning** (StyleCop / Roslynator) — nech analyzer vyjet v IDE, oprav podle hintu.
+- **Analyzer warning** (vestavěné .NET analyzéry, `AnalysisLevel = latest`) — nech analyzer vyjet v IDE, oprav podle hintu.
 
 ### `file is locked` při buildu GUI projektu
 
@@ -674,18 +656,19 @@ Zavři všechny běžící instance aplikace (i ty v tray), pak `dotnet build` z
 
 ### Plugin se po publishi neobjevuje
 
-1. Zkontroluj, že `.dll` skutečně je v `plugins/` vedle binárky. `PluginLoader` scanuje jen tam.
-2. Plugin musí **začínat prefixem** `WorkTracker.Plugin.` (loader filtruje podle jména souboru).
-3. Plugin musí implementovat jedno z `IWorklogUploadPlugin` / `IWorkSuggestionPlugin` / `IStatusIndicatorPlugin` **jako non‑abstract třídu**. Abstraktní třídy jsou přeskočené.
-4. V logu `PluginLoader` loguje každý soubor, který zkusil načíst, i důvod selhání.
+1. Zkontroluj, že `.dll` skutečně je v plugin adresáři: výchozí `plugins/` vedle binárky (na macOS `~/Library/Application Support/WorkTracker/plugins/`), případně v adresářích z `Plugins:Directories`. Prohledávají se i podsložky.
+2. Plugin musí **začínat prefixem** `WorkTracker.Plugin.` (loader filtruje podle jména souboru, `WorkTracker.Plugin.Abstractions.dll` přeskakuje).
+3. DLL musí obsahovat **non‑abstract třídu implementující `IPlugin`** (v praxi jedno z `IWorklogUploadPlugin` / `IWorkSuggestionPlugin` / `IStatusIndicatorPlugin`). Abstraktní třídy a interfaces jsou přeskočené.
+4. V logu najdeš selhání načtení (`Failed to load plugin …`, `No plugin types found in …`) i úspěšně načtené pluginy (`Loaded plugin: …`). Jednotlivé pokusy (`Loading plugin from …`) jsou jen na úrovni Debug, takže se do logu nezapíšou.
+5. Nově nalezený plugin je ve výchozím stavu **vypnutý** — zapni ho v Nastavení → Pluginy.
 
 ### EF Core migrace fail: `No DbContext was found`
 
-EF Tools potřebují startup projekt s DI bootstrap, který vytvoří `DbContext`. Proto používáme `--startup-project src/WorkTracker.CLI`. CLI volá `AddInfrastructure`, který registruje `DbContextFactory`, a EF Tools to najdou.
+`DbContext` pro EF Tools vytváří `WorkTrackerDbContextFactory` (`IDesignTimeDbContextFactory`) v Infrastructure. Startup projekt ale musí referencovat `Microsoft.EntityFrameworkCore.Design` — to dnes dělá jen `WorkTracker.Avalonia`, proto `--startup-project src/WorkTracker.Avalonia`. S CLI jako startup projektem příkaz selže hláškou „Your startup project 'WorkTracker.CLI' doesn't reference Microsoft.EntityFrameworkCore.Design“.
 
 ### Rider nevidí `.slnx`
 
-Aktualizuj na Rider 2024.2+, nebo otevři jednotlivé projekty přes `File → Open` a vybrat `.csproj`.
+Aktualizuj Rider na aktuální verzi, nebo otevři jednotlivé projekty přes `File → Open` a vybrat `.csproj`.
 
 ### Avalonia XAML: „Binding path is not type‑safe“
 

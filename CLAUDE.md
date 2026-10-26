@@ -6,15 +6,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 dotnet build                    # Build entire solution
-dotnet test                     # Run all tests (~870 tests, xUnit + Moq + FluentAssertions)
+dotnet test                     # Run all tests (~1180 tests, xUnit v3 + Moq + FluentAssertions)
 dotnet test -- --filter-method "*MethodName*"     # Run single test (MTP runner, xUnit v3 filters)
 dotnet test --project tests/WorkTracker.Domain.Tests   # Run one test project
 ```
 
-**EF Core migrations** (use CLI as startup project):
+**EF Core migrations** (use Avalonia as startup project — it is the only one referencing `Microsoft.EntityFrameworkCore.Design`):
 ```bash
-dotnet ef migrations add MigrationName --project src/WorkTracker.Infrastructure --startup-project src/WorkTracker.CLI
-dotnet ef database update --project src/WorkTracker.Infrastructure --startup-project src/WorkTracker.CLI
+dotnet ef migrations add MigrationName --project src/WorkTracker.Infrastructure --startup-project src/WorkTracker.Avalonia
+dotnet ef database update --project src/WorkTracker.Infrastructure --startup-project src/WorkTracker.Avalonia
 ```
 
 **Publish:**
@@ -28,13 +28,16 @@ dotnet publish src/WorkTracker.CLI -c Release -r win-x64
 Clean Architecture with 4 layers + plugin system. Dependencies flow inward only.
 
 ```
-Presentation (CLI / Avalonia)
+Avalonia
   └─ UI.Shared (shared ViewModels, Orchestrators, Services)
        └─ Application (use cases, IWorkEntryService, Result<T>, DTOs)
             └─ Domain (WorkEntry entity, repository interfaces, business rules)
 
+CLI ─> Application (no UI.Shared)
+Avalonia, CLI ─> Infrastructure (bootstrap only: AddInfrastructure, DB + plugin init)
+
 Plugin.Abstractions (IPlugin, IWorklogUploadPlugin, IWorkSuggestionPlugin, IStatusIndicatorPlugin)
-  └─ Referenced by: Application, Infrastructure, individual plugin projects
+  └─ Referenced by: Application (Infrastructure transitively), individual plugin projects
 ```
 
 **Key layers:**
@@ -42,11 +45,11 @@ Plugin.Abstractions (IPlugin, IWorklogUploadPlugin, IWorkSuggestionPlugin, IStat
 - **Application** — Orchestrates use cases. Uses `Result<T>` for error handling (no exceptions for business logic). Registers services via `DependencyInjection.AddApplication()`.
 - **Infrastructure** — EF Core/SQLite, `PluginManager`, repository implementations. Registers everything via `DependencyInjection.AddInfrastructure()` (which calls `AddApplication()` internally).
 - **UI.Shared** — Platform-agnostic ViewModels (CommunityToolkit.Mvvm), Orchestrators that coordinate services, `ILocalizationService`, `ISettingsService`.
-- **Presentation** — Platform-specific UI. Avalonia (cross-platform), CLI (Spectre.Console). Each has its own DI setup in `Program.cs` / `App.axaml.cs`.
+- **Presentation** — Platform-specific UI. Avalonia (cross-platform, uses UI.Shared), CLI (Spectre.Console, goes straight to Application). Each has its own DI setup in `Program.cs` / `App.axaml.cs`.
 
 ## Plugin System
 
-Plugins load in isolated `AssemblyLoadContext` from `./plugins/` directory. Three plugin interfaces extend `IPlugin : IAsyncDisposable`:
+Plugins load in isolated `AssemblyLoadContext` from the `Plugins:Directories` config (default `plugins/` next to the executable; inside a macOS `.app` the app-data directory; Development adds each plugin's `bin/Debug`). Three plugin interfaces extend `IPlugin : IAsyncDisposable` (upload and suggestion via `ITestablePlugin`):
 
 - **`IWorklogUploadPlugin`** — Upload/fetch worklogs (e.g., Tempo)
 - **`IWorkSuggestionPlugin`** — Suggest work items (e.g., Jira issues)
@@ -55,8 +58,8 @@ Plugins load in isolated `AssemblyLoadContext` from `./plugins/` directory. Thre
 **Plugin DI & lifecycle:**
 - Plugins are instantiated via `ActivatorUtilities.CreateInstance` from a plugin-scoped `ServiceCollection` (built in `PluginManager`).
 - Constructor injection provides: `ILogger<T>`, `IHttpClientFactory`, `ITokenProviderFactory`. No `Activator.CreateInstance` or parameterless constructors.
-- `PluginBase(ILogger)` is the abstract base — provides configuration management, validation (regex), lifecycle hooks (`OnInitializeAsync`, `OnShutdownAsync`, `DisposeAsync`).
-- `ShutdownAsync()` calls `OnShutdownAsync()` → `DisposeAsync()` automatically.
+- `PluginBase(ILogger)` is the abstract base — provides configuration management, validation (regex), lifecycle hooks (`OnInitializeAsync`, `OnShutdownAsync`, `OnDisposeAsync`).
+- `ShutdownAsync()` calls `OnShutdownAsync()` → `DisposeAsync()` (→ `OnDisposeAsync()`) automatically.
 - `PluginResult<T>` includes `PluginErrorCategory` enum (`Validation`, `Network`, `Authentication`, `NotFound`, `Internal`).
 - `ITestablePlugin.TestConnectionAsync(IProgress<string>?, CancellationToken)` — single method with optional progress.
 
@@ -71,9 +74,9 @@ Existing plugins: `Plugin.Atlassian` (Tempo + Jira), `Plugin.Office365Calendar`,
 
 ## Conventions
 
-- **.NET 10 / C# 13**, nullable reference types enabled, `TreatWarningsAsErrors = true`
+- **.NET 10 / C# 14** (compiler default, no `LangVersion` set), nullable reference types enabled, `TreatWarningsAsErrors = true`
 - **Central Package Management** via `Directory.Packages.props` — use `<PackageReference Include="..." />` without Version in `.csproj` files
-- **Naming**: interfaces `IName`, private fields `_camelCase`, types `PascalCase` (enforced by `.editorconfig`)
+- **Naming**: interfaces `IName`, private fields `_camelCase`, types `PascalCase` (configured in `.editorconfig`; IDE-only — `EnforceCodeStyleInBuild` is off, so the build does not enforce them)
 - **ViewModels are split** — root ViewModels live in the Avalonia project; reusable sub-ViewModels and shared logic go in `UI.Shared/ViewModels/` or `UI.Shared/Orchestrators/`.
 - **DI registration** is centralized: `Application/DependencyInjection.cs` and `Infrastructure/DependencyInjection.cs`. Infrastructure's `AddInfrastructure()` is the single entry point for non-UI services.
 - **Database** uses `IDbContextFactory<WorkTrackerDbContext>` (not scoped DbContext). SQLite stored in `%LocalAppData%\WorkTracker\`.

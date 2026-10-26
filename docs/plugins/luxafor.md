@@ -4,7 +4,7 @@
 |-----------|----------------------------|
 | Třída | `LuxaforStatusIndicatorPlugin` |
 | Rozhraní | `IStatusIndicatorPlugin` |
-| Hardware | Luxafor Bluetooth Pro / Flag / Orb |
+| Hardware | Luxafor Flag / Bluetooth Pro (přes USB dongle) / Mute Button / Smart Button |
 | Knihovna | `DotLuxafor` 0.2.2 (lokální feed `packages/`) |
 | API | `ILuxaforDeviceManager.Open()` → `DeviceOpenResult` → `ILuxaforDevice` (`SetColorAsync`, `TurnOffAsync`) |
 
@@ -21,7 +21,7 @@ Plugin ovládá fyzický LED indikátor Luxafor a přepíná jeho barvu podle ak
 | `long_break_color` | `Text` | ❌ | `#0000FF` (modrá) | Barva během dlouhé pauzy |
 | `turn_off_on_startup` | `Checkbox` | ❌ | `false` | Po startu aplikace zařízení zhasne (řeší rušivé červené svícení po bootu OS) |
 
-Validační regex: `^#[0-9A-Fa-f]{6}$` — přesně 6 hex znaků s úvodním `#`. Plugin v UI chybí color picker; hodnoty se zadávají jako text. Běžné volby:
+Pole deklarují validační regex `^#[0-9A-Fa-f]{6}$`, ale protože nejsou povinná, `PluginBase` ho nevyhodnotí (regex kontroluje jen u polí s `IsRequired`). Hodnotu, kterou DotLuxafor neumí přečíst jako hex barvu, plugin tiše nahradí výchozí barvou. Plugin v UI chybí color picker; hodnoty se zadávají jako text. Běžné volby:
 
 | Barva | Hex |
 |-------|-----|
@@ -40,27 +40,27 @@ Fáze `Idle` (Pomodoro neběží) LED **zhasne** — plugin zavolá `device.Turn
 
 ## Požadavky na hardware
 
-Podporovaná zařízení:
+Zařízení podporovaná knihovnou DotLuxafor:
 
-- **Luxafor Bluetooth Pro** (BT4.0) — doporučené, bezdrátové, ale vyžaduje Bluetooth párování.
 - **Luxafor Flag** (USB) — pohodlné pro stacionární setup.
-- **Luxafor Orb** (USB).
+- **Luxafor Bluetooth Pro** — bezdrátové; počítač s ním komunikuje přes přiložený USB dongle, takže párování v OS není potřeba.
+- **Luxafor Mute Button** a **Smart Button**.
 
-Všechna zařízení komunikují přes **HID API**. Plugin používá knihovnu [`DotLuxafor`](https://github.com/vesnicancz/dotluxafor) — na nuget.org publikovaná **není**, `.nupkg` leží v repu ve složce `packages/` a `nuget.config` ji mapuje jako zdroj `local`. Upgrade = stáhnout nový `.nupkg` z GitHub releases do `packages/` a přepsat verzi v `Directory.Packages.props`. Knihovna nabízí vysokoúrovňové API `ILuxaforDeviceManager` / `ILuxaforDevice` specifické pro Luxafor protokol — plugin sám žádnou HID logiku neimplementuje.
+Všechna zařízení komunikují přes **HID API**. Plugin používá knihovnu [`DotLuxafor`](https://github.com/vesnicancz/dotluxafor). Projekt ji bere z lokálního feedu: `.nupkg` leží v repu ve složce `packages/` a `nuget.config` ji mapuje jako zdroj `local`. Upgrade = dát nový `.nupkg` do `packages/` a přepsat verzi v `Directory.Packages.props`. Knihovna nabízí vysokoúrovňové API `ILuxaforDeviceManager` / `ILuxaforDevice` specifické pro Luxafor protokol — plugin sám žádnou HID logiku neimplementuje.
 
 ### Ovladače
 
 - **Windows**: HID class driver je v systému — nic neinstaluj.
-- **Linux**: Potřebuješ `libusb` a udev pravidla, aby uživatel měl přístup k zařízení bez roota:
+- **Linux**: DotLuxafor (přes HidSharp) pracuje s `/dev/hidraw*`, který je ve výchozím stavu přístupný jen rootovi. Přidej udev pravidlo pro `04d8:f372`:
 
   ```
   # /etc/udev/rules.d/99-luxafor.rules
-  SUBSYSTEM=="usb", ATTRS{idVendor}=="04d8", ATTRS{idProduct}=="f372", MODE="0666"
+  KERNEL=="hidraw*", ATTRS{idVendor}=="04d8", ATTRS{idProduct}=="f372", MODE="0666"
   ```
 
   Po vytvoření: `sudo udevadm control --reload-rules && sudo udevadm trigger`.
 
-- **macOS**: HID class driver v systému — nic neinstaluj. Pro Bluetooth Pro je potřeba zařízení nejdřív spárovat v **System Settings → Bluetooth**.
+- **macOS**: HID class driver je v systému — nic neinstaluj, ale aplikaci musíš povolit **Input Monitoring** (System Settings → Privacy & Security), jinak otevření zařízení skončí `AccessDenied`.
 
 ---
 
@@ -69,38 +69,36 @@ Všechna zařízení komunikují přes **HID API**. Plugin používá knihovnu [
 ### Inicializace
 
 1. `OnInitializeAsync` načte barvy z konfigurace, zkusí je naparsovat a při neúspěchu použije defaulty. Zařízení se v tomto kroku samo o sobě **neotevírá**; otevřít se může jen v případě popsaném v bodě 4, kdy je zapnuté `turn_off_on_startup`.
-2. Teprve při prvním volání `SetStateAsync` plugin zavolá interní helper `GetOrOpenDevice()`, který přes `ILuxaforDeviceManager.Open()` otevře HID connection k aktuálně připojenému Luxaforu.
-3. Pokud zařízení v tu chvíli **není** připojené, `_device` zůstane `null` a volání je no‑op; další pokus proběhne při příštím `SetStateAsync`. Rozdíl mezi „nic není zapojené” a „zařízení je zapojené, ale nejde otevřít” plugin **loguje**: `NotFound` jako `Debug`, `AccessDenied` / `InUse` / `Failed` jako `Warning` včetně hlášky knihovny s platformním hintem (udev pravidlo na Linuxu, Input Monitoring na macOS, jiná aplikace držící zařízení).
+2. Teprve při prvním volání `SetStateAsync` (nebo při **Otestovat připojení**) plugin zavolá interní helper `GetOrOpenDevice()`, který přes `ILuxaforDeviceManager.Open()` otevře HID connection k aktuálně připojenému Luxaforu.
+3. Pokud zařízení v tu chvíli **není** připojené, `_device` zůstane `null` a volání je no‑op; další pokus proběhne při příštím `SetStateAsync`. Rozdíl mezi „nic není zapojené” a „zařízení je zapojené, ale nejde otevřít” plugin **loguje**: `NotFound` jako `Debug`, `AccessDenied` / `InUse` / `Failed` jako `Warning` včetně hlášky knihovny s platformním hintem (udev pravidlo na Linuxu, Input Monitoring na macOS, jiná aplikace držící zařízení). Když `Open()` vyhodí výjimku, plugin zaloguje Warning `Failed to connect to Luxafor device` a test připojení pak vrátí `Could not reach the Luxafor device.`
 4. Pokud je zapnuté `turn_off_on_startup`, plugin při **první** inicializaci okamžitě zavolá `SetStateAsync(Idle)`. Pokud je zařízení v tu chvíli připojené, otevře se a zhasne; pokud připojené není, volání je stejně jako v bodě 3 no‑op. Při re-inicializaci (změna configu za běhu) už k zhasnutí nedojde, aby plugin nerušil probíhající Pomodoro.
 
 ### Reakce na Pomodoro
 
-Avalonia aplikace si předplatí `IPomodoroService.PhaseChanged`. Při eventu:
+Indikátory řídí přímo `PomodoroService` v `WorkTracker.UI.Shared` (ne Avalonia — ta `PhaseChanged` používá jen pro UI). Při startu, přechodu fáze (i přes **Přeskočit**), zastavení, resetu a při dispose služby zavolá:
 
 ```csharp
-void OnPhaseChanged(PomodoroPhase newPhase)
+private async Task SetStatusIndicatorsForPhaseAsync(PomodoroPhase phase)
 {
-    var state = newPhase switch
+    var state = phase switch
     {
         PomodoroPhase.Work => StatusIndicatorState.Work,
         PomodoroPhase.ShortBreak => StatusIndicatorState.ShortBreak,
         PomodoroPhase.LongBreak => StatusIndicatorState.LongBreak,
-        _ => StatusIndicatorState.Idle,
+        _ => StatusIndicatorState.Idle
     };
 
-    foreach (var indicator in _pluginManager.StatusIndicatorPlugins)
-    {
-        if (indicator.IsDeviceAvailable)
-        {
-            _ = indicator.SetStateAsync(state, CancellationToken.None);
-        }
-    }
+    var tasks = _pluginManager.StatusIndicatorPlugins
+        .Select(plugin => SetPluginStateSafe(plugin, state, phase));
+    await Task.WhenAll(tasks);
 }
 ```
 
+`SetPluginStateSafe` zavolá `SetStateAsync` a případnou výjimku zaloguje jako Warning. Volá se na **všechny** povolené indikátory bez ohledu na `IsDeviceAvailable` — jen tak může plugin zařízení při prvním volání lazy otevřít. Zastavení a reset posílají `Idle`, takže LED zhasne.
+
 `LuxaforStatusIndicatorPlugin.SetStateAsync`:
 
-1. Zamkne `SemaphoreSlim` (operace se zařízením **nesmí** běžet paralelně — DotLuxafor i HID obecně očekávají sériový přístup).
+1. Zamkne `SemaphoreSlim` — chrání stav pluginu (otevírání a zavírání `_device`, `_lastState`), aby se souběžná volání nepraly o handle. Samotné příkazy DotLuxafor jsou podle dokumentace knihovny thread‑safe.
 2. Zapamatuje si stav (`_lastState`), aby ho **Test connection** uměl po probliknutí obnovit.
 3. Přes `GetOrOpenDevice()` získá otevřený `ILuxaforDevice` (nebo ho lazy otevře, pokud jím plugin ještě nedisponuje).
 4. Podle stavu zavolá buď `device.SetColorAsync(color)` s barvou odpovídající fázi, nebo `device.TurnOffAsync()` pro `Idle`.
@@ -139,18 +137,18 @@ Při selhání operace v `SetStateAsync` plugin zařízení zavře a další vol
 
 ## Ověření funkčnosti
 
-Plugin implementuje `ITestablePlugin`, takže se v Settings UI zobrazí tlačítko **Test connection** (viditelnost řídí `PluginViewModel.SupportsTestConnection`). Test:
+Plugin implementuje `ITestablePlugin`, takže se v Nastavení zobrazí tlačítko **Otestovat připojení** (viditelnost řídí `PluginViewModel.SupportsTestConnection`). Test:
 
 1. Otevře zařízení — a když to nejde, vrátí **důvod** z `DeviceOpenResult.Description` místo obecného selhání. Kategorie chyby: `NotFound` (nic není zapojené), `Authentication` (`AccessDenied` — chybí udev pravidlo / Input Monitoring), jinak `Internal` (např. zařízení drží jiná aplikace).
 2. Rozsvítí LED barvou fáze **Work** na 1 sekundu, takže je vidět, které zařízení odpovídá. Pokud byl handle zastaralý, projde se stejným reopen jako `SetStateAsync`.
-3. Vrátí LED na aktuální Pomodoro fázi (nebo ji zhasne, pokud timer neběží) — test ze Settings nesmí nechat běžící Pomodoro na špatné barvě.
+3. Vrátí LED na aktuální Pomodoro fázi (nebo ji zhasne, pokud timer neběží) — test z Nastavení nesmí nechat běžící Pomodoro na špatné barvě.
 
 Kromě testu tlačítkem lze funkčnost ověřit i prakticky:
 
 1. Ujisti se, že je plugin **enabled** a konfigurace je uložená.
-2. Připoj Luxafor zařízení (USB nebo Bluetooth Pro).
+2. Připoj Luxafor zařízení (USB, nebo dongle Bluetooth Pro).
 3. Spusť Pomodoro a sleduj, jestli LED přepíná barvy podle aktuální fáze: **Work**, **Short Break**, **Long Break**. Mimo běh Pomodora plugin LED zhasne (idle).
-4. Pokud se LED nemění, zkontroluj v `logs/worktracker-YYYYMMDD.log` hlášky z `LuxaforStatusIndicatorPlugin` a stav property `IsDeviceAvailable`.
+4. Pokud se LED nemění, zkontroluj v logu `%LocalAppData%\WorkTracker\logs\worktracker-YYYYMMDD.log` (v Developmentu `WorkTracker_Development`) hlášky z `LuxaforStatusIndicatorPlugin` a stav property `IsDeviceAvailable`.
 
 Tímhle postupem ověříš obě důležité věci v jednom kroku:
 
@@ -163,17 +161,17 @@ Tímhle postupem ověříš obě důležité věci v jednom kroku:
 
 | Symptom | Příčina | Řešení |
 |---------|---------|--------|
-| Plugin loaded, ale `IsDeviceAvailable = false` | Zařízení není připojené nebo uživatel nemá přístup k HID | Spusť **Test connection** — řekne, která z těch dvou možností to je. Na Linuxu zkontroluj udev rules. |
+| Plugin loaded, ale `IsDeviceAvailable = false` | Zařízení není připojené nebo uživatel nemá přístup k HID | Spusť **Otestovat připojení** — řekne, která z těch dvou možností to je. Na Linuxu zkontroluj udev rules. |
 | `Luxafor device unavailable: ...` (Warning v logu) | Zařízení je zapojené, ale OS ho nepustil — chybějící udev pravidlo, macOS Input Monitoring, nebo ho drží jiná aplikace | Hláška obsahuje konkrétní důvod i hint pro danou platformu. Viz sekci **Ovladače**. |
-| LED svítí, ale pořád stejnou barvou | Pomodoro neběží → plugin drží poslední stav; zavoláním `Start Pomodoro` se obnoví. Nebo konfigurace má všechny barvy stejné. | Zkontroluj konfiguraci a stav Pomodoro. |
-| Bluetooth Pro se připojuje a hned odpojuje | Slabá baterie, interference, nebo spárování není dokončené | Nabij zařízení, znovu spáruj. |
-| `DeviceNotFound` i když je zařízení zapojené | Konflikt s jiným ovladačem (např. stará verze Luxafor desktop app) | Zavři konkurenční aplikaci. |
+| LED svítí, ale pořád stejnou barvou | Zařízení si drží barvu z doby před spuštěním aplikace (zapni `turn_off_on_startup`), příkaz se nedoručil (viz log), nebo jsou v konfiguraci všechny barvy stejné. Zastavení Pomodora LED zhasne. | Zkontroluj konfiguraci a log. |
+| Bluetooth Pro se připojuje a hned odpojuje | Slabá baterie nebo interference s donglem | Nabij zařízení, dongle připoj blíž. |
+| `InUse` (Warning `Luxafor device unavailable: …` v logu) | Zařízení drží jiná aplikace (např. oficiální Luxafor software) | Zavři konkurenční aplikaci. |
 
 ---
 
 ## Co plugin **nedělá**
 
-- **Neukládá barvy mimo `settings.json`** — žádná vlastní cache.
+- **Neukládá barvy mimo konfiguraci pluginu** (uživatelský `settings.json`, záložně `appsettings.json`) — žádná vlastní cache.
 - **Nepoužívá síť** — čistě lokální HID.
 - **Nereaguje na work entries přímo** — jen na Pomodoro fáze. Pokud chceš jinou logiku (např. červená, když běží tracking, zelená, když ne), by to vyžadovalo úpravu pluginu nebo další plugin s vlastním event hookem.
 
@@ -181,7 +179,7 @@ Tímhle postupem ověříš obě důležité věci v jednom kroku:
 
 ## Plugin config schéma (`appsettings.json`)
 
-CLI samotné Luxafor nepoužívá (nemá Pomodoro), takže aktuálně nemá smysl plugin konfigurovat mimo GUI. Pokud bys psal/a vlastní host, který volá `IPluginManager.StatusIndicatorPlugins`, schéma vypadá takto:
+CLI samotné Luxafor nepoužívá (nemá Pomodoro), takže aktuálně nemá smysl plugin konfigurovat mimo GUI. Záložní konfigurace v `appsettings.json` vypadá takto:
 
 ```json
 {
@@ -196,4 +194,4 @@ CLI samotné Luxafor nepoužívá (nemá Pomodoro), takže aktuálně nemá smys
 }
 ```
 
-> **Pozor:** Samotná přítomnost configu v `appsettings.json` plugin **nezapne**. `IPluginManager.StatusIndicatorPlugins` vrací jen **enabled** pluginy; enabled stav se předává při bootstrapu přes `InitializePluginsAsync(..., enabledPlugins: new Dictionary<string, bool> { ["luxafor.status-indicator"] = true })`. Aktuální `WorkTracker.CLI` tuto mapu nepředává, takže ani s configem v souboru by Luxafor z CLI nefungoval. Plugin konfiguruj v GUI.
+> **Pozor:** Samotná přítomnost configu v `appsettings.json` plugin **nezapne**. `IPluginManager.StatusIndicatorPlugins` vrací jen **enabled** pluginy; enabled stav čte GUI i CLI z uživatelského `settings.json` a předává ho do `Infrastructure.DependencyInjection.InitializePluginsAsync(..., enabledPlugins, ...)`. CLI tu mapu předává taky, ale Luxafor tam nemá co dělat — CLI nemá Pomodoro, takže nic nevolá `SetStateAsync`. Plugin konfiguruj v GUI.
