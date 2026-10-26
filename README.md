@@ -5,10 +5,10 @@
 [![Build](https://github.com/vesnicancz/work-tracker/actions/workflows/dotnet.yml/badge.svg)](https://github.com/vesnicancz/work-tracker/actions/workflows/dotnet.yml)
 [![Release](https://img.shields.io/github/v/release/vesnicancz/work-tracker)](https://github.com/vesnicancz/work-tracker/releases/latest)
 [![.NET 10](https://img.shields.io/badge/.NET-10.0-purple)](https://dotnet.microsoft.com/)
-[![C# 13](https://img.shields.io/badge/C%23-13-blue)](https://learn.microsoft.com/en-us/dotnet/csharp/)
+[![C# 14](https://img.shields.io/badge/C%23-14-blue)](https://learn.microsoft.com/en-us/dotnet/csharp/)
 ![Platform](https://img.shields.io/badge/platform-Windows%20|%20Linux%20|%20macOS-lightgrey)
 [![EF Core](https://img.shields.io/badge/EF%20Core-10.0-blueviolet)](https://learn.microsoft.com/en-us/ef/core/)
-[![Avalonia](https://img.shields.io/badge/Avalonia-12.1-blue)](https://avaloniaui.net/)
+[![Avalonia](https://img.shields.io/badge/Avalonia-12.0-blue)](https://avaloniaui.net/)
 
 ---
 
@@ -90,7 +90,7 @@ Detailní průvodce prvním spuštěním a ovládáním najdeš v [docs/user-gui
 | `list [datum]` | Výpis záznamů pro zadaný den (výchozí: dnes) |
 | `edit <id> [--ticket=] [--start=] [--end=] [--desc=]` | Úprava existujícího záznamu |
 | `delete <id>` | Smazání záznamu |
-| `send [week] [datum]` | Odeslání worklogu do externího systému (náhled + potvrzení). `--provider <id>` vybere konkrétní plugin, `--yes` přeskočí potvrzení |
+| `send [week] [datum]` | Odeslání worklogu do externího systému (náhled + potvrzení). `--provider=<id>` vybere konkrétní plugin, `--yes`/`-y` přeskočí potvrzení |
 | `providers` | Výpis worklog upload pluginů a jejich enabled stavu |
 | `version`, `help` | Verze a nápověda |
 
@@ -102,7 +102,7 @@ Příklady:
 # Start s Jira kódem, popisem a explicitním časem
 WorkTracker.CLI start PROJ-123 "Bug fix" 09:00
 
-# Odeslání celého aktuálního týdne (syntaxe — aktuálně v CLI nefunkční kvůli vypnutým pluginům, použij GUI)
+# Odeslání celého aktuálního týdne
 WorkTracker.CLI send week
 
 # Úprava záznamu č. 5
@@ -118,7 +118,7 @@ WorkTracker.CLI edit 5 --ticket=PROJ-456 --end=17:30 --desc="Nový popis"
 >
 > **Poznámka k nápovědě:** Vestavěný help (`WorkTracker.CLI help`) používá v usage stringách historický název `worklog` (např. `Usage: worklog start [ticket-id] ...`). Je to stará relikvie — skutečná binárka se jmenuje `WorkTracker.CLI`, takže při volání nahraď `worklog` za `WorkTracker.CLI` (s `.exe`/`./` dle platformy).
 
-Jira ticket se detekuje automaticky z prvního tokenu, který odpovídá regex vzoru `^([a-zA-Z0-9]+-[0-9]+)` (ověřeno v `JiraPatterns.TicketId()`). Prefix před pomlčkou může obsahovat písmena i číslice, povoluje velká i malá písmena (char class `[a-zA-Z]`, ne `RegexOptions.IgnoreCase`), ale **nepovoluje underscore** — např. `PROJ-123` nebo `proj-123` fungují, `WORK_TRACKER-42` ne. Časy lze zadávat ve formátech `HH:mm`, `HH:mm:ss` nebo `yyyy-MM-dd HH:mm`.
+Jira ticket se detekuje automaticky ze začátku vstupu podle regex vzoru `^([a-zA-Z0-9]+-[0-9]+)` (bez hranice slova, takže z `PROJ-123abc` vznikne ticket `PROJ-123` a popis `abc`) (ověřeno v `JiraPatterns.TicketId()`). Prefix před pomlčkou může obsahovat písmena i číslice, povoluje velká i malá písmena (char class `[a-zA-Z]`, ne `RegexOptions.IgnoreCase`), ale **nepovoluje underscore** — např. `PROJ-123` nebo `proj-123` fungují, `WORK_TRACKER-42` ne. Časy lze zadávat ve formátech `HH:mm`, `HH:mm:ss` nebo `yyyy-MM-dd HH:mm`.
 
 ---
 
@@ -128,7 +128,7 @@ Jira ticket se detekuje automaticky z prvního tokenu, který odpovídá regex v
 
 Aplikace ukládá všechna perzistentní data do `%LocalAppData%\WorkTracker\` (Windows), resp. `~/.local/share/WorkTracker/` (Linux) nebo `~/Library/Application Support/WorkTracker/` (macOS).
 
-> **Environment suffix:** Pokud běží v non‑Production prostředí (proměnná `DOTNET_ENVIRONMENT` nebo `ASPNETCORE_ENVIRONMENT` != `Production`), přidá se k názvu složky suffix — `WorkTracker_Development` pro development a podobně. Při `dotnet run` z vývojového stromu je výchozí prostředí `Development`, takže reálná cesta bývá `%LocalAppData%\WorkTracker_Development\`. V release buildu (publikovaná binárka bez přepisu env proměnné) se používá čisté `WorkTracker`.
+> **Environment suffix:** Pokud běží v non‑Production prostředí (proměnná `DOTNET_ENVIRONMENT` nebo `ASPNETCORE_ENVIRONMENT` != `Production`), přidá se k názvu složky suffix — `WorkTracker_Development` pro development a podobně. Debug build si `Development` nastaví sám, pokud proměnná není zadaná (platí pro `dotnet run`, spuštění z IDE i ručně spuštěnou binárku), takže settings, logy a `keys/` jdou do `%LocalAppData%\WorkTracker_Development\`. Databáze je v Developmentu `worktracker-dev.db` vedle binárky (viz `appsettings.Development.json`). V release buildu (publikovaná binárka bez přepisu env proměnné) se používá čisté `WorkTracker`.
 
 Obsah složky:
 
@@ -231,16 +231,19 @@ Kompletní návod: [docs/plugin-development.md](docs/plugin-development.md).
 Clean Architecture s jednosměrnými závislostmi:
 
 ```
-Presentation (CLI, Avalonia)
+Avalonia
       └─ UI.Shared (ViewModels, Orchestrátory, ISettingsService, ILocalizationService)
             └─ Application (IWorkEntryService, IUnitOfWork, Result<T>, DTOs)
                   └─ Domain (WorkEntry, IWorkEntryRepository, business pravidla)
 
+CLI ─> Application (UI.Shared nepoužívá)
+Avalonia, CLI ─> Infrastructure (jen bootstrap: AddInfrastructure, inicializace DB a pluginů)
+
 Plugin.Abstractions (IPlugin, *PluginBase) — společné API pro všechny pluginy
-      └─ referencováno z Application, Infrastructure a jednotlivých plugin projektů
+      └─ referencováno z Application (Infrastructure tranzitivně) a jednotlivých plugin projektů
 ```
 
-Viz [docs/architecture.md](docs/architecture.md) pro detailní diagram, popis vrstev a vzorů (Result pattern, Unit of Work, plugin DI scope).
+Viz [docs/architecture.md](docs/architecture.md) pro detailní diagram, popis vrstev a vzorů (Result pattern, Unit of Work, plugin DI).
 
 ### Projekty v repozitáři
 

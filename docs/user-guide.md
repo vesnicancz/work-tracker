@@ -81,15 +81,15 @@ Při prvním startu aplikace:
 1. Vytvoří se adresář s uživatelskými daty (`%LocalAppData%\WorkTracker\` na Windows).
 2. Proběhne migrace SQLite databáze (`worktracker.db`).
 3. Načtou se pluginy ze složky `plugins/` vedle spustitelného souboru (typicky `{AppContext.BaseDirectory}/plugins`; uvnitř macOS `.app` z `~/Library/Application Support/WorkTracker/plugins`).
-4. Pokud některý plugin nemá nastavenou konfiguraci, zůstane v seznamu, ale nebude aktivní.
+4. Nově nalezený plugin je ve výchozím stavu vypnutý — zapneš ho v **Nastavení → Pluginy**. Když se zapnutý plugin nepodaří inicializovat (např. chybí konfigurace), zapíše se to jen do logu.
 
 Doporučený postup pro nového uživatele:
 
 1. Spusť Avalonia GUI.
-2. Otevři **Settings** (ozubené kolečko v pravém horním rohu nebo menu).
+2. Otevři **Nastavení** (tlačítko vlevo dole v postranním panelu).
 3. Nakonfiguruj pluginy, které chceš používat — viz [Konfigurace pluginů](#konfigurace-pluginů).
 4. Nastav Pomodoro, téma a lokalizaci podle chuti.
-5. Vytvoř si první záznam (tlačítko **Start** nebo `Ctrl+Shift+W`).
+5. Vytvoř si první záznam (tlačítko **Zahájit práci** nebo `Ctrl+Shift+W`; na macOS globální zkratka zatím nefunguje).
 
 ---
 
@@ -103,7 +103,7 @@ WorkTracker používá pro všechna perzistentní data jednu složku podle OS:
 | Linux | `$XDG_DATA_HOME/WorkTracker/` nebo `~/.local/share/WorkTracker/` |
 | macOS | `~/Library/Application Support/WorkTracker/` |
 
-> **Environment suffix:** V non‑Production prostředí (proměnná `DOTNET_ENVIRONMENT` nebo `ASPNETCORE_ENVIRONMENT` != `Production`) se k názvu složky přidá suffix, takže místo `WorkTracker` může být `WorkTracker_Development`. Při `dotnet run` z vývojového stromu je default `Development`, takže reálná cesta je např. `%LocalAppData%\WorkTracker_Development\`. Release build bez přepisu env proměnné používá čisté `WorkTracker`. Pokud nevíš, jaká cesta se použije, zkontroluj `logs/` — najdeš je ve správné složce podle aktuálního prostředí.
+> **Environment suffix:** V non‑Production prostředí (proměnná `DOTNET_ENVIRONMENT` nebo `ASPNETCORE_ENVIRONMENT` != `Production`) se k názvu složky přidá suffix, takže místo `WorkTracker` může být `WorkTracker_Development`. Debug build (tedy i běžný `dotnet run` z vývojového stromu) nastaví `Development` sám, pokud proměnnou nenastavíš, takže reálná cesta je např. `%LocalAppData%\WorkTracker_Development\`. Release build bez přepisu env proměnné používá čisté `WorkTracker`. Pokud nevíš, jaká cesta se použije, zkontroluj `logs/` — najdeš je ve správné složce podle aktuálního prostředí.
 
 Obsah:
 
@@ -126,7 +126,7 @@ Pokud potřebuješ data přenést na jiný stroj, obvykle stačí zkopírovat `w
 
 ### Přepis cesty k databázi
 
-Cestu k databázi lze přepsat v `appsettings.json` (soubor vedle spustitelného souboru aplikace — platí pro GUI i CLI):
+Cestu k databázi lze přepsat v `appsettings.json` (soubor vedle spustitelného souboru aplikace — platí pro GUI i CLI; na macOS je uvnitř `WorkTracker.app/Contents/Resources/` a jeho úprava naruší podpis bundlu):
 
 ```json
 {
@@ -137,7 +137,7 @@ Cestu k databázi lze přepsat v `appsettings.json` (soubor vedle spustitelného
 }
 ```
 
-Relativní cesta se vyhodnocuje vůči adresáři aplikace. Pokud nakonfigurovaný adresář není dostupný (např. odpojený disk), aplikace při startu skončí s chybou — záměrně nespadne zpět na výchozí umístění, aby se data tiše nerozdělila do dvou databází.
+Relativní cesta se vyhodnocuje vůči adresáři aplikace (uvnitř macOS `.app` vůči `~/Library/Application Support/WorkTracker/`). Pokud nakonfigurovaný adresář není dostupný (např. odpojený disk), aplikace při startu skončí s chybou — záměrně nespadne zpět na výchozí umístění, aby se data tiše nerozdělila do dvou databází.
 
 ### Sdílení databáze mezi OS (dual boot, flash disk)
 
@@ -213,8 +213,8 @@ WorkTracker.CLI start "Standup meeting" "2026-04-09 09:00"
 
 Logika:
 
-- Pokud první token odpovídá regex vzoru `^([a-zA-Z0-9]+-[0-9]+)` (z `JiraPatterns.TicketId()`), považuje se za **ticket ID**. Prefix může mít písmena i číslice, je case‑insensitive, ale **nepovoluje underscore** — `PROJ-123` i `proj-123` fungují, `WORK_TRACKER-42` ne.
-- Poslední token je zkontrolován, zda nejde o čas (`HH:mm`, `HH:mm:ss`, nebo `yyyy-MM-dd HH:mm`). Pokud ano, je to `start time`. Jinak je součástí popisu.
+- Pokud začátek vstupu odpovídá regex vzoru `^([a-zA-Z0-9]+-[0-9]+)` (z `JiraPatterns.TicketId()`), považuje se za **ticket ID**. Vzor nemá hranici slova, takže z `PROJ-123abc` vznikne ticket `PROJ-123` a popis `abc`. Prefix může mít písmena i číslice, je case‑insensitive, ale **nepovoluje underscore** — `PROJ-123` i `proj-123` fungují, `WORK_TRACKER-42` ne.
+- Nejdřív se zkusí poslední dva tokeny jako datum + čas, pak poslední token jako čas. Parsuje se podle aktuální kultury (`DateTime.TryParse`), typicky `HH:mm`, `HH:mm:ss` nebo `yyyy-MM-dd HH:mm`. Pokud to vyjde, je to `start time`, jinak je token součástí popisu.
 - Zbytek je popis práce.
 - Validace: **musí být zadán alespoň ticket ID nebo popis.**
 
@@ -256,7 +256,7 @@ WorkTracker.CLI edit 5 --desc="Nový popis"
 WorkTracker.CLI edit 5 --start="2026-04-09 09:00" --end="2026-04-09 17:30"
 ```
 
-Nezadané parametry zůstávají nezměněny. Pokud se nové časy překrývají s jiným existujícím záznamem, aplikace se pokusí kolizi vyřešit (ořez nebo smazání kolidujícího záznamu) — akce běží v `IUnitOfWork` transakci, takže se buď povede celá, nebo nic.
+Nezadané parametry zůstávají nezměněny. Pokud by se nové časy překrývaly s jiným existujícím záznamem, CLI úpravu odmítne s chybou a vrátí exit code `1` — kolizi vyřeš ručně, nebo v GUI, které nabídne ořez, posun, rozdělení či smazání kolidujícího záznamu.
 
 ### `delete`
 
@@ -277,11 +277,11 @@ Postup (předpokládá, že je alespoň jeden worklog plugin povolený):
 
 1. Aplikace načte záznamy z databáze pro zvolený rozsah.
 2. Ukáže náhled v tabulce (ticket, start, konec, délka).
-3. Požádá o potvrzení — **`y/N`**.
-4. Zavolá první povolený `IWorklogUploadPlugin`. Pokud máš více worklog pluginů povolených, použije se první podle **interního pořadí načtení / povolení** (ne abecedně); konkrétní plugin vybereš přes `--provider <id>`, jeho id vypíše `providers`.
+3. Požádá o potvrzení `[y/n]` — výchozí je **ano**, takže Enter odešle.
+4. Zavolá první povolený `IWorklogUploadPlugin`. Pokud máš více worklog pluginů povolených, použije se první podle **interního pořadí načtení / povolení** (ne abecedně); konkrétní plugin vybereš přes `--provider=<id>` (s rovnítkem, varianta s mezerou nefunguje), jeho id vypíše `providers`.
 5. U týdenního odesílání se při částečném úspěchu vypíše seznam selhaných dnů a důvody.
 
-Neúplné záznamy (bez ticketu i popisu, nebo s nulovou délkou) jsou pluginem validátorem automaticky odfiltrovány s upozorněním.
+Odesílají se jen dokončené záznamy (s koncem). Neplatné záznamy (např. delší než 24 h nebo s délkou, která nesedí na časy) aplikace přeskočí a zapíše to do logu.
 
 > **Pozor — konfigurace pluginů:** CLI pluginy načítá a povoluje podle `settings.json`, který zapisuje GUI. Zapnout a nastavit plugin proto jde jen v GUI; dokud tam žádný worklog plugin povolený není, skončí `send` chybou `No worklog upload plugin available`. Aktuální stav ukáže `WorkTracker.CLI providers`.
 
@@ -307,7 +307,7 @@ WorkTracker.CLI list | wc -l                                               # po�
 WorkTracker.CLI providers | cut -f1                                        # jen id pluginů
 ```
 
-Chyby a upozornění jdou vždy na stderr, takže se do dat nepřimíchají.
+Chyby jdou vždy na stderr; v režimu `--plain` a `--json` i upozornění, takže se do dat nepřimíchají.
 
 ---
 
@@ -321,9 +321,10 @@ Cross‑platform desktopová aplikace. Hlavní okno je rozdělené na **levý po
 
 **Levý postranní panel** (shora dolů):
 
-- **Karta rychlého startu** — jednořádkový textbox s placeholderem ve tvaru `PROJ-123 Práce na funkci` a tlačítko **Zahájit práci**. Stejná parsovací logika jako v CLI `start`: pokud text začíná Jira kódem (`^([a-zA-Z0-9]+-[0-9]+)` — písmena/číslice, bez underscore), rozpozná se jako ticket; zbytek je popis. Tlačítko je aktivní, když je textbox neprázdný. Pokud už jiný záznam běží, automaticky se na začátku nového zastaví.
-- **Karta Pomodoro** — tlačítko **Spustit Pomodoro** (když neběží) / **Zastavit Pomodoro** a zbývající čas (když běží). Konfigurace fází je v **Nastavení → Pomodoro**.
-- **Karta Dnes** — celkový čas odpracovaný za dnešek ve formátu `HH:MM:SS`, aktualizovaný v reálném čase.
+- **Karta rychlého startu** — jednořádkový textbox s placeholderem ve tvaru `PROJ-123 Práce na funkci` a tlačítko **Zahájit práci**. Stejné rozpoznání ticketu jako v CLI `start` (čas na konci se ale nerozpoznává a zůstane v popisu): pokud text začíná Jira kódem (`^([a-zA-Z0-9]+-[0-9]+)` — písmena/číslice, bez underscore), rozpozná se jako ticket; zbytek je popis. Tlačítko je aktivní, když je textbox neprázdný. Pokud už jiný záznam běží, automaticky se na začátku nového zastaví.
+- **Karta Aktivní práce** (jen když běží záznam) — uběhlý čas, ticket, popis a tlačítko **Zastavit práci**.
+- **Karta Pomodoro** (jen když je Pomodoro zapnuté v **Nastavení → Pomodoro**) — tlačítko **Spustit Pomodoro**; když běží, zbývající čas, fáze, počet pomodor a ikony **Přeskočit** a **Zastavit**.
+- **Karta Dnes** — celkový čas za den zvolený v navigaci datem (výchozí dnešek) ve formátu `HH:MM:SS`, aktualizovaný v reálném čase.
 - **Spodní sekce** (oddělená linkou):
   - **Odeslat záznamy práce** — otevře dialog s náhledem worklogu a výběrem pluginu pro odeslání.
   - **Nastavení** — otevře Settings okno.
@@ -332,24 +333,24 @@ Cross‑platform desktopová aplikace. Hlavní okno je rozdělené na **levý po
 
 - **Navigace datem** (horní lišta): `<` předchozí den, **date picker** s aktuálně zobrazeným datem, **kalendářová ikona** (skok na dnešek), `>` následující den. Vpravo od navigace je titulek **Záznamy práce**.
 - **Ikony vpravo nahoře**:
-  - ↻ **Refresh** — znovu načte záznamy za zvolený den.
-  - 💡 **Návrhy** (žárovka) — otevře dialog Work Suggestions (viz [Work Suggestions](#work-suggestions)).
-  - `+` **Nový záznam** — otevře dialog pro ruční vytvoření záznamu s plnými poli (ticket, popis, začátek, konec).
+  - ↻ **Obnovit** — znovu načte záznamy za zvolený den.
+  - 💡 **Návrhy** (žárovka; vidět jen se zapnutým pluginem návrhů) — otevře dialog Work Suggestions (viz [Work Suggestions](#work-suggestions)).
+  - `+` **Přidat nový záznam** — otevře dialog pro ruční vytvoření záznamu s plnými poli (ticket, popis, začátek, konec).
 - **Datagrid** se sloupci:
   - **Ticket** — Jira kód záznamu (nebo prázdné)
   - **Popis**
   - **Začátek** — čas startu (`HH:mm`)
-  - **Konec** — čas ukončení (`HH:mm`, prázdné u aktivního záznamu)
+  - **Konec** — čas ukončení (`HH:mm`, u aktivního záznamu `—`)
   - **Trvání** — délka záznamu
   - **Stav** — indikátor aktivní / dokončený
-  - **Akce** (poslední úzký sloupec) — tlačítka nad každým řádkem:
-    - ▶ **Spustit znovu** — zahájí nový záznam se stejným ticketem a popisem (rychlý restart z historie). U aktivního záznamu se toto tlačítko nezobrazuje.
+  - Poslední úzký sloupec bez nadpisu s tlačítky akcí nad každým řádkem:
+    - ▶ **Restartovat práci na tomto ticketu** — zahájí nový záznam se stejným ticketem a popisem (rychlý restart z historie). U aktivního záznamu se toto tlačítko nezobrazuje.
     - ✎ **Upravit** — otevře dialog editace záznamu.
-    - 🗑 **Smazat** — odstraní záznam.
+    - 🗑 **Smazat** — po potvrzení v dialogu **Potvrdit smazání** záznam odstraní.
 
 Dvojklik na řádek otevře dialog editace záznamu.
 
-**Klávesová zkratka:** `Ctrl+Shift+W` pro vytvoření nového work itemu. Na Linuxu ji registruje desktop, viz [Globální zkratka na Linuxu](#globální-zkratka-na-linuxu).
+**Klávesová zkratka:** `Ctrl+Shift+W` pro vytvoření nového work itemu. Na Linuxu ji registruje desktop, viz [Globální zkratka na Linuxu](#globální-zkratka-na-linuxu). Na macOS globální zkratka zatím není implementovaná.
 
 ### Globální zkratka na Linuxu
 
@@ -358,8 +359,8 @@ Na Windows si zkratku registruje aplikace sama. Na Linuxu to nejde — pod Wayla
 Praktické důsledky:
 
 - **Zkratka se objeví v nastavení desktopu** a dá se tam přebindovat nebo úplně zrušit. Na KDE Plasma je to *Systémová nastavení → Klávesové zkratky*, pod položkou WorkTracker. `Ctrl+Shift+W` je jen návrh; když ji má něco jiného zabrané, desktop může přiřadit jinou nebo žádnou.
-- **GNOME se před zaregistrováním zeptá** potvrzovacím dialogem. Dokud na něj neodpovíte, zkratka nefunguje — zbytek aplikace ale jede normálně.
-- **Potřebujete desktop, který portál umí.** KDE Plasma a GNOME 46+ ano; na wlroots kompozitorech je potřeba `xdg-desktop-portal-wlr` nebo `-hyprland`. Na desktopu bez podpory se do logu zapíše důvod a aplikace běží dál bez zkratky.
+- **GNOME se před zaregistrováním zeptá** potvrzovacím dialogem. Dokud na něj neodpovíš, zkratka nefunguje — zbytek aplikace ale jede normálně.
+- **Potřebuješ desktop, který portál umí.** KDE Plasma a GNOME 46+ ano; na wlroots kompozitorech je potřeba `xdg-desktop-portal-wlr` nebo `-hyprland`. Na desktopu bez podpory se do logu zapíše důvod a aplikace běží dál bez zkratky.
 - **Funguje i na X11**, protože portál řeší obě session. Vlastní X11 implementace (`XGrabKey`) v aplikaci není.
 
 #### Zkratka se po restartu ztratí
@@ -378,44 +379,44 @@ Otevírá se kliknutím na **Nastavení** v levém dolním rohu hlavního okna. 
 **Obecné** — základní chování aplikace:
 
 - **Chování okna** — dvě volby pro to, co se stane po zavření okna: **Minimalizovat do systémové lišty** (aplikace běží dál v tray) nebo **Ukončit aplikaci** (standard close).
-- **Spuštění**:
-  - **Spustit s Windows** — zaregistruje aplikaci do autostart.
+- **Spouštění**:
+  - **Spustit po přihlášení** — zaregistruje aplikaci do autostartu (Windows, Linux i macOS).
   - **Spustit minimalizovanou** — okno se při startu neobjeví, aplikace jede rovnou do tray.
-- **Aktualizace** — **Kontrolovat aktualizace** zapíná/vypíná periodickou kontrolu GitHub Releases.
+- **Aktualizace** — **Kontrolovat aktualizace** zapíná/vypíná kontrolu nové verze na GitHubu při spuštění.
 - **Vzhled**:
-  - **Sledovat systémové nastavení** — když je zapnuto, aplikace automaticky přepíná mezi denním a nočním motivem podle Windows/OS preference. V tomto režimu se zobrazí dva dropdowny **Den** (jen světlé motivy) a **Noc** (jen tmavé motivy).
+  - **Sledovat systémové nastavení** — když je zapnuto, aplikace automaticky přepíná mezi denním a nočním motivem podle systémové preference. V tomto režimu se zobrazí dva dropdowny **Den** (jen světlé motivy) a **Noc** (jen tmavé motivy).
   - **Motiv** — když je „Sledovat systém" vypnuto, použije se jeden zvolený motiv (Modern Blue, Dark, Light, Midnight, Purple, Abyss, Cobalt, Coral, Eclipse, Sandstone, Synthwave).
 - **Jazyk** — **Systém** (výchozí, podle OS), **Čeština** nebo **English**. Změna se projeví okamžitě, bez restartu. Viz [Jazyk](#jazyk).
 
 **Oblíbené** — správa oblíbených položek (viz [Oblíbené položky](#oblíbené-položky)):
 
 - Seznam existujících oblíbených s tlačítky pro odstranění a posun nahoru/dolů.
-- Formulář pro přidání/editaci s poli **Název**, **Ticket**, **Popis** a checkboxem **Zobrazit jako šablonu** (určuje, zda se položka zobrazí v quick menu).
+- Formulář pro přidání/editaci s poli **Název**, **Tiket**, **Popis** a checkboxem **Zobrazit jako šablonu** — položka pak místo okamžitého spuštění otevře dialog záznamu s předvyplněnými hodnotami.
 
 **Pomodoro**:
 
-- Checkbox **Zapnuto** aktivuje Pomodoro timer.
-- Čtyři numerická pole: délka **Práce**, **Krátké pauzy**, **Dlouhé pauzy** a **Počet pomodor před dlouhou pauzou**.
-- Checkboxy **Automaticky spouštět tracking** a **Automaticky zastavovat tracking** pro napojení Pomodoro fází na work entry tracking.
+- Checkbox **Povolit Pomodoro časovač** zobrazí Pomodoro kartu v hlavním okně.
+- Čtyři textová pole (aktivní jen se zapnutým Pomodorem): **Délka práce (min)**, **Krátká pauza (min)**, **Dlouhá pauza (min)** a **Pomodor před dlouhou pauzou**.
+- Checkboxy **Auto-start sledování práce** a **Auto-stop sledování při pauze** pro napojení Pomodoro fází na work entry tracking.
 
 **Pluginy**:
 
 - Dropdown s výběrem pluginu (místo seznamu). Po výběru se dole zobrazí:
-  - Checkbox **Enabled** / **Disabled**.
+  - Checkbox **Povolit plugin**.
   - **Konfigurační formulář** — dynamicky generovaný z `PluginConfigurationField` daného pluginu. Pole typu `Password` se ukládají do secure storage.
-  - Tlačítko **Test connection** (u pluginů implementujících `ITestablePlugin`) s textovým výstupem výsledku.
-- Pokud nejsou nalezené žádné pluginy, záložka zobrazí zprávu „No plugins available“.
+  - Tlačítko **Otestovat připojení** (u pluginů implementujících `ITestablePlugin`) s textovým výstupem výsledku.
+- Pokud nejsou nalezené žádné pluginy, záložka zobrazí zprávu „Nejsou k dispozici žádné pluginy“.
 
 **O aplikaci**:
 
 - Název aplikace a **verze** (`AppInfo.DisplayVersion`).
 - **Klávesové zkratky**:
-  - `Ctrl + Shift + W` — globální hotkey pro rychlé vytvoření work itemu (funguje i když okno není v popředí). Na Linuxu závisí na desktop portálu — viz [Globální zkratka na Linuxu](#globální-zkratka-na-linuxu).
+  - `Ctrl + Shift + W` — globální hotkey pro rychlé vytvoření work itemu (funguje i když okno není v popředí). Na Linuxu závisí na desktop portálu — viz [Globální zkratka na Linuxu](#globální-zkratka-na-linuxu); na macOS zatím není implementovaná. Popisek v záložce uvádí „Zobrazit/skrýt okno“, zkratka ale otevírá dialog nového záznamu.
   - `Enter` — v textboxu rychlého startu potvrdí a spustí záznam.
-- **Rychlý přehled** — bullet seznam základních funkcí (jak začít trackovat, formát Jira kódu, k čemu jsou oblíbené, odesílání worklogů, system tray).
-- **System Info** — runtime verze (.NET), platforma (OS), UI framework.
+- **Stručný přehled** — bullet seznam základních funkcí (jak začít trackovat, formát Jira kódu, k čemu jsou oblíbené, odesílání worklogů, system tray).
+- **Systém** — runtime verze (.NET), platforma (OS), UI framework.
 
-Dole jsou tlačítka **Zrušit** a **Uložit**. Změny se projeví až po uložení.
+Dole jsou tlačítka **Zrušit** a **Uložit**. Změny se uloží až tlačítkem Uložit; motiv a jazyk se ale hned zobrazí jako náhled a Zrušit (nebo zavření okna) je vrátí.
 
 ### Dialog vytvoření a úpravy záznamu
 
@@ -423,19 +424,19 @@ Stejný dialog se používá pro **vytvoření nového záznamu** (tlačítko `+
 
 **Pole formuláře** (seshora dolů):
 
-- **Ticket ID** — textbox, volitelné, max 50 znaků. Placeholder naznačuje formát Jira kódu.
-- **Popis** — víceřádkový textbox, volitelný, max 500 znaků. Přijímá Enter pro nové řádky, automaticky se zalamuje.
-- **Začátek** — datum (date picker) + čas (textbox `HH:mm` v monospace fontu, 80 px široký). Oba prvky vedle sebe.
-- **Nastavit konec** — checkbox. Když je **odznačený**, záznam se uloží jako **aktivní** (běžící, bez konce). Když je označený, rozbalí se pod ním:
-  - **Konec** — stejná dvojice (datum + čas) jako u začátku.
-- **Validační chyba** — červený text pod poli, pokud ViewModel odmítne data (např. konec dřív než začátek, neplatný formát času, kolize s jiným aktivním záznamem). Nezobrazí se, dokud validace neprojde přes tlačítko **Uložit**.
+- **Ticket** — textbox bez popisku s placeholderem „ID ticketu (volitelné)“, max 50 znaků.
+- **Popis** — víceřádkový textbox s placeholderem „Popis (volitelné)“, max 500 znaků. Přijímá Enter pro nové řádky, automaticky se zalamuje.
+- **Čas zahájení** — datum (date picker) + čas (textbox `HH:mm` v monospace fontu, 80 px široký). Oba prvky vedle sebe.
+- **Nastavit čas ukončení** — checkbox. Když je **odznačený**, záznam se uloží jako **aktivní** (běžící, bez konce). Když je označený, rozbalí se pod ním:
+  - **Čas ukončení** — stejná dvojice (datum + čas) jako u začátku.
+- **Validační chyba** — červený text pod poli, průběžně při psaní: chybí ticket i popis, nebo konec není po začátku. Dokud tam je, tlačítko **Uložit** nejde stisknout. Neplatně zapsaný čas se tiše ignoruje (zůstane předchozí hodnota). Překryv s jiným záznamem chyba není: po Uložit se otevře dialog **Detekován překryv časů** s navrženými úpravami.
 
 **Tlačítka dole** (v pravém dolním rohu):
 
 - **Zrušit** — zavře dialog bez uložení.
-- **Uložit** (s ikonou diskety, primary) — spustí validaci, a pokud projde, uloží záznam a zavře dialog.
+- **Uložit** (s ikonou diskety, primary) — uloží záznam a zavře dialog.
 
-Validace „alespoň ticket nebo popis“ platí i tady — prázdný záznam bez ticketu a popisu projde textboxy, ale `WorkEntryService` ho při uložení odmítne a chybu dialog zobrazí jako validační hlášku.
+Validace „alespoň ticket nebo popis“ platí i tady — dialog ji hlídá průběžně („Je vyžadováno ID ticketu nebo popis“) a bez ticketu i popisu nejde uložit.
 
 ### Dialog návrhů práce (Suggestions)
 
@@ -449,21 +450,21 @@ Otevře se po stisku **Odeslat záznamy práce** (v levém panelu dole).
 
 **Horní panel s volbami** (vše na jednom řádku vedle sebe):
 
-- **Date picker** — vybrané datum (výchozí: dnes).
+- **Date picker** — vybrané datum (výchozí: datum vybrané v hlavním okně).
 - **Checkbox „Odeslat celý týden“** — přepne mezi denním a týdenním režimem. V týdenním režimu dialog zobrazí záznamy seskupené podle dnů s barevně zvýrazněnými date headery.
 - **Mód** (radio buttony „Časový / Agregovaný“) — přepíná mezi dvěma režimy odesílání (viz níže). Mód, který vybraný plugin nepodporuje, je zašedlý. Volba se pamatuje zvlášť pro každý plugin: dialog se otevře na pluginu, kam jsi odesílal naposledy, v módu, který jsi u něj naposledy měl, a přepnutí pluginu v dropdownu rovnou přehodí i mód na ten jeho.
-- **Dropdown s pluginem** (vpravo) — vybere provider, kam se záznamy odešlou (např. „Tempo Timesheets“). Jsou v něm vždycky všechny dostupné pluginy, nezávisle na zvoleném módu — plugin je hlavní volba a mód se mu přizpůsobí. Placeholder „Submit to…“ se zobrazí, dokud nic nevybereš.
+- **Dropdown s pluginem** (vpravo) — vybere provider, kam se záznamy odešlou (např. „Tempo Timesheets“). Jsou v něm vždycky všechny dostupné pluginy, nezávisle na zvoleném módu — plugin je hlavní volba a mód se mu přizpůsobí. Placeholder „Odeslat do“ se zobrazí, dokud nic nevybereš — obvykle ho ale neuvidíš, protože dialog rovnou předvybere naposledy použitý plugin.
 
 #### Časový vs. Agregovaný mód
 
 - **Časový** (default) — každý WorkEntry jde do providera jako samostatný worklog s přesným začátkem a koncem. Takto aplikace odesílala odjakživa.
 - **Agregovaný** — záznamy se **per den** seskupí podle kombinace (Ticket + Popis) a odešlou se jako jeden worklog se součtem trvání. Používej, když nechceš, aby byly v Tempu/Jiře vidět jednotlivé pauzy a přestávky v rámci stejné úlohy.
   - V tomto módu Tempo payload **vynechá `startTime`** úplně (posílá jen `startDate` + `timeSpentSeconds`).
-  - Aktuálně podporuje jen **Tempo Timesheets**. GoranG3 inzeruje pouze časový mód a v agregovaném se v dropdownu vůbec neobjeví.
+  - Aktuálně podporuje jen **Tempo Timesheets**. GoranG3 umí jen časový mód: když ho vybereš, přepínač Agregovaný zešedne.
 
 **Seznam záznamů k odeslání** je editovatelný — můžeš upravit hodnoty předtím, než je předáš pluginu. Každý řádek obsahuje:
 
-- **Checkbox** na začátku — odznačením záznam vyloučíš z odeslání. Checkbox v hlavičce sloupce reaguje na dva gesty: **jednoklik invertuje výběr** (označené → neoznačené a naopak), **dvojklik označí všechny**.
+- **Checkbox** na začátku — odznačením záznam vyloučíš z odeslání. Ikona v hlavičce sloupce reaguje na dvě gesta: **jednoklik invertuje výběr** (označené → neoznačené a naopak), **dvojklik označí všechny**.
 - **Ticket**, **Popis** — textboxy, hodnoty můžeš přímo přepsat.
 - V **Časovém** módu: **Začátek**, **Konec** (textboxy) a **Trvání** (read-only, přepočítává se automaticky z časů).
 - V **Agregovaném** módu: sloupce Začátek/Konec zmizí (nejsou u skupinového záznamu smysluplné) a **Trvání se stává editovatelným** textboxem — akceptuje formáty `H:MM`, `Xh Ym`, `Xh`, `Ym` nebo prosté číslo v minutách.
@@ -471,65 +472,67 @@ Otevře se po stisku **Odeslat záznamy práce** (v levém panelu dole).
 
 > **Změny v dialogu se do databáze nepropisují.** Upravené hodnoty putují jen do pluginu při stisku **Odeslat** — původní záznamy v hlavním seznamu zůstanou beze změn. Tlačítkem **Obnovit** kdykoli vrátíš všechny úpravy zpátky na původní hodnoty z DB. Pokud chceš změnit záznam trvale, uprav ho v hlavním okně (ikona ✎ v akcích nebo dvojklikem na řádek).
 
-Během načítání preview je místo seznamu vidět progress bar s textem „Načítám náhled…“.
+Během načítání preview je místo seznamu vidět progress bar s textem „Načítání náhledu...“.
 
 **Status bar** pod seznamem:
 
 - Vlevo: stavová zpráva (např. počet vybraných záznamů, výsledek posledního submitu).
-- Vpravo: **Odečtený čas** — součet délky vybraných záznamů ve formátu `Xh Ym`, výrazně zvýrazněný.
+- Vpravo: **Celkový čas:** — součet délky vybraných záznamů ve formátu `Xh Ym`, výrazně zvýrazněný.
 
 **Tlačítka dole:**
 
-- **Obnovit** (vlevo, s ikonou undo) — vrátí všechny editace zpátky na původní hodnoty (tooltip: „Obnovit původní hodnoty“).
+- **OBNOVIT** (vlevo, s ikonou undo) — vrátí všechny editace zpátky na původní hodnoty (tooltip: „Obnovit původní hodnoty“).
 - **Zavřít** — zruší dialog bez odeslání.
-- **Opakovat neúspěšné** — zobrazí se **pouze** tehdy, když po prvním odeslání část záznamů selhala. Retryne upload jen pro neúspěšné položky.
-- **Odeslat** (primary tlačítko s ikonou cloud upload) — zahájí upload. Během odesílání se mění na „Odesílám…“ s progress barem.
+- **ZNOVU ODESLAT** — zobrazí se **pouze** tehdy, když po prvním odeslání část záznamů selhala. Znovu odešle jen neúspěšné položky, které jsou pořád zaškrtnuté.
+- **ODESLAT** (primary tlačítko s ikonou cloud upload) — zahájí upload. Během odesílání se mění na „Odesílání...“ s progress barem.
 
 ---
 
 ## Konfigurace pluginů
 
-Pluginy se konfigurují v GUI přes **Settings → Plugins**. Každý plugin vystavuje seznam polí (`PluginConfigurationField`), pro která aplikace vygeneruje formulář.
+Pluginy se konfigurují v GUI přes **Nastavení → Pluginy**. Každý plugin vystavuje seznam polí (`PluginConfigurationField`), pro která aplikace vygeneruje formulář.
 
 ### Typy polí
 
-| Typ | Vzhled | Příklad |
-|-----|--------|---------|
-| `Text` | Textbox | Jira email, project code |
-| `Password` | Textbox se skrytou hodnotou, ukládáno do secure storage | API token |
-| `Url` | Textbox s URL validací | `https://api.tempo.io/4` |
-| `Number` | Numerický input | `MaxResults` |
-| `Email` | Textbox s email validací | Jira login email |
-| `MultilineText` | Textarea | JQL filtr |
-| `Checkbox` | Checkbox | `IncludeAllDayEvents` |
-| `Dropdown` | Combo box | Předvolené hodnoty |
+V Nastavení se zatím vykreslí jen dva druhy ovládacích prvků: `Checkbox` jako zaškrtávátko a **všechny ostatní typy jako stejný jednořádkový textbox**. Typ pole tedy vzhled neovlivňuje — hodnota typu `Password` se při psaní nemaskuje, `MultilineText` je jednořádkový, `Number` ani `Dropdown` nemají vlastní ovládací prvek a `Url`/`Email` se podle typu nevalidují (jen podle případného regexu `ValidationPattern`, a ten se vyhodnocuje jen u povinných polí). Popis pole (`Description`) se v UI nezobrazuje.
+
+| Typ | Co dělá navíc | Příklad |
+|-----|---------------|---------|
+| `Text` | — | Jira email, project code |
+| `Password` | ukládá se do secure storage | API token |
+| `Url` | — | `https://api.tempo.io/4` |
+| `Number` | — | `MaxResults` |
+| `Email` | — | Jira login email |
+| `MultilineText` | — | JQL filtr |
+| `Checkbox` | zaškrtávátko, ukládá se jako `true`/`false` | `IncludeAllDayEvents` |
+| `Dropdown` | — (volby zatím nejde definovat) | — |
 
 ### Secure storage
 
-Pole typu `Password` (a API tokeny obecně) se **nikdy** neukládají v plaintextu v `settings.json`. Místo toho:
+Pole typu `Password` se **nikdy** neukládají v plaintextu v `settings.json`. Místo toho:
 
 1. Plaintext zadáš do formuláře.
 2. `CredentialStoreSecureStorage` zavolá `Protect(hodnota, pluginId, fieldKey)`.
 3. Skutečná hodnota se uloží do OS credential storu s targetem `worktracker://{pluginId}/{fieldKey}`.
 4. V `settings.json` zůstane jen placeholder `CS:{pluginId}:{fieldKey}`.
 
-Při čtení se placeholder transparentně nahradí skutečnou hodnotou. Když plugin smažeš nebo změníš token, starý záznam z credential storu se odstraní přes `Remove(pluginId, fieldKey)`.
+Při čtení se placeholder transparentně nahradí skutečnou hodnotou. Nový token přepíše ten starý; když pole v nastavení vymažeš, záznam z credential storu se odstraní přes `Remove(pluginId, fieldKey)`.
 
 | OS | Kde najdeš uložené tokeny |
 |----|--------------------------|
-| Windows | Credential Manager → Windows Credentials → položky s prefixem `worktracker://` |
-| macOS | Keychain Access → přihlašovací klíčenka → hledat „worktracker“ |
-| Linux | Seahorse / `secret-tool search service worktracker` |
+| Windows | Credential Manager → Windows Credentials → hledej „worktracker“ (název položky obsahuje `worktracker://…`) |
+| macOS | Keychain Access → přihlašovací klíčenka → hledej „worktracker“ |
+| Linux | Seahorse (Hesla a klíče) → hledej „worktracker“ |
 
 ### OAuth pluginy (MSAL device code flow)
 
 Pluginy, které autentizují uživatele přes Microsoft Entra ID (Office 365 Calendar, Goran G3), používají **device code flow**:
 
-1. V Settings → Plugins klikneš na **Test connection**.
+1. V **Nastavení → Pluginy** vybereš plugin v rozbalovacím seznamu a klikneš na **Otestovat připojení**.
 2. Plugin zavolá `AcquireTokenInteractiveAsync`, který spustí MSAL device code flow.
-3. V progress dialogu se objeví user code a URL (např. `https://microsoft.com/devicelogin`).
+3. Pod tlačítkem se místo výsledku testu objeví anglická výzva s kódem a URL (`⏳ Open browser and enter code: …` a pod ní např. `https://microsoft.com/devicelogin`).
 4. Aplikace se současně pokusí otevřít browser. Zadáš code a přihlásíš se.
-5. MSAL uloží token do šifrované cache v `keys/` (DPAPI/Keychain/libsecret podle OS).
+5. MSAL uloží token do šifrované cache — na Windows do `keys/` (DPAPI), na macOS do Keychain a na Linuxu do keyringu (soubor v `keys/` jen jako nešifrovaný fallback).
 6. Plugin má token k dispozici, při vypršení se obnoví tiše (`AcquireTokenSilentAsync`).
 
 > **Proč device code, a ne interaktivní popup?** MSAL `AcquireTokenInteractive` má v Avalonia známý deadlock v UI vlákně. Device code flow běží v pozadí a nevyžaduje embedded browser — spolehlivě funguje napříč platformami.
@@ -549,9 +552,9 @@ Pluginy implementující `IWorkSuggestionPlugin` mohou aplikaci dodat návrhy ú
 
 Otevřeš ho kliknutím na ikonu **žárovky** v pravém horním rohu hlavního okna (vedle tlačítka `+`). Dialog zdědí **aktuálně vybrané datum** z navigace v hlavním okně — pokud tedy v hlavním seznamu listuješ v minulém týdnu, Suggestions ti nabídne návrhy pro ten samý den, ne pro dnešek. Chceš‑li jiné datum, zavři dialog, přepni datum v hlavním okně a otevři dialog znovu.
 
-Dialog má titulek **Suggestions** a je rozdělen svisle na:
+Dialog má titulek **Návrhy** a je rozdělen svisle na:
 
-- **Titulková lišta** s tlačítky **Refresh** (znovu načte návrhy ze všech pluginů) a **Close**.
+- **Titulková lišta** s tlačítky **Obnovit** (znovu načte návrhy ze všech pluginů) a **Zavřít**.
 - **Tenký progress bar** pod titulkem, viditelný během načítání.
 - **Seznam skupin** — každý aktivní `IWorkSuggestionPlugin` se zobrazí jako samostatná **akordeónová karta**.
 
@@ -579,8 +582,8 @@ Kliknutím na hlavičku skupinu rozbalíš nebo sbalíš (`ToggleGroupCommand`).
 **Kliknutí na položku** zavolá `SelectCommand` s daným návrhem a dialog ho předá dál — otevře se dialog [vytvoření záznamu](#dialog-vytvoření-a-úpravy-záznamu) s předvyplněnými poli z `WorkSuggestion`:
 
 - `TicketId` → pole Ticket
-- `Title` + `Description` → pole Popis
-- `StartTime` / `EndTime` (pokud jsou, typicky u kalendářových eventů) → pole Začátek a Konec
+- `Title` → pole Popis (`Description` návrhu se nepoužije)
+- `StartTime` / `EndTime` (pokud jsou, typicky u kalendářových eventů) → pole Čas zahájení a Čas ukončení
 
 `WorkSuggestion` dále nese metadata: `Source` (název pluginu), `SourceId` (unikátní v rámci pluginu), `SourceUrl` (odkaz zpět — např. na Jira issue v browseru).
 
@@ -593,21 +596,21 @@ Kliknutím na hlavičku skupinu rozbalíš nebo sbalíš (`ToggleGroupCommand`).
 1. V levém panelu hlavního okna klikni na **Odeslat záznamy práce**.
 2. Otevře se dialog s editovatelným seznamem záznamů pro zvolený den — viz [Dialog odeslání záznamů](#dialog-odeslání-záznamů).
 3. Volitelně přepni na týdenní režim (checkbox **Odeslat celý týden**), vyber **mód odesílání** (Časový / Agregovaný — viz [Časový vs. Agregovaný mód](#časový-vs-agregovaný-mód)), uprav záznamy, odznač ty, které odesílat nechceš, a vyber provider.
-4. Stiskni **Odeslat**.
+4. Stiskni **ODESLAT**.
 5. Aplikace zavolá `IWorklogSubmissionService.SubmitCustomWorklogsAsync(worklogs, providerId, mode)` s upravenými hodnotami z dialogu a zvoleným módem.
 
 Interně pipeline:
 
-- `IWorklogValidator` odfiltruje neplatné záznamy (prázdné, nulové, aktivní = neukončené).
+- Do náhledu se dostanou jen ukončené záznamy (s `EndTime`). Odešle se všechno zaškrtnuté — `IWorklogValidator` se v GUI neuplatní (běží jen u `send` v CLI) a chyby hlásí až plugin.
 - V **Agregovaném** módu orchestrátor nejprve seskupí DTO per den podle `(TicketId, Description)` a součtem spočítá `DurationMinutes`.
-- Platné záznamy se mapují přes `WorklogMapper` na `PluginWorklogEntry`.
+- Záznamy se mapují přes `WorklogMapper` na `PluginWorklogEntry`.
 - Service ověří, že zvolený plugin daný mód inzeruje (`SupportedModes.HasFlag(mode)`), jinak vrátí `Failure`.
 - Plugin provede upload (formát payloadu si může uzpůsobit podle módu) a vrátí `PluginResult<WorklogSubmissionResult>`.
 - Výsledek je převeden na `SubmissionResult` (application‑layer DTO) s počtem úspěšných/neúspěšných záznamů a seznamem chyb.
 
 ### Opakování selhání
 
-Pokud některé záznamy selžou (typicky kvůli síti nebo dočasnému 5xx), v dialogu se zobrazí tlačítko **Opakovat neúspěšné**. Po jeho stisku aplikace znovu odešle jen záznamy, které předtím selhaly. Navíc některé pluginy mohou mít **vlastní interní retry logiku** na úrovni jednoho odeslání — například `tempo.worklog` retryne automaticky 408/429/500–504 s exponenciálním backoffem (max 2 pokusy). Chování je plně plugin‑specifické a není garantované u všech dodávaných pluginů (např. `gorang3.worklog` automatický retry nedělá kvůli chybějící server‑side idempotenci).
+Pokud některé záznamy selžou (typicky kvůli síti nebo dočasnému 5xx), v dialogu se zobrazí tlačítko **ZNOVU ODESLAT**. Po jeho stisku aplikace znovu odešle jen záznamy, které předtím selhaly a jsou pořád zaškrtnuté. Navíc některé pluginy mohou mít **vlastní interní retry logiku** na úrovni jednoho odeslání — například `tempo.worklog` automaticky opakuje odeslání při 408, 429, 500, 502, 503 a 504 s exponenciálním backoffem (až 2 opakování, tedy 3 pokusy celkem). Chování je plně plugin‑specifické a není garantované u všech dodávaných pluginů (např. `gorang3.worklog` automatický retry nedělá kvůli chybějící server‑side idempotenci).
 
 ### Z CLI
 
@@ -617,25 +620,26 @@ Pokud některé záznamy selžou (typicky kvůli síti nebo dočasnému 5xx), v 
 
 ## Pomodoro
 
-Volitelný Pomodoro timer. Nastavení v **Settings → Pomodoro**:
+Volitelný Pomodoro timer. Nastavení v **Nastavení → Pomodoro**:
 
 | Parametr | Výchozí |
 |----------|---------|
-| Work duration | 25 min |
-| Short break | 5 min |
-| Long break | 15 min |
-| Pomodoros before long break | 4 |
-| Auto‑start work tracking | off |
-| Auto‑stop work tracking | off |
+| Povolit Pomodoro časovač | vypnuto (bez něj se Pomodoro karta v hlavním okně vůbec nezobrazí) |
+| Délka práce (min) | 25 min |
+| Krátká pauza (min) | 5 min |
+| Dlouhá pauza (min) | 15 min |
+| Pomodor před dlouhou pauzou | 4 |
+| Auto-start sledování práce | vypnuto |
+| Auto-stop sledování při pauze | vypnuto |
 
 ### Průběh
 
-1. Stiskni **Start Pomodoro** (v toolbaru nebo v tray menu).
+1. Stiskni **Spustit Pomodoro** v Pomodoro kartě v levém panelu (zobrazí se po zapnutí v Nastavení → Pomodoro).
 2. `IPomodoroService` začne odpočítávat. Aktuální fáze (`Work`, `ShortBreak`, `LongBreak`) je k dispozici přes `PomodoroSnapshot`.
 3. Při přechodu do další fáze:
-   - OS notifikace („Pomodoro dokončeno! Krátká pauza začíná.“).
+   - OS notifikace s titulkem „Pomodoro“ a textem „Čas na pauzu!“, „Čas na dlouhou pauzu!“ nebo „Zpět do práce!“, a k tomu in‑app toast („Pomodoro dokončeno! Čas na pauzu.“ / „Pauza skončila! Čas na práci.“).
    - Pokud je enabled Luxafor plugin, LED změní barvu dle fáze.
-   - Pokud je aktivní `AutoStartWorkTracking`/`AutoStopWorkTracking`, tracking se automaticky spustí/zastaví.
+   - Pokud je aktivní `AutoStopWorkTracking`, tracking se na začátku pauzy zastaví. `AutoStartWorkTracking` pak na začátku pracovní fáze obnoví ticket a popis, které auto-stop zastavil — a jen pokud zrovna nic jiného neběží.
 4. Po uplynutí `PomodorosBeforeLongBreak` cyklů začne dlouhá pauza.
 
 Events `PhaseChanged`, `Tick`, `PomodoroCompleted` jsou dostupné pro ViewModely, takže UI se aktualizuje bez pollingu.
@@ -648,11 +652,9 @@ Luxafor integrace je dokumentovaná v [plugins/luxafor.md](plugins/luxafor.md).
 
 Často opakované úkoly (daily standup, code review, lunch…) si můžeš uložit jako **Favorite**:
 
-1. Pravým klikem na existující záznam → **Add to favorites**, nebo v **Settings → Favorites** ručně.
+1. Otevři **Nastavení → Oblíbené** a klikni na **Přidat**.
 2. Zadej název, ticket (volitelně), popis.
-3. Favorite se objeví v:
-   - Hlavním menu aplikace (rychlý start jedním klikem).
-   - System tray menu (i když je okno zavřené).
+3. Favorite se objeví v system tray menu (i když je okno zavřené). V hlavním okně oblíbené nejsou — popisek v záložce O aplikaci, který zmiňuje postranní panel, je nepřesný.
 
 `FavoriteWorkItem` je uložený v `settings.json` (bez tokenů, jen metadata) a persistuje se napříč restarty.
 
@@ -673,7 +675,7 @@ Díky tomu je WorkTracker vždy „po ruce“: stav běžícího záznamu vidí�
 
 **Kliknutí levým tlačítkem:**
 
-- Když je hlavní okno viditelné → minimalizuje ho.
+- Když je hlavní okno viditelné → schová ho do tray.
 - Když je hlavní okno skryté nebo minimalizované → zobrazí ho v normálním stavu a aktivuje.
 
 **Kontextové menu** (pravé tlačítko) obsahuje:
@@ -686,7 +688,7 @@ Díky tomu je WorkTracker vždy „po ruce“: stav běžícího záznamu vidí�
    - ⭐ **Zlatá hvězda** — oblíbená je nastavená jako přímá akce. Klik rovnou zahájí tracking se zadaným ticketem a popisem.
    - ✎ **Modrá ikona úpravy** — oblíbená je nastavená jako **šablona** (checkbox „Zobrazit jako šablonu“ v nastavení). Klik otevře dialog vytvoření záznamu s předvyplněnými hodnotami, abys je mohl/a upravit, než práci spustíš.
 6. *(separátor)*
-7. **Ukončit** — definitivně ukončí aplikaci (jediný způsob, jak WorkTracker skutečně zavřít).
+7. **Ukončit** — definitivně ukončí aplikaci. Jinak ji ukončí jen zavření okna, pokud máš v **Nastavení → Obecné → Chování okna** zvolené **Ukončit aplikaci**.
 
 Oblíbené položky jsou přes `RefreshFavoritesMenu` synchronizované okamžitě po každé změně v Nastavení, takže menu je vždy aktuální.
 
@@ -704,17 +706,18 @@ Zobrazují se při:
 
 - Úspěšném startu / stopu trackingu
 - Vytvoření, úpravě nebo smazání záznamu
-- Úspěšném restartu záznamu (přes tlačítko „Spustit znovu“ v akcích)
+- Úspěšném restartu záznamu (přes tlačítko „Restartovat práci na tomto ticketu“ v akcích)
+- Přechodech Pomodoro fází
 - Úspěšném odeslání worklogů
 - Chybě při načítání záznamů z databáze
 - Selhání inicializace pluginu
 
 **2. OS notifikace** (systémový toast / notification center)
 
-Nativní systémové notifikace, které jsou viditelné **i když je hlavní okno schované** — vyskakují v Action Center na Windows, Notification Center na macOS nebo přes libnotify / XDG na Linuxu. WorkTracker je používá **jen pro dvě konkrétní události**:
+Nativní systémové notifikace, které jsou viditelné **i když je hlavní okno schované** — vyskakují v Action Center na Windows, Notification Center na macOS nebo přes libnotify / XDG na Linuxu. WorkTracker je používá **jen pro dvě konkrétní události** (Pomodoro přechody navíc ukáže i jako in‑app toast):
 
 - **Přechody Pomodoro fází** — konec práce, konec pauzy, začátek dlouhé pauzy. Protože tyto události jsou časově vázané a většinou chceš aplikaci minimalizovanou, OS toast je tu jediný smysluplný kanál.
-- **Dostupná aktualizace** — při automatické kontrole nové verze. Notifikace obsahuje klikatelný odkaz, který otevře stránku release v browseru.
+- **Dostupná aktualizace** — při kontrole nové verze po startu. Klik na notifikaci otevře stránku release v browseru.
 
 **Implementace:**
 
@@ -749,7 +752,7 @@ nedotčená.
 
 V CLI je UI pevně v angličtině.
 
-Nové jazyky lze přidat vložením `.resx` souboru do `src/WorkTracker.UI.Shared/Resources/Localization/`. Viz [developer-guide.md](developer-guide.md).
+Nový jazyk se přidá `.resx` souborem v `src/WorkTracker.UI.Shared/Resources/Localization/` a zápisem jeho kódu do `LanguageCatalog` (`SupportedLanguages` a `DisplayName`). Viz [developer-guide.md](developer-guide.md).
 
 ### Motivy (pouze Avalonia)
 
@@ -771,18 +774,18 @@ K dispozici je **11 motivů** kombinovatelných nad Fluent theme + Material Icon
 
 Přepnutí v **Nastavení → Obecné → Vzhled → Motiv**. Motiv se načítá i při startu (early settings read), aby se zabránilo FOUC flash white při otevření okna.
 
-Pokud zaškrtnete **Sledovat systémové nastavení**, aplikace si načte aktuální Windows light/dark preferenci přes `IPlatformSettings` a poslouchá `ColorValuesChanged` — při přepnutí systému z denního na noční režim se motiv automaticky vymění bez restartu aplikace. Sady „Den" a „Noc" lze nastavit nezávisle (světlé motivy jsou filtrovány do denního dropdownu, tmavé do nočního).
+Pokud zaškrtneš **Sledovat systémové nastavení**, aplikace si načte aktuální systémovou light/dark preferenci přes `IPlatformSettings` a poslouchá `ColorValuesChanged` — při přepnutí systému z denního na noční režim se motiv automaticky vymění bez restartu aplikace. Sady „Den" a „Noc" lze nastavit nezávisle (světlé motivy jsou filtrovány do denního dropdownu, tmavé do nočního).
 
 ---
 
 ## Automatické aktualizace
 
-Aplikace při startu (jednou za 24 hodin) kontroluje GitHub Releases API na dostupnost novější verze. Pokud najde vyšší verzi než `AppInfo.Version`:
+Aplikace při každém spuštění zkontroluje GitHub Releases API, jestli není dostupná novější verze (porovnává se s `AppInfo.Version` bez přípony za `-` nebo `+`). Pokud ji najde:
 
-- Zobrazí nenápadný banner v hlavním okně s odkazem na release notes a tlačítkem **Download**.
+- Zobrazí systémovou notifikaci **Dostupná aktualizace** („Je dostupná nová verze X (aktuální: Y). Klikněte pro stažení.“). Klik na ni otevře stránku release.
 - Automatické stažení/instalace **není** implementovaná — uživatel musí balíček stáhnout a rozbalit (na macOS přetáhnout z `.dmg` do Applications) ručně. Aplikace tento krok úmyslně nedelá, aby neřešila UAC, code signing a rollback.
 
-Kontrolu lze vypnout v **Settings → General → Check for updates**.
+Kontrolu lze vypnout v **Nastavení → Obecné → Aktualizace → Kontrolovat aktualizace** (výchozí zapnuto).
 
 ---
 
@@ -792,12 +795,11 @@ Kontrolu lze vypnout v **Settings → General → Check for updates**.
 
 Symptomy: `SqliteException: database is locked` při startu.
 
-Příčina: Běží jiná instance (například CLI ve druhém terminálu) nebo se aplikace nečistě vypnula a zůstal WAL soubor.
+Příčina: Běží jiná instance (například CLI ve druhém terminálu), která drží zámek.
 
 Řešení:
-1. Ukonči všechny WorkTracker procesy.
-2. Smaž soubory `worktracker.db-wal` a `worktracker.db-shm` v adresáři s daty (databáze samotná zůstane, jen se sjednotí pending transakce).
-3. Spusť znovu.
+1. Ukonči všechny WorkTracker procesy (i CLI).
+2. Spusť znovu. Aplikace používá journal mode `DELETE`, takže soubory `-wal`/`-shm` nevznikají; případný `worktracker.db-journal` po nečistém ukončení **nemaž** — SQLite ho při dalším otevření sám dokončí nebo vrátí.
 
 ### Databáze není dostupná (výměnný disk)
 
@@ -809,7 +811,7 @@ Příčina: `Database:Path` míří na disk/mount point, který v tuto chvíli n
 
 ### Plugin se nenačítá
 
-1. Zkontroluj `logs/worktracker-YYYYMMDD.log` — `PluginLoader` loguje každý nalezený soubor a důvod, proč plugin nebyl načten.
+1. Zkontroluj `logs/worktracker-YYYYMMDD.log` — najdeš tam chyby načtení pluginu i úspěšně načtené pluginy (`Loaded plugin: …`). Jednotlivé pokusy o načtení souborů se logují jen na úrovni Debug.
 2. Ujisti se, že DLL pluginu je v podsložce `plugins/` vedle spustitelného souboru (na macOS v `~/Library/Application Support/WorkTracker/plugins/`) a jmenuje se `WorkTracker.Plugin.*.dll`.
 3. Pokud plugin cílí na jinou major verzi `WorkTracker.Plugin.Abstractions`, nebude kompatibilní — aktualizuj plugin.
 
@@ -829,21 +831,20 @@ Zkratku na Linuxu neregistruje aplikace, ale desktop přes portál — podrobnos
 
 ### MSAL device code flow neotevře browser
 
-Aplikace zkusí `Process.Start` s URL z MSAL callbacku, ale na některých linuxových minimalistických WM tato heuristika selže. V tom případě URL a user code najdeš v progress dialogu — otevři je ručně v jakémkoli browseru.
+Aplikace zkusí `Process.Start` s URL z MSAL callbacku, ale na některých linuxových minimalistických WM tato heuristika selže. V tom případě URL a user code najdeš pod tlačítkem **Otestovat připojení** — otevři je ručně v jakémkoli browseru.
 
 ### Token expiroval, plugin hlásí 401
 
-1. V Settings → Plugins klikni na **Configure → Test connection** — to spustí nový device code flow.
-2. Pokud neustále selhává, smaž obsah `keys/` a zkus znovu.
+1. V **Nastavení → Pluginy** vyber plugin v rozbalovacím seznamu a klikni na **Otestovat připojení** — to spustí nový device code flow.
+2. Pokud neustále selhává, smaž obsah `keys/` a zkus znovu. Na macOS a Linuxu leží MSAL cache v Keychain / keyringu, takže tam je potřeba odstranit i odpovídající položku WorkTrackeru.
 
 ### Nejdou odeslat worklogy — validace selhává
 
-`IWorklogValidator` odmítá:
-- Aktivní (nedokončené) záznamy — musí mít `EndTime`.
-- Záznamy s nulovou délkou.
-- Záznamy bez ticketu **i** bez popisu.
+Aktivní (nedokončené) záznamy se do odeslání vůbec nedostanou — musí mít `EndTime`.
 
-V GUI dialogu submit uvidíš seznam odmítnutých záznamů s důvodem.
+V CLI (`send`) navíc `IWorklogValidator` tiše přeskočí záznamy, které nemají začátek před koncem, mají nulovou nebo zápornou délku, jsou delší než 24 h nebo jejich délka nesedí na časy. Důvod najdeš v logu.
+
+V GUI se validátor nepoužívá: odešle se všechno zaškrtnuté a chybné řádky dialog označí červeně až podle chyby z pluginu.
 
 ### Kde najdu logy
 

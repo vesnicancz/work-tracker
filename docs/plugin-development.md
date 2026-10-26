@@ -1,6 +1,6 @@
 # Vývoj pluginů
 
-Průvodce pro autory pluginů. Pokud tě zajímá **jak plugin systém funguje interně** (AssemblyLoadContext, DI scope, lifecycle), viz [architecture.md § Plugin systém](architecture.md#plugin-systém).
+Průvodce pro autory pluginů. Pokud tě zajímá **jak plugin systém funguje interně** (AssemblyLoadContext, DI, lifecycle), viz [architecture.md § Plugin systém](architecture.md#plugin-systém).
 
 ---
 
@@ -34,10 +34,12 @@ Plugin žije ve své vlastní izolované assembly, aby:
 
 - **Neznečišťoval** hlavní aplikaci závislostmi (např. Atlassian plugin nese svůj HTTP klient, Luxafor svou HID knihovnu).
 - **Šlo updatovat nezávisle** na jádru aplikace.
-- **Mohl být unloadnutý** bez restartu aplikace.
+- **Šel uvolnit z paměti** — `AssemblyLoadContext` pluginu je collectible a `IPluginManager.UnloadPluginAsync` existuje. Aplikace ho ale zatím volá jen při ukončení; vypnutí pluginu v Nastavení ho jen vyřadí z používání a výměna DLL vyžaduje restart.
 - **Neshazoval** hlavní aplikaci svými chybami.
 
-Pluginy jsou umístěné v adresáři `plugins/` vedle binárky hlavní aplikace a automaticky se načtou při startu.
+Pluginy se při startu načtou z adresářů v `Plugins:Directories` (`appsettings.json`). Výchozí je `plugins/` vedle binárky hlavní aplikace; uvnitř macOS `.app` bundlu je to `~/Library/Application Support/WorkTracker/plugins/`, protože do podepsaného bundlu se nezapisuje. V Debug buildu (Development) se navíc načítají pluginy z repa přímo z jejich `bin/Debug/net10.0` (viz `appsettings.Development.json`).
+
+Nově nalezený plugin je **ve výchozím stavu vypnutý** — uživatel ho musí povolit v **Nastavení → Pluginy**.
 
 ---
 
@@ -49,7 +51,7 @@ Pluginy jsou umístěné v adresáři `plugins/` vedle binárky hlavní aplikace
 | **Work Suggestion** | `IWorkSuggestionPlugin` | `WorkSuggestionPluginBase` | Chceš aplikaci dodat seznam úkolů k zobrazení v Suggestions dialogu. |
 | **Status Indicator** | `IStatusIndicatorPlugin` | `StatusIndicatorPluginBase` | Chceš reagovat na Pomodoro fáze ovládáním externího zařízení. |
 
-Jeden plugin může implementovat **víc** rozhraní (například `Plugin.Atlassian` obsahuje samostatné třídy pro Tempo upload a pro Jira suggestions, které sdílí `JiraClient`).
+Jedna třída může implementovat **víc** rozhraní (např. Luxafor: `StatusIndicatorPluginBase` + `ITestablePlugin`) a jedna DLL může obsahovat **víc** pluginových tříd — loader instanciuje každou neabstraktní třídu implementující `IPlugin`. Každá je pak samostatný plugin s vlastním `Id` (např. `Plugin.Atlassian` obsahuje `TempoWorklogPlugin` a `JiraSuggestionsPlugin`, které sdílí `JiraClient`).
 
 ---
 
@@ -70,27 +72,20 @@ V `.csproj`:
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Zkopíruje NuGet závislosti do výstupu buildu, takže plugin jde načíst přímo z bin/ -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\WorkTracker.Plugin.Abstractions\WorkTracker.Plugin.Abstractions.csproj">
-      <!-- Plugin nenese Abstractions.dll — je sdílená s hlavní aplikací -->
-      <Private>false</Private>
-      <ExcludeAssets>runtime</ExcludeAssets>
-    </ProjectReference>
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <ProjectReference Include="..\..\src\WorkTracker.Plugin.Abstractions\WorkTracker.Plugin.Abstractions.csproj" />
   </ItemGroup>
 
 </Project>
 ```
 
-> **Důležité:** `WorkTracker.Plugin.Abstractions.dll` se **nesmí** kopírovat vedle pluginu. Jinak by se načetla do jiného `AssemblyLoadContext` než hlavní aplikace a `IPlugin` z pluginu by nebyl přiřaditelný k `IPlugin` v aplikaci. `Private=false` + `ExcludeAssets=runtime` tomu zabrání.
+Stejně vypadají csproj všech referenčních pluginů. `TargetFramework` (`net10.0`), `Nullable` a `ImplicitUsings` dodá v repu `Directory.Build.props`, verze balíčků `Directory.Packages.props`; mimo repo si je doplň sám. `Microsoft.Extensions.Logging.Abstractions` přijde tranzitivně přes `WorkTracker.Plugin.Abstractions`.
+
+> **Kopie `WorkTracker.Plugin.Abstractions.dll` vedle pluginu nevadí.** Loader ji při hledání pluginů přeskočí a `PluginLoadContext` vezme každou assembly, kterou už má načtenou hlavní aplikace, z Default kontextu — `IPlugin` z pluginu je tak vždy ten samý typ jako v aplikaci (viz [§ Balení a deployment](#balení-a-deployment)). `<Private>false</Private>` na referenci by jen zmenšilo balíček.
 
 ### 2. Třída pluginu
 
@@ -188,12 +183,24 @@ public sealed class FileDumpWorklogPlugin : WorklogUploadPluginBase
 
 ### 3. Build a nasazení
 
-```bash
-dotnet publish plugins/WorkTracker.Plugin.FileDump -c Debug \
-  -o src/WorkTracker.Avalonia/bin/Debug/net10.0/plugins/FileDump
+V Debug buildu načítá Avalonia pluginy z adresářů v `src/WorkTracker.Avalonia/appsettings.Development.json` (`Plugins:Directories`). Přidej tam výstup nového pluginu a stačí ho buildnout:
+
+```json
+"../../../../../plugins/WorkTracker.Plugin.FileDump/bin/Debug/net10.0"
 ```
 
-Spusť Avalonia aplikaci — plugin se objeví v **Settings → Plugins** jako „File Dump“. Zadej cestu k souboru, stiskni **Test connection**, povolí a klikni na **Send today**.
+```bash
+dotnet build plugins/WorkTracker.Plugin.FileDump
+```
+
+Druhá možnost je publikovat plugin do `plugins/` vedle binárky aplikace:
+
+```bash
+dotnet publish plugins/WorkTracker.Plugin.FileDump -c Debug \
+  -o src/WorkTracker.Avalonia/bin/Debug/net10.0/plugins/WorkTracker.Plugin.FileDump
+```
+
+Spusť Avalonia aplikaci — plugin se objeví v **Nastavení → Pluginy** jako „File Dump“, zatím vypnutý. Vyber ho, zaškrtni **Povolit plugin**, zadej cestu k souboru, klikni na **Otestovat připojení** (test běží s neuloženými hodnotami z formuláře) a ulož. Pak v hlavním okně klikni na **Odeslat záznamy práce**, vyber „File Dump“ a odešli.
 
 ---
 
@@ -223,7 +230,7 @@ public abstract class PluginBase(ILogger logger) : IPlugin
     protected virtual Task OnShutdownAsync() => Task.CompletedTask;
     protected virtual Task<PluginValidationResult> OnValidateConfigurationAsync(
         IDictionary<string, string> configuration,
-        CancellationToken cancellationToken) => /* default: vrací Success(); hook pro dodatečná pravidla nad rámec základní IsRequired + regex validace, kterou dělá ValidateConfigurationAsync před zavoláním tohoto hooku */;
+        CancellationToken cancellationToken) => /* default: vrací Success(); hook pro dodatečná pravidla nad rámec základní validace (IsRequired, u povinných polí i regex), kterou dělá ValidateConfigurationAsync před zavoláním tohoto hooku */;
     protected virtual ValueTask OnDisposeAsync() => ValueTask.CompletedTask;
 
     // Helpery:
@@ -235,9 +242,11 @@ public abstract class PluginBase(ILogger logger) : IPlugin
 
 > `OnInitializeAsync` dostává `configuration` dict jako parametr. V rámci hooků můžeš použít buď tento parametr, nebo `base.Configuration` (jsou identické — base class si dict uloží před voláním hooku). Používej `GetRequiredConfigValue` / `GetConfigValue`, které čtou z `Configuration` a dávají konzistentní error reporting.
 
-**Výchozí validace** kontroluje:
-- `IsRequired = true` → hodnota je přítomná a neprázdná.
-- `ValidationPattern` (regex) → hodnota odpovídá vzoru; chybová hláška z `ValidationMessage`.
+**Výchozí validace** (`ValidateConfigurationAsync`, běží při každé `InitializeAsync`) prochází **jen pole s `IsRequired = true`** a u nich kontroluje:
+- hodnota je přítomná a neprázdná,
+- pokud má pole `ValidationPattern`, hodnota mu odpovídá (regex s timeoutem 1 s); chybová hláška je z `ValidationMessage`.
+
+U nepovinných polí se `ValidationPattern` zatím **nevyhodnocuje**. Formát volitelné hodnoty proto kontroluj v `OnValidateConfigurationAsync` (viz [§ Vlastní validace](#vlastní-validace)).
 
 ### `WorklogUploadPluginBase`
 
@@ -264,7 +273,7 @@ V **Aggregated** módu plugin dostává `PluginWorklogEntry`, kde:
 - `EndTime == StartTime` (není smysluplný).
 - `DurationMinutes` = součet trvání všech záznamů ve skupině (autoritativní zdroj pravdy pro čas).
 
-Submission service i base class validují, že předaný `mode` je jedna konkrétní hodnota (ne 0 ani combined flags), takže plugin se tím obvykle nemusí zabývat. UI filtruje dropdown providerů přes `SupportedModes.HasFlag(mode)`, takže do pluginu nedoteče mode, který nepodporuje.
+Submission service i base class validují, že předaný `mode` je jedna konkrétní hodnota (ne 0 ani combined flags), takže plugin se tím obvykle nemusí zabývat. Dialog odesílání nabízí vždy všechny providery; módy, které vybraný provider nepodporuje (podle `SupportedModes`), jsou v dialogu zakázané, takže do pluginu nedoteče mode, který nepodporuje.
 
 ### `WorkSuggestionPluginBase`
 
@@ -293,42 +302,48 @@ Každý plugin musí vystavit `PluginMetadata`:
 ```csharp
 public override PluginMetadata Metadata => new()
 {
-    Id = "author.pluginname",             // unique, [a-z0-9.-]
+    Id = "author.pluginname",             // unikátní; formát [a-z0-9.-] je konvence, nevaliduje se
     Name = "Display Name",                 // pro GUI
     Version = new Version(1, 2, 3),
     Author = "Tvé jméno nebo tým",
     Description = "Krátký popis v češtině.",
     Website = "https://github.com/user/repo",
-    MinimumAppVersion = new Version(1, 0, 0),  // minimální verze WorkTrackeru
-    IconName = "FileDocument",             // název z Material Icons (Avalonia)
+    MinimumAppVersion = new Version(1, 0, 0),  // informativní, aplikace ji zatím nekontroluje
+    IconName = "FileDocument",             // název z Material Icons; zatím jen u suggestion pluginů
     Tags = ["tag1", "tag2"],
 };
 ```
 
 **`Id` je kritický** — používá se pro persistenci konfigurace, enabled state, reference z UI. Jakmile plugin vydáš, **nezměň Id** — uživatelé by ztratili konfiguraci. Vhodná konvence: `{doména}.{funkce}`, např. `tempo.worklog`, `jira.suggestions`.
 
-**`IconName`** je hint pro Avalonia UI. Materiál ikony najdeš na [pictogrammers.com/library/mdi](https://pictogrammers.com/library/mdi/).
+**`IconName`** je hint pro Avalonia UI. Zatím ho používají jen suggestion pluginy — ikona jejich skupiny v dialogu Návrhy (bez něj `LightbulbOutline`). Názvy ikon najdeš na [pictogrammers.com/library/mdi](https://pictogrammers.com/library/mdi/).
 
 ---
 
 ## Konfigurace
 
-Plugin popisuje svou konfiguraci deklarativně přes `PluginConfigurationField`. WorkTracker UI z toho vygeneruje formulář a zajistí validaci.
+Plugin popisuje svou konfiguraci deklarativně přes `PluginConfigurationField`. Nastavení z toho vygeneruje formulář; validaci dělá `PluginBase` při inicializaci (viz [§ PluginBase](#pluginbase)).
 
 ### Typy polí
 
-| Typ | Vzhled | Poznámka |
-|-----|--------|----------|
-| `Text` | Textbox | Default |
-| `Password` | Maskovaný textbox; hodnota **automaticky uložená do secure storage** |
-| `Url` | Textbox s URL validací |
-| `Number` | Numerický vstup |
-| `Email` | Textbox s email validací |
-| `MultilineText` | Textarea | Pro JQL, popisy |
-| `Checkbox` | Checkbox | Ukládá se jako `"true"` / `"false"` |
-| `Dropdown` | Combo box | Potřebuje další konfiguraci (ne všechno je v šabloně zdokumentované) |
+V Nastavení se zatím všechny typy kromě `Checkbox` zobrazují jako stejný jednořádkový textbox s popiskem (`Label`) a placeholderem (`Placeholder`). `Type` tak ovlivňuje hlavně ukládání:
 
-### Příklad: konfigurace Atlassian Jira
+| Typ | V Nastavení | Poznámka |
+|-----|-------------|----------|
+| `Text` | Textbox | Výchozí |
+| `Password` | Textbox (**nemaskovaný**) | Hodnota se ukládá do secure storage |
+| `Url` | Textbox | Formát se nekontroluje — použij `ValidationPattern` u povinného pole, nebo `OnValidateConfigurationAsync` |
+| `Number` | Textbox | Totéž; hodnotu parsuj sám |
+| `Email` | Textbox | Totéž |
+| `MultilineText` | Textbox (jednořádkový) | |
+| `Checkbox` | Checkbox | Ukládá se jako `"true"` / `"false"` |
+| `Dropdown` | Textbox | `PluginConfigurationField` nemá jak definovat volby |
+
+`Description` pole se v Nastavení zatím nezobrazuje. Nápovědu, kterou uživatel musí vidět, dej do `Label` nebo `Placeholder`.
+
+### Příklad: konfigurace ve stylu Jira pluginu
+
+Klíče jsou zjednodušené; skutečný Atlassian plugin používá `JiraBaseUrl`, `JiraEmail` a `JiraApiToken` (`JiraConfigFields.cs`).
 
 ```csharp
 public override IReadOnlyList<PluginConfigurationField> GetConfigurationFields() =>
@@ -340,6 +355,8 @@ public override IReadOnlyList<PluginConfigurationField> GetConfigurationFields()
         Type = PluginConfigurationFieldType.Url,
         IsRequired = true,
         Placeholder = "https://vase-firma.atlassian.net",
+        ValidationPattern = @"^https://.*",    // vyhodnotí se, protože pole je povinné
+        ValidationMessage = "Zadej HTTPS URL.",
     },
     new PluginConfigurationField
     {
@@ -354,7 +371,7 @@ public override IReadOnlyList<PluginConfigurationField> GetConfigurationFields()
         Label = "API Token",
         Type = PluginConfigurationFieldType.Password,  // secure storage
         IsRequired = true,
-        Description = "Vygeneruj na id.atlassian.com/manage-profile/security/api-tokens",
+        Placeholder = "Token z id.atlassian.com → Security → API tokens",
     },
     new PluginConfigurationField
     {
@@ -371,8 +388,7 @@ public override IReadOnlyList<PluginConfigurationField> GetConfigurationFields()
         Type = PluginConfigurationFieldType.Number,
         IsRequired = false,
         DefaultValue = "20",
-        ValidationPattern = @"^\d+$",
-        ValidationMessage = "Musí být celé číslo.",
+        // ValidationPattern by se u nepovinného pole nevyhodnotil — formát hlídá OnValidateConfigurationAsync níže.
     },
 ];
 ```
@@ -399,7 +415,7 @@ protected override async Task<bool> OnInitializeAsync(
 
 ### Vlastní validace
 
-Pokud výchozí regex/required validace nestačí, přepiš `OnValidateConfigurationAsync`:
+Pokud výchozí validace nestačí (typicky formát nepovinného pole), přepiš `OnValidateConfigurationAsync`. Volá se až po úspěšné výchozí validaci:
 
 ```csharp
 protected override async Task<PluginValidationResult> OnValidateConfigurationAsync(
@@ -413,9 +429,11 @@ protected override async Task<PluginValidationResult> OnValidateConfigurationAsy
 
     var errors = new List<string>();
 
-    if (config.TryGetValue("BaseUrl", out var url) && !url.StartsWith("https://"))
+    if (config.TryGetValue("MaxResults", out var maxResults)
+        && !string.IsNullOrWhiteSpace(maxResults)
+        && (!int.TryParse(maxResults, out var parsed) || parsed <= 0))
     {
-        errors.Add("Base URL musí začínat https://");
+        errors.Add("Maximum výsledků musí být kladné celé číslo.");
     }
 
     return errors.Count == 0
@@ -437,7 +455,7 @@ Task<PluginResult<bool>> TestConnectionAsync(
 
 Tato metoda:
 
-- Je volaná **ručně** z UI (tlačítko **Test connection** v Settings).
+- Je volaná **ručně** z UI (tlačítko **Otestovat připojení** v Nastavení → Pluginy). Plugin se před testem inicializuje s neuloženými hodnotami z formuláře a po testu se vrátí k uložené konfiguraci.
 - Má **pravdivě ověřit**, že plugin se dokáže připojit k externímu systému s aktuální konfigurací — ne jen „plugin je nainstalovaný“.
 - Pro OAuth pluginy obvykle **triggeruje device code flow** (pokud není platný cached token).
 - Má **`IProgress<string>` pro hlášení stavu uživateli** — na co se čeká, co se děje. Bez toho uživatel u device code flow netuší, co se děje.
@@ -453,13 +471,8 @@ public override async Task<PluginResult<bool>> TestConnectionAsync(
     {
         progress?.Report("Získávám token…");
 
-        var token = await _tokenProvider!.AcquireTokenSilentAsync(ct);
-        if (token is null)
-        {
-            progress?.Report("Silent token neexistuje, spouštím přihlášení.");
-            token = await _tokenProvider.AcquireTokenInteractiveAsync(progress, ct);
-        }
-
+        // Zkusí nejdřív token z cache; device code flow spustí, jen když tam není.
+        var token = await _tokenProvider!.AcquireTokenInteractiveAsync(progress, ct);
         if (token is null)
         {
             return PluginResult<bool>.Failure(
@@ -482,9 +495,12 @@ public override async Task<PluginResult<bool>> TestConnectionAsync(
         progress?.Report("Připojení v pořádku.");
         return PluginResult<bool>.Success(true);
     }
-    catch (OperationCanceledException)
+    catch (OperationCanceledException) when (ct.IsCancellationRequested)
     {
-        return PluginResult<bool>.Failure("Přerušeno uživatelem.", PluginErrorCategory.Internal);
+        // Sem doletí jen zrušení HTTP volání. Token provider zrušení ani chyby MSAL nevyhazuje —
+        // zaloguje je a vrátí null (větev „Získání tokenu selhalo“ výš). Nastavení dnes předává
+        // CancellationToken.None, takže uživatel test zrušit nemůže.
+        return PluginResult<bool>.Failure("Test byl zrušen.", PluginErrorCategory.Internal);
     }
     catch (Exception ex)
     {
@@ -498,19 +514,26 @@ public override async Task<PluginResult<bool>> TestConnectionAsync(
 
 ## Plugin result a kategorizace chyb
 
-`PluginResult<T>` je Result pattern pro pluginy:
+`PluginResult<T>` je Result pattern pro pluginy. Dědí negenerický `PluginResult`, který slouží pro operace bez návratové hodnoty:
 
 ```csharp
-public sealed class PluginResult<T>
+public class PluginResult
 {
-    public bool IsSuccess { get; }
+    public bool IsSuccess { get; init; }
     public bool IsFailure => !IsSuccess;
-    public string? Error { get; }
-    public PluginErrorCategory? ErrorCategory { get; }
-    public T? Value { get; }
+    public string? Error { get; init; }
+    public PluginErrorCategory? ErrorCategory { get; init; }   // jen u failure
+
+    public static PluginResult Success();
+    public static PluginResult Failure(string error, PluginErrorCategory category = PluginErrorCategory.Internal);
+}
+
+public class PluginResult<T> : PluginResult
+{
+    public T? Value { get; init; }
 
     public static PluginResult<T> Success(T value);
-    public static PluginResult<T> Failure(string error, PluginErrorCategory category = PluginErrorCategory.Internal);
+    public static new PluginResult<T> Failure(string error, PluginErrorCategory category = PluginErrorCategory.Internal);
 }
 ```
 
@@ -524,13 +547,7 @@ public sealed class PluginResult<T>
 | `NotFound` | 404, entita neexistuje |
 | `Internal` | Ostatní / neurčené (výchozí) |
 
-Aplikace používá kategorie pro:
-
-- **UI** — zobrazí ikonu a doporučení podle kategorie (u `Authentication` nabídne „Přihlásit znovu“).
-- **Retry logika** — u `Network` nabídne retry; u `Validation` ne.
-- **Logging** — kategorie je v metadatech logu, takže se dá snadno filtrovat.
-
-Buď explicitní, nespoléhej na default `Internal`.
+Aplikace zatím `ErrorCategory` nevyhodnocuje — v Nastavení i při odesílání zobrazí jen text z `Error`. Kategorie je i tak součástí kontraktu a testy referenčních pluginů ji ověřují, takže ji nastavuj správně a nespoléhej na default `Internal`.
 
 ---
 
@@ -586,13 +603,16 @@ private async Task<string?> AcquireTokenAsync(IProgress<string>? progress, Cance
 }
 ```
 
+Explicitní silent pokus v ukázce je jen pro názornost — `AcquireTokenInteractiveAsync` ho dělá sám. Samotné `AcquireTokenSilentAsync` volej tam, kde interaktivní přihlášení spustit nechceš (běžná volání API mimo test připojení).
+
 `AcquireTokenInteractiveAsync` zavnitřně:
 
-1. Zavolá MSAL `AcquireTokenWithDeviceCode`.
-2. Jakmile MSAL dodá `user code` a `verification URL`, reportne je do `progress` ve formě lidsky čitelného textu.
-3. Zároveň se pokusí otevřít browser přes `Process.Start` s verification URL.
-4. Čeká, dokud uživatel nepotvrdí přihlášení (nebo dokud není `ct` cancelled).
-5. Vrátí access token.
+1. Zkusí `AcquireTokenSilentAsync`; když je token v cache, rovnou ho vrátí.
+2. Zavolá MSAL `AcquireTokenWithDeviceCode`.
+3. Jakmile MSAL dodá `user code` a `verification URL`, reportne je do `progress` jako `⏳ Open browser and enter code: {kód}` a na dalším řádku URL.
+4. Zároveň se pokusí otevřít browser přes `Process.Start` s verification URL.
+5. Čeká, dokud uživatel nepotvrdí přihlášení (nebo dokud není `ct` cancelled).
+6. Vrátí access token. Při chybě nebo zrušení ji zaloguje a vrátí `null`.
 
 ### Entra registrace
 
@@ -606,7 +626,7 @@ Aby fungovalo device code flow, aplikační registrace v Entra (Azure Portal →
 
 ## Dependency injection v pluginech
 
-Plugin se instanciuje přes `ActivatorUtilities.CreateInstance` ze scoped `ServiceCollection` spravovaného `PluginManager`em. **Konstruktor může brát libovolnou kombinaci** následujících služeb:
+Plugin se instanciuje přes `ActivatorUtilities.CreateInstance` z plugin `ServiceProvider`u, který si `PluginManager` postaví z vlastní `ServiceCollection` (jeden pro všechny pluginy, oddělený od DI hlavní aplikace). **Konstruktor může brát libovolnou kombinaci** následujících služeb:
 
 | Služba | Popis |
 |--------|-------|
@@ -654,49 +674,70 @@ public class MyPlugin : WorklogUploadPluginBase
 
 ### Adresářová struktura
 
-Po `dotnet publish` projde plugin do složky `plugins/` vedle binárky hlavní aplikace:
+Výstup `dotnet publish` pluginu patří do vlastní podsložky v plugin adresáři — výchozí je `plugins/` vedle binárky hlavní aplikace, na macOS `~/Library/Application Support/WorkTracker/plugins/` (viz [§ Co je plugin](#co-je-plugin)). Release zipy pluginů obsahují přesně takovou podsložku:
 
 ```
 <install-dir>/
-├── WorkTracker.Avalonia.exe
-├── WorkTracker.Plugin.Abstractions.dll     (sdílené)
+├── WorkTracker.Avalonia.exe                 (single-file, obsahuje i WorkTracker.Plugin.Abstractions)
 └── plugins/
-    ├── FileDump/
+    ├── WorkTracker.Plugin.FileDump/
     │   ├── WorkTracker.Plugin.FileDump.dll
-    │   └── (tvé závislosti .dll, NUGETy, …)
-    └── Atlassian/
+    │   └── (tvé závislosti .dll, NuGety, …)
+    └── WorkTracker.Plugin.Atlassian/
         ├── WorkTracker.Plugin.Atlassian.dll
         └── (Jira client knihovny atd.)
 ```
 
-Každý plugin **ve vlastní podsložce**. `PluginLoader` projde rekurzivně a hledá soubory `WorkTracker.Plugin.*.dll` — jakmile narazí na soubor, který se *jmenuje* tímto vzorem, zkusí ho načíst.
+Každý plugin **ve vlastní podsložce**. `PluginLoader` projde plugin adresáře rekurzivně a hledá soubory `WorkTracker.Plugin.*.dll` (kromě `WorkTracker.Plugin.Abstractions.dll`) — jakmile narazí na soubor, který se *jmenuje* tímto vzorem, zkusí ho načíst.
 
 ### Jmenné konvence
 
 - DLL **musí** začínat `WorkTracker.Plugin.` — jinak ji loader přeskočí.
 - Jmenný prostor třídy není omezený, ale konvence je `WorkTracker.Plugin.{Name}`.
-- Třída pluginu **nesmí být abstraktní**.
+- Třída pluginu **nesmí být abstraktní** a musí implementovat `IPlugin` (v praxi přes některou z base class).
 
 ### Closed‑box closed‑world
 
-Plugin nese **všechny své závislosti** vedle sebe — kromě `WorkTracker.Plugin.Abstractions.dll` a BCL (`System.*`, `Microsoft.Extensions.*`). Shared assembly zajistí Default `AssemblyLoadContext`; vše ostatní plugin vlastní.
+Plugin nese **všechny své závislosti** vedle sebe (`CopyLocalLockFileAssemblies`). Při načítání se ale `PluginLoadContext` pro každou závislost nejdřív podívá do Default `AssemblyLoadContext`u: je‑li tam už načtená assembly **stejného jména**, plugin dostane tu hostitelovu. Sdílí se tak `WorkTracker.Plugin.Abstractions`, `Microsoft.Extensions.*`, ale třeba i `WorkTracker.Domain`, na který odkazují Atlassian a GoranG3. Lokální kopie se použije jen pro assembly, které hostitel nenačetl. Co je „načtené v hostiteli“, závisí na tom, co aplikace stihla načíst do okamžiku načtení pluginu — pevný seznam neexistuje.
 
-Pokud plugin potřebuje jinou verzi závislosti, než hlavní aplikace, **musí** ji mít vedle sebe. Isolation kontextu to umožní — `PluginLoadContext` upřednostňuje lokální verzi.
+Verze se při tom neporovnává, takže plugin **nemůže přebít** verzi závislosti, kterou má načtenou i hostitel — dostane hostitelovu. Vlastní verzi si plugin může přinést jen u závislostí, které hostitel nemá (HID knihovna, MCP klient, …).
 
 ---
 
 ## Testování pluginu
 
-Plugin testy jsou samostatný projekt v `tests/`, například `tests/WorkTracker.Plugin.FileDump.Tests/`.
+Plugin testy jsou samostatný projekt v `tests/`, například `tests/WorkTracker.Plugin.FileDump.Tests/`. Šablona `dotnet new xunit` se nehodí: vytvoří projekt pro xUnit v2 s verzemi přímo v `PackageReference`, zatímco repo používá xUnit v3 přes Microsoft.Testing.Platform (`global.json`) a Central Package Management. Zkopíruj radši csproj existujícího testovacího projektu (např. `tests/WorkTracker.Plugin.Luxafor.Tests`) a uprav referenci:
 
-```bash
-dotnet new xunit -n WorkTracker.Plugin.FileDump.Tests -o tests/WorkTracker.Plugin.FileDump.Tests
-cd tests/WorkTracker.Plugin.FileDump.Tests
-dotnet add reference ../../plugins/WorkTracker.Plugin.FileDump/WorkTracker.Plugin.FileDump.csproj
-dotnet add reference ../../src/WorkTracker.Plugin.Abstractions/WorkTracker.Plugin.Abstractions.csproj
-dotnet add package Moq
-dotnet add package FluentAssertions
+```xml
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="Moq" />
+    <PackageReference Include="xunit.runner.visualstudio">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="xunit.v3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\plugins\WorkTracker.Plugin.FileDump\WorkTracker.Plugin.FileDump.csproj" />
+  </ItemGroup>
+
+</Project>
 ```
+
+Projekt přidej do solution (`dotnet sln WorkTracker.slnx add tests/WorkTracker.Plugin.FileDump.Tests`) a spusť `dotnet test --project tests/WorkTracker.Plugin.FileDump.Tests`.
 
 ### Příklad testu
 
@@ -766,7 +807,7 @@ Nejjistější zdroj inspirace jsou **existující pluginy v adresáři `plugins
 - **Dvě třídy v jednom projektu**: `TempoWorklogPlugin` (upload) a `JiraSuggestionsPlugin` (suggestions).
 - **Sdílený `JiraClient`** mezi oběma třídami — ukazuje, jak v jednom plugin projektu sdílet kód mezi víc plugin instancemi.
 - **Issue key caching** (`ConcurrentDictionary` s TTL 1 hodina) pro Tempo ID lookupy.
-- **Retry logika** s exponenciálním backoffem na 408/429/500–504.
+- **Retry logika** v Tempo uploadu: až 2 opakování (3 pokusy celkem) s backoffem 2 s a 4 s na 408/429/500/502/503/504.
 - **`SupportsSearch => true`** v Jira suggestions, včetně JQL template se `{query}` placeholderem.
 
 Dokumentace: [plugins/atlassian.md](plugins/atlassian.md).
@@ -793,11 +834,11 @@ Dokumentace: [plugins/goran-g3.md](plugins/goran-g3.md).
 
 - **`IStatusIndicatorPlugin`** (ne worklog).
 - **Komunikace se zařízením** přes knihovnu **`DotLuxafor`** (lokální NuGet feed `packages/`), která poskytuje `ILuxaforDeviceManager` / `ILuxaforDevice` API s metodami jako `SetColorAsync` a `TurnOffAsync`.
-- **Lazy device open** — `OnInitializeAsync` jen naparsuje barvy z konfigurace, zařízení se otevírá až při prvním `SetStateAsync`.
-- **`ITestablePlugin`** i pro status indicator plugin — `StatusIndicatorPluginBase` ho nevyžaduje, ale plugin si ho přidá sám, takže se v Settings objeví **Test connection**, které rozsvítí LED a při neúspěchu řekne důvod (chybí udev pravidlo, zařízení drží jiná aplikace, …).
+- **Lazy device open** — `OnInitializeAsync` jen naparsuje barvy z konfigurace, zařízení se otevírá až při prvním `SetStateAsync` nebo testu připojení. Výjimka: se zapnutým `turn_off_on_startup` pošle první inicializace `Idle`, takže zařízení otevře hned.
+- **`ITestablePlugin`** i pro status indicator plugin — `StatusIndicatorPluginBase` ho nevyžaduje, ale plugin si ho přidá sám, takže se v Nastavení objeví **Otestovat připojení**, které rozsvítí LED a při neúspěchu řekne důvod (chybí udev pravidlo, zařízení drží jiná aplikace, …).
 - **Reopen po odpojení** — `IsConnected` u HID zařízení znamená jen „handle jsme nezavřeli", takže plugin po `LuxaforDeviceDisconnectedException` zařízení jednou znovu otevře (přes `ex.Descriptor`, s fallbackem na `Open()`) a příkaz zopakuje. Užitečný vzor pro každý plugin ovládající hardware.
-- **Konfigurovatelné barvy per Pomodoro fázi** — hex color pole s regex validací `^#[0-9A-Fa-f]{6}$`.
-- **Thread‑safe** s `SemaphoreSlim` — operace se zařízením nesmí běžet paralelně.
+- **Konfigurovatelné barvy per Pomodoro fázi** — hex color pole s deklarovaným `ValidationPattern` `^#[0-9A-Fa-f]{6}$`. Pole nejsou povinná, takže `PluginBase` regex nevyhodnotí; neplatná hodnota tiše spadne na výchozí barvu (`ParseColor`).
+- **Thread‑safe** s `SemaphoreSlim` — hlídá stav pluginu (otevírání a zavírání zařízení, poslední stav), aby se souběžná volání nepraly o handle.
 
 Dokumentace: [plugins/luxafor.md](plugins/luxafor.md).
 
@@ -807,4 +848,4 @@ Dokumentace: [plugins/luxafor.md](plugins/luxafor.md).
 
 - Rozšíření konfigurace o custom validaci → [§ Vlastní validace](#vlastní-validace)
 - Jak se plugin účastní transakcí v hlavní aplikaci → **nikdy** nepřistupuje k `DbContext` / `IUnitOfWork` — plugin je stateless vůči databázi worktrackeru.
-- Jak debugovat plugin z IDE → nastav Avalonia jako startup, v Debug buildnutý plugin publikuj do `bin/Debug/.../plugins/`, plugin má `.pdb` a breakpointy fungují.
+- Jak debugovat plugin z IDE → nastav Avalonia jako startup. Debug build načítá pluginy z repa přímo z `plugins/*/bin/Debug/net10.0` (`appsettings.Development.json`), takže stačí plugin buildnout — nový plugin do toho seznamu přidej (viz [§ Build a nasazení](#3-build-a-nasazení)). Plugin má `.pdb` a breakpointy fungují.

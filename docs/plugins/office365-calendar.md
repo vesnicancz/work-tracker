@@ -48,25 +48,26 @@ Sděl uživatelům:
 
 - **Tenant ID**: `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`
 - **Client ID**: `yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy`
-- **Instrukce**: *„V Settings → Plugins → Office 365 Calendar vlož tyto dvě GUID a klikni **Test connection**. Aplikace ti dá odkaz a kód — otevři odkaz, zadej kód a přihlas se svým pracovním účtem. Hotovo.“*
+- **Instrukce**: *„V Nastavení → Pluginy → Office 365 Calendar vlož tyto dvě GUID a klikni **Otestovat připojení**. Aplikace ti dá odkaz a kód — otevři odkaz, zadej kód a přihlas se svým pracovním účtem. Hotovo.“*
 
 ---
 
 ## První přihlášení (device code flow)
 
-Po vyplnění `TenantId` a `ClientId` klikni v Settings → Plugins → Office 365 Calendar na **Test connection**. Plugin spustí **MSAL device code flow**:
+Po vyplnění `TenantId` a `ClientId` klikni v Nastavení → Pluginy → Office 365 Calendar na **Otestovat připojení**. Plugin spustí **MSAL device code flow**:
 
-1. V progress dialogu se objeví text podobný:
+1. Pod tlačítkem se místo výsledku testu objeví text:
    ```
-   Otevři https://microsoft.com/devicelogin a zadej kód ABCD-EFGH
+   ⏳ Open browser and enter code: ABCD-EFGH
+   https://microsoft.com/devicelogin
    ```
 2. Aplikace se současně pokusí otevřít browser na této URL (`Process.Start`). Pokud ne, otevři ji ručně.
 3. V browseru zadej kód, přihlaš se pracovním účtem, potvrď consent (pokud se zobrazí).
 4. MSAL mezitím pollne Entra a jakmile tvůj login prošel, vrátí access + refresh token.
-5. Tokeny se uloží do šifrované cache v `%LocalAppData%\WorkTracker\keys\` (DPAPI/Keychain/libsecret dle OS). V non‑Production prostředích se adresář aplikace suffixuje podle `DOTNET_ENVIRONMENT`, takže přesná cesta může být např. `%LocalAppData%\WorkTracker_Development\keys\`.
-6. Progress dialog zobrazí „OK“ a plugin je ready.
+5. Tokeny se uloží do šifrované cache — na Windows soubor v `%LocalAppData%\WorkTracker\keys\` (DPAPI), na macOS do Keychainu a na Linuxu do keyringu (libsecret). V non‑Production prostředích se adresář aplikace suffixuje podle `DOTNET_ENVIRONMENT`, takže přesná cesta může být např. `%LocalAppData%\WorkTracker_Development\keys\`.
+6. Text pod tlačítkem nahradí výsledek testu a plugin je ready.
 
-Od tohoto okamžiku plugin při běžném použití zkouší jen `AcquireTokenSilentAsync` — tokeny se tiše obnovují přes refresh token (platnost refresh tokenu bývá kolem 90 dnů nebo dle konfigurace tenanta). Jakmile ale refresh token expiruje nebo silent auth selže z jiného důvodu, `GetSuggestionsAsync` **nespustí device code flow automaticky** — rovnou vrátí chybu `Not authenticated — please use Test Connection in Settings to sign in first.` Uživatel musí ručně otevřít **Nastavení → Pluginy → Office 365 Calendar → Test connection**, která interaktivní device code flow spustí a obnoví cache.
+Od tohoto okamžiku plugin při běžném použití zkouší jen `AcquireTokenSilentAsync` — tokeny se tiše obnovují přes refresh token (platnost refresh tokenu bývá kolem 90 dnů nebo dle konfigurace tenanta). Jakmile ale refresh token expiruje nebo silent auth selže z jiného důvodu, `GetSuggestionsAsync` **nespustí device code flow automaticky** — rovnou vrátí chybu `Not authenticated — please use Test Connection in Settings to sign in first.` Uživatel musí ručně otevřít **Nastavení → Pluginy → Office 365 Calendar → Otestovat připojení**, které interaktivní device code flow spustí a obnoví cache.
 
 ---
 
@@ -76,35 +77,37 @@ Plugin volá Microsoft Graph:
 
 ```
 GET https://graph.microsoft.com/v1.0/me/calendarView?
-    startDateTime={date}T00:00:00&
-    endDateTime={date}T23:59:59
+    startDateTime={date}T00:00:00+01:00&
+    endDateTime={date}T23:59:59+01:00&
+    $select=subject,start,end,webLink,id,isAllDay&
+    $orderby=start/dateTime&
+    $top=250
 ```
 
-Plugin volá Graph s explicitním `$select=subject,start,end,webLink,id,isAllDay` — a pouze tato pole se mapují na `WorkSuggestion`. Popis události (body / bodyPreview) plugin **nenačítá**.
+Začátek a konec dne se posílají v ISO 8601 s lokálním offsetem (URL‑encoded). Plugin volá Graph s explicitním `$select` — a pouze tato pole se mapují na `WorkSuggestion`. Popis události (body / bodyPreview) plugin **nenačítá**. Výsledky stránkuje po 250 událostech přes `@odata.nextLink` (max. 10 stránek). Každý request posílá hlavičku `Prefer: outlook.timezone="{TimeZoneInfo.Local.Id}"`, takže Graph vrací časy rovnou v lokální zóně a plugin je už nepřevádí.
 
 | `WorkSuggestion` | Zdroj z Graph |
 |------------------|---------------|
-| `Title` | `subject` |
+| `Title` | `subject` (bez předmětu `"(No subject)"`) |
 | `Description` | — (plugin `bodyPreview` ani `body` nenačítá) |
-| `StartTime` | `start.dateTime` (konvertováno na local time) |
-| `EndTime` | `end.dateTime` (konvertováno na local time) |
+| `StartTime` | `start.dateTime` (v lokálním čase díky hlavičce `Prefer`; u celodenních událostí prázdné) |
+| `EndTime` | `end.dateTime` (v lokálním čase díky hlavičce `Prefer`; u celodenních událostí prázdné) |
 | `Source` | `"O365 Calendar"` |
 | `SourceId` | `id` (unikátní event ID v kalendáři) |
 | `SourceUrl` | `webLink` (odkaz do Outlook Web) |
 
 **Filtrace:**
 
-- `IncludeAllDayEvents = false` → události s `isAllDay: true` jsou přeskočené.
-- Aktuální implementace samostatně **nefiltruje** eventy podle `showAs` / stavu (Cancelled, Tentative, Free, …) — do suggestions se propíší všechny nenulové ne‑all‑day eventy vrácené Graph API.
+- `IncludeAllDayEvents = false` → události s `isAllDay: true` jsou přeskočené. S `true` se zobrazí taky, ale bez vyplněného začátku a konce.
+- Aktuální implementace samostatně **nefiltruje** eventy podle `showAs` / stavu (Cancelled, Tentative, Free, …) — do suggestions se propíší všechny eventy vrácené Graph API (celodenní jen se zapnutým `IncludeAllDayEvents`).
 
 ---
 
 ## Jak to použít v UI
 
-1. V hlavním okně → **Suggestions** (ikona žárovky).
-2. Vyber datum.
-3. Sekce **Office 365 Calendar** ukáže všechny události.
-4. Dvojklik (nebo tlačítko **Use**) vytvoří nový `WorkEntry` s předvyplněným:
+1. V hlavním okně vyber den a otevři **Návrhy** (ikona žárovky). Návrhy se načtou pro datum vybrané v hlavním okně.
+2. Sekce **Office 365 Calendar** ukáže všechny události.
+3. Kliknutí na událost otevře dialog nového záznamu s předvyplněným:
    - ticketem = prázdné (kalendářové eventy obvykle nemají Jira kód)
    - popisem = `event.subject`
    - startem / koncem = časy eventu
@@ -117,7 +120,7 @@ Pokud chceš ticket zadat, uprav záznam před uložením.
 
 1. Získá token přes `AcquireTokenInteractiveAsync` (spustí device code flow, pokud není platná silent cache).
 2. Zavolá `GET https://graph.microsoft.com/v1.0/me` — ověří, že token funguje a že je možné načíst identitu přihlášeného uživatele.
-3. Reportuje průběh do `IProgress<string>` (stavy typu „Získávám token…”, „Ověřuji identitu…”, „OK”).
+3. Do `IProgress<string>` se reportuje jen výzva s kódem a URL pro device code flow; výsledek testu (úspěch / chyba) zobrazí Nastavení.
 
 > **Pozor:** Test connection **neověřuje** scope `Calendars.Read` ani endpoint `calendarView`. Pokud by oprávnění chybělo, chyba se projeví až při prvním skutečném načítání návrhů v Suggestions dialogu. Pokud v Entra registraci zapomeneš delegated permission `Calendars.Read`, Test connection projde, ale načtení eventů selže s 403.
 
@@ -129,8 +132,8 @@ Pokud chceš ticket zadat, uprav záznam před uložením.
 |---------|---------|--------|
 | `AADSTS9002331: Application is configured for use by X` | „Allow public client flows“ není zapnuté v Entra registraci | Azure Portal → App → Authentication → zapni |
 | `AADSTS65001: The user or administrator has not consented` | Chybí consent pro `Calendars.Read` | V API permissions klikni **Grant admin consent** |
-| `Token cache file cannot be encrypted, falling back to plaintext` | Linux bez libsecret (headless) | Nainstaluj `libsecret-1-0` nebo přijmi plaintext cache (logován jako warning) |
-| Device code flow skončí timeoutem | Uživatel nepotvrdil login do ~15 min | Klikni **Test connection** znovu |
+| Warning v logu `Encrypted token cache not available, falling back to unprotected file` | Linux bez libsecret (headless) | Nainstaluj `libsecret-1-0` nebo přijmi nešifrovanou cache (soubor `msal_…_plain.bin` v `keys/`) |
+| Device code flow skončí timeoutem | Uživatel nepotvrdil login do ~15 min | Klikni **Otestovat připojení** znovu |
 | Plugin vrací prázdný seznam eventů | Není žádný meeting daný den — nebo timezone konflikt | Zkontroluj, že datum ve vyhledávání odpovídá místnímu času |
 | Test connection hlásí `403 Forbidden` | Delegated permission chybí nebo není admin consent | Zkontroluj API permissions v Entra |
 
@@ -139,10 +142,10 @@ Pokud chceš ticket zadat, uprav záznam před uložením.
 ## Odhlášení / reset tokenů
 
 1. Zavři WorkTracker.
-2. Smaž soubory v `%LocalAppData%\WorkTracker\keys\` (obsahuje MSAL cache pro všechny pluginy — smaž jen ty, co začínají hash‑em pro Office 365).
-3. Spusť aplikaci. Při příštím `Test connection` proběhne nový device code flow.
+2. Smaž soubory `msal_*.bin` ve složce `keys` aktuálního prostředí (`%LocalAppData%\WorkTracker\keys\`, resp. `WorkTracker_Development\keys\`). Soubory se jmenují `msal_<SHA256 z TenantId:ClientId>.bin` (případně `…_plain.bin`), takže je podle pluginu nepoznáš — pluginy se stejným TenantId + ClientId sdílejí jednu cache. Na macOS je cache v Keychainu (služba `WorkTracker`, účet `msal-<hash>`) a na Linuxu v keyringu (položka „MSAL token cache“) — tam smaž i ty.
+3. Spusť aplikaci. Při příštím **Otestovat připojení** proběhne nový device code flow.
 
-Nebo rovnou smaž celou složku `keys/` — způsobí reset všech MSAL pluginů.
+Nebo rovnou smaž celou složku `keys/` (a položky v Keychainu / keyringu) — způsobí reset všech MSAL pluginů.
 
 ---
 
@@ -150,11 +153,11 @@ Nebo rovnou smaž celou složku `keys/` — způsobí reset všech MSAL pluginů
 
 > **Pozor — tři omezení:**
 >
-> 1. **CLI pluginy neenable-uje.** `WorkTracker.CLI` volá `InitializePluginsAsync` bez enable mapy, takže i správně vyplněné `appsettings.json` pluginy nespustí.
+> 1. **Samotné `appsettings.json` plugin nezapne.** GUI i `WorkTracker.CLI` čtou enabled stav a konfiguraci pluginů z uživatelského `settings.json`, který zapisuje GUI; sekce `Plugins` v `appsettings.json` je jen záložní konfigurace.
 > 2. **CLI suggestions vůbec nepoužívá.** Office 365 Calendar je `IWorkSuggestionPlugin` a žádný CLI příkaz suggestions nenačítá — tento plugin se dá prakticky využít jen v GUI.
-> 3. **Plugin vyžaduje předchozí GUI login.** `GetSuggestionsAsync` volá **pouze** `AcquireTokenSilentAsync` — při `null` rovnou vrátí chybu „Not authenticated — please use Test Connection in Settings to sign in first.“ Interaktivní device code flow běží **jen** v `TestConnectionAsync`, kterou musí uživatel spustit z GUI Settings (to je shodné s Goran G3 pluginem).
+> 3. **Plugin vyžaduje předchozí GUI login.** `GetSuggestionsAsync` volá **pouze** `AcquireTokenSilentAsync` — při `null` rovnou vrátí chybu „Not authenticated — please use Test Connection in Settings to sign in first.“ Interaktivní device code flow běží **jen** v `TestConnectionAsync`, kterou musí uživatel spustit z GUI Nastavení (to je shodné s Goran G3 pluginem).
 >
-> Plugin tedy konfiguruj v GUI (**Nastavení → Pluginy → Office 365 Calendar**). Schéma níže je referenční pro integrátory, kteří si píšou vlastního hosta nad `WorkTracker.Infrastructure`.
+> Plugin tedy konfiguruj v GUI (**Nastavení → Pluginy → Office 365 Calendar**). Schéma níže ukazuje tvar záložní konfigurace.
 
 ```json
 {
