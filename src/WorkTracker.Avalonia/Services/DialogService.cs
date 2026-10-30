@@ -17,6 +17,11 @@ public sealed class DialogService : IDialogService
 	private readonly IServiceScopeFactory _scopeFactory;
 	private readonly ILogger<DialogService> _logger;
 
+	// At most one new/edit work entry dialog at a time. Only touched on the UI thread.
+	private WorkEntryEditDialog? _openWorkEntryDialog;
+
+	internal WorkEntryEditDialog? OpenWorkEntryDialog => _openWorkEntryDialog;
+
 	public DialogService(IServiceScopeFactory scopeFactory, ILogger<DialogService> logger)
 	{
 		_scopeFactory = scopeFactory;
@@ -35,6 +40,16 @@ public sealed class DialogService : IDialogService
 
 	private async Task<bool> ShowWorkEntryDialogCoreAsync(WorkEntry? workEntry, string? templateTicketId = null, string? templateDescription = null, DateTime? date = null, DateTime? startTime = null, DateTime? endTime = null)
 	{
+		// The global hotkey and the tray menu are not blocked by a modal dialog, so pressing the
+		// hotkey twice would otherwise stack a second dialog on top of the first. Bring the open
+		// one forward instead; whatever it was opened with stays, nothing new has been saved.
+		if (_openWorkEntryDialog is { } openDialog)
+		{
+			_logger.LogDebug("Work entry dialog already open, activating it");
+			openDialog.Activate();
+			return false;
+		}
+
 		using var scope = _scopeFactory.CreateScope();
 		var viewModel = scope.ServiceProvider.GetRequiredService<WorkEntryEditViewModel>();
 
@@ -48,6 +63,8 @@ public sealed class DialogService : IDialogService
 		}
 
 		var dialog = new WorkEntryEditDialog { DataContext = viewModel };
+		_openWorkEntryDialog = dialog;
+		dialog.Closed += (_, _) => _openWorkEntryDialog = null;
 
 		var mainWindow = GetVisibleMainWindow();
 		if (mainWindow != null)
