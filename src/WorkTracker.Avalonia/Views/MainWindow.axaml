@@ -69,7 +69,7 @@
                     <TextBlock Text="{markup:Localize WorkTracker}" FontSize="12"
                                Foreground="{DynamicResource AppTitleForeground}"
                                VerticalAlignment="Center"
-                               Margin="{OnPlatform '34,0,12,0', macOS='102,3,12,0'}"
+                               Margin="{OnPlatform '34,0,12,0', macOS='102,1,12,0'}"
                                HorizontalAlignment="{DynamicResource TitleBarAlignment}" />
 
                     <!-- Window buttons (always right; macOS uses its native traffic lights) -->

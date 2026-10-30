@@ -34,7 +34,10 @@
     <SolidColorBrush x:Key="SuccessButtonForeground" Color="#FFFFFF" />
 
     <!-- ============ Typography ============ -->
-    <FontFamily x:Key="FontFamilyBody">Inter, $Default</FontFamily>
+    <!-- WithInterFont registers the bundled Inter as the "fonts:Inter" collection but does not make it
+         the default, so a bare "Inter" only finds a system-installed copy and $Default is the
+         platform font (Segoe UI on Windows, Helvetica on macOS). Name the collection explicitly. -->
+    <FontFamily x:Key="FontFamilyBody">fonts:Inter#Inter, $Default</FontFamily>
     <FontFamily x:Key="FontFamilyMono">avares://WorkTracker.Avalonia/Resources/Fonts/JetBrainsMono-Regular.ttf#JetBrains Mono, Consolas, Cascadia Mono, monospace</FontFamily>
     <FontFamily x:Key="FontFamilyMonoBold">avares://WorkTracker.Avalonia/Resources/Fonts/JetBrainsMono-Bold.ttf#JetBrains Mono, Consolas, Cascadia Mono, monospace</FontFamily>
     <FontFamily x:Key="FontFamilyIcon">avares://WorkTracker.Avalonia/Resources/Fonts/MaterialSymbolsOutlined.ttf#Material Symbols Outlined</FontFamily>

@@ -50,7 +50,7 @@
                                Foreground="{DynamicResource AppTitleForeground}"
                                HorizontalAlignment="{DynamicResource TitleBarAlignment}"
                                VerticalAlignment="Center"
-                               Margin="{OnPlatform '12,0,12,0', macOS='80,3,12,0'}" />
+                               Margin="{OnPlatform '12,0,12,0', macOS='80,1,12,0'}" />
                     <Button x:Name="CloseButton"
                             IsVisible="{OnPlatform True, macOS=False}"
                             Width="36" Height="28" Padding="0"
