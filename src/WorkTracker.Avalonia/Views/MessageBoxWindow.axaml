@@ -12,17 +12,21 @@
         WindowStartupLocation="CenterOwner"
         CanResize="False"
         ShowInTaskbar="False"
-        WindowDecorations="None"
+        CanMinimize="False"
+        CanMaximize="False"
+        WindowDecorations="{OnPlatform None, macOS=Full}"
+        ExtendClientAreaToDecorationsHint="{OnPlatform False, macOS=True}"
+        ExtendClientAreaTitleBarHeightHint="28"
         TransparencyLevelHint="Transparent"
         Background="Transparent">
 
     <Border CornerRadius="{DynamicResource WindowCornerRadius}"
             Background="{DynamicResource DialogBackground}"
             BorderBrush="{DynamicResource SeparatorColor}"
-            BorderThickness="1"
-            BoxShadow="0 4 24 0 #40000000"
+            BorderThickness="{DynamicResource WindowFrameBorderThickness}"
+            BoxShadow="{DynamicResource DialogBoxShadow}"
             ClipToBounds="True"
-            Margin="8"
+            Margin="{DynamicResource WindowOuterMargin}"
             x:Name="DialogBorder">
 
         <Grid RowDefinitions="Auto,*">
@@ -33,15 +37,16 @@
                     BorderBrush="{DynamicResource SeparatorColor}"
                     BorderThickness="{DynamicResource TitleBarBorderThickness}"
                     CornerRadius="{DynamicResource WindowTopCornerRadius}"
-                    Height="36"
+                    Height="{OnPlatform 36, macOS=28}"
                     IsVisible="{DynamicResource ShowDialogTitleBar}">
                 <Panel>
                     <TextBlock x:Name="DialogTitleText" FontSize="12"
                                Foreground="{DynamicResource AppTitleForeground}"
                                HorizontalAlignment="{DynamicResource TitleBarAlignment}"
                                VerticalAlignment="Center"
-                               Margin="12,0,12,0" />
+                               Margin="{OnPlatform '12,0,12,0', macOS='80,3,12,0'}" />
                     <Button x:Name="CloseButton"
+                            IsVisible="{OnPlatform True, macOS=False}"
                             Width="36" Height="28" Padding="0"
                             Background="Transparent" BorderThickness="0"
                             HorizontalAlignment="Right"
