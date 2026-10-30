@@ -19,6 +19,7 @@
         ShowInTaskbar="False"
         CanResize="True"
         WindowDecorations="None"
+        TransparencyLevelHint="Transparent"
         Background="Transparent">
 
     <Border CornerRadius="{DynamicResource WindowCornerRadius}"

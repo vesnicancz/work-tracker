@@ -15,6 +15,7 @@
         CanResize="False"
         ShowInTaskbar="False"
         WindowDecorations="None"
+        TransparencyLevelHint="Transparent"
         Background="Transparent">
 
     <Window.Resources>

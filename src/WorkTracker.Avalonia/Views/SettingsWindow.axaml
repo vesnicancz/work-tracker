@@ -16,6 +16,7 @@
         CanResize="False"
         ShowInTaskbar="False"
         WindowDecorations="None"
+        TransparencyLevelHint="Transparent"
         Background="Transparent">
 
     <Border CornerRadius="{DynamicResource WindowCornerRadius}"
@@ -525,13 +526,13 @@
 
                                 <Grid ColumnDefinitions="130,*" RowDefinitions="Auto,Auto" Margin="0,0,0,4">
                                     <TextBlock Grid.Row="0" Grid.Column="0" Text="Ctrl + Shift + W"
-                                               FontSize="12" FontFamily="Consolas"
+                                               FontSize="12" FontFamily="{DynamicResource FontFamilyMono}"
                                                Foreground="{DynamicResource TextMuted}" Margin="0,0,0,4" />
                                     <TextBlock Grid.Row="0" Grid.Column="1" FontSize="12" Margin="0,0,0,4"
                                                Text="{markup:Localize AboutGlobalHotkeyDesc}" />
 
                                     <TextBlock Grid.Row="1" Grid.Column="0" Text="Enter"
-                                               FontSize="12" FontFamily="Consolas"
+                                               FontSize="12" FontFamily="{DynamicResource FontFamilyMono}"
                                                Foreground="{DynamicResource TextMuted}" Margin="0,0,0,4" />
                                     <TextBlock Grid.Row="1" Grid.Column="1" FontSize="12" Margin="0,0,0,4"
                                                Text="{markup:Localize AboutEnterKeyDesc}" />
