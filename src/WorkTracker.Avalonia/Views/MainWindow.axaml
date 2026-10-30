@@ -18,6 +18,7 @@
         WindowStartupLocation="CenterScreen"
         CanResize="False"
         WindowDecorations="None"
+        TransparencyLevelHint="Transparent"
         Background="Transparent">
 
     <Window.Resources>
