@@ -3,6 +3,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input;
 using Avalonia.Threading;
 using WorkTracker.Avalonia.Services;
+using WorkTracker.Avalonia.Services.MacOS;
 using WorkTracker.Avalonia.ViewModels;
 using WorkTracker.Domain.Entities;
 using WorkTracker.UI.Shared.Models;
@@ -59,12 +60,23 @@ public partial class MainWindow : Window
 		{
 			viewModel.PauseTimer();
 			_trayIconService.Show();
+			// The window was never shown, so no visibility change will take the app out of the Dock.
+			DockIcon.SetVisible(false);
 		}
 	}
 
 	private void OnWindowPropertyChanged(object? sender, global::Avalonia.AvaloniaPropertyChangedEventArgs e)
 	{
-		if (e.Property == IsVisibleProperty && e.NewValue is true)
+		if (e.Property != IsVisibleProperty)
+		{
+			return;
+		}
+
+		// On macOS a hidden window still leaves the app in the Dock; it only belongs there while the
+		// window is on screen (or minimized into the Dock, which keeps it visible).
+		DockIcon.SetVisible(e.NewValue is true);
+
+		if (e.NewValue is true)
 		{
 			(DataContext as MainViewModel)?.ResumeTimer();
 		}
