@@ -89,7 +89,7 @@ Doporučený postup pro nového uživatele:
 2. Otevři **Nastavení** (tlačítko vlevo dole v postranním panelu).
 3. Nakonfiguruj pluginy, které chceš používat — viz [Konfigurace pluginů](#konfigurace-pluginů).
 4. Nastav Pomodoro, téma a lokalizaci podle chuti.
-5. Vytvoř si první záznam (tlačítko **Zahájit práci** nebo `Ctrl+Shift+W`; na macOS globální zkratka zatím nefunguje).
+5. Vytvoř si první záznam (tlačítko **Zahájit práci** nebo `Ctrl+Shift+W`).
 
 ---
 
@@ -350,7 +350,15 @@ Cross‑platform desktopová aplikace. Hlavní okno je rozdělené na **levý po
 
 Dvojklik na řádek otevře dialog editace záznamu.
 
-**Klávesová zkratka:** `Ctrl+Shift+W` pro vytvoření nového work itemu. Na Linuxu ji registruje desktop, viz [Globální zkratka na Linuxu](#globální-zkratka-na-linuxu). Na macOS globální zkratka zatím není implementovaná.
+**Klávesová zkratka:** `Ctrl+Shift+W` pro vytvoření nového work itemu. Na Linuxu ji registruje desktop, viz [Globální zkratka na Linuxu](#globální-zkratka-na-linuxu). Na macOS je to **Control**+Shift+W, viz [Globální zkratka na macOS](#globální-zkratka-na-macos).
+
+### Globální zkratka na macOS
+
+Na macOS si zkratku registruje aplikace sama přes systémové API pro globální zkratky (Carbon `RegisterEventHotKey`). Nepotřebuje k tomu žádné oprávnění v Soukromí a zabezpečení (ani Accessibility, ani Input Monitoring) a stisk zachytí jen pro sebe, do aktivní aplikace se nedostane.
+
+- Zkratka je **Control+Shift+W**, tedy stejné klávesy jako na Windows a Linuxu. Command+Shift+W to není schválně: tu má Finder, Safari i většina ostatních aplikací pro zavření okna a globální zkratka by ji vzala všem.
+- Klávesa se bere podle polohy na klávesnici (místo, kde je W v rozložení US), ne podle znaku.
+- Když má stejnou kombinaci zabranou jiná aplikace, macOS registraci odmítne; do logu se zapíše varování a WorkTracker běží dál bez zkratky.
 
 ### Globální zkratka na Linuxu
 
@@ -411,7 +419,7 @@ Otevírá se kliknutím na **Nastavení** v levém dolním rohu hlavního okna. 
 
 - Název aplikace a **verze** (`AppInfo.DisplayVersion`).
 - **Klávesové zkratky**:
-  - `Ctrl + Shift + W` — globální hotkey pro rychlé vytvoření work itemu (funguje i když okno není v popředí). Na Linuxu závisí na desktop portálu — viz [Globální zkratka na Linuxu](#globální-zkratka-na-linuxu); na macOS zatím není implementovaná.
+  - `Ctrl + Shift + W` — globální hotkey pro rychlé vytvoření work itemu (funguje i když okno není v popředí). Na Linuxu závisí na desktop portálu — viz [Globální zkratka na Linuxu](#globální-zkratka-na-linuxu); na macOS je to Control+Shift+W — viz [Globální zkratka na macOS](#globální-zkratka-na-macos).
   - `Enter` — v textboxu rychlého startu potvrdí a spustí záznam.
 - **Stručný přehled** — bullet seznam základních funkcí (jak začít trackovat, formát Jira kódu, k čemu jsou oblíbené, odesílání worklogů, system tray).
 - **Systém** — runtime verze (.NET), platforma (OS), UI framework.
