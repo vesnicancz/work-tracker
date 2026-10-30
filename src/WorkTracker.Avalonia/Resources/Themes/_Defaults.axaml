@@ -45,7 +45,15 @@
     <!-- ============ Window / Card elevation ============ -->
     <!-- BoxShadows syntax: "[inset] offsetX offsetY blur spread color" -->
     <BoxShadows x:Key="WindowBoxShadow">0 4 24 0 #40000000</BoxShadows>
+    <BoxShadows x:Key="DialogBoxShadow">0 4 24 0 #40000000</BoxShadows>
     <BoxShadows x:Key="CardBoxShadow">0 0 0 0 #00000000</BoxShadows>
+
+    <!-- ============ Window frame ============ -->
+    <!-- Windows draw their own frame: a bordered card inset by a margin that leaves room for the
+         shadow. On macOS App.ApplyNativeWindowChrome zeroes these, because the window there has a
+         native frame that already supplies the shadow, border and rounded corners. -->
+    <Thickness x:Key="WindowOuterMargin">8</Thickness>
+    <Thickness x:Key="WindowFrameBorderThickness">1</Thickness>
 
     <!-- ============ Buttons ============ -->
     <CornerRadius x:Key="ButtonCornerRadius">4</CornerRadius>

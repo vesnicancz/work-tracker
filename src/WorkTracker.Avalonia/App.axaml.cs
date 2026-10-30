@@ -55,6 +55,7 @@ public partial class App : global::Avalonia.Application
 			// so applying it later would flash the previous language.
 			localization.ApplyLanguage(language);
 			ApplyThemeMode(followSystemTheme, theme, lightTheme, darkTheme);
+			ApplyNativeWindowChrome();
 
 			if (!startMinimized)
 			{
@@ -487,6 +488,30 @@ public partial class App : global::Avalonia.Application
 
 		EnsureSystemThemeListener();
 		SwitchTheme(ResolveEffectiveTheme());
+	}
+
+	/// <summary>
+	/// On macOS the windows keep their native frame (traffic lights, shadow, rounded corners) and
+	/// extend their content under the title bar, so the self-drawn frame has to step aside. The
+	/// values go into the application's own resources rather than a merged dictionary: own entries
+	/// win over the merged theme dictionaries, so every theme, and every later theme switch, gets
+	/// them. A dialog title bar is always shown, because the traffic lights sit on it.
+	/// </summary>
+	private void ApplyNativeWindowChrome()
+	{
+		if (!OperatingSystem.IsMacOS())
+		{
+			return;
+		}
+
+		Resources["WindowOuterMargin"] = new global::Avalonia.Thickness(0);
+		Resources["WindowFrameBorderThickness"] = new global::Avalonia.Thickness(0);
+		Resources["WindowCornerRadius"] = new global::Avalonia.CornerRadius(0);
+		Resources["WindowTopCornerRadius"] = new global::Avalonia.CornerRadius(0);
+		Resources["SidebarCornerRadius"] = new global::Avalonia.CornerRadius(0);
+		Resources["WindowBoxShadow"] = default(global::Avalonia.Media.BoxShadows);
+		Resources["DialogBoxShadow"] = default(global::Avalonia.Media.BoxShadows);
+		Resources["ShowDialogTitleBar"] = true;
 	}
 
 	/// <summary>
