@@ -530,7 +530,7 @@
                                 <TextBlock Text="{markup:Localize KeyboardShortcuts}" FontSize="13" FontWeight="SemiBold" />
 
                                 <Grid ColumnDefinitions="130,*" RowDefinitions="Auto,Auto" Margin="0,0,0,4">
-                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Ctrl + Shift + W"
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{OnPlatform 'Ctrl + Shift + W', macOS='Control+Shift+W'}"
                                                FontSize="12" FontFamily="{DynamicResource FontFamilyMono}"
                                                Foreground="{DynamicResource TextMuted}" Margin="0,0,0,4" />
                                     <TextBlock Grid.Row="0" Grid.Column="1" FontSize="12" Margin="0,0,0,4"
