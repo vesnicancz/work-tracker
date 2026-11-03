@@ -2,5 +2,5 @@ namespace WorkTracker.Plugin.Abstractions;
 
 public interface ITokenProviderFactory
 {
-	Task<ITokenProvider> CreateAsync(string tenantId, string clientId, string[] scopes);
+	Task<ITokenProvider> CreateAsync(string tenantId, string clientId, string[] scopes, InteractiveAuthFlow interactiveFlow);
 }

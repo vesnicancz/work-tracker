@@ -10,13 +10,9 @@ namespace WorkTracker.Infrastructure.Auth;
 
 public sealed class MsalTokenProviderFactory(ILoggerFactory loggerFactory) : ITokenProviderFactory
 {
-	public async Task<ITokenProvider> CreateAsync(string tenantId, string clientId, string[] scopes)
+	public async Task<ITokenProvider> CreateAsync(string tenantId, string clientId, string[] scopes, InteractiveAuthFlow interactiveFlow)
 	{
-		var msalApp = PublicClientApplicationBuilder
-			.Create(clientId)
-			.WithAuthority($"https://login.microsoftonline.com/{tenantId}")
-			.WithDefaultRedirectUri()
-			.Build();
+		var authority = $"https://login.microsoftonline.com/{tenantId}";
 
 		// Hash tenantId:clientId to produce a safe filename (prevents path traversal via user-provided values)
 		var safeKey = Convert.ToHexString(
@@ -49,7 +45,24 @@ public sealed class MsalTokenProviderFactory(ILoggerFactory loggerFactory) : ITo
 			cacheHelper = await MsalCacheHelper.CreateAsync(fallbackProperties);
 		}
 
+		var msalApp = PublicClientApplicationBuilder
+			.Create(clientId)
+			.WithAuthority(authority)
+			.WithDefaultRedirectUri()
+			.Build();
 		cacheHelper.RegisterCache(msalApp.UserTokenCache);
-		return new MsalTokenProvider(msalApp, scopes, logger);
+
+		IPublicClientApplication CreateLoopbackApp(string redirectUri)
+		{
+			var loopbackApp = PublicClientApplicationBuilder
+				.Create(clientId)
+				.WithAuthority(authority)
+				.WithRedirectUri(redirectUri)
+				.Build();
+			cacheHelper.RegisterCache(loopbackApp.UserTokenCache);
+			return loopbackApp;
+		}
+
+		return new MsalTokenProvider(msalApp, CreateLoopbackApp, scopes, interactiveFlow, logger);
 	}
 }

@@ -16,7 +16,7 @@ Praktický průvodce pro vývojáře, kteří chtějí pracovat na samotném Wor
 8. [Coding standards](#coding-standards)
 9. [Unit of Work — kdy a jak](#unit-of-work--kdy-a-jak)
 10. [Práce se secure storage](#práce-se-secure-storage)
-11. [MSAL a device code flow](#msal-a-device-code-flow)
+11. [MSAL a interaktivní přihlášení](#msal-a-interaktivní-přihlášení)
 12. [Lokalizace](#lokalizace)
 13. [Logging](#logging)
 14. [CI/CD](#cicd)
@@ -394,9 +394,12 @@ Plugin dostává ve `Configuration` už rozbalené plaintext hodnoty. Nemusí im
 
 ---
 
-## MSAL a device code flow
+## MSAL a interaktivní přihlášení
 
-Pluginy autentizující se přes Microsoft Entra ID používají **device code flow**. Důvod: `AcquireTokenInteractive` (přihlášení přes browser s callbackem) v Avalonia deadlockuje; device code flow žádný callback do aplikace nepotřebuje.
+Plugin si při vytváření token provideru zvolí `InteractiveAuthFlow`:
+
+- **`SystemBrowser`** — authorization code flow s PKCE v systémovém prohlížeči. Používá ho Office 365 Calendar. Vestavěný system browser flow v MSAL (`AcquireTokenInteractive` bez dalšího nastavení) v Avalonii deadlockuje — prohlížeč ukáže úspěch, ale `ExecuteAsync` se nevrátí. Proto `MsalTokenProvider` volá `AcquireTokenInteractive(...).WithCustomWebUi(new SystemBrowserWebUi(...))`: redirect zachytí náš vlastní `HttpListener` na `http://localhost:<volný port>` a MSAL už jen vymění kód za token (včetně PKCE) a uloží ho do cache.
+- **`DeviceCode`** — device code flow, žádný callback do aplikace nepotřebuje. Používá ho Goran G3. Microsoft doporučuje device code flow v tenantech blokovat přes Conditional Access, takže pro nové pluginy vol `SystemBrowser`.
 
 ### Infrastructure: MsalTokenProviderFactory
 
@@ -421,16 +424,26 @@ public class MyPlugin : WorkSuggestionPluginBase
         var clientId = GetRequiredConfigValue("ClientId");
         var scopes = new[] { "Calendars.Read", "User.Read" };
 
-        _tokenProvider = await _tokenProviderFactory.CreateAsync(tenantId, clientId, scopes);
+        _tokenProvider = await _tokenProviderFactory.CreateAsync(tenantId, clientId, scopes, InteractiveAuthFlow.SystemBrowser);
         return true;
     }
 
     // Na žádost o token — sám nejdřív zkusí silent token z cache,
-    // device code flow spustí, až když silent selže:
+    // interaktivní přihlášení spustí, až když silent selže:
     private Task<string?> GetTokenAsync(IProgress<string>? progress, CancellationToken ct)
         => _tokenProvider!.AcquireTokenInteractiveAsync(progress, ct);
 }
 ```
+
+### System browser flow — co vidí uživatel
+
+1. Plugin zavolá `AcquireTokenInteractiveAsync(progress, ct)`. Ten nejdřív zkusí `AcquireTokenSilentAsync`; když je token v cache, vrátí ho a další kroky odpadnou.
+2. `MsalTokenProvider` zvolí volný loopback port a postaví MSAL aplikaci s redirect URI `http://localhost:<port>` (sdílí token cache s hlavní instancí; port se mění při každém přihlášení, proto nová instance pokaždé).
+3. Reportne `⏳ Complete the sign-in in your browser…` a `SystemBrowserWebUi` otevře přihlašovací URL přes `Process.Start`. Když se prohlížeč otevřít nepodaří, reportne celou adresu k ručnímu otevření.
+4. Uživatel se přihlásí; Entra přesměruje na loopback, listener vrátí prohlížeči stránku „Sign-in complete“ a URL s kódem předá MSAL. Jiné požadavky (favicon) dostanou 404.
+5. Když redirect nepřijde do 5 minut, přihlášení skončí `TimeoutException` (zalogováno, `AcquireTokenInteractiveAsync` vrátí `null`).
+
+Entra registrace potřebuje platformu **Mobile and desktop applications** s redirect URI `http://localhost` (Entra u loopback adresy port ignoruje).
 
 ### Device code flow — co vidí uživatel
 

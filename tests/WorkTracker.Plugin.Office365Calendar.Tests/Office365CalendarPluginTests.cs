@@ -484,7 +484,7 @@ internal sealed class MockTokenProvider(string? token) : ITokenProvider
 
 internal sealed class MockTokenProviderFactory(string? token = "fake-token") : ITokenProviderFactory
 {
-	public Task<ITokenProvider> CreateAsync(string tenantId, string clientId, string[] scopes)
+	public Task<ITokenProvider> CreateAsync(string tenantId, string clientId, string[] scopes, InteractiveAuthFlow interactiveFlow)
 		=> Task.FromResult<ITokenProvider>(new MockTokenProvider(token));
 }
 

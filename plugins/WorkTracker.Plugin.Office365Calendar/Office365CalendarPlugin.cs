@@ -90,7 +90,7 @@ public sealed class Office365CalendarPlugin(
 		var clientId = GetRequiredConfigValue(ConfigKeys.ClientId);
 		_includeAllDayEvents = string.Equals(GetConfigValue(ConfigKeys.IncludeAllDayEvents), "true", StringComparison.OrdinalIgnoreCase);
 
-		_tokenProvider = await _tokenProviderFactory.CreateAsync(tenantId, clientId, GraphScopes);
+		_tokenProvider = await _tokenProviderFactory.CreateAsync(tenantId, clientId, GraphScopes, InteractiveAuthFlow.SystemBrowser);
 
 		_httpClient?.Dispose();
 		_httpClient = _httpClientFactory.CreateClient();

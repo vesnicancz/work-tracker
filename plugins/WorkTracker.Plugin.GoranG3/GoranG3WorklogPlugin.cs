@@ -137,7 +137,7 @@ public sealed class GoranG3WorklogPlugin(ILogger<GoranG3WorklogPlugin> logger, I
 			return false;
 		}
 
-		_tokenProvider = await _tokenProviderFactory.CreateAsync(tenantId, clientId, _scopes);
+		_tokenProvider = await _tokenProviderFactory.CreateAsync(tenantId, clientId, _scopes, InteractiveAuthFlow.DeviceCode);
 
 		// Try silent auth only — interactive auth happens in TestConnectionAsync where progress is available
 		var token = await _tokenProvider.AcquireTokenSilentAsync(cancellationToken);

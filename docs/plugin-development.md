@@ -14,7 +14,7 @@ Průvodce pro autory pluginů. Pokud tě zajímá **jak plugin systém funguje i
 6. [Konfigurace](#konfigurace)
 7. [ITestablePlugin a test connection](#itestableplugin-a-test-connection)
 8. [Plugin result a kategorizace chyb](#plugin-result-a-kategorizace-chyb)
-9. [Autentizace: ITokenProviderFactory a device code flow](#autentizace-itokenproviderfactory-a-device-code-flow)
+9. [Autentizace: ITokenProviderFactory a interaktivní přihlášení](#autentizace-itokenproviderfactory-a-interaktivní-přihlášení)
 10. [Dependency injection v pluginech](#dependency-injection-v-pluginech)
 11. [Balení a deployment](#balení-a-deployment)
 12. [Testování pluginu](#testování-pluginu)
@@ -456,10 +456,10 @@ Tato metoda:
 
 - Je volaná **ručně** z UI (tlačítko **Otestovat připojení** v Nastavení → Pluginy). Plugin se před testem inicializuje s neuloženými hodnotami z formuláře a po testu se vrátí k uložené konfiguraci.
 - Má **pravdivě ověřit**, že plugin se dokáže připojit k externímu systému s aktuální konfigurací — ne jen „plugin je nainstalovaný“.
-- Pro OAuth pluginy obvykle **triggeruje device code flow** (pokud není platný cached token).
-- Má **`IProgress<string>` pro hlášení stavu uživateli** — na co se čeká, co se děje. Bez toho uživatel u device code flow netuší, co se děje.
+- Pro OAuth pluginy obvykle **spouští interaktivní přihlášení** (pokud není platný cached token).
+- Má **`IProgress<string>` pro hlášení stavu uživateli** — na co se čeká, co se děje. Bez toho uživatel u interaktivního přihlášení netuší, co se děje.
 
-### Příklad: test connection s device code
+### Příklad: test connection s interaktivním přihlášením
 
 ```csharp
 public override async Task<PluginResult<bool>> TestConnectionAsync(
@@ -470,7 +470,7 @@ public override async Task<PluginResult<bool>> TestConnectionAsync(
     {
         progress?.Report("Získávám token…");
 
-        // Zkusí nejdřív token z cache; device code flow spustí, jen když tam není.
+        // Zkusí nejdřív token z cache; interaktivní přihlášení spustí, jen když tam není.
         var token = await _tokenProvider!.AcquireTokenInteractiveAsync(progress, ct);
         if (token is null)
         {
@@ -550,9 +550,18 @@ Aplikace zatím `ErrorCategory` nevyhodnocuje — v Nastavení i při odesílán
 
 ---
 
-## Autentizace: ITokenProviderFactory a device code flow
+## Autentizace: ITokenProviderFactory a interaktivní přihlášení
 
-Pluginy pro Microsoft Entra ID (Office 365, Goran G3, vlastní M365/Azure AD integrace) **musí** používat `ITokenProviderFactory` injektovaný z DI. Nevolej MSAL přímo — factory už řeší token cache, device code flow a cross‑platform šifrování.
+Pluginy pro Microsoft Entra ID (Office 365, Goran G3, vlastní M365/Azure AD integrace) **musí** používat `ITokenProviderFactory` injektovaný z DI. Nevolej MSAL přímo — factory už řeší token cache, interaktivní přihlášení a cross‑platform šifrování.
+
+Při vytváření token provideru plugin zvolí `InteractiveAuthFlow`:
+
+| Hodnota | Flow | Kdo ho používá |
+|---------|------|----------------|
+| `SystemBrowser` | Authorization code flow s PKCE v systémovém prohlížeči, redirect na loopback `http://localhost:<port>` | Office 365 Calendar — **doporučeno pro nové pluginy** |
+| `DeviceCode` | Device code flow (uživatel zadává kód na `microsoft.com/devicelogin`) | Goran G3 |
+
+Microsoft doporučuje device code flow v tenantech blokovat přes Conditional Access, proto ho nevol pro nové pluginy.
 
 ### Získání factory
 
@@ -578,7 +587,7 @@ public class MyPlugin : WorkSuggestionPluginBase
         var clientId = GetRequiredConfigValue("ClientId");
         var scopes = new[] { "Calendars.Read", "User.Read" };
 
-        _tokenProvider = await _tokenProviderFactory.CreateAsync(tenantId, clientId, scopes);
+        _tokenProvider = await _tokenProviderFactory.CreateAsync(tenantId, clientId, scopes, InteractiveAuthFlow.SystemBrowser);
         return true;
     }
 }
@@ -596,7 +605,7 @@ private async Task<string?> AcquireTokenAsync(IProgress<string>? progress, Cance
         return token;
     }
 
-    // Silent selhalo → device code flow
+    // Silent selhalo → interaktivní přihlášení
     progress?.Report("Nutné nové přihlášení přes Microsoft.");
     return await _tokenProvider.AcquireTokenInteractiveAsync(progress, ct);
 }
@@ -607,19 +616,20 @@ Explicitní silent pokus v ukázce je jen pro názornost — `AcquireTokenIntera
 `AcquireTokenInteractiveAsync` zavnitřně:
 
 1. Zkusí `AcquireTokenSilentAsync`; když je token v cache, rovnou ho vrátí.
-2. Zavolá MSAL `AcquireTokenWithDeviceCode`.
-3. Jakmile MSAL dodá `user code` a `verification URL`, reportne je do `progress` jako `⏳ Open browser and enter code: {kód}` a na dalším řádku URL.
-4. Zároveň se pokusí otevřít browser přes `Process.Start` s verification URL.
-5. Čeká, dokud uživatel nepotvrdí přihlášení (nebo dokud není `ct` cancelled).
-6. Vrátí access token. Při chybě nebo zrušení ji zaloguje a vrátí `null`.
+2. Podle zvoleného flow:
+   - **`SystemBrowser`** — reportne do `progress` `⏳ Complete the sign-in in your browser…`, otevře přihlašovací stránku v systémovém prohlížeči a čeká na redirect na `http://localhost:<port>` (nejdéle 5 minut). Pokud se prohlížeč otevřít nepodaří, reportne celou adresu k ručnímu otevření.
+   - **`DeviceCode`** — zavolá MSAL `AcquireTokenWithDeviceCode`, reportne do `progress` `⏳ Open browser and enter code: {kód}` a na dalším řádku verification URL, kterou se zároveň pokusí otevřít přes `Process.Start`.
+3. Čeká, dokud uživatel nepotvrdí přihlášení (nebo dokud není `ct` cancelled).
+4. Vrátí access token. Při chybě nebo zrušení ji zaloguje a vrátí `null`.
 
 ### Entra registrace
 
-Aby fungovalo device code flow, aplikační registrace v Entra (Azure Portal → App registrations) musí:
+Aplikační registrace v Entra (Azure Portal → App registrations) musí:
 
-- Mít povolené **„Allow public client flows“** → **Yes**.
 - Mít nakonfigurované **scopes** (delegated permissions), které plugin požaduje — a uděleny user nebo admin consentem.
 - Nepoužívat client secret (public client).
+- Pro `SystemBrowser`: mít platformu **Mobile and desktop applications** s redirect URI `http://localhost`.
+- Pro `DeviceCode`: mít povolené **„Allow public client flows“** → **Yes**.
 
 ---
 
@@ -632,7 +642,7 @@ Plugin se instanciuje přes `ActivatorUtilities.CreateInstance` z plugin `Servic
 | `ILogger<T>` | Typed logger pro plugin třídu |
 | `ILoggerFactory` | Když potřebuješ loggery pro podkomponenty |
 | `IHttpClientFactory` | Preferuj tuto factory pro běžné HTTP požadavky — stará se o poolování `HttpMessageHandler`. Pro speciální scénáře (custom `DelegatingHandler`, vlastní transport, knihovny, které přijímají `HttpClient` konstruktorem) je v pořádku vytvořit `new HttpClient(handler, disposeHandler: false)` a spravovat jeho lifetime ručně — viz `GoranG3WorklogPlugin` pro ukázku. |
-| `ITokenProviderFactory` | MSAL device code flow |
+| `ITokenProviderFactory` | MSAL token provider (system browser nebo device code flow) |
 
 Plugin je vždy instancovaný přes `ActivatorUtilities.CreateInstance`, takže všechny parametry konstruktoru musí být resolvovatelné ze service provideru. Bezparametrický konstruktor technicky funguje (pokud plugin žádné služby nepotřebuje), ale obvykle je vhodnější používat explicitní DI konstruktor — budeš aspoň mít přístup k loggeru.
 
