@@ -103,7 +103,7 @@ public class Office365CalendarPluginTests : IAsyncDisposable
 	public void Metadata_HasCorrectNameAndVersion()
 	{
 		_plugin.Metadata.Name.Should().Be("Office 365 Calendar");
-		_plugin.Metadata.Version.Should().Be(new Version(1, 0, 0));
+		_plugin.Metadata.Version.Should().Be(new Version(2, 0, 0));
 	}
 
 	#endregion
