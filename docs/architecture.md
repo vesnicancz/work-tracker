@@ -396,7 +396,7 @@ Jako konkrétní ilustraci vezmeme odeslání záznamů jednoho dne z Avalonia G
    - Retry logika: až 2 opakování (celkem 3 pokusy, backoff 2 s a 4 s) na 408/429/500/502/503/504.
    - Vrátí `PluginResult<WorklogSubmissionResult>` s počty a případnými chybami.
 10. **Zpět do služby** — mapuje `PluginResult<WorklogSubmissionResult>` → `Result<SubmissionResult>` (DTO layer).
-11. **Orchestrátor a dialog** — `SubmitAsync` podle `SubmissionResult.Errors` označí chybné položky (`MarkFailedItems`) a vrátí `SubmissionOutcome`. Při úplném úspěchu dialog zůstane otevřený a výsledek ukáže ve stavovém řádku, aby šlo rovnou odeslat další den. Při částečném nebo úplném selhání taky zůstane otevřený, chybné řádky zčervenají a tlačítko **Znovu odeslat** (`RetryFailedCommand` → `RetryFailedAsync`) pošle znovu zaškrtnuté chybné položky.
+11. **Orchestrátor a dialog** — `SubmitAsync` podle `SubmissionResult.Errors` označí chybné položky (`MarkFailedItems`) a vrátí `SubmissionOutcome`. Při úplném úspěchu dialog zůstane otevřený a výsledek ukáže ve stavovém řádku, aby šlo rovnou odeslat další den. Při částečném nebo úplném selhání taky zůstane otevřený, chybné řádky zčervenají a tlačítko **ODESLAT JEN NEÚSPĚŠNÉ** (`RetryFailedCommand` → `RetryFailedAsync`) pošle znovu zaškrtnuté chybné položky.
 
 Celý tok demonstruje:
 

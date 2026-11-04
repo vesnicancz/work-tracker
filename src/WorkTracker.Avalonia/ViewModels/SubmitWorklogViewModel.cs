@@ -251,9 +251,19 @@ public class SubmitWorklogViewModel : ViewModelBase, IDisposable
 			if (SetProperty(ref _hasFailedItems, value))
 			{
 				RetryFailedCommand.NotifyCanExecuteChanged();
+				OnPropertyChanged(nameof(SubmitLabel));
+				OnPropertyChanged(nameof(SubmitToolTip));
 			}
 		}
 	}
+
+	/// <summary>
+	/// Submit always sends every selected row. Once some rows have failed the others are already in
+	/// the target system, so the label has to say that sending them again is what this button does.
+	/// </summary>
+	public string SubmitLabel => HasFailedItems ? _localization["ResubmitAll"] : _localization["Submit"];
+
+	public string? SubmitToolTip => HasFailedItems ? _localization["ResubmitAllToolTip"] : null;
 
 	public string DialogTitle => IsWeekly ? _localization["SubmitWeeklyWorklogs"] : _localization["SubmitDailyWorklogs"];
 

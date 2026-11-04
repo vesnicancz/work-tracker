@@ -26,6 +26,13 @@
         TransparencyLevelHint="Transparent"
         Background="Transparent">
 
+    <Window.Styles>
+        <Style Selector="Button.secondaryAction">
+            <Setter Property="Background" Value="{DynamicResource ButtonSecondaryBg}" />
+            <Setter Property="Foreground" Value="{DynamicResource ButtonSecondaryFg}" />
+        </Style>
+    </Window.Styles>
+
     <Border CornerRadius="{DynamicResource WindowCornerRadius}"
             Background="{DynamicResource DialogBackground}"
             BorderBrush="{DynamicResource SeparatorColor}"
@@ -290,29 +297,36 @@
                                 Background="{DynamicResource ButtonSecondaryBg}"
                                 Foreground="{DynamicResource ButtonSecondaryFg}" />
 
-                        <Button Command="{Binding RetryFailedCommand}"
-                                IsVisible="{Binding HasFailedItems}"
+                        <Button x:Name="SendButton"
+                                Command="{Binding SendCommand}"
+                                ToolTip.Tip="{Binding SubmitToolTip}"
                                 Padding="20,8"
-                                Classes="warning">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <material:MaterialIcon Kind="Refresh" Width="16" Height="16" />
-                                <TextBlock Text="{markup:Localize RetryFailed}"
-                                           FontWeight="SemiBold" />
-                            </StackPanel>
-                        </Button>
-
-                        <Button Command="{Binding SendCommand}"
-                                Padding="20,8"
-                                Classes="accent">
+                                Classes.accent="{Binding !HasFailedItems}"
+                                Classes.secondaryAction="{Binding HasFailedItems}">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <material:MaterialIcon Kind="CloudUpload" Width="16" Height="16"
                                                       IsVisible="{Binding !IsSending}" />
                                 <ProgressBar IsVisible="{Binding IsSending}"
                                              IsIndeterminate="True"
                                              Width="16" Height="16" />
-                                <TextBlock Text="{markup:Localize Submit}" IsVisible="{Binding !IsSending}"
+                                <TextBlock Text="{Binding SubmitLabel}" IsVisible="{Binding !IsSending}"
                                            FontWeight="SemiBold" />
                                 <TextBlock Text="{markup:Localize Submitting}" IsVisible="{Binding IsSending}" />
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Retry goes last: after a failure the prominent far-right button must not be
+                             the one that sends the finished rows again. -->
+                        <Button x:Name="RetryButton"
+                                Command="{Binding RetryFailedCommand}"
+                                IsVisible="{Binding HasFailedItems}"
+                                ToolTip.Tip="{markup:Localize RetryFailedToolTip}"
+                                Padding="20,8"
+                                Classes="warning">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <material:MaterialIcon Kind="Refresh" Width="16" Height="16" />
+                                <TextBlock Text="{markup:Localize RetryFailed}"
+                                           FontWeight="SemiBold" />
                             </StackPanel>
                         </Button>
                     </StackPanel>
