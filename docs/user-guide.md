@@ -496,7 +496,7 @@ Během načítání preview je místo seznamu vidět progress bar s textem „Na
 - **OBNOVIT** (vlevo, s ikonou undo) — vrátí všechny editace zpátky na původní hodnoty (tooltip: „Obnovit původní hodnoty“).
 - **Zavřít** — zruší dialog bez odeslání.
 - **ODESLAT JEN NEÚSPĚŠNÉ** — zobrazí se **pouze** tehdy, když po prvním odeslání část záznamů selhala. Odešle jen neúspěšné položky, které jsou pořád zaškrtnuté.
-- **ODESLAT** (primary tlačítko s ikonou cloud upload) — zahájí upload všech zaškrtnutých položek. Během odesílání se mění na „Odesílání...“ s progress barem. Když část záznamů selže, změní se na **ODESLAT VŠE ZNOVU**: pošle i záznamy, které už se odeslaly, takže v cílovém systému můžou vzniknout duplicity.
+- **ODESLAT** (primary tlačítko s ikonou cloud upload) — zahájí upload všech zaškrtnutých položek. Během odesílání se mění na „Odesílání...“ s progress barem. Když část záznamů selže, změní se na **ODESLAT VŠE ZNOVU**: pošle i záznamy, které už se odeslaly, takže v cílovém systému můžou vzniknout duplicity. Výrazné je v tu chvíli **ODESLAT JEN NEÚSPĚŠNÉ** úplně vpravo. Po změně dne, přepnutí týdne, změně módu nebo Resetu se obě tlačítka vrátí do původní podoby.
 
 ---
 
