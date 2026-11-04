@@ -118,6 +118,18 @@ public class PluginManagerTests : IAsyncDisposable
 	}
 
 	[Fact]
+	public async Task InitializePluginsAsync_PluginNotPicked_StaysListedWithoutStarting()
+	{
+		_pluginManager.LoadEmbeddedPlugin<CountingPlugin>();
+		_pluginManager.SetEnabledPlugins(["counting.plugin"]);
+
+		var failed = await _pluginManager.InitializePluginsAsync(ConfigWith("counting.plugin", "a"), _ => false, TestContext.Current.CancellationToken);
+
+		failed.Should().BeEmpty();
+		((CountingPlugin)_pluginManager.GetPlugin("counting.plugin")!).InitializeCount.Should().Be(0);
+	}
+
+	[Fact]
 	public async Task InitializePluginsAsync_ChangedConfiguration_InitializesAgain()
 	{
 		_pluginManager.LoadEmbeddedPlugin<CountingPlugin>();

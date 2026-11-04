@@ -3,6 +3,7 @@ using Microsoft.Extensions.Hosting;
 using Serilog;
 using Spectre.Console;
 using WorkTracker.Application;
+using WorkTracker.Application.Plugins;
 using WorkTracker.Application.Settings;
 using WorkTracker.CLI.Commands;
 using WorkTracker.CLI.Output;
@@ -100,17 +101,24 @@ try
 
 	// Enabled state and configuration live in the user settings file the GUI writes — without them
 	// every plugin stays disabled and "send" can never resolve a provider.
-	if (requirements.Value.Plugins)
+	if (requirements.Value.Plugins != CliPluginUse.None)
 	{
 		var pluginSettings = await host.Services
 			.GetRequiredService<IPluginSettingsReader>()
 			.ReadAsync();
 
-		await WorkTracker.Infrastructure.DependencyInjection.InitializePluginsAsync(
+		var pluginManager = host.Services.GetRequiredService<IPluginManager>();
+		var failedPlugins = await WorkTracker.Infrastructure.DependencyInjection.InitializePluginsAsync(
 			host.Services,
 			builder.Configuration,
 			pluginSettings.EnabledPlugins,
-			pluginSettings.PluginConfigurations);
+			pluginSettings.PluginConfigurations,
+			plugin => requirements.Value.ShouldStart(plugin, providerId, pluginManager.WorklogUploadPlugins.Count()));
+
+		foreach (var failed in failedPlugins)
+		{
+			CliConsole.Error.MarkupLine($"[yellow]Warning:[/] Plugin {Markup.Escape(failed.Name)} could not start, see the log for details");
+		}
 	}
 }
 catch (DatabaseUnavailableException ex)

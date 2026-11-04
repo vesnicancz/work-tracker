@@ -207,11 +207,18 @@ public static class DependencyInjection
 	/// <summary>
 	/// Loads embedded and external plugins, then initializes them with configurations from user settings or appsettings.json.
 	/// </summary>
+	/// <param name="serviceProvider">The application's services.</param>
+	/// <param name="configuration">The application's configuration.</param>
+	/// <param name="enabledPlugins">The enabled state from user settings.</param>
+	/// <param name="userPluginConfigurations">The plugin configurations from user settings.</param>
+	/// <param name="pluginsToStart">Which of the enabled plugins to initialize, all of them when left out. It runs once the plugins are loaded and enabled, so it can ask the plugin manager.</param>
+	/// <param name="cancellationToken">Cancellation token.</param>
 	public static async Task<IReadOnlyList<PluginMetadata>> InitializePluginsAsync(
 		IServiceProvider serviceProvider,
 		IConfiguration configuration,
 		Dictionary<string, bool>? enabledPlugins = null,
 		Dictionary<string, Dictionary<string, string>>? userPluginConfigurations = null,
+		Func<IPlugin, bool>? pluginsToStart = null,
 		CancellationToken cancellationToken = default)
 	{
 		var pluginManager = serviceProvider.GetRequiredService<PluginManager>();
@@ -260,6 +267,6 @@ public static class DependencyInjection
 		}
 
 		// Initialize plugins with their configurations
-		return await pluginManager.InitializePluginsAsync(pluginConfigs, cancellationToken);
+		return await pluginManager.InitializePluginsAsync(pluginConfigs, pluginsToStart ?? (_ => true), cancellationToken);
 	}
 }
