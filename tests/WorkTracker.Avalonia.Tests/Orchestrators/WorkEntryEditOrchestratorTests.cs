@@ -101,11 +101,13 @@ public class WorkEntryEditOrchestratorTests
 	}
 
 	[Fact]
-	public void Validate_EndEqualToStart_ReturnsError()
+	public void Validate_EndEqualToStart_IsAccepted()
 	{
+		// What work started and stopped within one minute looks like. The dialog has to let the user
+		// change the description of such an entry without making up a different time for it.
 		var time = new DateTime(2025, 1, 1, 10, 0, 0);
 		_orchestrator.Validate("PROJ-1", null, true, time, time)
-			.Should().NotBeNull();
+			.Should().BeNull();
 	}
 
 	[Fact]

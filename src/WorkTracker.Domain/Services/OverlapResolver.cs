@@ -32,6 +32,31 @@ public static class OverlapResolver
 		return adjustments;
 	}
 
+	/// <summary>
+	/// Builds the changes for starting work with no end at <paramref name="start"/>. Such an entry only
+	/// claims its start instant, so entries planned for later (e.g. an upcoming meeting) don't block it:
+	/// they are checked again once it gets stopped. Whatever is still running at that instant, the active
+	/// entry as well as a meeting with a set end time, ends there. Nobody gets asked about this, so it
+	/// takes no entry away the way a confirmed <see cref="Resolve"/> would.
+	/// </summary>
+	/// <param name="overlapping">Existing entries from <paramref name="start"/> on.</param>
+	/// <param name="start">Rounded start time of the new entry.</param>
+	/// <returns>The changes, or null when the work can't start there.</returns>
+	public static IReadOnlyList<OverlapAdjustment>? ResolveOpenEndedStart(IReadOnlyList<WorkEntry> overlapping, DateTime start)
+	{
+		// Ending an entry at the new start only works for one that began before it. One starting at the
+		// same minute would shrink to nothing, and an open-ended one starting later can't end before it began.
+		if (overlapping.Any(e => e.StartTime >= start && (e.EndTime == null || e.StartTime == start)))
+		{
+			return null;
+		}
+
+		return overlapping
+			.Where(e => e.StartTime < start)
+			.Select(e => new OverlapAdjustment(e.Id, e.TicketId, e.Description, OverlapAdjustmentKind.TrimEnd, e.StartTime, e.EndTime, null, start))
+			.ToList();
+	}
+
 	internal static OverlapAdjustment DetermineAdjustment(
 		WorkEntry existing, DateTime existingEnd, DateTime candidateStart, DateTime candidateEnd)
 	{

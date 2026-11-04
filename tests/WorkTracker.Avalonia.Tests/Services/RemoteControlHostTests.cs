@@ -211,19 +211,19 @@ public class RemoteControlHostTests
 	}
 
 	[Fact]
-	public async Task ShiftActiveWorkStart_UpdatesOnlyTheStart()
+	public async Task ShiftActiveWorkStart_ShiftsWhatIsRunningInTheDatabase()
 	{
 		var start = Now.AddHours(-1);
 		_worklogState.Setup(s => s.ActiveWork).Returns(Entry("PROJ-1", start, "Coding"));
 		_worklogState
-			.Setup(s => s.UpdateWorkEntryAsync(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<DateTime>(), It.IsAny<DateTime?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+			.Setup(s => s.ShiftActiveWorkStartAsync(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
 			.Callback(() => _uiDispatcher.IsInside.Should().BeTrue())
 			.ReturnsAsync(Result.Success());
 
 		var result = await _host.ShiftActiveWorkStartAsync(TimeSpan.FromMinutes(-5), TestToken);
 
 		result.IsSuccess.Should().BeTrue();
-		_worklogState.Verify(s => s.UpdateWorkEntryAsync(1, "PROJ-1", start.AddMinutes(-5), null, "Coding", It.IsAny<CancellationToken>()), Times.Once);
+		_worklogState.Verify(s => s.ShiftActiveWorkStartAsync(TimeSpan.FromMinutes(-5), It.IsAny<CancellationToken>()), Times.Once);
 	}
 
 	[Fact]
@@ -571,7 +571,7 @@ public class RemoteControlHostTests
 	{
 		_worklogState.Setup(s => s.ActiveWork).Returns(Entry("PROJ-1", Now.AddHours(-1), "Coding"));
 		_worklogState
-			.Setup(s => s.UpdateWorkEntryAsync(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<DateTime>(), It.IsAny<DateTime?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+			.Setup(s => s.ShiftActiveWorkStartAsync(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(Result.Success());
 
 		await _host.ShiftActiveWorkStartAsync(TimeSpan.FromMinutes(-5), TestToken);
@@ -695,7 +695,7 @@ public class RemoteControlHostTests
 	private void VerifyNoUpdate()
 	{
 		_worklogState.Verify(
-			s => s.UpdateWorkEntryAsync(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<DateTime>(), It.IsAny<DateTime?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()),
+			s => s.ShiftActiveWorkStartAsync(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()),
 			Times.Never);
 	}
 

@@ -1,6 +1,8 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
+using WorkTracker.Application.DTOs;
+using WorkTracker.Application.Common;
 using WorkTracker.Application.Interfaces;
 using WorkTracker.Domain.Services;
 using WorkTracker.Application.Services;
@@ -36,6 +38,13 @@ public class WorkEntryServiceTests
 		_mockRepository
 			.Setup(r => r.GetOverlappingEntriesAsync(null, It.IsAny<DateTime>(), null, It.IsAny<CancellationToken>()))
 			.ReturnsAsync(entries);
+		foreach (var entry in entries)
+		{
+			_mockRepository
+				.Setup(r => r.GetByIdAsync(entry.Id, It.IsAny<CancellationToken>()))
+				.ReturnsAsync(entry);
+		}
+
 		_mockRepository
 			.Setup(r => r.AddAsync(It.IsAny<WorkEntry>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync((WorkEntry entry, CancellationToken _) => entry);
@@ -305,6 +314,86 @@ public class WorkEntryServiceTests
 	}
 
 	[Fact]
+	public async Task EditWorkEntryAsync_KeepsWhatIsLeftOut()
+	{
+		// Arrange
+		var start = new DateTime(2026, 3, 2, 9, 0, 0);
+		var end = new DateTime(2026, 3, 2, 11, 0, 0);
+		var existingEntry = WorkEntry.Reconstitute(1, "PROJ-123", start, end, "Original", false, DateTime.MinValue);
+		_mockRepository
+			.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+			.ReturnsAsync(existingEntry);
+
+		// Act
+		var result = await _service.EditWorkEntryAsync(1, new WorkEntryChanges(Description: "Updated"), TestContext.Current.CancellationToken);
+
+		// Assert
+		result.IsSuccess.Should().BeTrue();
+		result.Value.TicketId.Should().Be("PROJ-123");
+		result.Value.StartTime.Should().Be(start);
+		result.Value.EndTime.Should().Be(end);
+		result.Value.IsActive.Should().BeFalse();
+		result.Value.Description.Should().Be("Updated");
+		_mockUnitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+	}
+
+	[Fact]
+	public async Task ShiftActiveWorkStartAsync_MovesOnlyTheStartOfWhatIsRunning()
+	{
+		// Arrange
+		var start = new DateTime(2026, 3, 2, 9, 0, 0);
+		var active = WorkEntry.Reconstitute(1, "PROJ-123", start, null, "Coding", true, DateTime.MinValue);
+		_mockRepository
+			.Setup(r => r.GetActiveWorkEntryAsync(It.IsAny<CancellationToken>()))
+			.ReturnsAsync(active);
+
+		// Act
+		var result = await _service.ShiftActiveWorkStartAsync(TimeSpan.FromMinutes(-5), TestContext.Current.CancellationToken);
+
+		// Assert
+		result.IsSuccess.Should().BeTrue();
+		result.Value.StartTime.Should().Be(start.AddMinutes(-5));
+		result.Value.EndTime.Should().BeNull();
+		result.Value.IsActive.Should().BeTrue();
+		result.Value.TicketId.Should().Be("PROJ-123");
+		result.Value.Description.Should().Be("Coding");
+		_mockUnitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+	}
+
+	[Fact]
+	public async Task ShiftActiveWorkStartAsync_WhenNothingRuns_FailsInsteadOfReopeningAnEntry()
+	{
+		// Act
+		var result = await _service.ShiftActiveWorkStartAsync(TimeSpan.FromMinutes(-5), TestContext.Current.CancellationToken);
+
+		// Assert
+		result.IsFailure.Should().BeTrue();
+		result.ErrorDetail.Should().Be(WorkEntryErrors.NoActiveWork);
+		_mockRepository.Verify(r => r.UpdateAsync(It.IsAny<WorkEntry>(), It.IsAny<CancellationToken>()), Times.Never);
+	}
+
+	[Fact]
+	public async Task ShiftActiveWorkStartAsync_WhenTheNewStartOverlaps_ChangesNothing()
+	{
+		// Arrange
+		var active = WorkEntry.Reconstitute(1, "PROJ-123", new DateTime(2026, 3, 2, 9, 0, 0), null, "Coding", true, DateTime.MinValue);
+		_mockRepository
+			.Setup(r => r.GetActiveWorkEntryAsync(It.IsAny<CancellationToken>()))
+			.ReturnsAsync(active);
+		_mockRepository
+			.Setup(r => r.HasOverlappingEntriesAsync(It.IsAny<WorkEntry>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(true);
+
+		// Act
+		var result = await _service.ShiftActiveWorkStartAsync(TimeSpan.FromMinutes(-5), TestContext.Current.CancellationToken);
+
+		// Assert
+		result.IsFailure.Should().BeTrue();
+		result.ErrorDetail.Should().Be(WorkEntryErrors.Overlap);
+		_mockUnitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+	}
+
+	[Fact]
 	public async Task UpdateWorkEntryAsync_WithNonExistentId_ShouldReturnFailure()
 	{
 		// Arrange
@@ -313,7 +402,7 @@ public class WorkEntryServiceTests
 			.ReturnsAsync((WorkEntry?)null);
 
 		// Act
-		var result = await _service.UpdateWorkEntryAsync(999, "PROJ-123", cancellationToken: TestContext.Current.CancellationToken);
+		var result = await _service.UpdateWorkEntryAsync(999, "PROJ-123", DateTime.Now, null, null, TestContext.Current.CancellationToken);
 
 		// Assert
 		result.IsFailure.Should().BeTrue();

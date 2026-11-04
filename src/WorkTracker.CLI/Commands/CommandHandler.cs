@@ -1,5 +1,6 @@
 using Spectre.Console;
 using WorkTracker.Application.Common;
+using WorkTracker.Application.DTOs;
 using WorkTracker.Application.Plugins;
 using WorkTracker.Application.Services;
 using WorkTracker.CLI.Output;
@@ -254,22 +255,7 @@ public sealed class CommandHandler
 				return 1;
 			}
 
-			// UpdateWorkEntryAsync replaces every field (the GUI edit dialog always submits a whole
-			// entry), so the options the user left out have to be carried over from the stored entry.
-			// Without this a partial edit such as "--desc=..." would wipe the ticket and end time.
-			var existing = await _workEntryService.GetWorkEntryByIdAsync(id);
-			if (existing == null)
-			{
-				CliConsole.Error.MarkupLine($"[red]✗ Error:[/] Work entry with ID {id} not found");
-				return 1;
-			}
-
-			var result = await _workEntryService.UpdateWorkEntryAsync(
-				id,
-				ticketId ?? existing.TicketId,
-				startTime ?? existing.StartTime,
-				endTime ?? existing.EndTime,
-				description ?? existing.Description);
+			var result = await _workEntryService.EditWorkEntryAsync(id, new WorkEntryChanges(ticketId, startTime, endTime, description), CancellationToken.None);
 
 			if (result.IsFailure)
 			{

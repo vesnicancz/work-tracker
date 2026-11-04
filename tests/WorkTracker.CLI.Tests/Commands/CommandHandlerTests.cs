@@ -377,12 +377,8 @@ public sealed class CommandHandlerTests : IDisposable
 	[Fact]
 	public async Task Edit_Success_ReturnsZero()
 	{
-		var existing = CompletedEntry(5);
 		_workEntryService
-			.Setup(s => s.GetWorkEntryByIdAsync(5, It.IsAny<CancellationToken>()))
-			.ReturnsAsync(existing);
-		_workEntryService
-			.Setup(s => s.UpdateWorkEntryAsync(5, "PROJ-9", existing.StartTime, existing.EndTime, existing.Description, It.IsAny<CancellationToken>()))
+			.Setup(s => s.EditWorkEntryAsync(5, new WorkEntryChanges("PROJ-9", null, null, null), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(Result.Success(CompletedEntry(5)));
 
 		var exitCode = await _handler.HandleEditCommand(5, "PROJ-9");
@@ -392,27 +388,17 @@ public sealed class CommandHandlerTests : IDisposable
 	}
 
 	[Fact]
-	public async Task Edit_OmittedOptions_KeepTheirStoredValues()
+	public async Task Edit_PassesOnlyTheGivenOptions()
 	{
-		var existing = new WorkEntryBuilder()
-			.WithId(5)
-			.WithTicketId("PROJ-9")
-			.WithTimes(9, 11)
-			.WithDescription("Bug fix")
-			.Build();
 		_workEntryService
-			.Setup(s => s.GetWorkEntryByIdAsync(5, It.IsAny<CancellationToken>()))
-			.ReturnsAsync(existing);
-		_workEntryService
-			.Setup(s => s.UpdateWorkEntryAsync(5, It.IsAny<string?>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
-			.ReturnsAsync(Result.Success(existing));
+			.Setup(s => s.EditWorkEntryAsync(5, It.IsAny<WorkEntryChanges>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(Result.Success(CompletedEntry(5)));
 
-		// Only the description is edited; ticket and times must survive untouched.
 		var exitCode = await _handler.HandleEditCommand(5, description: "Updated description");
 
 		exitCode.Should().Be(0);
 		_workEntryService.Verify(
-			s => s.UpdateWorkEntryAsync(5, "PROJ-9", existing.StartTime, existing.EndTime, "Updated description", It.IsAny<CancellationToken>()),
+			s => s.EditWorkEntryAsync(5, new WorkEntryChanges(null, null, null, "Updated description"), It.IsAny<CancellationToken>()),
 			Times.Once);
 	}
 
@@ -424,23 +410,7 @@ public sealed class CommandHandlerTests : IDisposable
 		exitCode.Should().Be(1);
 		_errorConsole.Output.Should().Contain("Nothing to change");
 		_workEntryService.Verify(
-			s => s.UpdateWorkEntryAsync(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()),
-			Times.Never);
-	}
-
-	[Fact]
-	public async Task Edit_UnknownId_ReturnsOneAndDoesNotUpdate()
-	{
-		_workEntryService
-			.Setup(s => s.GetWorkEntryByIdAsync(999, It.IsAny<CancellationToken>()))
-			.ReturnsAsync((WorkEntry?)null);
-
-		var exitCode = await _handler.HandleEditCommand(999, "PROJ-9");
-
-		exitCode.Should().Be(1);
-		_errorConsole.Output.Should().Contain("999").And.Contain("not found");
-		_workEntryService.Verify(
-			s => s.UpdateWorkEntryAsync(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()),
+			s => s.EditWorkEntryAsync(It.IsAny<int>(), It.IsAny<WorkEntryChanges>(), It.IsAny<CancellationToken>()),
 			Times.Never);
 	}
 
@@ -448,16 +418,13 @@ public sealed class CommandHandlerTests : IDisposable
 	public async Task Edit_Failure_ReturnsOne()
 	{
 		_workEntryService
-			.Setup(s => s.GetWorkEntryByIdAsync(999, It.IsAny<CancellationToken>()))
-			.ReturnsAsync(CompletedEntry(999));
-		_workEntryService
-			.Setup(s => s.UpdateWorkEntryAsync(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
-			.ReturnsAsync(Result.Failure<WorkEntry>("entry not found"));
+			.Setup(s => s.EditWorkEntryAsync(It.IsAny<int>(), It.IsAny<WorkEntryChanges>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(Result.Failure<WorkEntry>("Work entry with ID 999 not found"));
 
 		var exitCode = await _handler.HandleEditCommand(999, "PROJ-9");
 
 		exitCode.Should().Be(1);
-		_errorConsole.Output.Should().Contain("entry not found");
+		_errorConsole.Output.Should().Contain("999").And.Contain("not found");
 	}
 
 	[Fact]

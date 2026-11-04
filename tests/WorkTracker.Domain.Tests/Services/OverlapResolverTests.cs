@@ -176,6 +176,45 @@ public class OverlapResolverTests
 	}
 
 	[Fact]
+	public void ResolveOpenEndedStart_EndsWhatIsRunningAtTheStart()
+	{
+		var entries = new List<WorkEntry>
+		{
+			CreateActiveEntry(1, 9),
+			CreateEntry(2, 9, 12)
+		};
+
+		var result = OverlapResolver.ResolveOpenEndedStart(entries, At(10));
+
+		result.Should().HaveCount(2);
+		result!.Should().OnlyContain(a => a.Kind == OverlapAdjustmentKind.TrimEnd && a.NewEnd == At(10));
+	}
+
+	[Fact]
+	public void ResolveOpenEndedStart_LeavesEntriesPlannedForLaterAlone()
+	{
+		var result = OverlapResolver.ResolveOpenEndedStart([CreateEntry(1, 12, 13)], At(10));
+
+		result.Should().BeEmpty();
+	}
+
+	[Fact]
+	public void ResolveOpenEndedStart_WithEntryStartingInTheSameMinute_IsRefused()
+	{
+		var result = OverlapResolver.ResolveOpenEndedStart([CreateEntry(1, 10, 11)], At(10));
+
+		result.Should().BeNull();
+	}
+
+	[Fact]
+	public void ResolveOpenEndedStart_WithRunningEntryStartingLater_IsRefused()
+	{
+		var result = OverlapResolver.ResolveOpenEndedStart([CreateActiveEntry(1, 12)], At(10));
+
+		result.Should().BeNull();
+	}
+
+	[Fact]
 	public void DetermineAdjustment_PreservesOriginalTimes()
 	{
 		var existing = CreateEntry(1, 9, 12);

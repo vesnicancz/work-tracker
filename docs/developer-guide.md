@@ -335,12 +335,14 @@ await using var uow = await _unitOfWorkFactory.CreateAsync(ct);
 
 var overlapping = await uow.WorkEntries.GetOverlappingEntriesAsync(null, workEntry.StartTime, null, ct);
 
-// 1) Uzavři běžící záznamy v okamžiku začátku nového
-foreach (var entry in overlapping.Where(e => e.StartTime < workEntry.StartTime))
+// 1) Rozhodne doména, uplatní se stejně jako potvrzený plán překryvů
+var adjustments = OverlapResolver.ResolveOpenEndedStart(overlapping, workEntry.StartTime);
+if (adjustments == null)
 {
-    entry.Stop(workEntry.StartTime, now);
-    await uow.WorkEntries.UpdateAsync(entry, ct);
+    return Result.Failure<WorkEntry>(WorkEntryErrors.Overlap);
 }
+
+await ApplyAdjustmentsAsync(uow.WorkEntries, adjustments, roundedNow, ct);
 
 // 2) Přidej nový (vzniklý přes WorkEntry.Create(...))
 var result = await uow.WorkEntries.AddAsync(workEntry, ct);

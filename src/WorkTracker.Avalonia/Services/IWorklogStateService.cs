@@ -67,6 +67,13 @@ public interface IWorklogStateService
 		CancellationToken cancellationToken);
 
 	/// <summary>
+	/// Moves the start of the work running at this moment, going by the database rather than by what
+	/// this service last saw: the CLI could have stopped that work in the meantime.
+	/// Automatically notifies about state changes.
+	/// </summary>
+	Task<Result> ShiftActiveWorkStartAsync(TimeSpan delta, CancellationToken cancellationToken);
+
+	/// <summary>
 	/// Deletes a work entry.
 	/// Automatically notifies about state changes.
 	/// </summary>

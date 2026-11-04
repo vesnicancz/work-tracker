@@ -127,8 +127,7 @@ public sealed class RemoteControlHost : IRemoteControlHost
 					return PluginResult.Failure(_localization["RemoteStartInFuture"], PluginErrorCategory.Validation);
 				}
 
-				return ToPluginResult(await _worklogStateService.UpdateWorkEntryAsync(
-					activeWork.Id, activeWork.TicketId, newStart, null, activeWork.Description, cancellationToken));
+				return ToPluginResult(await _worklogStateService.ShiftActiveWorkStartAsync(delta, cancellationToken));
 			},
 			() => null,
 			cancellationToken);

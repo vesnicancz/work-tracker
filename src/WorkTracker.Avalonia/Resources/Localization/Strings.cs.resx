@@ -313,7 +313,7 @@
     <value>Je vyžadováno ID ticketu nebo popis</value>
   </data>
   <data name="EndTimeMustBeAfterStartTime" xml:space="preserve">
-    <value>Čas ukončení musí být po času zahájení</value>
+    <value>Čas ukončení nesmí být před časem zahájení</value>
   </data>
   <data name="WorkTrackingStarted" xml:space="preserve">
     <value>Sledování práce zahájeno</value>
@@ -822,7 +822,7 @@ Váš výkaz práce také ne.</value>
     <value>Vyplň ticket nebo popis.</value>
   </data>
   <data name="ErrorInvalidEntryAfterUpdate" xml:space="preserve">
-    <value>Vyplň ticket nebo popis a zkontroluj, že konec je až po začátku.</value>
+    <value>Vyplň ticket nebo popis a zkontroluj, že konec není před začátkem.</value>
   </data>
   <data name="ErrorOverlap" xml:space="preserve">
     <value>Záznam se překrývá s jiným záznamem. Zkontroluj časy.</value>
@@ -834,7 +834,7 @@ Váš výkaz práce také ne.</value>
     <value>Žádná práce neběží.</value>
   </data>
   <data name="ErrorInvalidEndTime" xml:space="preserve">
-    <value>Konec musí být až po začátku.</value>
+    <value>Konec nesmí být před začátkem.</value>
   </data>
   <data name="ErrorNotFound" xml:space="preserve">
     <value>Záznam už neexistuje.</value>

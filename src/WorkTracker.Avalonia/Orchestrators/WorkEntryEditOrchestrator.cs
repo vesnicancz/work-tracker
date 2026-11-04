@@ -1,6 +1,7 @@
 using System.Text;
 using Microsoft.Extensions.Logging;
 using WorkTracker.Application.Common;
+using WorkTracker.Domain.Entities;
 using WorkTracker.Domain.Services;
 using WorkTracker.Avalonia.Services;
 
@@ -27,12 +28,12 @@ public class WorkEntryEditOrchestrator : IWorkEntryEditOrchestrator
 
 	public string? Validate(string? ticketId, string? description, bool hasEndTime, DateTime startDateTime, DateTime? endDateTime)
 	{
-		if (string.IsNullOrWhiteSpace(ticketId) && string.IsNullOrWhiteSpace(description))
+		if (!WorkEntry.IsIdentifiable(ticketId, description))
 		{
 			return _localization["EitherTicketOrDescriptionRequired"];
 		}
 
-		if (hasEndTime && endDateTime.HasValue && endDateTime.Value <= startDateTime)
+		if (hasEndTime && !WorkEntry.AreValidTimes(startDateTime, endDateTime))
 		{
 			return _localization["EndTimeMustBeAfterStartTime"];
 		}

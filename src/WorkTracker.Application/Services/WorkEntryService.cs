@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using WorkTracker.Application.Common;
+using WorkTracker.Application.DTOs;
 using WorkTracker.Application.Interfaces;
 using WorkTracker.Domain.Entities;
 using WorkTracker.Domain.Interfaces;
@@ -69,10 +70,8 @@ public sealed class WorkEntryService : IWorkEntryService
 	}
 
 	/// <summary>
-	/// Starts an entry without an end time. Such an entry only claims its start instant, so entries
-	/// planned for later (e.g. an upcoming meeting) don't block it - they are checked again once it
-	/// gets stopped. Whatever is still running at that instant, the active entry as well as a meeting
-	/// with a set end time, gets closed there, in the same transaction as the new entry.
+	/// Starts an entry without an end time, ending what is still running then in the same transaction.
+	/// See <see cref="OverlapResolver.ResolveOpenEndedStart"/>.
 	/// </summary>
 	private async Task<Result<WorkEntry>> StartOpenEndedWorkAsync(WorkEntry workEntry, DateTime roundedNow, CancellationToken cancellationToken)
 	{
@@ -86,20 +85,17 @@ public sealed class WorkEntryService : IWorkEntryService
 
 		var overlapping = await uow.WorkEntries.GetOverlappingEntriesAsync(null, workEntry.StartTime, null, cancellationToken);
 
-		// Closing an entry at the new start only works for one that began before it. One starting at
-		// the same minute would shrink to nothing, and an open-ended one starting later can't be closed
-		// before it began.
-		if (overlapping.Any(e => e.StartTime >= workEntry.StartTime && (e.EndTime == null || e.StartTime == workEntry.StartTime)))
+		var adjustments = OverlapResolver.ResolveOpenEndedStart(overlapping, workEntry.StartTime);
+		if (adjustments == null)
 		{
 			_logger.LogWarning("Work entry overlaps with existing entry for ticket {TicketId} ({StartTime} - {EndTime})", workEntry.TicketId, workEntry.StartTime, workEntry.EndTime);
 			return Result.Failure<WorkEntry>(WorkEntryErrors.Overlap);
 		}
 
-		foreach (var entry in overlapping.Where(e => e.StartTime < workEntry.StartTime))
+		var applyResult = await ApplyAdjustmentsAsync(uow.WorkEntries, adjustments, roundedNow, cancellationToken);
+		if (applyResult.IsFailure)
 		{
-			_logger.LogInformation("Auto-stopping previous work {Id} on ticket {PreviousTicketId}", entry.Id, entry.TicketId);
-			entry.Stop(workEntry.StartTime, roundedNow);
-			await uow.WorkEntries.UpdateAsync(entry, cancellationToken);
+			return Result.Failure<WorkEntry>(applyResult);
 		}
 
 		var result = await uow.WorkEntries.AddAsync(workEntry, cancellationToken);
@@ -160,8 +156,46 @@ public sealed class WorkEntryService : IWorkEntryService
 		return await _repository.GetByDateAsync(date, cancellationToken);
 	}
 
-	public async Task<Result<WorkEntry>> UpdateWorkEntryAsync(int id, string? ticketId = null,
-		DateTime? startTime = null, DateTime? endTime = null, string? description = null, CancellationToken cancellationToken = default)
+	public Task<Result<WorkEntry>> UpdateWorkEntryAsync(int id, string? ticketId, DateTime startTime, DateTime? endTime, string? description, CancellationToken cancellationToken)
+	{
+		return ModifyEntryAsync(
+			id,
+			(entry, now) => entry.UpdateFields(ticketId, DateTimeHelper.RoundToMinute(startTime), DateTimeHelper.RoundToMinute(endTime), description, now),
+			cancellationToken);
+	}
+
+	public Task<Result<WorkEntry>> EditWorkEntryAsync(int id, WorkEntryChanges changes, CancellationToken cancellationToken)
+	{
+		return ModifyEntryAsync(
+			id,
+			(entry, now) => entry.UpdateFields(
+				changes.TicketId ?? entry.TicketId,
+				DateTimeHelper.RoundToMinute(changes.StartTime ?? entry.StartTime),
+				DateTimeHelper.RoundToMinute(changes.EndTime ?? entry.EndTime),
+				changes.Description ?? entry.Description,
+				now),
+			cancellationToken);
+	}
+
+	public async Task<Result<WorkEntry>> ShiftActiveWorkStartAsync(TimeSpan delta, CancellationToken cancellationToken)
+	{
+		_logger.LogInformation("Shifting the start of active work by {Delta}", delta);
+
+		await using var uow = await _unitOfWorkFactory.CreateAsync(cancellationToken);
+
+		var activeEntry = await uow.WorkEntries.GetActiveWorkEntryAsync(cancellationToken);
+		if (activeEntry == null)
+		{
+			_logger.LogWarning("No active work entry found to shift");
+			return Result.Failure<WorkEntry>(WorkEntryErrors.NoActiveWork);
+		}
+
+		activeEntry.AdjustStartTime(DateTimeHelper.RoundToMinute(activeEntry.StartTime + delta), DateTimeHelper.RoundToMinute(Now));
+
+		return await SaveModifiedEntryAsync(uow, activeEntry, cancellationToken);
+	}
+
+	private async Task<Result<WorkEntry>> ModifyEntryAsync(int id, Action<WorkEntry, DateTime> modify, CancellationToken cancellationToken)
 	{
 		_logger.LogInformation("Updating work entry {Id}", id);
 
@@ -174,30 +208,28 @@ public sealed class WorkEntryService : IWorkEntryService
 			return Result.Failure<WorkEntry>(WorkEntryErrors.NotFound(id));
 		}
 
-		// Always update all fields (allows setting values to null)
-		workEntry.UpdateFields(
-			ticketId,
-			startTime.HasValue ? DateTimeHelper.RoundToMinute(startTime.Value) : null,
-			DateTimeHelper.RoundToMinute(endTime),
-			description,
-			DateTimeHelper.RoundToMinute(Now));
+		modify(workEntry, DateTimeHelper.RoundToMinute(Now));
 
+		return await SaveModifiedEntryAsync(uow, workEntry, cancellationToken);
+	}
+
+	private async Task<Result<WorkEntry>> SaveModifiedEntryAsync(IUnitOfWork uow, WorkEntry workEntry, CancellationToken cancellationToken)
+	{
 		if (!workEntry.IsValid())
 		{
-			_logger.LogWarning("Invalid work entry data after update for entry {Id}, ticket {TicketId} ({StartTime} - {EndTime})", id, ticketId, workEntry.StartTime, workEntry.EndTime);
+			_logger.LogWarning("Invalid work entry data after update for entry {Id}, ticket {TicketId} ({StartTime} - {EndTime})", workEntry.Id, workEntry.TicketId, workEntry.StartTime, workEntry.EndTime);
 			return Result.Failure<WorkEntry>(WorkEntryErrors.InvalidEntryAfterUpdate);
 		}
 
-		// Check for overlaps
 		if (await uow.WorkEntries.HasOverlappingEntriesAsync(workEntry, cancellationToken))
 		{
-			_logger.LogWarning("Work entry {Id} would overlap with existing entry ({StartTime} - {EndTime})", id, workEntry.StartTime, workEntry.EndTime);
+			_logger.LogWarning("Work entry {Id} would overlap with existing entry ({StartTime} - {EndTime})", workEntry.Id, workEntry.StartTime, workEntry.EndTime);
 			return Result.Failure<WorkEntry>(WorkEntryErrors.Overlap);
 		}
 
 		await uow.WorkEntries.UpdateAsync(workEntry, cancellationToken);
 		await uow.SaveChangesAsync(cancellationToken);
-		_logger.LogInformation("Work entry updated successfully");
+		_logger.LogInformation("Work entry {Id} updated successfully", workEntry.Id);
 
 		return Result.Success(workEntry);
 	}
@@ -299,10 +331,10 @@ public sealed class WorkEntryService : IWorkEntryService
 			return Result.Failure<WorkEntry>(WorkEntryErrors.PlanOutdated);
 		}
 
-		var applyResult = await ApplyAdjustmentsAsync(uow.WorkEntries, plan, now, cancellationToken);
+		var applyResult = await ApplyAdjustmentsAsync(uow.WorkEntries, plan.Adjustments, DateTimeHelper.RoundToMinute(now), cancellationToken);
 		if (applyResult.IsFailure)
 		{
-			return Result.Failure<WorkEntry>(applyResult.Error);
+			return Result.Failure<WorkEntry>(applyResult);
 		}
 
 		var result = await uow.WorkEntries.AddAsync(workEntry, cancellationToken);
@@ -354,10 +386,10 @@ public sealed class WorkEntryService : IWorkEntryService
 		}
 
 		// Apply adjustments to overlapping entries
-		var applyResult = await ApplyAdjustmentsAsync(uow.WorkEntries, plan, now, cancellationToken);
+		var applyResult = await ApplyAdjustmentsAsync(uow.WorkEntries, plan.Adjustments, DateTimeHelper.RoundToMinute(now), cancellationToken);
 		if (applyResult.IsFailure)
 		{
-			return Result.Failure<WorkEntry>(applyResult.Error);
+			return Result.Failure<WorkEntry>(applyResult);
 		}
 
 		// Save the updated entry (skip overlap check since we resolved them)
@@ -368,11 +400,9 @@ public sealed class WorkEntryService : IWorkEntryService
 		return Result.Success(workEntry);
 	}
 
-	private async Task<Result> ApplyAdjustmentsAsync(IWorkEntryRepository repository, OverlapResolutionPlan plan, DateTime now, CancellationToken cancellationToken)
+	private async Task<Result> ApplyAdjustmentsAsync(IWorkEntryRepository repository, IReadOnlyList<OverlapAdjustment> adjustments, DateTime roundedNow, CancellationToken cancellationToken)
 	{
-		var roundedNow = DateTimeHelper.RoundToMinute(now);
-
-		foreach (var adjustment in plan.Adjustments)
+		foreach (var adjustment in adjustments)
 		{
 			switch (adjustment.Kind)
 			{
