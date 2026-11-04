@@ -62,14 +62,14 @@
 
         <Grid RowDefinitions="Auto,Auto,*">
 
-            <!-- Titlebar -->
+            <!-- Titlebar. Unlike the other dialogs this one ignores ShowDialogTitleBar: it has no
+                 footer, so these are its only Close and Refresh buttons and its only drag handle. -->
             <Border Grid.Row="0" x:Name="DialogTitleBar"
                     Background="{DynamicResource TitleBarBackground}"
                     BorderBrush="{DynamicResource SeparatorColor}"
                     BorderThickness="{DynamicResource TitleBarBorderThickness}"
                     CornerRadius="{DynamicResource WindowTopCornerRadius}"
-                    Height="{OnPlatform 36, macOS=28}"
-                    IsVisible="{DynamicResource ShowDialogTitleBar}">
+                    Height="{OnPlatform 36, macOS=28}">
                 <Panel>
                     <TextBlock Text="{markup:Localize Suggestions}" FontSize="12"
                                Foreground="{DynamicResource AppTitleForeground}"

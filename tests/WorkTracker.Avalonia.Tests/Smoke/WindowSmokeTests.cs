@@ -208,6 +208,39 @@ public class WindowSmokeTests
 		window.Result.Should().BeFalse();
 	});
 
+	/// <summary>
+	/// The suggestions window has no footer, so its title bar holds the only Close and Refresh buttons
+	/// and the only drag handle. A theme that hides dialog title bars must not take those away.
+	/// </summary>
+	[Fact]
+	public Task SuggestionsWindow_TitleBarIsVisibleInEveryTheme() => UiThread.Dispatch(() =>
+	{
+		try
+		{
+			foreach (var themeName in ThemeCatalog.AllThemes)
+			{
+				App.SwitchTheme(themeName);
+
+				var window = new SuggestionsWindow();
+				window.Show();
+
+				try
+				{
+					window.FindControl<Border>("DialogTitleBar")!.IsEffectivelyVisible
+						.Should().BeTrue($"theme '{themeName}' must leave the window closable");
+				}
+				finally
+				{
+					window.Close();
+				}
+			}
+		}
+		finally
+		{
+			App.SwitchTheme(ApplicationSettings.DefaultTheme);
+		}
+	});
+
 	[Fact]
 	public Task SwitchTheme_AllCatalogThemes_LoadAndSetMatchingVariant() => UiThread.Dispatch(() =>
 	{
