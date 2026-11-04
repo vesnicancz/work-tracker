@@ -1,4 +1,5 @@
 using Spectre.Console;
+using WorkTracker.Application.Common;
 using WorkTracker.Application.Plugins;
 using WorkTracker.Application.Services;
 using WorkTracker.CLI.Output;
@@ -453,8 +454,7 @@ public sealed class CommandHandler
 
 			if (result.IsSuccess)
 			{
-				CliConsole.Out.MarkupLine($"[green]✓[/] Successfully sent {result.Value.SuccessfulEntries} entries to {provider}");
-				return 0;
+				return ReportSubmission(result.Value, provider);
 			}
 			else
 			{
@@ -467,6 +467,39 @@ public sealed class CommandHandler
 			CliConsole.Error.MarkupLine($"[red]✗ Error:[/] {Markup.Escape(ex.Message)}");
 			return 1;
 		}
+	}
+
+	/// <summary>
+	/// Reports what the provider did with the entries. A call that went through can still have failed
+	/// for some of them, and a script relying on the exit code has to learn about that. The errors are
+	/// checked as well as the count, because a plugin can report a failure that belongs to no single
+	/// entry (GoranG3 submitting the timesheet of a day).
+	/// </summary>
+	private static int ReportSubmission(SubmissionResult submission, string provider)
+	{
+		var hasFailures = submission.FailedEntries > 0 || submission.Errors.Count > 0;
+
+		if (submission.SuccessfulEntries > 0 || !hasFailures)
+		{
+			CliConsole.Out.MarkupLine($"[green]✓[/] Successfully sent {submission.SuccessfulEntries} entries to {provider}");
+		}
+
+		if (!hasFailures)
+		{
+			return 0;
+		}
+
+		if (submission.FailedEntries > 0)
+		{
+			CliConsole.Error.MarkupLine($"[yellow]⚠[/] {submission.FailedEntries} entries failed");
+		}
+
+		foreach (var error in submission.Errors)
+		{
+			CliConsole.Error.MarkupLine($"  [red]-[/] {error.Date:yyyy-MM-dd}: {Markup.Escape(error.ErrorMessage)}");
+		}
+
+		return 1;
 	}
 
 	/// <summary>
@@ -554,19 +587,7 @@ public sealed class CommandHandler
 
 			if (result.IsSuccess)
 			{
-				var submissionResult = result.Value;
-				CliConsole.Out.MarkupLine($"[green]✓[/] Successfully sent {submissionResult.SuccessfulEntries} entries to {provider}");
-
-				if (submissionResult.HasPartialSuccess)
-				{
-					CliConsole.Error.MarkupLine($"[yellow]⚠[/] {submissionResult.FailedEntries} entries failed");
-					foreach (var error in submissionResult.Errors)
-					{
-						CliConsole.Error.MarkupLine($"  [red]-[/] {error.Date:yyyy-MM-dd}: {Markup.Escape(error.ErrorMessage)}");
-					}
-				}
-
-				return 0;
+				return ReportSubmission(result.Value, provider);
 			}
 			else
 			{
