@@ -25,6 +25,7 @@ public class ApplicationSettingsCloneTests
 		StartWithWindows = true,
 		StartMinimized = true,
 		CheckForUpdates = false,
+		ShowRemoteControlNotifications = false,
 		PluginConfigurations = new Dictionary<string, Dictionary<string, string>>
 		{
 			["tempo"] = new() { ["Url"] = "https://example.invalid" }
@@ -47,7 +48,8 @@ public class ApplicationSettingsCloneTests
 			LongBreakMinutes = 20,
 			PomodorosBeforeLongBreak = 3,
 			AutoStartWorkTracking = true,
-			AutoStopWorkTracking = true
+			AutoStopWorkTracking = true,
+			ShowSystemNotifications = false
 		}
 	};
 

@@ -25,6 +25,7 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 	private readonly ISettingsService _settingsService;
 	private readonly ILogger<TrayIconService> _logger;
 	private readonly ILocalizationService _localizationService;
+	private readonly IActionFeedbackService _actionFeedback;
 	private TrayIcon? _trayIcon;
 	private NativeMenu? _menu;
 	private bool _isInitialized;
@@ -43,8 +44,10 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 		IWorklogStateService worklogStateService,
 		ISettingsService settingsService,
 		ILocalizationService localizationService,
+		IActionFeedbackService actionFeedback,
 		ILogger<TrayIconService> logger)
 	{
+		_actionFeedback = actionFeedback;
 		_dialogService = dialogService;
 		_worklogStateService = worklogStateService;
 		_settingsService = settingsService;
@@ -255,7 +258,17 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 		catch (Exception ex)
 		{
 			_logger.LogWarning(ex, "Failed to open new work entry dialog from tray");
+			await ReportFailureAsync(_localizationService.GetFormattedString("TrayOpenDialogError", ex.Message));
 		}
+	}
+
+	/// <summary>
+	/// A menu click has no other way to show that it failed. The token source is gone once the service
+	/// is disposed, and by then nobody is looking.
+	/// </summary>
+	private Task ReportFailureAsync(string message)
+	{
+		return _disposed ? Task.CompletedTask : _actionFeedback.ReportFailureAsync(message, _cts.Token);
 	}
 
 	private void SetActiveState(bool isActive)
@@ -340,12 +353,14 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 			if (result.IsFailure)
 			{
 				_logger.LogWarning("Failed to stop work from tray: {Error}", result.Error);
+				await ReportFailureAsync(_localizationService.GetFormattedString("TrayStopWorkFailed", result.Error));
 			}
 		}
 		catch (OperationCanceledException) { /* Service is being disposed */ }
 		catch (Exception ex)
 		{
 			_logger.LogWarning(ex, "Failed to stop work from tray");
+			await ReportFailureAsync(_localizationService.GetFormattedString("TrayStopWorkFailed", ex.Message));
 		}
 	}
 
@@ -391,12 +406,14 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 			if (result.IsFailure)
 			{
 				_logger.LogWarning("Failed to start favorite work from tray: {Error}", result.Error);
+				await ReportFailureAsync(_localizationService.GetFormattedString("TrayStartFavoriteFailed", favorite.Name, result.Error));
 			}
 		}
 		catch (OperationCanceledException) { /* Service is being disposed */ }
 		catch (Exception ex)
 		{
 			_logger.LogWarning(ex, "Failed to start favorite work '{FavoriteName}' from tray", favorite.Name);
+			await ReportFailureAsync(_localizationService.GetFormattedString("TrayStartFavoriteFailed", favorite.Name, ex.Message));
 		}
 	}
 }

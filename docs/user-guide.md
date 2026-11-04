@@ -393,6 +393,7 @@ Otevírá se kliknutím na **Nastavení** v levém dolním rohu hlavního okna. 
 - **Spouštění**:
   - **Spustit po přihlášení** — zaregistruje aplikaci do autostartu (Windows, Linux i macOS).
   - **Spustit minimalizovanou** — okno se při startu neobjeví, aplikace jede rovnou do tray.
+- **Oznámení** — sekce je vidět jen se zapnutým pluginem externího ovladače. **Akce z externích ovladačů** (výchozí zapnuto) potvrzuje akce spuštěné ze zařízení, jako je Stream Deck. Chyby se zobrazují i při vypnutí. Viz [Notifikace](#notifikace).
 - **Aktualizace** — **Kontrolovat aktualizace** zapíná/vypíná kontrolu nové verze na GitHubu při spuštění.
 - **Vzhled**:
   - **Sledovat systémové nastavení** — když je zapnuto, aplikace automaticky přepíná mezi denním a nočním motivem podle systémové preference. V tomto režimu se zobrazí dva dropdowny **Den** (jen světlé motivy) a **Noc** (jen tmavé motivy).
@@ -409,6 +410,7 @@ Otevírá se kliknutím na **Nastavení** v levém dolním rohu hlavního okna. 
 - Checkbox **Povolit Pomodoro časovač** zobrazí Pomodoro kartu v hlavním okně.
 - Čtyři textová pole (aktivní jen se zapnutým Pomodorem): **Délka práce (min)**, **Krátká pauza (min)**, **Dlouhá pauza (min)** a **Pomodor před dlouhou pauzou**.
 - Checkboxy **Auto-start sledování práce** a **Auto-stop sledování při pauze** pro napojení Pomodoro fází na work entry tracking.
+- Checkbox **Systémová oznámení o změně fáze** (výchozí zapnuto) — OS notifikace při začátku práce nebo pauzy. Viz [Notifikace](#notifikace).
 
 **Pluginy**:
 
@@ -649,6 +651,7 @@ Volitelný Pomodoro timer. Nastavení v **Nastavení → Pomodoro**:
 | Pomodor před dlouhou pauzou | 4 |
 | Auto-start sledování práce | vypnuto |
 | Auto-stop sledování při pauze | vypnuto |
+| Systémová oznámení o změně fáze | zapnuto |
 
 ### Průběh
 
@@ -731,10 +734,26 @@ Zobrazují se při:
 
 **2. OS notifikace** (systémový toast / notification center)
 
-Nativní systémové notifikace, které jsou viditelné **i když je hlavní okno schované** — vyskakují v Action Center na Windows, Notification Center na macOS nebo přes libnotify / XDG na Linuxu. WorkTracker je používá **jen pro dvě konkrétní události** (Pomodoro přechody navíc ukáže i jako in‑app toast):
+Nativní systémové notifikace, které jsou viditelné **i když je hlavní okno schované** — vyskakují v Action Center na Windows, Notification Center na macOS nebo přes libnotify / XDG na Linuxu. WorkTracker je používá pro tyto události (Pomodoro přechody navíc ukáže i jako in‑app toast):
 
-- **Přechody Pomodoro fází** — konec práce, konec pauzy, začátek dlouhé pauzy. Protože tyto události jsou časově vázané a většinou chceš aplikaci minimalizovanou, OS toast je tu jediný smysluplný kanál.
+- **Přechody Pomodoro fází** — konec práce, konec pauzy, začátek dlouhé pauzy. Protože tyto události jsou časově vázané a většinou chceš aplikaci minimalizovanou, OS toast je tu jediný smysluplný kanál. Vypnout je jde v **Nastavení → Pomodoro → Systémová oznámení o změně fáze** (výchozí zapnuto); in‑app toasty v hlavním okně tím vypnout nejde.
 - **Dostupná aktualizace** — při kontrole nové verze po startu. Klik na notifikaci otevře stránku release v browseru.
+- **Výsledek akcí mimo hlavní okno** — viz níže.
+
+**3. Akce mimo hlavní okno**
+
+Když spustíš akci jinde než v hlavním okně, nemusíš její výsledek vidět. Oznámení se proto liší podle zdroje:
+
+| Zdroj akce | Úspěch | Chyba |
+|---|---|---|
+| Stream Deck a další externí ovladače: spuštění, zastavení a navázání na práci, přidání záznamu, spuštění a zastavení Pomodora | ano, lze vypnout v **Nastavení → Obecné → Oznámení** | vždy |
+| Stream Deck: posun začátku práce ovladačem | ne, odezva je přímo na zařízení | vždy |
+| Stream Deck: přeskočení Pomodoro fáze | oznámí ho přechod fáze | – |
+| Tray menu: zastavení práce a oblíbená položka | ne, změna je vidět na ikoně | vždy |
+| Tray menu: **Nový záznam práce** a šablony | ne, otevře se dialog | vždy |
+| Globální zkratka a dialog nového záznamu ze Stream Decku | ne, otevře se dialog | jen v logu |
+
+Když je hlavní okno viditelné a aktivní, ukáže se in‑app toast, jinak OS notifikace. Nová OS notifikace o akci nahradí předchozí, takže se při rychlém mačkání nehromadí.
 
 **Implementace:**
 

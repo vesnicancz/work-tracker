@@ -18,6 +18,12 @@ namespace WorkTracker.Avalonia.Services;
 /// </summary>
 public sealed class NotificationService : INotificationService
 {
+	public bool IsVisibleToUser =>
+		global::Avalonia.Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime
+		{
+			MainWindow: { IsVisible: true, IsActive: true, WindowState: not WindowState.Minimized }
+		};
+
 	public void ShowSuccess(string message) =>
 		ShowNotification(message, MaterialIconKind.CheckCircle, GetThemeBrush("SuccessBrush"));
 

@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Windows.Input;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
@@ -24,6 +25,7 @@ public class SettingsViewModel : ViewModelBase
 	private bool _startWithWindows;
 	private bool _startMinimized;
 	private bool _checkForUpdates;
+	private bool _showRemoteControlNotifications;
 	private PluginViewModel? _selectedPlugin;
 	private string? _testConnectionResult;
 	private bool _isTestingConnection;
@@ -37,6 +39,7 @@ public class SettingsViewModel : ViewModelBase
 	private int _pomodorosBeforeLongBreak;
 	private bool _pomodoroAutoStartTracking;
 	private bool _pomodoroAutoStopTracking;
+	private bool _pomodoroShowSystemNotifications;
 
 	// Favorites
 	private FavoriteWorkItem? _selectedFavorite;
@@ -80,6 +83,7 @@ public class SettingsViewModel : ViewModelBase
 		_startWithWindows = _autostartManager.IsEnabled;
 		_startMinimized = _settingsService.Settings.StartMinimized;
 		_checkForUpdates = _settingsService.Settings.CheckForUpdates;
+		_showRemoteControlNotifications = _settingsService.Settings.ShowRemoteControlNotifications;
 		_selectedTheme = _settingsService.Settings.Theme ?? ApplicationSettings.DefaultTheme;
 		_followSystemTheme = _settingsService.Settings.FollowSystemTheme;
 		_selectedLightTheme = ResolveLightTheme(_settingsService.Settings.LightTheme);
@@ -107,6 +111,7 @@ public class SettingsViewModel : ViewModelBase
 		_pomodorosBeforeLongBreak = pomodoro.PomodorosBeforeLongBreak;
 		_pomodoroAutoStartTracking = pomodoro.AutoStartWorkTracking;
 		_pomodoroAutoStopTracking = pomodoro.AutoStopWorkTracking;
+		_pomodoroShowSystemNotifications = pomodoro.ShowSystemNotifications;
 
 		// Initialize commands
 		SaveCommand = new AsyncRelayCommand(SaveAsync);
@@ -131,6 +136,7 @@ public class SettingsViewModel : ViewModelBase
 			foreach (var p in plugins)
 			{
 				Plugins.Add(p);
+				p.PropertyChanged += OnPluginPropertyChanged;
 			}
 
 			if (Plugins.Any())
@@ -139,6 +145,7 @@ public class SettingsViewModel : ViewModelBase
 			}
 
 			OnPropertyChanged(nameof(HasPlugins));
+			OnPropertyChanged(nameof(HasEnabledRemoteControlPlugin));
 		}
 		catch (Exception ex)
 		{
@@ -194,6 +201,12 @@ public class SettingsViewModel : ViewModelBase
 	{
 		get => _checkForUpdates;
 		set => SetProperty(ref _checkForUpdates, value);
+	}
+
+	public bool ShowRemoteControlNotifications
+	{
+		get => _showRemoteControlNotifications;
+		set => SetProperty(ref _showRemoteControlNotifications, value);
 	}
 
 	public string AppVersionDisplay => _localization.GetFormattedString("VersionFormat", Application.AppInfo.DisplayVersion);
@@ -349,6 +362,16 @@ public class SettingsViewModel : ViewModelBase
 	public ObservableCollection<PluginViewModel> Plugins { get; } = new();
 
 	public bool HasPlugins => Plugins.Count > 0;
+
+	public bool HasEnabledRemoteControlPlugin => Plugins.Any(p => p.IsRemoteControl && p.IsEnabled);
+
+	private void OnPluginPropertyChanged(object? sender, PropertyChangedEventArgs e)
+	{
+		if (e.PropertyName == nameof(PluginViewModel.IsEnabled))
+		{
+			OnPropertyChanged(nameof(HasEnabledRemoteControlPlugin));
+		}
+	}
 
 	public PluginViewModel? SelectedPlugin
 	{
@@ -514,6 +537,12 @@ public class SettingsViewModel : ViewModelBase
 		set => SetProperty(ref _pomodoroAutoStopTracking, value);
 	}
 
+	public bool PomodoroShowSystemNotifications
+	{
+		get => _pomodoroShowSystemNotifications;
+		set => SetProperty(ref _pomodoroShowSystemNotifications, value);
+	}
+
 	#endregion Properties
 
 	#region Commands
@@ -554,6 +583,7 @@ public class SettingsViewModel : ViewModelBase
 				StartWithWindows = StartWithWindows,
 				StartMinimized = StartMinimized,
 				CheckForUpdates = CheckForUpdates,
+				ShowRemoteControlNotifications = ShowRemoteControlNotifications,
 				Theme = SelectedTheme,
 				FollowSystemTheme = FollowSystemTheme,
 				LightTheme = SelectedLightTheme,
@@ -569,7 +599,8 @@ public class SettingsViewModel : ViewModelBase
 					LongBreakMinutes = PomodoroLongBreakMinutes,
 					PomodorosBeforeLongBreak = PomodorosBeforeLongBreak,
 					AutoStartWorkTracking = PomodoroAutoStartTracking,
-					AutoStopWorkTracking = PomodoroAutoStopTracking
+					AutoStopWorkTracking = PomodoroAutoStopTracking,
+					ShowSystemNotifications = PomodoroShowSystemNotifications
 				}
 			};
 

@@ -116,6 +116,21 @@
 
                                 <Separator Margin="0,16" />
 
+                                <StackPanel IsVisible="{Binding HasEnabledRemoteControlPlugin}">
+                                    <TextBlock Text="{markup:Localize Notifications}" FontSize="13" Foreground="{DynamicResource TextMuted}"
+                                               Margin="0,0,0,8" />
+
+                                    <CheckBox IsChecked="{Binding ShowRemoteControlNotifications}">
+                                        <StackPanel>
+                                            <TextBlock Text="{markup:Localize ShowRemoteControlNotifications}" FontWeight="Medium" />
+                                            <TextBlock Text="{markup:Localize ShowRemoteControlNotificationsDesc}"
+                                                       Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,2,0,0" />
+                                        </StackPanel>
+                                    </CheckBox>
+
+                                    <Separator Margin="0,16" />
+                                </StackPanel>
+
                                 <TextBlock Text="{markup:Localize Updates}" FontSize="13" Foreground="{DynamicResource TextMuted}"
                                            Margin="0,0,0,8" />
 
@@ -380,10 +395,18 @@
                                         </StackPanel>
                                     </CheckBox>
 
-                                    <CheckBox IsChecked="{Binding PomodoroAutoStopTracking}">
+                                    <CheckBox IsChecked="{Binding PomodoroAutoStopTracking}" Margin="0,0,0,6">
                                         <StackPanel>
                                             <TextBlock Text="{markup:Localize PomodoroAutoStopTracking}" FontWeight="Medium" />
                                             <TextBlock Text="{markup:Localize PomodoroAutoStopTrackingDesc}"
+                                                       Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,2,0,0" />
+                                        </StackPanel>
+                                    </CheckBox>
+
+                                    <CheckBox IsChecked="{Binding PomodoroShowSystemNotifications}">
+                                        <StackPanel>
+                                            <TextBlock Text="{markup:Localize PomodoroShowSystemNotifications}" FontWeight="Medium" />
+                                            <TextBlock Text="{markup:Localize PomodoroShowSystemNotificationsDesc}"
                                                        Foreground="{DynamicResource TextMuted}" FontSize="11" Margin="0,2,0,0" />
                                         </StackPanel>
                                     </CheckBox>

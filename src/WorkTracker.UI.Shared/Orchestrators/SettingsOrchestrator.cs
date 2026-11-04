@@ -116,6 +116,7 @@ public class SettingsOrchestrator : ISettingsOrchestrator
 		settings.StartWithWindows = request.StartWithWindows;
 		settings.StartMinimized = request.StartMinimized;
 		settings.CheckForUpdates = request.CheckForUpdates;
+		settings.ShowRemoteControlNotifications = request.ShowRemoteControlNotifications;
 		settings.Theme = request.Theme ?? settings.Theme;
 		settings.FollowSystemTheme = request.FollowSystemTheme;
 		settings.LightTheme = request.LightTheme ?? settings.LightTheme;

@@ -753,4 +753,60 @@ Váš výkaz práce také ne.</value>
   <data name="DatabaseUnavailableMessage" xml:space="preserve">
     <value>Databázi se nepodařilo otevřít:&#xA;&#xA;{0}&#xA;&#xA;Pokud je uložená na výměnném disku, připojte ho a zvolte Zkusit znovu.</value>
   </data>
+
+  <!-- Notifications -->
+  <data name="Notifications" xml:space="preserve">
+    <value>Oznámení</value>
+  </data>
+  <data name="ShowRemoteControlNotifications" xml:space="preserve">
+    <value>Akce z externích ovladačů</value>
+  </data>
+  <data name="ShowRemoteControlNotificationsDesc" xml:space="preserve">
+    <value>Potvrzovat akce spuštěné ze zařízení, jako je Stream Deck. Chyby se zobrazují vždy.</value>
+  </data>
+  <data name="PomodoroShowSystemNotifications" xml:space="preserve">
+    <value>Systémová oznámení o změně fáze</value>
+  </data>
+  <data name="PomodoroShowSystemNotificationsDesc" xml:space="preserve">
+    <value>Upozorní na začátek práce nebo pauzy, i když je okno aplikace skryté.</value>
+  </data>
+  <data name="RemoteWorkStarted" xml:space="preserve">
+    <value>Práce spuštěna: {0}</value>
+  </data>
+  <data name="RemoteWorkStopped" xml:space="preserve">
+    <value>Práce zastavena: {0}</value>
+  </data>
+  <data name="RemoteEntryAdded" xml:space="preserve">
+    <value>Záznam přidán: {0}</value>
+  </data>
+  <data name="RemotePomodoroStarted" xml:space="preserve">
+    <value>Pomodoro spuštěno</value>
+  </data>
+  <data name="RemotePomodoroStopped" xml:space="preserve">
+    <value>Pomodoro zastaveno</value>
+  </data>
+  <data name="RemoteActionFailed" xml:space="preserve">
+    <value>Akce se nezdařila: {0}</value>
+  </data>
+  <data name="RemoteNoRecentWork" xml:space="preserve">
+    <value>Není žádná nedávná práce, na kterou by šlo navázat.</value>
+  </data>
+  <data name="RemoteNoActiveWork" xml:space="preserve">
+    <value>Žádná práce se právě nesleduje.</value>
+  </data>
+  <data name="RemoteStartInFuture" xml:space="preserve">
+    <value>Práce nemůže začít v budoucnosti.</value>
+  </data>
+  <data name="RemoteEntryWouldChangeOthers" xml:space="preserve">
+    <value>Záznam by změnil jiné záznamy. Přidejte ho přímo v aplikaci.</value>
+  </data>
+  <data name="RemotePomodoroDisabled" xml:space="preserve">
+    <value>Pomodoro je v nastavení vypnuté.</value>
+  </data>
+  <data name="TrayStopWorkFailed" xml:space="preserve">
+    <value>Práci se nepodařilo zastavit: {0}</value>
+  </data>
+  <data name="TrayStartFavoriteFailed" xml:space="preserve">
+    <value>Položku {0} se nepodařilo spustit: {1}</value>
+  </data>
 </root>

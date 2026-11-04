@@ -19,6 +19,8 @@ public sealed class RemoteControlHost : IRemoteControlHost
 	private readonly ISettingsService _settingsService;
 	private readonly IWorkSuggestionOrchestrator _suggestionOrchestrator;
 	private readonly IDialogService _dialogService;
+	private readonly IActionFeedbackService _actionFeedback;
+	private readonly ILocalizationService _localization;
 	private readonly IServiceScopeFactory _scopeFactory;
 	private readonly IUiDispatcher _uiDispatcher;
 	private readonly TimeProvider _timeProvider;
@@ -30,6 +32,8 @@ public sealed class RemoteControlHost : IRemoteControlHost
 		ISettingsService settingsService,
 		IWorkSuggestionOrchestrator suggestionOrchestrator,
 		IDialogService dialogService,
+		IActionFeedbackService actionFeedback,
+		ILocalizationService localization,
 		IServiceScopeFactory scopeFactory,
 		IUiDispatcher uiDispatcher,
 		TimeProvider timeProvider,
@@ -40,6 +44,8 @@ public sealed class RemoteControlHost : IRemoteControlHost
 		_settingsService = settingsService;
 		_suggestionOrchestrator = suggestionOrchestrator;
 		_dialogService = dialogService;
+		_actionFeedback = actionFeedback;
+		_localization = localization;
 		_scopeFactory = scopeFactory;
 		_uiDispatcher = uiDispatcher;
 		_timeProvider = timeProvider;
@@ -70,14 +76,25 @@ public sealed class RemoteControlHost : IRemoteControlHost
 
 	public Task<PluginResult> StartWorkAsync(string? ticketId, string? description, CancellationToken cancellationToken)
 	{
-		return OnUiThreadAsync(async () => ToPluginResult(
-			await _worklogStateService.StartTrackingAsync(ticketId, description, cancellationToken)), cancellationToken);
+		return RunAsync(
+			async () => ToPluginResult(await _worklogStateService.StartTrackingAsync(ticketId, description, cancellationToken)),
+			() => _localization.GetFormattedString("RemoteWorkStarted", DescribeWork(ticketId, description)),
+			cancellationToken);
 	}
 
 	public Task<PluginResult> StopWorkAsync(CancellationToken cancellationToken)
 	{
-		return OnUiThreadAsync(async () => ToPluginResult(
-			await _worklogStateService.StopTrackingAsync(cancellationToken)), cancellationToken);
+		var stoppedWork = string.Empty;
+
+		return RunAsync(
+			async () =>
+			{
+				var activeWork = _worklogStateService.ActiveWork;
+				stoppedWork = DescribeWork(activeWork?.TicketId, activeWork?.Description);
+				return ToPluginResult(await _worklogStateService.StopTrackingAsync(cancellationToken));
+			},
+			() => _localization.GetFormattedString("RemoteWorkStopped", stoppedWork),
+			cancellationToken);
 	}
 
 	public async Task<PluginResult> ResumeLastWorkAsync(TimeSpan lastWorkMaxAge, CancellationToken cancellationToken)
@@ -85,50 +102,59 @@ public sealed class RemoteControlHost : IRemoteControlHost
 		var lastWork = await FindLastWorkAsync(lastWorkMaxAge, cancellationToken);
 		if (lastWork == null)
 		{
-			return PluginResult.Failure("There is no recent work to resume.", PluginErrorCategory.NotFound);
+			return await FailAsync(_localization["RemoteNoRecentWork"], PluginErrorCategory.NotFound, cancellationToken);
 		}
 
 		return await StartWorkAsync(lastWork.TicketId, lastWork.Description, cancellationToken);
 	}
 
+	/// <remarks>
+	/// Reports only a failure: the dial is a continuous gesture with feedback on the device itself.
+	/// </remarks>
 	public Task<PluginResult> ShiftActiveWorkStartAsync(TimeSpan delta, CancellationToken cancellationToken)
 	{
-		return OnUiThreadAsync(async () =>
-		{
-			var activeWork = _worklogStateService.ActiveWork;
-			if (activeWork == null)
+		return RunAsync(
+			async () =>
 			{
-				return PluginResult.Failure("No work is being tracked.", PluginErrorCategory.NotFound);
-			}
+				var activeWork = _worklogStateService.ActiveWork;
+				if (activeWork == null)
+				{
+					return PluginResult.Failure(_localization["RemoteNoActiveWork"], PluginErrorCategory.NotFound);
+				}
 
-			var newStart = activeWork.StartTime + delta;
-			if (newStart > _timeProvider.GetLocalNow().DateTime)
-			{
-				return PluginResult.Failure("Work cannot start in the future.", PluginErrorCategory.Validation);
-			}
+				var newStart = activeWork.StartTime + delta;
+				if (newStart > _timeProvider.GetLocalNow().DateTime)
+				{
+					return PluginResult.Failure(_localization["RemoteStartInFuture"], PluginErrorCategory.Validation);
+				}
 
-			return ToPluginResult(await _worklogStateService.UpdateWorkEntryAsync(
-				activeWork.Id, activeWork.TicketId, newStart, null, activeWork.Description, cancellationToken));
-		}, cancellationToken);
+				return ToPluginResult(await _worklogStateService.UpdateWorkEntryAsync(
+					activeWork.Id, activeWork.TicketId, newStart, null, activeWork.Description, cancellationToken));
+			},
+			() => null,
+			cancellationToken);
 	}
 
 	public Task<PluginResult> AddWorkEntryAsync(string? ticketId, string? description, DateTimeOffset startTime, DateTimeOffset? endTime, CancellationToken cancellationToken)
 	{
-		return OnUiThreadAsync(async () =>
-		{
-			var start = ToLocalTime(startTime);
-			DateTime? end = endTime == null ? null : ToLocalTime(endTime.Value);
-
-			var plan = await _worklogStateService.ComputeOverlapResolutionAsync(null, start, end, cancellationToken);
-			if (plan.HasAdjustments && !plan.IsOnlyClosingActiveEntry)
+		return RunAsync(
+			async () =>
 			{
-				return PluginResult.Failure("The entry would change other entries. Add it in the application.", PluginErrorCategory.Validation);
-			}
+				var start = ToLocalTime(startTime);
+				DateTime? end = endTime == null ? null : ToLocalTime(endTime.Value);
 
-			return plan.HasAdjustments
-				? ToPluginResult(await _worklogStateService.CreateWorkEntryWithResolutionAsync(ticketId, start, description, end, plan, cancellationToken))
-				: ToPluginResult(await _worklogStateService.CreateWorkEntryAsync(ticketId, start, description, end, cancellationToken));
-		}, cancellationToken);
+				var plan = await _worklogStateService.ComputeOverlapResolutionAsync(null, start, end, cancellationToken);
+				if (plan.HasAdjustments && !plan.IsOnlyClosingActiveEntry)
+				{
+					return PluginResult.Failure(_localization["RemoteEntryWouldChangeOthers"], PluginErrorCategory.Validation);
+				}
+
+				return plan.HasAdjustments
+					? ToPluginResult(await _worklogStateService.CreateWorkEntryWithResolutionAsync(ticketId, start, description, end, plan, cancellationToken))
+					: ToPluginResult(await _worklogStateService.CreateWorkEntryAsync(ticketId, start, description, end, cancellationToken));
+			},
+			() => _localization.GetFormattedString("RemoteEntryAdded", DescribeWork(ticketId, description)),
+			cancellationToken);
 	}
 
 	public async Task<RemoteSuggestions> GetSuggestionsAsync(CancellationToken cancellationToken)
@@ -163,23 +189,88 @@ public sealed class RemoteControlHost : IRemoteControlHost
 	{
 		if (!_settingsService.Settings.Pomodoro.Enabled)
 		{
-			return Task.FromResult(PluginResult.Failure("Pomodoro is turned off in the settings.", PluginErrorCategory.Validation));
+			return FailAsync(_localization["RemotePomodoroDisabled"], PluginErrorCategory.Validation, cancellationToken);
 		}
 
-		return OnUiThreadAsync(_pomodoroService.Start, cancellationToken);
+		return RunPomodoroCommandAsync(_pomodoroService.Start, "RemotePomodoroStarted", cancellationToken);
 	}
 
 	public Task<PluginResult> StopPomodoroAsync(CancellationToken cancellationToken)
 	{
-		return OnUiThreadAsync(_pomodoroService.Stop, cancellationToken);
+		return RunPomodoroCommandAsync(_pomodoroService.Stop, "RemotePomodoroStopped", cancellationToken);
 	}
 
+	/// <remarks>
+	/// Reports nothing of its own: the phase transition already shows its notification.
+	/// </remarks>
 	public Task<PluginResult> SkipPomodoroPhaseAsync(CancellationToken cancellationToken)
 	{
 		return OnUiThreadAsync(_pomodoroService.Skip, cancellationToken);
 	}
 
 	private void RaiseStateChanged() => StateChanged?.Invoke(this, EventArgs.Empty);
+
+	/// <summary>
+	/// Runs a command on the UI thread and tells the user how it turned out. The report lives here and
+	/// not on the state events because those cannot tell a remote command from a click or the Pomodoro
+	/// timer. A failure is always reported; a success only if the settings ask for it and
+	/// <paramref name="successMessage"/> has something to say.
+	/// </summary>
+	private async Task<PluginResult> RunAsync(Func<Task<PluginResult>> action, Func<string?> successMessage, CancellationToken cancellationToken)
+	{
+		PluginResult result;
+		try
+		{
+			result = await OnUiThreadAsync(action, cancellationToken);
+		}
+		catch (Exception ex) when (ex is not OperationCanceledException)
+		{
+			await _actionFeedback.ReportFailureAsync(_localization.GetFormattedString("RemoteActionFailed", ex.Message), cancellationToken);
+			throw;
+		}
+
+		if (result.IsFailure)
+		{
+			await _actionFeedback.ReportFailureAsync(result.Error!, cancellationToken);
+		}
+		else if (_settingsService.Settings.ShowRemoteControlNotifications && successMessage() is { } message)
+		{
+			await _actionFeedback.ReportSuccessAsync(message, cancellationToken);
+		}
+
+		return result;
+	}
+
+	private async Task<PluginResult> FailAsync(string error, PluginErrorCategory category, CancellationToken cancellationToken)
+	{
+		await _actionFeedback.ReportFailureAsync(error, cancellationToken);
+		return PluginResult.Failure(error, category);
+	}
+
+	/// <summary>
+	/// Start and Stop quietly do nothing when the timer is already in that state, and then there is
+	/// nothing to confirm.
+	/// </summary>
+	private Task<PluginResult> RunPomodoroCommandAsync(Action command, string successMessageKey, CancellationToken cancellationToken)
+	{
+		var changed = false;
+
+		return RunAsync(
+			() =>
+			{
+				var wasRunning = _pomodoroService.IsRunning;
+				command();
+				changed = _pomodoroService.IsRunning != wasRunning;
+				return Task.FromResult(PluginResult.Success());
+			},
+			() => changed ? _localization[successMessageKey] : null,
+			cancellationToken);
+	}
+
+	private static string DescribeWork(string? ticketId, string? description)
+	{
+		return string.Join(" – ", new[] { ticketId, description }.Where(part => !string.IsNullOrWhiteSpace(part)));
+	}
 
 	private Task<PluginResult> OnUiThreadAsync(Func<Task<PluginResult>> action, CancellationToken cancellationToken)
 	{

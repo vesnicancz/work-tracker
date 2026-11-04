@@ -25,6 +25,8 @@ Integrace má dvě části. **WorkTracker plugin** běží v GUI a na named pipe
 
 Pruh se překreslí sám, jakmile se stav změní kdekoli, například v okně aplikace.
 
+WorkTracker navíc výsledek akcí ze Stream Decku oznamuje sám, jako toast v aktivním hlavním okně, jinak jako systémovou notifikaci. Potvrzení jde vypnout v **Nastavení → Obecné → Oznámení**, chyby se ukazují vždy. Viz [Notifikace](../user-guide.md#notifikace).
+
 **Otáčení ovladače** opravuje začátek běžící práce, o minutu na jeden krok. Po směru hodinových ručiček čas přidává (začátek se posouvá dřív), proti směru ubírá. Pruh ukazuje výsledek hned, do WorkTrackeru se změna uloží chvíli poté, co se ovladač zastaví. Začátek nejde posunout do budoucnosti. Pokud by se práce překryla s jiným záznamem, pruh ukáže varování a vrátí původní čas. Když žádná práce neběží, otáčení nic nedělá.
 
 ### Návrhy (tlačítka)

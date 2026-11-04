@@ -21,6 +21,7 @@ public class SystemNotificationServiceTests
 		public bool? CreatedOnUiThread { get; private set; }
 		public int CreateAttempts { get; private set; }
 		public List<string> Shown { get; } = new();
+		public List<string> Closed { get; } = new();
 
 		public IReadOnlyDictionary<uint, INativeNotification> ActiveNotifications => _active;
 
@@ -61,7 +62,7 @@ public class SystemNotificationServiceTests
 
 		public void Show() => manager.Record(this);
 
-		public void Close() { }
+		public void Close() => manager.Closed.Add(Title ?? string.Empty);
 	}
 
 	/// <summary>
@@ -162,6 +163,40 @@ public class SystemNotificationServiceTests
 
 			await service.ShowNotificationAsync("WorkTracker", "Pomodoro finished");
 		});
+
+		manager.CreatedOnUiThread.Should().BeTrue();
+		manager.Shown.Should().Equal("WorkTracker");
+	}
+
+	[Fact]
+	public async Task ShowReplacingNotification_ClosesOnlyThePreviousReplaceableOne()
+	{
+		var manager = new ThreadAffineManager();
+
+		await WithManagerAsync(manager, async () =>
+		{
+			var service = new SystemNotificationService(NullLogger<SystemNotificationService>.Instance);
+
+			await service.ShowNotificationAsync("Update", "New version available");
+			await service.ShowReplacingNotificationAsync("First", "Work started");
+			await service.ShowReplacingNotificationAsync("Second", "Work stopped");
+		});
+
+		manager.Shown.Should().Equal("Update", "First", "Second");
+		manager.Closed.Should().Equal("First");
+	}
+
+	[Fact]
+	public async Task ShowReplacingNotification_FromTheThreadPool_StillReachesTheManagerOnTheUiThread()
+	{
+		var manager = new ThreadAffineManager();
+
+		await WithManagerAsync(manager, () => OffTheUiThreadAsync(async () =>
+		{
+			var service = new SystemNotificationService(NullLogger<SystemNotificationService>.Instance);
+
+			await service.ShowReplacingNotificationAsync("WorkTracker", "Work started");
+		}));
 
 		manager.CreatedOnUiThread.Should().BeTrue();
 		manager.Shown.Should().Equal("WorkTracker");

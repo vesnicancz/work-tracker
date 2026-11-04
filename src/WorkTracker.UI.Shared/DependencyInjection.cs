@@ -20,6 +20,7 @@ public static class UISharedServiceCollectionExtensions
 		services.AddSingleton<IWorkSuggestionCache>(sp => sp.GetRequiredService<CachedWorkSuggestionOrchestrator>());
 		services.AddSingleton<IPomodoroService, PomodoroService>();
 		services.AddSingleton<ISuggestionsViewState, SuggestionsViewState>();
+		services.AddSingleton<IActionFeedbackService, ActionFeedbackService>();
 		services.AddSingleton<IRemoteControlHost, RemoteControlHost>();
 		services.AddSingleton<IRemoteControlCoordinator, RemoteControlCoordinator>();
 
