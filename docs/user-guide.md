@@ -175,6 +175,8 @@ CLI klient se jmenuje `WorkTracker.CLI` (při vývoji spouštěn jako `dotnet ru
 
 CLI a GUI pracují se stejnou databází. Běžící GUI změny provedené přes CLI samo načte, nejpozději do několika sekund.
 
+Každý příkaz načte jen to, co potřebuje: `help` a `version` fungují i bez dostupné databáze, pluginy se spouštějí jen pro `send` a `providers`.
+
 > **Poznámka k zápisu příkazů:** Příklady v této kapitole píšou jen `WorkTracker.CLI` pro čitelnost. Podle platformy a nastavení `PATH` potřebuješ:
 >
 > - **Windows** (PowerShell/CMD): `WorkTracker.CLI.exe …`, nebo `.\WorkTracker.CLI.exe …` z lokální složky.

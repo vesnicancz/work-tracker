@@ -47,21 +47,6 @@ public static class DependencyInjection
 			}
 		}
 
-		var dbDirectory = Path.GetDirectoryName(dbPath);
-		if (!string.IsNullOrEmpty(dbDirectory) && !Directory.Exists(dbDirectory))
-		{
-			try
-			{
-				Directory.CreateDirectory(dbDirectory);
-			}
-			catch (Exception ex)
-			{
-				throw new DatabaseUnavailableException(dbPath,
-					$"Configured database directory '{dbDirectory}' is not accessible. " +
-					"If the database is on a removable drive, make sure it is connected and mounted.", ex);
-			}
-		}
-
 		// Pooling keeps the database file open for the whole application lifetime.
 		// Disable it (Database:Pooling = false) when the database lives on a removable
 		// drive, so the file handle is released after each operation and the drive
@@ -148,6 +133,8 @@ public static class DependencyInjection
 		var contextFactory = serviceProvider.GetRequiredService<IDbContextFactory<WorkTrackerDbContext>>();
 		await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
+		EnsureDatabaseDirectoryExists(context.Database.GetDbConnection().DataSource);
+
 		try
 		{
 			// Force rollback-journal mode. WAL is persisted in the database file and leaves
@@ -162,6 +149,26 @@ public static class DependencyInjection
 			var dataSource = context.Database.GetDbConnection().DataSource;
 			throw new DatabaseUnavailableException(dataSource,
 				$"Database '{dataSource}' could not be opened. " +
+				"If the database is on a removable drive, make sure it is connected and mounted.", ex);
+		}
+	}
+
+	private static void EnsureDatabaseDirectoryExists(string dbPath)
+	{
+		var dbDirectory = Path.GetDirectoryName(dbPath);
+		if (string.IsNullOrEmpty(dbDirectory) || Directory.Exists(dbDirectory))
+		{
+			return;
+		}
+
+		try
+		{
+			Directory.CreateDirectory(dbDirectory);
+		}
+		catch (Exception ex)
+		{
+			throw new DatabaseUnavailableException(dbPath,
+				$"Configured database directory '{dbDirectory}' is not accessible. " +
 				"If the database is on a removable drive, make sure it is connected and mounted.", ex);
 		}
 	}
