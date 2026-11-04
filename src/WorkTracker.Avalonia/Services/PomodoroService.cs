@@ -13,6 +13,7 @@ public sealed class PomodoroService : IPomodoroService, IAsyncDisposable
 	private readonly IWorklogStateService _worklogStateService;
 	private readonly IPluginManager _pluginManager;
 	private readonly ILocalizationService _localization;
+	private readonly IActionFeedbackService _actionFeedback;
 	private readonly TimeProvider _timeProvider;
 	private readonly ILogger<PomodoroService> _logger;
 
@@ -38,9 +39,11 @@ public sealed class PomodoroService : IPomodoroService, IAsyncDisposable
 		IWorklogStateService worklogStateService,
 		IPluginManager pluginManager,
 		ILocalizationService localization,
+		IActionFeedbackService actionFeedback,
 		TimeProvider timeProvider,
 		ILogger<PomodoroService> logger)
 	{
+		_actionFeedback = actionFeedback;
 		_settingsService = settingsService;
 		_notificationService = notificationService;
 		_systemNotification = systemNotification;
@@ -413,11 +416,16 @@ public sealed class PomodoroService : IPomodoroService, IAsyncDisposable
 	{
 		try
 		{
-			await _worklogStateService.StartTrackingAsync(_lastTicketId, _lastDescription, CancellationToken.None);
+			var result = await _worklogStateService.StartTrackingAsync(_lastTicketId, _lastDescription, CancellationToken.None);
+			if (result.IsFailure)
+			{
+				await ReportAutoTrackingFailureAsync("PomodoroAutoStartFailed", _localization.LocalizeError(result));
+			}
 		}
 		catch (Exception ex)
 		{
 			_logger.LogWarning(ex, "Failed to auto-start work tracking");
+			await ReportAutoTrackingFailureAsync("PomodoroAutoStartFailed", ex.Message);
 		}
 	}
 
@@ -425,12 +433,27 @@ public sealed class PomodoroService : IPomodoroService, IAsyncDisposable
 	{
 		try
 		{
-			await _worklogStateService.StopTrackingAsync(CancellationToken.None);
+			var result = await _worklogStateService.StopTrackingAsync(CancellationToken.None);
+			if (result.IsFailure)
+			{
+				await ReportAutoTrackingFailureAsync("PomodoroAutoStopFailed", _localization.LocalizeError(result));
+			}
 		}
 		catch (Exception ex)
 		{
 			_logger.LogWarning(ex, "Failed to auto-stop work tracking");
+			await ReportAutoTrackingFailureAsync("PomodoroAutoStopFailed", ex.Message);
 		}
+	}
+
+	/// <summary>
+	/// Nobody clicked anything here, so without a report the user would only find out from the entries:
+	/// work still being tracked through a break, or a work phase that was never tracked.
+	/// </summary>
+	private Task ReportAutoTrackingFailureAsync(string messageKey, string reason)
+	{
+		_logger.LogWarning("Pomodoro auto tracking failed: {Reason}", reason);
+		return _actionFeedback.ReportFailureAsync(_localization.GetFormattedString(messageKey, reason), CancellationToken.None);
 	}
 
 	private void FireAndForget(Task task)

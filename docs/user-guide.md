@@ -285,7 +285,7 @@ Postup (předpokládá, že je alespoň jeden worklog plugin povolený):
 1. Aplikace načte záznamy z databáze pro zvolený rozsah.
 2. Ukáže náhled v tabulce (ticket, start, konec, délka).
 3. Požádá o potvrzení `[y/n]` — výchozí je **ano**, takže Enter odešle.
-4. Zavolá první povolený `IWorklogUploadPlugin`. Pokud máš více worklog pluginů povolených, použije se první podle **pořadí načtení** (ne abecedně); konkrétní plugin vybereš přes `--provider=<id>` (s rovnítkem, varianta s mezerou nefunguje), jeho id vypíše `providers`. Ten ukazuje i vypnuté pluginy, a ty odeslání odmítnou, protože nejsou inicializované.
+4. Zavolá povolený `IWorklogUploadPlugin`. Pokud máš více worklog pluginů povolených, příkaz bez `--provider=<id>` skončí chybou a vypíše je, aby worklogy neodešly do jiného systému, než jsi chtěl. Plugin vybereš přes `--provider=<id>` (s rovnítkem, varianta s mezerou nefunguje), jeho id vypíše `providers`. Ten ukazuje i vypnuté pluginy, a ty odeslání odmítnou, protože nejsou inicializované.
 5. U týdenního odesílání se při částečném úspěchu vypíše seznam selhaných dnů a důvody.
 
 Odesílají se jen dokončené záznamy (s koncem). Neplatné záznamy (např. delší než 24 h) aplikace přeskočí a zapíše to do logu.

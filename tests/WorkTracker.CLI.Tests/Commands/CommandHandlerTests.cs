@@ -631,6 +631,24 @@ public sealed class CommandHandlerTests : IDisposable
 	}
 
 	[Fact]
+	public async Task Send_WithSeveralProvidersAndNoneChosen_FailsBeforeThePreview()
+	{
+		_submissionService
+			.Setup(s => s.GetAvailableProviders())
+			.Returns([
+				new ProviderInfo { Id = "tempo.worklog", Name = "Tempo Timesheets", SupportedModes = WorklogSubmissionMode.Timed },
+				new ProviderInfo { Id = "gorang3.worklog", Name = "Goran G3 Timesheets", SupportedModes = WorklogSubmissionMode.Timed }
+			]);
+
+		var exitCode = await _handler.HandleSendCommand(LocalNow.Date, assumeYes: true);
+
+		exitCode.Should().Be(1);
+		_errorConsole.Output.Should().Contain("--provider").And.Contain("tempo.worklog").And.Contain("gorang3.worklog");
+		_submissionService.Verify(s => s.PreviewDailyWorklogAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Never);
+		_submissionService.Verify(s => s.SubmitDailyWorklogAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Never);
+	}
+
+	[Fact]
 	public async Task SendWeek_WithProviderId_NamesThatProvider()
 	{
 		_submissionService

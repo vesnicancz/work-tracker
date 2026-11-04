@@ -21,6 +21,11 @@ public sealed class DialogService : IDialogService
 
 	internal WorkEntryEditDialog? OpenWorkEntryDialog => _openWorkEntryDialog;
 
+	// The message box most recently opened. Only touched on the UI thread.
+	private MessageBoxWindow? _openMessageBox;
+
+	internal MessageBoxWindow? OpenMessageBox => _openMessageBox;
+
 	public DialogService(IServiceScopeFactory scopeFactory, ILogger<DialogService> logger)
 	{
 		_scopeFactory = scopeFactory;
@@ -94,36 +99,50 @@ public sealed class DialogService : IDialogService
 		}
 	}
 
-	public async Task<bool> ShowConfirmationAsync(string message, string title = "Confirm")
+	public Task<bool> ShowConfirmationAsync(string message, string title = "Confirm")
 	{
-		var dialog = new MessageBoxWindow(title, message, MessageBoxButtons.YesNo);
-		var mainWindow = GetMainWindow();
-		if (mainWindow != null)
-		{
-			var result = await dialog.ShowDialog<bool?>(mainWindow);
-			return result == true;
-		}
-		return false;
+		return ShowMessageBoxAsync(title, message, MessageBoxButtons.YesNo);
 	}
 
-	public async Task ShowErrorAsync(string message, string title = "Error")
+	public Task ShowErrorAsync(string message, string title = "Error")
 	{
-		var dialog = new MessageBoxWindow(title, message, MessageBoxButtons.Ok);
-		var mainWindow = GetMainWindow();
-		if (mainWindow != null)
-		{
-			await dialog.ShowDialog(mainWindow);
-		}
+		return ShowMessageBoxAsync(title, message, MessageBoxButtons.Ok);
 	}
 
-	public async Task ShowInformationAsync(string message, string title = "Information")
+	public Task ShowInformationAsync(string message, string title = "Information")
 	{
-		var dialog = new MessageBoxWindow(title, message, MessageBoxButtons.Ok);
-		var mainWindow = GetMainWindow();
-		if (mainWindow != null)
+		return ShowMessageBoxAsync(title, message, MessageBoxButtons.Ok);
+	}
+
+	/// <summary>
+	/// Shows a message on top of whatever asked for it. A window can't own a dialog while it is hidden,
+	/// and the application in the tray has a hidden main window: the hotkey or a remote controller opens
+	/// the work entry dialog on its own there, and that dialog can still need an answer about an overlap.
+	/// </summary>
+	private async Task<bool> ShowMessageBoxAsync(string title, string message, MessageBoxButtons buttons)
+	{
+		var dialog = new MessageBoxWindow(title, message, buttons);
+		_openMessageBox = dialog;
+		dialog.Closed += (_, _) => _openMessageBox = null;
+
+		var owner = _openWorkEntryDialog is { IsVisible: true } workEntryDialog ? workEntryDialog : GetVisibleMainWindow();
+		if (owner != null)
 		{
-			await dialog.ShowDialog(mainWindow);
+			await dialog.ShowDialog(owner);
+			return dialog.Result;
 		}
+
+		// Without an owner the dialog defaults would hide it off-centre and off the taskbar
+		dialog.WindowStartupLocation = WindowStartupLocation.CenterScreen;
+		dialog.ShowInTaskbar = true;
+
+		var closed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+		dialog.Closed += (_, _) => closed.TrySetResult();
+		dialog.Show();
+		dialog.Activate();
+		await closed.Task;
+
+		return dialog.Result;
 	}
 
 	public async Task<bool> ShowSettingsDialogAsync()

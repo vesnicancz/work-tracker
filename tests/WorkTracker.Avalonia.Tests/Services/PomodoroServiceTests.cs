@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
+using WorkTracker.Application.Common;
 using WorkTracker.Application.Plugins;
 using WorkTracker.Plugin.Abstractions;
 using WorkTracker.Avalonia.Models;
@@ -17,6 +18,7 @@ public class PomodoroServiceTests : IAsyncLifetime
 	private readonly Mock<IStatusIndicatorPlugin> _statusIndicatorPlugin = new();
 	private readonly Mock<ISystemNotificationService> _systemNotification = new();
 	private readonly Mock<ILocalizationService> _localization = new();
+	private readonly Mock<IActionFeedbackService> _actionFeedback = new();
 	private readonly PomodoroService _sut;
 
 	public PomodoroServiceTests()
@@ -34,6 +36,10 @@ public class PomodoroServiceTests : IAsyncLifetime
 		_settingsService.Setup(s => s.Settings).Returns(settings);
 		_worklogStateService.Setup(s => s.IsInitialized).Returns(true);
 		_worklogStateService.Setup(s => s.IsTracking).Returns(false);
+		_worklogStateService.Setup(s => s.StopTrackingAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Result.Success());
+		_worklogStateService
+			.Setup(s => s.StartTrackingAsync(It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(Result.Success(WorkTracker.Domain.Entities.WorkEntry.Create("PROJ-1", DateTime.Now, null, "Test", DateTime.Now)));
 		_localization.Setup(l => l[It.IsAny<string>()]).Returns((string key) => key);
 		_pluginManager.Setup(p => p.StatusIndicatorPlugins).Returns(new List<IStatusIndicatorPlugin> { _statusIndicatorPlugin.Object });
 		_statusIndicatorPlugin.Setup(p => p.SetStateAsync(It.IsAny<StatusIndicatorState>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
@@ -45,6 +51,7 @@ public class PomodoroServiceTests : IAsyncLifetime
 			_worklogStateService.Object,
 			_pluginManager.Object,
 			_localization.Object,
+			_actionFeedback.Object,
 			TimeProvider.System,
 			NullLogger<PomodoroService>.Instance);
 	}
@@ -337,6 +344,49 @@ public class PomodoroServiceTests : IAsyncLifetime
 		_worklogStateService.Verify(
 			s => s.StopTrackingAsync(It.IsAny<CancellationToken>()),
 			Times.Once);
+	}
+
+	[Fact]
+	public void Skip_FromWorkToBreak_WhenAutoStopFails_ReportsIt()
+	{
+		var settings = _settingsService.Object.Settings;
+		settings.Pomodoro.AutoStopWorkTracking = true;
+		_worklogStateService.Setup(s => s.IsTracking).Returns(true);
+		_worklogStateService
+			.Setup(s => s.StopTrackingAsync(It.IsAny<CancellationToken>()))
+			.ReturnsAsync(Result.Failure("Overlap"));
+		_localization
+			.Setup(l => l.GetFormattedString("PomodoroAutoStopFailed", It.IsAny<object[]>()))
+			.Returns("auto stop failed");
+
+		_sut.Start();
+		_sut.Skip(); // Work -> ShortBreak
+
+		_actionFeedback.Verify(f => f.ReportFailureAsync("auto stop failed", It.IsAny<CancellationToken>()), Times.Once);
+	}
+
+	[Fact]
+	public void Skip_FromBreakToWork_WhenAutoStartFails_ReportsIt()
+	{
+		var settings = _settingsService.Object.Settings;
+		settings.Pomodoro.AutoStartWorkTracking = true;
+		var activeWork = WorkTracker.Domain.Entities.WorkEntry.Create("PROJ-1", DateTime.Now, null, "Test", DateTime.Now);
+		_worklogStateService.Setup(s => s.IsTracking).Returns(true);
+		_worklogStateService.Setup(s => s.ActiveWork).Returns(activeWork);
+		_worklogStateService
+			.Setup(s => s.StartTrackingAsync(It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(Result.Failure<WorkTracker.Domain.Entities.WorkEntry>("Overlap"));
+		_localization
+			.Setup(l => l.GetFormattedString("PomodoroAutoStartFailed", It.IsAny<object[]>()))
+			.Returns("auto start failed");
+
+		_sut.Start();
+		_worklogStateService.Setup(s => s.IsTracking).Returns(false);
+
+		_sut.Skip(); // Work -> ShortBreak
+		_sut.Skip(); // ShortBreak -> Work (auto-start fails)
+
+		_actionFeedback.Verify(f => f.ReportFailureAsync("auto start failed", It.IsAny<CancellationToken>()), Times.AtLeastOnce);
 	}
 
 	[Fact]

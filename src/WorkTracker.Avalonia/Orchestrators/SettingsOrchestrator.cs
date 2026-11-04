@@ -18,6 +18,7 @@ public class SettingsOrchestrator : ISettingsOrchestrator
 	private readonly IAutostartManager _autostartManager;
 	private readonly ITrayIconService _trayIconService;
 	private readonly IRemoteControlCoordinator _remoteControlCoordinator;
+	private readonly IWorkSuggestionCache _suggestionCache;
 	private readonly INotificationService _notificationService;
 	private readonly ILocalizationService _localization;
 	private readonly ILogger<SettingsOrchestrator> _logger;
@@ -30,11 +31,13 @@ public class SettingsOrchestrator : ISettingsOrchestrator
 		IAutostartManager autostartManager,
 		ITrayIconService trayIconService,
 		IRemoteControlCoordinator remoteControlCoordinator,
+		IWorkSuggestionCache suggestionCache,
 		INotificationService notificationService,
 		ILocalizationService localization,
 		ILogger<SettingsOrchestrator> logger)
 	{
 		_remoteControlCoordinator = remoteControlCoordinator;
+		_suggestionCache = suggestionCache;
 		_notificationService = notificationService;
 		_localization = localization;
 		_settingsService = settingsService;
@@ -157,6 +160,9 @@ public class SettingsOrchestrator : ISettingsOrchestrator
 		var failedPlugins = await _pluginManager.InitializePluginsAsync(settings.PluginConfigurations, cancellationToken);
 		_notificationService.ReportPluginFailures(_localization, failedPlugins);
 
+		// What is cached came from the plugins as they were before this save
+		_suggestionCache.Invalidate();
+
 		// Connect remote control plugins that were just enabled, disconnect those just disabled
 		await _remoteControlCoordinator.SyncAsync(cancellationToken);
 
@@ -250,6 +256,10 @@ public class SettingsOrchestrator : ISettingsOrchestrator
 		if (result.IsSuccess)
 		{
 			_logger.LogInformation("Connection test successful for {PluginId}", instance.Metadata.Id);
+
+			// The test can be what signed the user in, and a cached "not signed in" would outlive it
+			_suggestionCache.Invalidate();
+
 			return "✓ Connection successful";
 		}
 

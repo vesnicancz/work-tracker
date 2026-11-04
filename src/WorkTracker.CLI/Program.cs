@@ -349,6 +349,7 @@ static int ShowHelp()
 
   [cyan]send[/] [[week]] [[date]] [[--yes]] [[--provider=<id>]]
     Send work entries to the enabled worklog plugin (default: today)
+    With several plugins enabled, --provider is required
     Example: worklog send                    Send today's entries
     Example: worklog send 2025-10-30         Send specific day
     Example: worklog send week               Send current week

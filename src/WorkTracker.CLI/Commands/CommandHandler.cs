@@ -406,6 +406,19 @@ public sealed class CommandHandler
 	{
 		try
 		{
+			// The submission refuses this as well, but by then the user has gone through the preview
+			var enabledProviders = _submissionService.GetAvailableProviders().ToList();
+			if (providerId == null && enabledProviders.Count > 1)
+			{
+				CliConsole.Error.MarkupLine("[red]✗ Error:[/] Several worklog providers are enabled, choose one with --provider=<id>:");
+				foreach (var enabled in enabledProviders)
+				{
+					CliConsole.Error.MarkupLine($"  [cyan]{Markup.Escape(enabled.Id)}[/] ({Markup.Escape(enabled.Name)})");
+				}
+
+				return 1;
+			}
+
 			if (isWeek)
 			{
 				return await HandleSendWeekCommand(date, assumeYes, providerId);
@@ -503,9 +516,9 @@ public sealed class CommandHandler
 	}
 
 	/// <summary>
-	/// Names the plugin a send goes to, for the prompt and the result. Without --provider the
-	/// submission service takes the first enabled upload plugin, so this picks the same one. An id
-	/// that matches nothing is shown as given; the submission then fails and says so.
+	/// Names the plugin a send goes to, for the prompt and the result. Without --provider the only
+	/// enabled upload plugin is used, since more of them stop the command earlier. An id that matches
+	/// nothing is shown as given; the submission then fails and says so.
 	/// </summary>
 	private string DescribeProvider(string? providerId)
 	{

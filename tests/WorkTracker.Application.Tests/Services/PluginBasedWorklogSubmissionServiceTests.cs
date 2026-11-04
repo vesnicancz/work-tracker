@@ -78,6 +78,23 @@ public class PluginBasedWorklogSubmissionServiceTests
 	}
 
 	[Fact]
+	public async Task SubmitWithoutProvider_SeveralPluginsEnabled_FailsWithoutUploading()
+	{
+		var tempo = CreateMockPlugin("tempo.worklog");
+		var goran = CreateMockPlugin("gorang3.worklog");
+		_mockPluginManager.Setup(p => p.WorklogUploadPlugins).Returns([tempo.Object, goran.Object]);
+
+		var daily = await _sut.SubmitDailyWorklogAsync(DateTime.Today, TestContext.Current.CancellationToken);
+		var weekly = await _sut.SubmitWeeklyWorklogAsync(DateTime.Today, TestContext.Current.CancellationToken);
+
+		daily.IsFailure.Should().BeTrue();
+		daily.Error.Should().Contain("tempo.worklog").And.Contain("gorang3.worklog");
+		weekly.IsFailure.Should().BeTrue();
+		tempo.Verify(p => p.UploadWorklogsAsync(It.IsAny<IEnumerable<PluginWorklogEntry>>(), It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()), Times.Never);
+		goran.Verify(p => p.UploadWorklogsAsync(It.IsAny<IEnumerable<PluginWorklogEntry>>(), It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()), Times.Never);
+	}
+
+	[Fact]
 	public async Task SubmitDailyWorklogAsync_WithEntries_DelegatesToPlugin()
 	{
 		var date = new DateTime(2025, 1, 15);
