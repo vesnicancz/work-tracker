@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using FluentAssertions;
 
@@ -100,6 +101,23 @@ public class ProjectDependencyTests
 				.Where(reference => !allowed.Contains(reference))
 				.Select(reference => $"{name} must not reference {reference}"));
 		}
+
+		violations.Should().BeEmpty();
+	}
+
+	/// <summary>
+	/// View models are tested without a UI, and what they show gets its colors and threads from the views
+	/// and <c>IUiDispatcher</c>.
+	/// </summary>
+	[Fact]
+	public void ViewModels_DoNotUseAvalonia()
+	{
+		var uiFramework = new Regex(@"(?<![\w.])(global::)?Avalonia\.|(?<![\w.])App\.\w");
+
+		var violations = Directory.EnumerateFiles(Path.Combine(RepositoryRoot, "src", "WorkTracker.Avalonia", "ViewModels"), "*.cs", SearchOption.AllDirectories)
+			.Where(file => uiFramework.IsMatch(File.ReadAllText(file)))
+			.Select(Path.GetFileName)
+			.ToList();
 
 		violations.Should().BeEmpty();
 	}

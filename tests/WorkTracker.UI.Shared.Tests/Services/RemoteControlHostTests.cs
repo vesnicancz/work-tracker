@@ -719,6 +719,8 @@ public class RemoteControlHostTests
 	{
 		public bool IsInside { get; private set; }
 
+		public void Post(Action action) => action();
+
 		public async Task<T> InvokeAsync<T>(Func<Task<T>> action, CancellationToken cancellationToken)
 		{
 			IsInside = true;

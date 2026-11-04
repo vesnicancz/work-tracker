@@ -13,4 +13,9 @@ public sealed class AvaloniaUiDispatcher : IUiDispatcher
 	{
 		return Dispatcher.UIThread.InvokeAsync(action).WaitAsync(cancellationToken);
 	}
+
+	public void Post(Action action)
+	{
+		Dispatcher.UIThread.Post(action);
+	}
 }

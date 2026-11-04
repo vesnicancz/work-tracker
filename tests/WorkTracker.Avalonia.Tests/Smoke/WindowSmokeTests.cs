@@ -3,6 +3,7 @@ using Avalonia.Interactivity;
 using Avalonia.Styling;
 using FluentAssertions;
 using Moq;
+using WorkTracker.Avalonia.Controls;
 using WorkTracker.Avalonia.Tests.ViewModels;
 using WorkTracker.Avalonia.Views;
 using WorkTracker.Tests.Common.Builders;
@@ -21,6 +22,69 @@ public class WindowSmokeTests
 		window.Show();
 		window.Close();
 	});
+
+	[Theory]
+	[InlineData(PomodoroPhase.Work, "PomodoroWorkCardBackground", "PomodoroWorkCardBorder", "PomodoroWorkForeground")]
+	[InlineData(PomodoroPhase.ShortBreak, "PomodoroBreakCardBackground", "PomodoroBreakCardBorder", "PomodoroBreakForeground")]
+	[InlineData(PomodoroPhase.LongBreak, "PomodoroLongBreakCardBackground", "PomodoroLongBreakCardBorder", "PomodoroLongBreakForeground")]
+	[InlineData(PomodoroPhase.Idle, "CardBackground", "CardBorder", "TextBright")]
+	public Task PomodoroCard_ShowsTheColorsOfThePhase(PomodoroPhase phase, string background, string border, string foreground) => UiThread.Dispatch(() =>
+	{
+		App.SwitchTheme("Dark");
+		var harness = new MainViewModelHarness();
+		var window = new MainWindow();
+		using var viewModel = harness.CreateViewModel();
+		window.Initialize(viewModel, new Mock<ITrayIconService>().Object, harness.Settings.Object);
+		window.Show();
+
+		try
+		{
+			viewModel.Pomodoro.UpdatePhase(phase);
+
+			var card = window.FindControl<Border>("PomodoroCard")!;
+			card.Background.Should().BeSameAs(FindBrush(window, background));
+			card.BorderBrush.Should().BeSameAs(FindBrush(window, border));
+			window.FindControl<TextBlock>("PomodoroTimeText")!.Foreground.Should().BeSameAs(FindBrush(window, foreground));
+			window.FindControl<Icon>("PomodoroIcon")!.Foreground.Should().BeSameAs(FindBrush(window, foreground));
+		}
+		finally
+		{
+			window.Close();
+		}
+	});
+
+	[Fact]
+	public Task PomodoroCard_ThemeSwitch_FollowsTheNewTheme() => UiThread.Dispatch(() =>
+	{
+		var harness = new MainViewModelHarness();
+		var window = new MainWindow();
+		using var viewModel = harness.CreateViewModel();
+		window.Initialize(viewModel, new Mock<ITrayIconService>().Object, harness.Settings.Object);
+		window.Show();
+
+		try
+		{
+			viewModel.Pomodoro.UpdatePhase(PomodoroPhase.Work);
+			App.SwitchTheme("Abyss");
+			var abyss = window.FindControl<Border>("PomodoroCard")!.Background;
+
+			App.SwitchTheme("Dark");
+
+			var card = window.FindControl<Border>("PomodoroCard")!;
+			card.Background.Should().NotBeSameAs(abyss);
+			card.Background.Should().BeSameAs(FindBrush(window, "PomodoroWorkCardBackground"));
+		}
+		finally
+		{
+			window.Close();
+		}
+	});
+
+	private static object? FindBrush(MainWindow window, string key)
+	{
+		window.TryFindResource(key, window.ActualThemeVariant, out var brush).Should().BeTrue($"{key} should exist");
+		return brush;
+	}
 
 	/// <summary>
 	/// With StartMinimized the window is wired up but never shown on Linux and macOS, because
