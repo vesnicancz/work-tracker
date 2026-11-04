@@ -19,7 +19,6 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 
 	private bool _isInitialized;
 	private WorkEntry? _activeWork;
-	private bool _isTracking;
 
 	public WorklogStateService(
 		IWorkEntryService workEntryService,
@@ -49,7 +48,7 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 		get
 		{
 			ThrowIfNotInitialized();
-			return _isTracking;
+			return _activeWork != null;
 		}
 	}
 
@@ -87,13 +86,12 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 
 			// Load active work from database
 			_activeWork = await _workEntryService.GetActiveWorkAsync();
-			_isTracking = _activeWork != null;
 
 			_isInitialized = true;
 
 			_logger.LogInformation(
 				"WorklogStateService initialized. IsTracking={IsTracking}, ActiveWork={ActiveWorkId}",
-				_isTracking,
+				_activeWork != null,
 				_activeWork?.Id);
 		}
 		catch (Exception ex)
@@ -124,7 +122,7 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 			(svc, ct) => svc.StartWorkAsync(ticketId, null, description, cancellationToken: ct),
 			result =>
 			{
-				UpdateState(result.Value, true);
+				_activeWork = result.Value;
 				_logger.LogDebug("Work tracking started successfully with ID {Id}", result.Value.Id);
 				return Task.CompletedTask;
 			},
@@ -137,7 +135,6 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 		ThrowIfNotInitialized();
 
 		WorkEntry? oldActiveWork = null;
-		var oldIsTracking = false;
 		var workEntriesModified = false;
 		Result result;
 
@@ -145,9 +142,8 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 		try
 		{
 			oldActiveWork = _activeWork;
-			oldIsTracking = _isTracking;
 
-			if (!_isTracking)
+			if (_activeWork == null)
 			{
 				_logger.LogDebug("No active work to stop");
 				return Result.Success();
@@ -159,7 +155,7 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 
 			if (result.IsSuccess)
 			{
-				UpdateState(null, false);
+				_activeWork = null;
 				_logger.LogDebug("Work tracking stopped successfully");
 				workEntriesModified = true;
 			}
@@ -179,7 +175,7 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 			_stateLock.Release();
 		}
 
-		await RaiseEventsAsync(oldActiveWork, oldIsTracking, workEntriesModified);
+		await RaiseEventsAsync(oldActiveWork, workEntriesModified);
 		return result;
 	}
 
@@ -188,13 +184,11 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 		ThrowIfNotInitialized();
 
 		WorkEntry? oldActiveWork = null;
-		var oldIsTracking = false;
 
 		await _stateLock.WaitAsync(cancellationToken);
 		try
 		{
 			oldActiveWork = _activeWork;
-			oldIsTracking = _isTracking;
 
 			await RefreshFromDatabaseCoreAsync(cancellationToken);
 		}
@@ -209,7 +203,7 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 			_stateLock.Release();
 		}
 
-		await RaiseEventsAsync(oldActiveWork, oldIsTracking, workEntriesModified: false);
+		await RaiseEventsAsync(oldActiveWork, workEntriesModified: false);
 	}
 
 	public Task<Result<WorkEntry>> CreateWorkEntryAsync(
@@ -283,14 +277,12 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 		_logger.LogDebug("Work entries modified notification received (external)");
 
 		WorkEntry? oldActiveWork = null;
-		var oldIsTracking = false;
 		var refreshed = false;
 
 		await _stateLock.WaitAsync(cancellationToken);
 		try
 		{
 			oldActiveWork = _activeWork;
-			oldIsTracking = _isTracking;
 
 			await RefreshFromDatabaseCoreAsync(cancellationToken);
 			refreshed = true;
@@ -305,7 +297,7 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 			_stateLock.Release();
 		}
 
-		await RaiseEventsAsync(oldActiveWork, oldIsTracking, workEntriesModified: refreshed);
+		await RaiseEventsAsync(oldActiveWork, workEntriesModified: refreshed);
 	}
 
 	public async Task<OverlapResolutionPlan> ComputeOverlapResolutionAsync(
@@ -358,78 +350,46 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 
 	#region Locked Execution Helpers
 
-	/// <summary>
-	/// Executes a state-modifying operation under the state lock, with scope creation,
-	/// exception handling, and event raising. For operations returning Result{T}.
-	/// </summary>
-	private async Task<Result<T>> ExecuteLockedAsync<T>(
+	private Task<Result<T>> ExecuteLockedAsync<T>(
 		Func<IWorkEntryService, CancellationToken, Task<Result<T>>> operation,
 		Func<Result<T>, Task> onSuccess,
 		string operationName,
 		CancellationToken cancellationToken)
 	{
-		ThrowIfNotInitialized();
-
-		WorkEntry? oldActiveWork = null;
-		var oldIsTracking = false;
-		var workEntriesModified = false;
-		Result<T> result;
-
-		await _stateLock.WaitAsync(cancellationToken);
-		try
-		{
-			oldActiveWork = _activeWork;
-			oldIsTracking = _isTracking;
-
-			result = await operation(_workEntryService, cancellationToken);
-
-			if (result.IsSuccess)
-			{
-				await onSuccess(result);
-				workEntriesModified = true;
-			}
-			else
-			{
-				_logger.LogWarning("Failed {Operation}: {Error}", operationName, result.Error);
-			}
-		}
-		catch (OperationCanceledException) { throw; }
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Unexpected error in {Operation}", operationName);
-			result = Result.Failure<T>($"Unexpected error: {ex.Message}");
-		}
-		finally
-		{
-			_stateLock.Release();
-		}
-
-		await RaiseEventsAsync(oldActiveWork, oldIsTracking, workEntriesModified);
-		return result;
+		return ExecuteLockedCoreAsync(operation, onSuccess, Result.Failure<T>, operationName, cancellationToken);
 	}
 
-	/// <summary>
-	/// Executes a state-modifying operation under the state lock, with scope creation,
-	/// exception handling, and event raising. For operations returning Result.
-	/// </summary>
-	private async Task<Result> ExecuteLockedAsync(
+	private Task<Result> ExecuteLockedAsync(
 		Func<IWorkEntryService, CancellationToken, Task<Result>> operation,
 		Func<Result, Task> onSuccess,
 		string operationName,
 		CancellationToken cancellationToken)
 	{
+		return ExecuteLockedCoreAsync(operation, onSuccess, Result.Failure, operationName, cancellationToken);
+	}
+
+	/// <summary>
+	/// Executes a state-modifying operation under the state lock, with exception handling and
+	/// event raising.
+	/// </summary>
+	private async Task<TResult> ExecuteLockedCoreAsync<TResult>(
+		Func<IWorkEntryService, CancellationToken, Task<TResult>> operation,
+		Func<TResult, Task> onSuccess,
+		Func<string, TResult> toFailure,
+		string operationName,
+		CancellationToken cancellationToken)
+		where TResult : Result
+	{
 		ThrowIfNotInitialized();
 
 		WorkEntry? oldActiveWork = null;
-		var oldIsTracking = false;
 		var workEntriesModified = false;
-		Result result;
+		TResult result;
 
 		await _stateLock.WaitAsync(cancellationToken);
 		try
 		{
 			oldActiveWork = _activeWork;
-			oldIsTracking = _isTracking;
 
 			result = await operation(_workEntryService, cancellationToken);
 
@@ -447,14 +407,14 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Unexpected error in {Operation}", operationName);
-			result = Result.Failure($"Unexpected error: {ex.Message}");
+			result = toFailure($"Unexpected error: {ex.Message}");
 		}
 		finally
 		{
 			_stateLock.Release();
 		}
 
-		await RaiseEventsAsync(oldActiveWork, oldIsTracking, workEntriesModified);
+		await RaiseEventsAsync(oldActiveWork, workEntriesModified);
 		return result;
 	}
 
@@ -468,19 +428,9 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 
 		var activeWork = await _workEntryService.GetActiveWorkAsync(cancellationToken);
 
-		UpdateState(activeWork, activeWork != null);
-
-		_logger.LogDebug("State refreshed: IsTracking={IsTracking}", _isTracking);
-	}
-
-	/// <summary>
-	/// Updates the backing fields. Must be called while holding _stateLock.
-	/// Events are NOT raised here — callers must raise them after releasing the lock.
-	/// </summary>
-	private void UpdateState(WorkEntry? activeWork, bool isTracking)
-	{
 		_activeWork = activeWork;
-		_isTracking = isTracking;
+
+		_logger.LogDebug("State refreshed: IsTracking={IsTracking}", _activeWork != null);
 	}
 
 	/// <summary>
@@ -490,9 +440,9 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 	/// this service. The change is already saved by now, so a failing subscriber is only logged and
 	/// does not turn the operation into a failure.
 	/// </summary>
-	private async Task RaiseEventsAsync(WorkEntry? oldActiveWork, bool oldIsTracking, bool workEntriesModified)
+	private async Task RaiseEventsAsync(WorkEntry? oldActiveWork, bool workEntriesModified)
 	{
-		if (_activeWork == oldActiveWork && _isTracking == oldIsTracking && !workEntriesModified)
+		if (_activeWork == oldActiveWork && !workEntriesModified)
 		{
 			return;
 		}
@@ -501,7 +451,7 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 		{
 			await _uiDispatcher.InvokeAsync(() =>
 			{
-				RaiseEvents(oldActiveWork, oldIsTracking, workEntriesModified);
+				RaiseEvents(oldActiveWork, workEntriesModified);
 				return Task.FromResult(true);
 			}, CancellationToken.None);
 		}
@@ -511,7 +461,7 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 		}
 	}
 
-	private void RaiseEvents(WorkEntry? oldActiveWork, bool oldIsTracking, bool workEntriesModified)
+	private void RaiseEvents(WorkEntry? oldActiveWork, bool workEntriesModified)
 	{
 		if (_activeWork != oldActiveWork)
 		{
@@ -519,10 +469,11 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 			ActiveWorkChanged?.Invoke(this, _activeWork);
 		}
 
-		if (_isTracking != oldIsTracking)
+		var isTracking = _activeWork != null;
+		if (isTracking != (oldActiveWork != null))
 		{
-			_logger.LogDebug("Raising IsTrackingChanged event: IsTracking={IsTracking}", _isTracking);
-			IsTrackingChanged?.Invoke(this, _isTracking);
+			_logger.LogDebug("Raising IsTrackingChanged event: IsTracking={IsTracking}", isTracking);
+			IsTrackingChanged?.Invoke(this, isTracking);
 		}
 
 		if (workEntriesModified)
