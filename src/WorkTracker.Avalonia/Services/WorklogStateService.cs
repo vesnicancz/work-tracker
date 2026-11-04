@@ -255,6 +255,17 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 			cancellationToken);
 	}
 
+	public Task<Result> ShiftActiveWorkStartAsync(TimeSpan delta, CancellationToken cancellationToken)
+	{
+		_logger.LogDebug("Shifting the start of active work by {Delta}", delta);
+
+		return ExecuteLockedAsync(
+			async (svc, ct) => (Result)await svc.ShiftActiveWorkStartAsync(delta, ct),
+			async _ => await RefreshFromDatabaseCoreAsync(cancellationToken),
+			"ShiftActiveWorkStart",
+			cancellationToken);
+	}
+
 	public Task<Result> DeleteWorkEntryAsync(int id, CancellationToken cancellationToken)
 	{
 		_logger.LogDebug("Deleting work entry {Id}", id);

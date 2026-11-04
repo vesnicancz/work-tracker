@@ -1,4 +1,5 @@
 using WorkTracker.Application.Common;
+using WorkTracker.Application.DTOs;
 using WorkTracker.Domain.Entities;
 using WorkTracker.Domain.Services;
 
@@ -18,7 +19,22 @@ public interface IWorkEntryService
 
 	Task<IEnumerable<WorkEntry>> GetWorkEntriesByDateRangeAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default);
 
-	Task<Result<WorkEntry>> UpdateWorkEntryAsync(int id, string? ticketId = null, DateTime? startTime = null, DateTime? endTime = null, string? description = null, CancellationToken cancellationToken = default);
+	/// <summary>
+	/// Replaces the whole entry with these values, as an edit dialog does: no end means it runs again,
+	/// and no ticket or description clears them. To change only part of it use <see cref="EditWorkEntryAsync"/>.
+	/// </summary>
+	Task<Result<WorkEntry>> UpdateWorkEntryAsync(int id, string? ticketId, DateTime startTime, DateTime? endTime, string? description, CancellationToken cancellationToken);
+
+	/// <summary>
+	/// Changes only what <paramref name="changes"/> holds, on the entry as it is stored at that moment.
+	/// </summary>
+	Task<Result<WorkEntry>> EditWorkEntryAsync(int id, WorkEntryChanges changes, CancellationToken cancellationToken);
+
+	/// <summary>
+	/// Moves the start of the work running at this moment, for work started late or too early. Fails
+	/// rather than touching another entry when the new start would overlap one.
+	/// </summary>
+	Task<Result<WorkEntry>> ShiftActiveWorkStartAsync(TimeSpan delta, CancellationToken cancellationToken);
 
 	Task<Result> DeleteWorkEntryAsync(int id, CancellationToken cancellationToken = default);
 

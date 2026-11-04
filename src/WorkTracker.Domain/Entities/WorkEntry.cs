@@ -24,21 +24,20 @@ public sealed class WorkEntry
 	{
 	}
 
-	public bool IsValid()
-	{
-		// At least one of TicketId or Description must be provided
-		if (string.IsNullOrWhiteSpace(TicketId) && string.IsNullOrWhiteSpace(Description))
-		{
-			return false;
-		}
+	public bool IsValid() => IsIdentifiable(TicketId, Description) && AreValidTimes(StartTime, EndTime);
 
-		if (EndTime.HasValue && EndTime.Value < StartTime)
-		{
-			return false;
-		}
+	/// <summary>
+	/// An entry needs a ticket or a description for anyone to tell what the time went to.
+	/// </summary>
+	public static bool IsIdentifiable(string? ticketId, string? description) =>
+		!string.IsNullOrWhiteSpace(ticketId) || !string.IsNullOrWhiteSpace(description);
 
-		return true;
-	}
+	/// <summary>
+	/// The end can be the same as the start: times are rounded to minutes, so that is what work started
+	/// and stopped within one minute looks like.
+	/// </summary>
+	public static bool AreValidTimes(DateTime startTime, DateTime? endTime) =>
+		endTime == null || endTime.Value >= startTime;
 
 	/// <summary>
 	/// Stops this work entry by setting end time and marking as inactive.
