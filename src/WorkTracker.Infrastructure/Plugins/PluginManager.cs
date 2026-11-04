@@ -25,6 +25,9 @@ public sealed class PluginManager : IPluginManager
 	private readonly List<string> _pluginDirectories = new();
 	private readonly HashSet<string> _enabledPluginIds = new();
 
+	// What each plugin last initialized successfully with
+	private readonly Dictionary<string, Dictionary<string, string>> _appliedConfigurations = new();
+
 	public PluginManager(ILoggerFactory loggerFactory, IHttpClientFactory httpClientFactory)
 	{
 		_logger = loggerFactory.CreateLogger<PluginManager>();
@@ -258,17 +261,23 @@ public sealed class PluginManager : IPluginManager
 	}
 
 	/// <summary>
-	/// Initializes all loaded plugins with their configurations
+	/// Initializes the enabled plugins with their configurations. A plugin already running on the same
+	/// configuration is left alone: reinitializing drops its connections, and saving an unrelated setting
+	/// is no reason for that.
 	/// </summary>
-	public async Task InitializePluginsAsync(Dictionary<string, Dictionary<string, string>>? configurations, CancellationToken cancellationToken)
+	public async Task<IReadOnlyList<PluginMetadata>> InitializePluginsAsync(Dictionary<string, Dictionary<string, string>>? configurations, CancellationToken cancellationToken)
 	{
 		List<KeyValuePair<string, IPlugin>> pluginsSnapshot;
 		HashSet<string> enabledSnapshot;
+		Dictionary<string, Dictionary<string, string>> appliedSnapshot;
 		lock (_lock)
 		{
 			pluginsSnapshot = new List<KeyValuePair<string, IPlugin>>(_loadedPlugins);
 			enabledSnapshot = new HashSet<string>(_enabledPluginIds);
+			appliedSnapshot = new Dictionary<string, Dictionary<string, string>>(_appliedConfigurations);
 		}
+
+		var failed = new List<PluginMetadata>();
 
 		foreach (var kvp in pluginsSnapshot)
 		{
@@ -281,25 +290,51 @@ public sealed class PluginManager : IPluginManager
 				continue;
 			}
 
+			var config = configurations?.GetValueOrDefault(pluginId);
+
+			if (appliedSnapshot.TryGetValue(pluginId, out var applied) && IsSameConfiguration(applied, config))
+			{
+				_logger.LogDebug("Plugin {Name} already runs on this configuration", plugin.Metadata.Name);
+				continue;
+			}
+
 			try
 			{
-				var config = configurations?.GetValueOrDefault(pluginId);
 				var success = await plugin.InitializeAsync(config, cancellationToken);
 
 				if (success)
 				{
 					_logger.LogInformation("Initialized plugin: {Name}", plugin.Metadata.Name);
+					lock (_lock)
+					{
+						_appliedConfigurations[pluginId] = config == null ? [] : new Dictionary<string, string>(config);
+					}
 				}
 				else
 				{
 					_logger.LogWarning("Plugin initialization returned false: {Name}", plugin.Metadata.Name);
+					failed.Add(plugin.Metadata);
 				}
+			}
+			catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+			{
+				throw;
 			}
 			catch (Exception ex)
 			{
 				_logger.LogError(ex, "Failed to initialize plugin: {Name}", plugin.Metadata.Name);
+				failed.Add(plugin.Metadata);
 			}
 		}
+
+		return failed;
+	}
+
+	private static bool IsSameConfiguration(Dictionary<string, string> applied, Dictionary<string, string>? requested)
+	{
+		var other = requested ?? [];
+		return applied.Count == other.Count
+			&& applied.All(pair => other.TryGetValue(pair.Key, out var value) && value == pair.Value);
 	}
 
 	public IPlugin CreateDetachedInstance(IPlugin plugin)
@@ -353,6 +388,7 @@ public sealed class PluginManager : IPluginManager
 			{
 				_loadedPlugins.Remove(pluginId);
 				_pluginContexts.Remove(pluginId);
+				_appliedConfigurations.Remove(pluginId);
 
 				// Only unload the context if no other plugin shares it
 				if (context != null && !_pluginContexts.ContainsValue(context))

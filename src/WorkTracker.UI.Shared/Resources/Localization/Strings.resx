@@ -333,6 +333,9 @@
   <data name="WorkRestartedSuccessfully" xml:space="preserve">
     <value>Work restarted successfully</value>
   </data>
+  <data name="PluginInitializationFailed" xml:space="preserve">
+    <value>Could not start plugin: {0}. Details are in the log.</value>
+  </data>
   <data name="FailedToLoadWorkEntries" xml:space="preserve">
     <value>Failed to load work entries</value>
   </data>

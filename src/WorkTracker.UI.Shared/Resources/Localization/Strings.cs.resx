@@ -333,6 +333,9 @@
   <data name="WorkRestartedSuccessfully" xml:space="preserve">
     <value>Práce úspěšně restartována</value>
   </data>
+  <data name="PluginInitializationFailed" xml:space="preserve">
+    <value>Plugin se nepodařilo spustit: {0}. Podrobnosti jsou v logu.</value>
+  </data>
   <data name="FailedToLoadWorkEntries" xml:space="preserve">
     <value>Nepodařilo se načíst záznamy práce</value>
   </data>

@@ -242,7 +242,7 @@ public abstract class PluginBase(ILogger logger) : IPlugin
 
 Nastavení s chybou neuloží a chyby ukáže v dialogu, test připojení je vypíše místo výsledku. Pravidla, která typ ani regex nevyjádří, patří do `OnValidateConfigurationAsync` (viz [§ Vlastní validace](#vlastní-validace)).
 
-**Životní cyklus:** `InitializeAsync` a s ním `OnInitializeAsync` běží opakovaně, při každém uložení Nastavení i při testu připojení, takže hook musí zvládnout opakované volání. `ShutdownAsync` volá postupně `OnShutdownAsync`, nastaví `IsInitialized = false` a zavolá `DisposeAsync`, který spustí `OnDisposeAsync`. `OnDisposeAsync` může proběhnout víckrát, musí být idempotentní.
+**Životní cyklus:** `InitializeAsync` a s ním `OnInitializeAsync` můžou běžet opakovaně, když se po uložení Nastavení změní konfigurace pluginu, takže hook musí zvládnout opakované volání. Při stejné konfiguraci se plugin znovu neinicializuje. Když inicializace vrátí `false` nebo vyhodí výjimku, aplikace to oznámí uživateli a při dalším uložení to zkusí znovu. `ShutdownAsync` volá postupně `OnShutdownAsync`, nastaví `IsInitialized = false` a zavolá `DisposeAsync`, který spustí `OnDisposeAsync`. `OnDisposeAsync` může proběhnout víckrát, musí být idempotentní.
 
 ### `WorklogUploadPluginBase`
 

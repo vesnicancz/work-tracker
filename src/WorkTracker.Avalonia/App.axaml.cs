@@ -225,10 +225,11 @@ public partial class App : global::Avalonia.Application
 		{
 			try
 			{
-				await Infrastructure.DependencyInjection.InitializePluginsAsync(
+				var failedPlugins = await Infrastructure.DependencyInjection.InitializePluginsAsync(
 					_host.Services, configuration,
 					settingsService.Settings.EnabledPlugins,
 					settingsService.Settings.PluginConfigurations);
+				notificationService.ReportPluginFailures(localization, failedPlugins);
 
 				await _host.Services.GetRequiredService<IRemoteControlCoordinator>().SyncAsync(CancellationToken.None);
 

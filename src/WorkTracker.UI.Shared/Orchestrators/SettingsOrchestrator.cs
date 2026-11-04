@@ -18,6 +18,8 @@ public class SettingsOrchestrator : ISettingsOrchestrator
 	private readonly IAutostartManager _autostartManager;
 	private readonly ITrayIconService _trayIconService;
 	private readonly IRemoteControlCoordinator _remoteControlCoordinator;
+	private readonly INotificationService _notificationService;
+	private readonly ILocalizationService _localization;
 	private readonly ILogger<SettingsOrchestrator> _logger;
 
 	public SettingsOrchestrator(
@@ -28,9 +30,13 @@ public class SettingsOrchestrator : ISettingsOrchestrator
 		IAutostartManager autostartManager,
 		ITrayIconService trayIconService,
 		IRemoteControlCoordinator remoteControlCoordinator,
+		INotificationService notificationService,
+		ILocalizationService localization,
 		ILogger<SettingsOrchestrator> logger)
 	{
 		_remoteControlCoordinator = remoteControlCoordinator;
+		_notificationService = notificationService;
+		_localization = localization;
 		_settingsService = settingsService;
 		_pluginManager = pluginManager;
 		_secureStorage = secureStorage;
@@ -147,8 +153,9 @@ public class SettingsOrchestrator : ISettingsOrchestrator
 		var enabledPluginIds = request.Plugins.Where(p => p.IsEnabled).Select(p => p.Plugin.Metadata.Id);
 		_pluginManager.SetEnabledPlugins(enabledPluginIds);
 
-		// Re-initialize plugins with new configuration
-		await _pluginManager.InitializePluginsAsync(settings.PluginConfigurations, cancellationToken);
+		// Re-initialize plugins whose configuration changed
+		var failedPlugins = await _pluginManager.InitializePluginsAsync(settings.PluginConfigurations, cancellationToken);
+		_notificationService.ReportPluginFailures(_localization, failedPlugins);
 
 		// Connect remote control plugins that were just enabled, disconnect those just disabled
 		await _remoteControlCoordinator.SyncAsync(cancellationToken);
