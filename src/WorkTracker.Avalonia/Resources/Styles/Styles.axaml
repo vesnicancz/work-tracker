@@ -1,5 +1,6 @@
 <Styles xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:wt="using:WorkTracker.Avalonia.Controls">
 
     <!-- Kill the reserved space for sort icon in DataGrid column headers -->
     <Styles.Resources>
@@ -36,6 +37,44 @@
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="{DynamicResource CardCornerRadius}" />
         <Setter Property="Padding" Value="{DynamicResource CardPadding}" />
+    </Style>
+
+    <!-- Pomodoro card: colors of the current phase. DynamicResource keeps them right after a theme switch. -->
+    <Style Selector="Border.pomodoroWork">
+        <Setter Property="Background" Value="{DynamicResource PomodoroWorkCardBackground}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource PomodoroWorkCardBorder}" />
+    </Style>
+    <Style Selector="Border.pomodoroShortBreak">
+        <Setter Property="Background" Value="{DynamicResource PomodoroBreakCardBackground}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource PomodoroBreakCardBorder}" />
+    </Style>
+    <Style Selector="Border.pomodoroLongBreak">
+        <Setter Property="Background" Value="{DynamicResource PomodoroLongBreakCardBackground}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource PomodoroLongBreakCardBorder}" />
+    </Style>
+    <Style Selector="TextBlock.pomodoroAccent">
+        <Setter Property="Foreground" Value="{DynamicResource TextBright}" />
+    </Style>
+    <Style Selector="wt|Icon.pomodoroAccent">
+        <Setter Property="Foreground" Value="{DynamicResource TextBright}" />
+    </Style>
+    <Style Selector="Border.pomodoroWork TextBlock.pomodoroAccent">
+        <Setter Property="Foreground" Value="{DynamicResource PomodoroWorkForeground}" />
+    </Style>
+    <Style Selector="Border.pomodoroWork wt|Icon.pomodoroAccent">
+        <Setter Property="Foreground" Value="{DynamicResource PomodoroWorkForeground}" />
+    </Style>
+    <Style Selector="Border.pomodoroShortBreak TextBlock.pomodoroAccent">
+        <Setter Property="Foreground" Value="{DynamicResource PomodoroBreakForeground}" />
+    </Style>
+    <Style Selector="Border.pomodoroShortBreak wt|Icon.pomodoroAccent">
+        <Setter Property="Foreground" Value="{DynamicResource PomodoroBreakForeground}" />
+    </Style>
+    <Style Selector="Border.pomodoroLongBreak TextBlock.pomodoroAccent">
+        <Setter Property="Foreground" Value="{DynamicResource PomodoroLongBreakForeground}" />
+    </Style>
+    <Style Selector="Border.pomodoroLongBreak wt|Icon.pomodoroAccent">
+        <Setter Property="Foreground" Value="{DynamicResource PomodoroLongBreakForeground}" />
     </Style>
 
     <!-- DataGrid: themeable row/header metrics + state colors -->

@@ -27,10 +27,12 @@ internal sealed class MainViewModelHarness
 	public Mock<ISettingsService> Settings { get; } = new();
 	public Mock<ILocalizationService> Localization { get; } = new();
 	public Mock<IWorkEntryService> WorkEntryService { get; } = new();
+	public Mock<IUiDispatcher> UiDispatcher { get; } = new();
 	public List<WorkEntry> Entries { get; } = new();
 
 	public MainViewModelHarness()
 	{
+		UiDispatcher.Setup(d => d.Post(It.IsAny<Action>())).Callback<Action>(action => action());
 		Settings.SetupGet(s => s.Settings).Returns(new ApplicationSettings());
 		Localization.Setup(l => l[It.IsAny<string>()]).Returns((string key) => key);
 		Localization.Setup(l => l.GetString(It.IsAny<string>())).Returns((string key) => key);
@@ -52,7 +54,7 @@ internal sealed class MainViewModelHarness
 		var scopeFactory = new Mock<IServiceScopeFactory>();
 		scopeFactory.Setup(f => f.CreateScope()).Returns(scope.Object);
 
-		var timeProvider = new Mock<TimeProvider>();
+		var timeProvider = new Mock<TimeProvider> { CallBase = true };
 		timeProvider.Setup(t => t.GetUtcNow()).Returns(new DateTimeOffset(LocalNow, TimeSpan.Zero));
 		timeProvider.SetupGet(t => t.LocalTimeZone).Returns(TimeZoneInfo.Utc);
 
@@ -67,6 +69,7 @@ internal sealed class MainViewModelHarness
 			Settings.Object,
 			Localization.Object,
 			timeProvider.Object,
+			UiDispatcher.Object,
 			NullLogger<MainViewModel>.Instance);
 	}
 }

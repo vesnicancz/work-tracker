@@ -182,14 +182,14 @@
                     </Border>
 
                     <!-- Pomodoro Timer -->
-                    <Border Classes="card" Padding="12,10"
+                    <Border x:Name="PomodoroCard" Classes="card" Padding="12,10"
                             IsVisible="{Binding Pomodoro.IsEnabled}"
-                            Background="{Binding PomodoroCardBackground}"
-                            BorderBrush="{Binding PomodoroCardBorder}">
+                            Classes.pomodoroWork="{Binding Pomodoro.IsWork}"
+                            Classes.pomodoroShortBreak="{Binding Pomodoro.IsShortBreak}"
+                            Classes.pomodoroLongBreak="{Binding Pomodoro.IsLongBreak}">
                         <StackPanel Spacing="8">
                             <Grid ColumnDefinitions="Auto,*">
-                                <wt:Icon Grid.Column="0" Symbol="pomodoro" Size="16"
-                                         Foreground="{Binding PomodoroTimerForeground, FallbackValue={DynamicResource TextMuted}}"
+                                <wt:Icon x:Name="PomodoroIcon" Grid.Column="0" Symbol="pomodoro" Size="16" Classes="pomodoroAccent"
                                          VerticalAlignment="Center" Margin="0,0,8,0" />
                                 <TextBlock Grid.Column="1" Text="{markup:Localize Pomodoro}"
                                            FontSize="13" FontWeight="SemiBold"
@@ -199,12 +199,12 @@
 
                             <!-- Running state -->
                             <StackPanel IsVisible="{Binding Pomodoro.IsRunning}" Spacing="6">
-                                <TextBlock Text="{Binding Pomodoro.TimeRemaining}"
+                                <TextBlock x:Name="PomodoroTimeText" Classes="pomodoroAccent"
+                                           Text="{Binding Pomodoro.TimeRemaining}"
                                            FontSize="{DynamicResource PomodoroTimerFontSize}" FontWeight="Bold"
                                            FontFamily="{DynamicResource FontFamilyMono}"
                                            HorizontalAlignment="Center"
-                                           Effect="{DynamicResource PomodoroGlowEffect}"
-                                           Foreground="{Binding PomodoroTimerForeground, FallbackValue={DynamicResource TextBright}}" />
+                                           Effect="{DynamicResource PomodoroGlowEffect}" />
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="6">
                                     <TextBlock Text="{Binding Pomodoro.PhaseDisplay}"
                                                FontSize="12" FontWeight="Medium"
