@@ -37,7 +37,7 @@ Tlačítko **Suggestions** přepne celé zařízení na profil WorkTracker a na�
 | **Next suggestions** | Stránku, zdroje, které selhaly, a `Loading`, `None` nebo `Failed` | Další stránka, po poslední zase první |
 | **Close suggestions** | Šipku zpět | Vrátí se na předchozí profil, nic nespustí |
 
-Seznam je společný pro všechny pluginy: nejdřív události, které ještě neskončily, podle času, potom skončené události od nejnovější a nakonec položky bez času v pořadí pluginů. Ticket, popis a časy se berou z návrhu stejně jako v dialogu a běžící práce, se kterou se událost překrývá, skončí na jejím začátku. Pokud by vložení změnilo jiné záznamy, aplikace se v dialogu ptá, tady se nemá kde zeptat: tlačítko ukáže varování, nic se nezmění a událost je potřeba vložit v aplikaci. Velikost stránky se řídí počtem tlačítek **Suggestion** v profilu a pořadí jejich pozicí, po řádcích zleva doprava. Vyhledávat na Stream Decku nejde.
+Seznam je společný pro všechny pluginy: nejdřív události, které ještě neskončily, podle času, potom skončené události od nejnovější a nakonec položky bez času v pořadí pluginů. Ticket, popis a časy se berou z návrhu stejně jako v dialogu a běžící práce začatá před událostí skončí na jejím začátku. Pokud by vložení změnilo jiné záznamy, aplikace se v dialogu ptá, tady se nemá kde zeptat: tlačítko ukáže varování, nic se nezmění a událost je potřeba vložit v aplikaci. Velikost stránky se řídí počtem tlačítek **Suggestion** v profilu a pořadí jejich pozicí, po řádcích zleva doprava. Vyhledávat na Stream Decku nejde.
 
 ---
 
@@ -99,9 +99,11 @@ Protokol je popsaný na dvou místech, která je potřeba udržovat v souladu: `
 | `stopWork` | | Zastaví práci |
 | `resumeWork` | | Znovu spustí poslední práci |
 | `shiftStart` | `minutes` | Posune začátek běžící práce, kolize s jiným záznamem skončí chybou |
-| `addWork` | `ticketId`, `description`, `startTime`, `endTime` | Vloží záznam s daným časem, kolize s jiným než běžícím záznamem skončí chybou |
+| `addWork` | `ticketId`, `description`, `startTime`, `endTime` | Vloží záznam s daným časem (`startTime` je povinný, bez `endTime` práce běží dál), běžící práce začatá před ním skončí na jeho začátku, každá jiná kolize skončí chybou |
 | `getSuggestions` | | Vrátí dnešní návrhy v poli `suggestions` odpovědi |
-| `startPomodoro`, `stopPomodoro`, `skipPomodoro` | | Ovládá Pomodoro |
+| `startPomodoro`, `stopPomodoro`, `skipPomodoro` | | Ovládá Pomodoro, start selže, když je Pomodoro v Nastavení vypnuté |
+
+Neznámý příkaz vrátí chybu `Unknown command '…'`.
 
 **Odpověď na příkaz:**
 

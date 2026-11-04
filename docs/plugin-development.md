@@ -84,7 +84,7 @@ V `.csproj`:
 </Project>
 ```
 
-Stejně vypadají csproj všech referenčních pluginů. `TargetFramework` (`net10.0`), `Nullable` a `ImplicitUsings` dodá v repu `Directory.Build.props`, verze balíčků `Directory.Packages.props`; mimo repo si je doplň sám. `Microsoft.Extensions.Logging.Abstractions` přijde tranzitivně přes `WorkTracker.Plugin.Abstractions`.
+Tenhle základ mají csproj všech referenčních pluginů, některé k němu přidávají vlastní závislosti a `InternalsVisibleTo`. `TargetFramework` (`net10.0`), `Nullable` a `ImplicitUsings` dodá v repu `Directory.Build.props`, verze balíčků `Directory.Packages.props`; mimo repo si je doplň sám. `Microsoft.Extensions.Logging.Abstractions` přijde tranzitivně přes `WorkTracker.Plugin.Abstractions`.
 
 > **Kopie `WorkTracker.Plugin.Abstractions.dll` vedle pluginu nevadí.** Loader ji při hledání pluginů přeskočí a `PluginLoadContext` vezme každou assembly, kterou už má načtenou hlavní aplikace, z Default kontextu — `IPlugin` z pluginu je tak vždy ten samý typ jako v aplikaci (viz [§ Balení a deployment](#balení-a-deployment)). `<Private>false</Private>` na referenci by jen zmenšilo balíček.
 
@@ -211,7 +211,7 @@ Neimplementuj `IPlugin` přímo. Použij **base class** — ušetří ti práci 
 
 ### `PluginBase`
 
-Abstraktní třída pro **všechny** pluginy. `IPlugin` sám dědí `IAsyncDisposable`, takže `PluginBase` dostává `DisposeAsync` automaticky. Klíčové members:
+Abstraktní třída pro **všechny** pluginy. `IPlugin` dědí `IAsyncDisposable` a `PluginBase` ho implementuje za tebe, vlastní úklid patří do `OnDisposeAsync`. Klíčové members:
 
 ```csharp
 public abstract class PluginBase(ILogger logger) : IPlugin
@@ -251,6 +251,8 @@ public abstract class PluginBase(ILogger logger) : IPlugin
 
 Nastavení s chybou neuloží a chyby ukáže v dialogu, test připojení je vypíše místo výsledku. Pravidla, která typ ani regex nevyjádří, patří do `OnValidateConfigurationAsync` (viz [§ Vlastní validace](#vlastní-validace)).
 
+**Životní cyklus:** `InitializeAsync` a s ním `OnInitializeAsync` běží opakovaně, při každém uložení Nastavení i při testu připojení, takže hook musí zvládnout opakované volání. `ShutdownAsync` volá postupně `OnShutdownAsync`, nastaví `IsInitialized = false` a zavolá `DisposeAsync`, který spustí `OnDisposeAsync`. `OnDisposeAsync` může proběhnout víckrát, musí být idempotentní.
+
 ### `WorklogUploadPluginBase`
 
 Dědí `PluginBase` a implementuje `IWorklogUploadPlugin`. Definuje abstraktní metody:
@@ -286,6 +288,8 @@ Pro pluginy s návrhy úkolů:
 - `GetSuggestionsAsync(DateTime date, CancellationToken)` — vrať návrhy pro daný den
 - `virtual bool SupportsSearch => false` — přepiš na `true`, pokud plugin zvládá textové vyhledávání
 - `virtual SearchAsync(string query, CancellationToken)` — výchozí vrací failure; přepiš, pokud `SupportsSearch => true`
+
+V `WorkSuggestion` jsou povinné `Title`, `Source` a `SourceId`. `SourceId` je identifikátor v rámci zdroje, podle kontraktu určený k deduplikaci. Aplikace ho zatím nevyhodnocuje. `TicketId`, `Description`, `StartTime` a `EndTime` jsou volitelné.
 
 ### `StatusIndicatorPluginBase`
 
@@ -855,6 +859,8 @@ Dokumentace: [plugins/luxafor.md](plugins/luxafor.md).
 ### `WorkTracker.Plugin.StreamDeck`
 
 - **`IRemoteControlPlugin`** — `IRemoteControlHost` nedostává z DI, ale v `AttachAsync`, protože jeho implementace žije v `UI.Shared`. `AttachAsync` a `DetachAsync` volá `IRemoteControlCoordinator` podle stavu povolení, takže pipe existuje jen v GUI a jen se zapnutým pluginem. CLI plugin sice načte, ale nepřipojí, a proto plugin nesmí začít poslouchat už v `OnInitializeAsync`.
+- **`AttachAsync` a `DetachAsync` musí být idempotentní** — `AttachAsync` se volá znovu při každém uložení konfigurace pluginu.
+- **`IRemoteControlHost`** — nabízí stav (`GetStateAsync`, událost `StateChanged`), práci se záznamy (`StartWorkAsync`, `StopWorkAsync`, `ResumeLastWorkAsync`, `ShiftActiveWorkStartAsync`, `AddWorkEntryAsync`), návrhy (`GetSuggestionsAsync`) a Pomodoro (`StartPomodoroAsync`, `StopPomodoroAsync`, `SkipPomodoroPhaseAsync`).
 - **Příkazy běží na UI vlákně** — zajišťuje to `RemoteControlHost` přes `IUiDispatcher`, plugin to řešit nemusí. Metody hostitele jde volat z libovolného vlákna a `StateChanged` může přijít také z libovolného vlákna.
 - **Druhá polovina je mimo .NET** — Stream Deck plugin v `streamdeck-plugin/` je TypeScript a s tímhle pluginem mluví přes named pipe.
 

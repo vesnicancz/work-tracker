@@ -127,12 +127,12 @@ Důvod: Goran G3 MCP zatím nemá idempotency token, takže retry by mohl vytvo�
 
 ## `WorklogExistsAsync` a `GetWorklogsAsync`
 
-Plugin podporuje i čtení existujících worklogů přes MCP tool `get_my_timesheet_items_list` — to aplikaci dovoluje zkontrolovat před uploadem, jestli už záznam existuje (a tedy neposílat duplicitu).
+Plugin podporuje i čtení existujících worklogů přes MCP tool `get_my_timesheet_items_list` — aplikace tyhle metody zatím nevolá, takže před uploadem duplicity nekontroluje.
 
 `GetWorklogsAsync(startDate, endDate)`:
 
 1. Zavolá `get_my_timesheet_items_list` s argumenty `date_from` a `date_to` ve formátu `yyyy-MM-dd`.
-2. Zmapuje vrácené timesheet položky zpět na `PluginWorklogEntry`.
+2. Zparsuje textovou tabulku z odpovědi (sloupce `Date | Project | Phase | Description | Start | Duration | Status | Tags`) na `PluginWorklogEntry`. `TicketId` se nenaplňuje. Řádky bez rozpoznatelného data, začátku a délky se tiše přeskočí. Do logu jde jako varování jen řádek, při kterém parsování vyhodí výjimku.
 
 `WorklogExistsAsync(worklog)`:
 

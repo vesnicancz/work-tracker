@@ -111,6 +111,7 @@ Obsah:
 WorkTracker/
 ├── worktracker.db              SQLite databáze (automaticky migrovaná)
 ├── settings.json               Uživatelské nastavení (pluginy, téma, Pomodoro…)
+├── settings.json.bak           Předchozí verze nastavení
 ├── logs/
 │   ├── worktracker-YYYYMMDD.log     Logy GUI aplikace
 │   └── worktracker-cli-YYYYMMDD.log Logy CLI
@@ -190,8 +191,8 @@ edit  <id> [options]               Upravit existující záznam
 delete <id>                        Smazat záznam
 send  [week] [datum]               Odeslat worklog do externího systému
 providers                          Výpis worklog pluginů a jejich stavu
-version                            Verze aplikace
-help                               Tato nápověda
+version, --version, -v             Verze aplikace
+help, --help, -h                   Tato nápověda (vypíše se i bez argumentů)
 
 --json                             JSON výstup (list, status, providers)
 --plain                            Řádkový výstup pro pipe (list, status, providers)
@@ -256,6 +257,8 @@ WorkTracker.CLI edit 5 --desc="Nový popis"
 WorkTracker.CLI edit 5 --start="2026-04-09 09:00" --end="2026-04-09 17:30"
 ```
 
+> **Pozor:** Samotný čas znamená dnešek, ne den původního záznamu. U staršího záznamu proto uveď celé datum.
+
 Nezadané parametry zůstávají nezměněny. Pokud by se nové časy překrývaly s jiným existujícím záznamem, CLI úpravu odmítne s chybou a vrátí exit code `1` — kolizi vyřeš ručně, nebo v GUI, které nabídne ořez, posun, rozdělení či smazání kolidujícího záznamu.
 
 ### `delete`
@@ -278,7 +281,7 @@ Postup (předpokládá, že je alespoň jeden worklog plugin povolený):
 1. Aplikace načte záznamy z databáze pro zvolený rozsah.
 2. Ukáže náhled v tabulce (ticket, start, konec, délka).
 3. Požádá o potvrzení `[y/n]` — výchozí je **ano**, takže Enter odešle.
-4. Zavolá první povolený `IWorklogUploadPlugin`. Pokud máš více worklog pluginů povolených, použije se první podle **pořadí načtení** (ne abecedně); konkrétní plugin vybereš přes `--provider=<id>` (s rovnítkem, varianta s mezerou nefunguje), jeho id vypíše `providers`.
+4. Zavolá první povolený `IWorklogUploadPlugin`. Pokud máš více worklog pluginů povolených, použije se první podle **pořadí načtení** (ne abecedně); konkrétní plugin vybereš přes `--provider=<id>` (s rovnítkem, varianta s mezerou nefunguje), jeho id vypíše `providers`. Ten ukazuje i vypnuté pluginy, a ty odeslání odmítnou, protože nejsou inicializované.
 5. U týdenního odesílání se při částečném úspěchu vypíše seznam selhaných dnů a důvody.
 
 Odesílají se jen dokončené záznamy (s koncem). Neplatné záznamy (např. delší než 24 h) aplikace přeskočí a zapíše to do logu.
@@ -321,7 +324,7 @@ Cross‑platform desktopová aplikace. Hlavní okno je rozdělené na **levý po
 
 **Levý postranní panel** (shora dolů):
 
-- **Karta Aktivní práce** (jen když běží záznam) — uběhlý čas, ticket, popis a tlačítko **Zastavit práci**.
+- **Karta Aktivní práce** (jen když běží záznam) — uběhlý čas, ticket, popis a tlačítko **ZASTAVIT PRÁCI**.
 - **Karta rychlého startu** — jednořádkový textbox s placeholderem ve tvaru `PROJ-123 Práce na funkci` a tlačítko **Zahájit práci**. Stejné rozpoznání ticketu jako v CLI `start` (čas na konci se ale nerozpoznává a zůstane v popisu): pokud text začíná Jira kódem (`^([a-zA-Z0-9]+-[0-9]+)` — písmena/číslice, bez underscore), rozpozná se jako ticket; zbytek je popis. Tlačítko je aktivní, když je textbox neprázdný. Pokud už jiný záznam běží, automaticky se na začátku nového zastaví.
 - **Karta Pomodoro** (jen když je Pomodoro zapnuté v **Nastavení → Pomodoro**) — tlačítko **Spustit Pomodoro**; když běží, zbývající čas, fáze, počet pomodor a ikony **Přeskočit** a **Zastavit**.
 - **Karta Dnes** — celkový čas za den zvolený v navigaci datem (výchozí dnešek) ve formátu `HH:MM:SS`, aktualizovaný v reálném čase.
@@ -343,7 +346,7 @@ Cross‑platform desktopová aplikace. Hlavní okno je rozdělené na **levý po
   - **Konec** — čas ukončení (`HH:mm`, u aktivního záznamu `-`)
   - **Trvání** — délka záznamu
   - **Stav** — indikátor aktivní / dokončený
-  - Poslední úzký sloupec bez nadpisu s tlačítky akcí nad každým řádkem:
+  - Poslední úzký sloupec bez nadpisu s tlačítky akcí nad každým řádkem (ve fialovém motivu viditelnými až po najetí na řádek):
     - ▶ **Restartovat práci na tomto ticketu** — zahájí nový záznam se stejným ticketem a popisem (rychlý restart z historie). U aktivního záznamu se toto tlačítko nezobrazuje.
     - ✎ **Upravit** — otevře dialog editace záznamu.
     - 🗑 **Smazat** — po potvrzení v dialogu **Potvrdit smazání** záznam odstraní.
@@ -410,6 +413,7 @@ Otevírá se kliknutím na **Nastavení** v levém dolním rohu hlavního okna. 
 **Pluginy**:
 
 - Dropdown s výběrem pluginu (místo seznamu). Po výběru se dole zobrazí:
+  - Verze, autor a popis pluginu.
   - Checkbox **Povolit plugin**.
   - **Konfigurační formulář** — dynamicky generovaný z `PluginConfigurationField` daného pluginu. Pole typu `Password` se ukládají do secure storage.
   - Tlačítko **Otestovat připojení** (u pluginů implementujících `ITestablePlugin`) s textovým výstupem výsledku.
@@ -424,7 +428,7 @@ Otevírá se kliknutím na **Nastavení** v levém dolním rohu hlavního okna. 
 - **Stručný přehled** — bullet seznam základních funkcí (jak začít trackovat, formát Jira kódu, k čemu jsou oblíbené, odesílání worklogů, system tray).
 - **Systém** — runtime verze (.NET), platforma (OS), UI framework.
 
-Dole jsou tlačítka **Zrušit** a **Uložit**. Změny se uloží až tlačítkem Uložit; motiv a jazyk se ale hned zobrazí jako náhled a Zrušit (nebo zavření okna) je vrátí.
+Dole jsou tlačítka **ZRUŠIT** a **ULOŽIT**. Změny se uloží až tlačítkem ULOŽIT; motiv a jazyk se ale hned zobrazí jako náhled a Zrušit (nebo zavření okna) je vrátí.
 
 ### Dialog vytvoření a úpravy záznamu
 
@@ -437,12 +441,12 @@ Stejný dialog se používá pro **vytvoření nového záznamu** (tlačítko `+
 - **Čas zahájení** — datum (date picker) + čas (textbox `HH:mm` v monospace fontu, 80 px široký). Oba prvky vedle sebe.
 - **Nastavit čas ukončení** — checkbox. Když je **odznačený**, záznam se uloží jako **aktivní** (běžící, bez konce). Když je označený, rozbalí se pod ním:
   - **Čas ukončení** — stejná dvojice (datum + čas) jako u začátku.
-- **Validační chyba** — červený text pod poli, průběžně při psaní: chybí ticket i popis, nebo konec není po začátku. Dokud tam je, tlačítko **Uložit** nejde stisknout. Neplatně zapsaný čas se tiše ignoruje (zůstane předchozí hodnota), holé číslo se ale přečte jako počet dní. Překryv s jiným záznamem chyba není: po Uložit se otevře dialog **Detekován překryv časů** s navrženými úpravami. Výjimkou je případ, kdy se jen ukončuje aktivní záznam, ten proběhne bez dialogu.
+- **Validační chyba** — červený text pod poli, průběžně při psaní: chybí ticket i popis, nebo konec není po začátku. Dokud tam je, tlačítko **ULOŽIT** nejde stisknout. Neplatně zapsaný čas se tiše ignoruje (zůstane předchozí hodnota), holé číslo se ale přečte jako počet dní. Překryv s jiným záznamem chyba není: po ULOŽIT se otevře dialog **Detekován překryv časů** s navrženými úpravami. Výjimkou je případ, kdy se jen ukončuje aktivní záznam, ten proběhne bez dialogu.
 
 **Tlačítka dole** (v pravém dolním rohu):
 
-- **Zrušit** — zavře dialog bez uložení.
-- **Uložit** (s ikonou diskety, primary) — uloží záznam a zavře dialog.
+- **ZRUŠIT** — zavře dialog bez uložení.
+- **ULOŽIT** (s ikonou diskety, primary) — uloží záznam a zavře dialog. Totéž udělá `Enter`, kromě víceřádkového pole a otevřeného kalendáře.
 
 Validace „alespoň ticket nebo popis“ platí i tady — dialog ji hlídá průběžně („Je vyžadováno ID ticketu nebo popis“) a bez ticketu i popisu nejde uložit.
 
@@ -514,7 +518,7 @@ Pod každým polem je šedým písmem jeho popis od pluginu, pokud nějaký má.
 | `MultilineText` | víceřádkový textbox, Enter vloží nový řádek | JQL filtr |
 | `Checkbox` | zaškrtávátko, ukládá se jako `true`/`false` | `IncludeAllDayEvents` |
 
-Kontroluje se jen vyplněná hodnota (a u povinných polí, že vyplněná je); plugin může přidat vlastní pravidla, třeba regex. Když je u povoleného pluginu něco špatně, **Uložit** nastavení neuloží a vlevo od tlačítek vypíše, které pole a proč. **Otestovat připojení** v tom případě vypíše tytéž chyby místo testu.
+Kontroluje se jen vyplněná hodnota (a u povinných polí, že vyplněná je); plugin může přidat vlastní pravidla, třeba regex. Když je u povoleného pluginu něco špatně, **ULOŽIT** nastavení neuloží a vlevo od tlačítek vypíše, které pole a proč. **Otestovat připojení** v tom případě vypíše tytéž chyby místo testu.
 
 ### Secure storage
 
@@ -565,7 +569,7 @@ Otevřeš ho kliknutím na ikonu **žárovky** v pravém horním rohu hlavního 
 
 Dialog má titulek **Návrhy** a je rozdělen svisle na:
 
-- **Titulková lišta** s tlačítky **Obnovit** (znovu načte návrhy ze všech pluginů) a **Zavřít**. Na macOS tlačítko Zavřít nahrazuje nativní ovládání okna.
+- **Titulková lišta** s tlačítky **Obnovit** (znovu načte návrhy ze všech pluginů) a **Zavřít**. Na macOS tlačítko Zavřít chybí, okno se zavírá nativním ovládáním.
 - **Tenký progress bar** pod titulkem, viditelný během načítání.
 - **Seznam skupin** — každý aktivní `IWorkSuggestionPlugin` se zobrazí jako samostatná **akordeónová karta**.
 
@@ -581,13 +585,14 @@ Hlavička skupiny obsahuje:
 
 Kliknutím na hlavičku skupinu rozbalíš nebo sbalíš (`ToggleGroupCommand`). Rozbalená je vždy právě jedna skupina a aplikace si ji pamatuje — ukládá se do `settings.json` jako `LastExpandedSuggestionPluginId`, takže dialog se příště otevře na té samé skupině, i po restartu. Když plugin mezitím zmizí, rozbalí se první skupina v pořadí. Obsah rozbalené skupiny:
 
-- **Chybová hláška** v červeném panelu, pokud plugin vrátil `PluginResult.Failure` (např. 401, síť nedostupná, neplatná konfigurace).
-- **Vyhledávací pole** — zobrazuje se **pouze** u pluginů s `SupportsSearch = true` (typicky Jira). Při psaní s debouncem zavolá `SearchAsync(query)` toho konkrétního pluginu.
+- **Chybová hláška** v červeném panelu, pokud plugin vrátil `PluginResult.Failure` (např. 401, síť nedostupná, neplatná konfigurace). Selhání vyhledávání se takhle neukáže, skončí jako prázdný seznam.
+- **Vyhledávací pole** — zobrazuje se **pouze** u pluginů s `SupportsSearch = true` (typicky Jira). Při psaní zavolá po 300 ms `SearchAsync(query)` toho konkrétního pluginu. Hledá se od 3 znaků, prázdné pole vrátí výchozí seznam.
 - **Seznam položek** ve scrollovaném panelu (výška se přizpůsobí oknu). Každá položka je klikatelný řádek s:
   - **Badge vlevo**:
     - Pro kalendářové události — **čas** ve formátu `HH:mm – HH:mm`, bez konce jen `HH:mm` (monospace, muted).
     - Pro Jira issues — **ticket key** (bold, akcentově modrý).
   - **Title** návrhu (s ellipsis, když je delší než šířka dialogu).
+  - Dnešní události, které už skončily, jsou ztlumené, dokud na ně nenajedeš.
 - **„Žádné návrhy“** — prázdný stav, když plugin nevrátil žádné položky.
 
 **Kliknutí na položku** zavolá `SelectCommand` s daným návrhem a dialog ho předá dál — otevře se dialog [vytvoření záznamu](#dialog-vytvoření-a-úpravy-záznamu) s předvyplněnými poli z `WorkSuggestion`:
@@ -666,8 +671,8 @@ Luxafor integrace je dokumentovaná v [plugins/luxafor.md](plugins/luxafor.md).
 Často opakované úkoly (daily standup, code review, lunch…) si můžeš uložit jako **Favorite**:
 
 1. Otevři **Nastavení → Oblíbené** a klikni na **Přidat**.
-2. Zadej název, ticket (volitelně), popis.
-3. Favorite se objeví v system tray menu (i když je okno zavřené). V hlavním okně oblíbené nejsou.
+2. Zadej název (povinný), volitelně ticket a popis a potvrď formulář.
+3. Ulož celé Nastavení tlačítkem **ULOŽIT**. Teprve pak se favorite uloží a objeví se v system tray menu (i když je okno zavřené). V hlavním okně oblíbené nejsou.
 
 `FavoriteWorkItem` je uložený v `settings.json` (bez tokenů, jen metadata) a persistuje se napříč restarty.
 
@@ -717,8 +722,8 @@ Důležité: **tyto notifikace jsou viditelné jen tehdy, když je hlavní okno 
 
 Zobrazují se při:
 
-- Úspěšném startu / stopu trackingu
-- Vytvoření, úpravě nebo smazání záznamu
+- Úspěšném startu / stopu trackingu z hlavního okna (ne z tray menu)
+- Vytvoření, úpravě nebo smazání záznamu z hlavního okna (ne při vytvoření přes globální zkratku, tray menu nebo Návrhy)
 - Úspěšném restartu záznamu (přes tlačítko „Restartovat práci na tomto ticketu“ v akcích)
 - Přechodech Pomodoro fází
 - Chybě při načítání záznamů z databáze
@@ -755,7 +760,7 @@ Jazyk se vybírá v **Nastavení → Obecné → Jazyk**. Na výběr jsou tři m
 | **English** | Vždy anglicky, bez ohledu na nastavení OS. |
 
 **Změna se projeví okamžitě** — texty v otevřených oknech i v trayovém menu se přepnou hned,
-restart není potřeba. Pokud dialog Nastavení zavřeš tlačítkem **Zrušit** (nebo křížkem), vrátí se
+restart není potřeba. Pokud dialog Nastavení zavřeš tlačítkem **ZRUŠIT** (nebo křížkem), vrátí se
 jazyk, se kterým jsi ho otevřel.
 
 Volba se ukládá do `settings.json` jako `"Language": "system" | "cs" | "en"`. Ruční přepsání na
@@ -819,7 +824,7 @@ Symptomy: při startu GUI se objeví dialog **Databáze není dostupná** s cest
 
 Příčina: `Database:Path` míří na disk/mount point, který v tuto chvíli není připojený (flash disk, síťové úložiště), nebo je adresář jen pro čtení.
 
-Řešení: připoj disk a klikni na **Zkusit znovu** (v CLI spusť příkaz znovu). Pokud disk připojit nejde, uprav `Database:Path` v `appsettings.json`. Rozpoznávají se SQLite kódy 8 (`READONLY`), 10 (`IOERR`) a 14 (`CANTOPEN`) plus IO chyby při vytváření adresáře — jiné chyby při startu se hlásí jako neopravitelné a nabídnou jen zavření.
+Řešení: připoj disk a klikni na **Zkusit znovu** (v CLI spusť příkaz znovu). Pokud disk připojit nejde, uprav `Database:Path` v `appsettings.json`. Rozpoznávají se SQLite kódy 8 (`READONLY`), 10 (`IOERR`) a 14 (`CANTOPEN`) plus I/O chyby a chybějící oprávnění — jiné chyby při startu se hlásí jako neopravitelné a nabídnou jen zavření.
 
 ### Plugin se nenačítá
 
@@ -868,4 +873,4 @@ Pro hlášení bugu přilož poslední log + verzi aplikace (`WorkTracker.CLI ve
 
 ### Reset všeho
 
-Ukončí aplikaci, smaž celý adresář `%LocalAppData%\WorkTracker\`, smaž položky z OS credential storu s prefixem `worktracker://`, spusť aplikaci znovu. Začne „na zelené louce“.
+Nejdřív vypni autostart v Nastavení, ten smazání složky nezruší. Ukonči aplikaci, smaž její datovou složku (na Windows `%LocalAppData%\WorkTracker\`), smaž položky z OS credential storu obsahující `worktracker://` a spusť aplikaci znovu. Na macOS a Linuxu zůstane MSAL cache ještě v Keychainu nebo keyringu, tu případně smaž ručně.

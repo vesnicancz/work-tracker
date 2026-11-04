@@ -85,7 +85,7 @@ Začátek a konec dne se posílají v ISO 8601 s lokálním offsetem (URL‑enco
 
 | `WorkSuggestion` | Zdroj z Graph |
 |------------------|---------------|
-| `Title` | `subject` (bez předmětu `"(No subject)"`) |
+| `Title` | `subject` (`"(No subject)"`, jen když Graph vrátí `null`) |
 | `Description` | — (plugin `bodyPreview` ani `body` nenačítá) |
 | `StartTime` | `start.dateTime` (v lokálním čase díky hlavičce `Prefer`; u celodenních událostí prázdné) |
 | `EndTime` | `end.dateTime` (v lokálním čase díky hlavičce `Prefer`; u celodenních událostí prázdné) |

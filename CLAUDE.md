@@ -49,7 +49,7 @@ Plugin.Abstractions (IPlugin, IWorklogUploadPlugin, IWorkSuggestionPlugin, IStat
 
 ## Plugin System
 
-Plugins load in isolated `AssemblyLoadContext` from the `Plugins:Directories` config (default `plugins/` next to the executable; inside a macOS `.app` the app-data directory; Development adds each plugin's `bin/Debug`). Four plugin interfaces extend `IPlugin : IAsyncDisposable` (upload and suggestion via `ITestablePlugin`):
+Plugins load in isolated `AssemblyLoadContext` from the `Plugins:Directories` config (default `plugins/` next to the executable; inside a macOS `.app` the app-data directory; Development adds the plugins' `bin/Debug` (in the CLI without Stream Deck)). Four plugin interfaces extend `IPlugin : IAsyncDisposable` (upload and suggestion via `ITestablePlugin`):
 
 - **`IWorklogUploadPlugin`** — Upload/fetch worklogs (e.g., Tempo)
 - **`IWorkSuggestionPlugin`** — Suggest work items (e.g., Jira issues)
@@ -79,8 +79,8 @@ Existing plugins: `Plugin.Atlassian` (Tempo + Jira), `Plugin.Office365Calendar`,
 - **Central Package Management** via `Directory.Packages.props` — use `<PackageReference Include="..." />` without Version in `.csproj` files
 - **Naming**: interfaces `IName`, private fields `_camelCase`, types `PascalCase` (configured in `.editorconfig`; IDE-only — `EnforceCodeStyleInBuild` is off, so the build does not enforce them)
 - **ViewModels are split** — root ViewModels live in the Avalonia project; reusable sub-ViewModels and shared logic go in `UI.Shared/ViewModels/` or `UI.Shared/Orchestrators/`.
-- **DI registration** is centralized: `Application/DependencyInjection.cs` and `Infrastructure/DependencyInjection.cs`. Infrastructure's `AddInfrastructure()` is the single entry point for non-UI services.
-- **Database** uses `IDbContextFactory<WorkTrackerDbContext>` (not scoped DbContext). SQLite stored in `%LocalAppData%\WorkTracker\`.
+- **DI registration** is centralized: `Application/DependencyInjection.cs` and `Infrastructure/DependencyInjection.cs`; orchestrators and some UI.Shared services register through `AddUIShared()` in `UI.Shared/DependencyInjection.cs`, the rest and all platform services in `App.ConfigureAppServices`. Infrastructure's `AddInfrastructure()` is the single entry point for non-UI services.
+- **Database** uses `IDbContextFactory<WorkTrackerDbContext>` (not scoped DbContext). SQLite stored in `%LocalAppData%\WorkTracker\` (Debug builds: `worktracker-dev.db` next to the binary).
 - **Unit of Work** (`IUnitOfWork` / `IUnitOfWorkFactory` in `Application/Interfaces/`) wraps multi-step write operations (auto-stop + start, overlap resolution) in an explicit `IDbContextTransaction`. `IUnitOfWorkFactory.CreateAsync` opens the transaction; `IUnitOfWork.SaveChangesAsync` flushes changes and commits; disposing without calling `SaveChangesAsync` triggers a transaction rollback. `WorkEntryRepository` has two modes: factory mode (standalone, each op auto-saves) and shared-context mode (inside UoW, SaveChanges deferred to the UoW). Single-operation methods use the transient repository directly.
 - **Secure storage** for API tokens via `ISecureStorage` (OS credential manager).
 
