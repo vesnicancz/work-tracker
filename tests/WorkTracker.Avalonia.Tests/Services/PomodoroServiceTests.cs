@@ -332,6 +332,28 @@ public class PomodoroServiceTests : IAsyncLifetime
 	}
 
 	[Fact]
+	public void StatusIndicatorStartedDuringAPomodoro_GetsTheCurrentPhase()
+	{
+		// It was enabled or reconfigured just now, or a connection test put it aside for a moment
+		_sut.Start();
+		var started = new Mock<IStatusIndicatorPlugin>();
+
+		_pluginManager.Raise(p => p.PluginStarted += null, _pluginManager.Object, (IPlugin)started.Object);
+
+		started.Verify(p => p.SetStateAsync(StatusIndicatorState.Work, It.IsAny<CancellationToken>()), Times.Once);
+	}
+
+	[Fact]
+	public void StatusIndicatorStartedWithoutAPomodoro_IsLeftAsItIs()
+	{
+		var started = new Mock<IStatusIndicatorPlugin>();
+
+		_pluginManager.Raise(p => p.PluginStarted += null, _pluginManager.Object, (IPlugin)started.Object);
+
+		started.Verify(p => p.SetStateAsync(It.IsAny<StatusIndicatorState>(), It.IsAny<CancellationToken>()), Times.Never);
+	}
+
+	[Fact]
 	public void Skip_FromWorkToBreak_WithAutoStopEnabled_StopsTracking()
 	{
 		var settings = _settingsService.Object.Settings;

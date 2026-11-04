@@ -101,20 +101,18 @@ public sealed class TempoWorklogPlugin(IHttpClientFactory httpClientFactory, ILo
 		var tempoApiToken = GetRequiredConfigValue(ConfigKeys.TempoApiToken);
 		var jiraAccountId = GetConfigValue(ConfigKeys.JiraAccountId);
 
-		// Create new clients before disposing old ones — if creation fails, the old state stays valid
-		var newTempoClient = CreateTempoHttpClient(tempoBaseUrl, tempoApiToken);
-		var newJiraClient = JiraClient.Create(
+		_tempoHttpClient = CreateTempoHttpClient(tempoBaseUrl, tempoApiToken);
+		_jiraClient = JiraClient.Create(
 			_httpClientFactory,
 			GetRequiredConfigValue(JiraConfigFields.JiraBaseUrl),
 			GetRequiredConfigValue(JiraConfigFields.JiraEmail),
 			GetRequiredConfigValue(JiraConfigFields.JiraApiToken));
 
-		// Validate account ID before committing to the new clients
 		if (string.IsNullOrWhiteSpace(jiraAccountId))
 		{
 			try
 			{
-				jiraAccountId = await newJiraClient.GetCurrentUserAccountIdAsync(cancellationToken);
+				jiraAccountId = await _jiraClient.GetCurrentUserAccountIdAsync(cancellationToken);
 			}
 			catch (Exception ex)
 			{
@@ -124,22 +122,11 @@ public sealed class TempoWorklogPlugin(IHttpClientFactory httpClientFactory, ILo
 			if (string.IsNullOrWhiteSpace(jiraAccountId))
 			{
 				Logger.LogError("Jira account ID auto-detection returned null or empty");
-				newTempoClient.Dispose();
-				newJiraClient.Dispose();
 				return false;
 			}
 		}
 
 		_jiraAccountId = jiraAccountId;
-
-		// Success — swap clients, clear cache, and dispose old ones
-		_issueIdCache.Clear();
-		var oldTempoClient = _tempoHttpClient;
-		var oldJiraClient = _jiraClient;
-		_tempoHttpClient = newTempoClient;
-		_jiraClient = newJiraClient;
-		oldTempoClient?.Dispose();
-		oldJiraClient?.Dispose();
 
 		return true;
 	}

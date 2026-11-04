@@ -250,20 +250,32 @@ Všechny pluginy jsou načítané dynamickým discovery z adresáře.
 
 ```
 Discover → Load assembly do PluginLoadContext
-        → Instantiate(DI)
-        → Register in _loadedPlugins
-        → InitializeAsync(config, ct)   (jen povolené pluginy; nový plugin je vypnutý)
+        → Instantiate(DI)               (neinicializovaná instance, jen jako IPluginDescriptor)
+        → Register in _plugins
+
+Start (jen povolené pluginy; nový plugin je vypnutý):
+        → Nová instance (DI)
+        → InitializeAsync(config, ct)
             └ ValidateConfigurationAsync
             └ OnInitializeAsync (hook)
-        → Ready to use
+        → Běžící instance, PluginStarted
 
-Shutdown/Unload:
-        → ShutdownAsync
+Změna konfigurace:
+        → Start nové instance, výměna, ShutdownAsync staré
+          (když nová selže, stará běží dál; status indikátor drží zařízení, takže se stará zastaví nejdřív)
+
+Vypnutí pluginu:
+        → ShutdownAsync běžící instance
             └ OnShutdownAsync (hook)
             └ DisposeAsync
-        → Remove from _loadedPlugins
+
+Unload:
+        → ShutdownAsync běžící instance i descriptoru
+        → Remove from _plugins
         → PluginLoadContext.Unload()  (jen když kontext nesdílí jiný plugin)
 ```
+
+Instance tak běží na jedné konfiguraci po celý život. Co volající dostane přes `WorklogUploadPlugins` nebo `GetPlugin`, si konfiguraci pod rukama nezmění, a plugin nemusí řešit výměnu klientů ani návrat k předchozímu stavu. Spouštění a zastavování se v `PluginManager` střídá přes jeden zámek, takže uložení Nastavení během startu aplikace nespustí jeden plugin dvakrát. Výměna na běžící volání nečeká, takže volání na staré instanci může selhat. Upload se s ní nepotká, protože dialogy odesílání a Nastavení se navzájem vylučují, a návrhy selhání hlásí po pluginech.
 
 `PluginBase` implementuje šablonové metody tak, že autor pluginu override‑uje jen hooks (`OnInitializeAsync`, `OnShutdownAsync`, `OnValidateConfigurationAsync`, `OnDisposeAsync`).
 
@@ -344,12 +356,14 @@ ViewModely jsou tenké — delegují akce na orchestrátory/services. Orchestrá
 public virtual async Task<bool> InitializeAsync(
     IDictionary<string, string>? config, CancellationToken ct)
 {
+    if (IsInitialized) { throw new InvalidOperationException(/* … */); }  // nová konfigurace = nová instance
+
     Configuration = config ?? new Dictionary<string, string>();
     var validation = await ValidateConfigurationAsync(Configuration, ct);
     if (!validation.IsValid) { /* log, return false */ }
 
     var ok = await OnInitializeAsync(Configuration, ct);    // hook
-    if (ok) { IsInitialized = true; }                       // neúspěšná reinicializace zachová předchozí stav
+    if (ok) { IsInitialized = true; }
     return ok;
 }
 ```

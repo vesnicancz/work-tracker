@@ -113,7 +113,7 @@ try
 			builder.Configuration,
 			pluginSettings.EnabledPlugins,
 			pluginSettings.PluginConfigurations,
-			plugin => requirements.Value.ShouldStart(plugin, providerId, pluginManager.WorklogUploadPlugins.Count()));
+			plugin => requirements.Value.ShouldStart(plugin, providerId, pluginManager.EnabledWorklogUploadPlugins.Count()));
 
 		foreach (var failed in failedPlugins)
 		{

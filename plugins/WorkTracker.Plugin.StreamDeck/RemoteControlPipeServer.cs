@@ -27,17 +27,11 @@ internal sealed class RemoteControlPipeServer(string pipeName, IRemoteControlHos
 
 	private readonly CancellationTokenSource _stopping = new();
 	private Task? _serving;
-	private volatile Action? _refreshState;
 
 	public void Start()
 	{
 		_serving = Task.Run(() => ServeAsync(_stopping.Token));
 	}
-
-	/// <summary>
-	/// Sends the state to the connected client, for changes the host does not know about.
-	/// </summary>
-	public void RefreshState() => _refreshState?.Invoke();
 
 	public async ValueTask DisposeAsync()
 	{
@@ -114,7 +108,6 @@ internal sealed class RemoteControlPipeServer(string pipeName, IRemoteControlHos
 		void OnStateChanged(object? sender, EventArgs e) => stateChanges.Writer.TryWrite(true);
 
 		host.StateChanged += OnStateChanged;
-		_refreshState = () => stateChanges.Writer.TryWrite(true);
 		stateChanges.Writer.TryWrite(true);
 		var pushing = PushStateAsync(pipe, writeLock, stateChanges.Reader, connection.Token);
 		var suggestionRequests = new List<Task>();
@@ -143,7 +136,6 @@ internal sealed class RemoteControlPipeServer(string pipeName, IRemoteControlHos
 		finally
 		{
 			host.StateChanged -= OnStateChanged;
-			_refreshState = null;
 			await connection.CancelAsync();
 			await Task.WhenAll(suggestionRequests);
 			await pushing;

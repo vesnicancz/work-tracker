@@ -85,15 +85,11 @@ public sealed class JiraSuggestionsPlugin(IHttpClientFactory httpClientFactory, 
 		_searchJqlFilter = string.IsNullOrWhiteSpace(searchJqlConfig) ? null : searchJqlConfig;
 		_maxResults = int.TryParse(GetConfigValue(ConfigKeys.MaxResults), out var max) ? max : 20;
 
-		var newClient = JiraClient.Create(
+		_jiraClient = JiraClient.Create(
 			_httpClientFactory,
 			GetRequiredConfigValue(JiraConfigFields.JiraBaseUrl),
 			GetRequiredConfigValue(JiraConfigFields.JiraEmail),
 			GetRequiredConfigValue(JiraConfigFields.JiraApiToken));
-
-		var oldClient = _jiraClient;
-		_jiraClient = newClient;
-		oldClient?.Dispose();
 
 		return Task.FromResult(true);
 	}

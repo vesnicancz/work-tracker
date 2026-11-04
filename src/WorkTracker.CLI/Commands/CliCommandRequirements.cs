@@ -42,9 +42,9 @@ public readonly record struct CliCommandRequirements(bool Database, CliPluginUse
 	/// <param name="plugin">The plugin in question.</param>
 	/// <param name="providerId">The plugin chosen with --provider, if any.</param>
 	/// <param name="enabledUploadPlugins">How many upload plugins are enabled. With several and none chosen the command fails anyway, and shouldn't connect to all of them first.</param>
-	public bool ShouldStart(IPlugin plugin, string? providerId, int enabledUploadPlugins)
+	public bool ShouldStart(IPluginDescriptor plugin, string? providerId, int enabledUploadPlugins)
 	{
-		if (Plugins != CliPluginUse.Upload || plugin is not IWorklogUploadPlugin)
+		if (Plugins != CliPluginUse.Upload || plugin is not IWorklogUploadPluginDescriptor)
 		{
 			return false;
 		}

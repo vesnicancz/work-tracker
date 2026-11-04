@@ -69,7 +69,7 @@ public class PluginBasedWorklogSubmissionServiceTests
 	[Fact]
 	public async Task SubmitDailyWorklogAsync_NoPluginAvailable_ReturnsFailure()
 	{
-		_mockPluginManager.Setup(p => p.WorklogUploadPlugins).Returns([]);
+		_mockPluginManager.Setup(p => p.EnabledWorklogUploadPlugins).Returns([]);
 
 		var result = await _sut.SubmitDailyWorklogAsync(DateTime.Today, TestContext.Current.CancellationToken);
 
@@ -82,7 +82,7 @@ public class PluginBasedWorklogSubmissionServiceTests
 	{
 		var tempo = CreateMockPlugin("tempo.worklog");
 		var goran = CreateMockPlugin("gorang3.worklog");
-		_mockPluginManager.Setup(p => p.WorklogUploadPlugins).Returns([tempo.Object, goran.Object]);
+		_mockPluginManager.Setup(p => p.EnabledWorklogUploadPlugins).Returns([tempo.Object, goran.Object]);
 
 		var daily = await _sut.SubmitDailyWorklogAsync(DateTime.Today, TestContext.Current.CancellationToken);
 		var weekly = await _sut.SubmitWeeklyWorklogAsync(DateTime.Today, TestContext.Current.CancellationToken);
@@ -99,7 +99,7 @@ public class PluginBasedWorklogSubmissionServiceTests
 	{
 		var date = new DateTime(2025, 1, 15);
 		var plugin = CreateMockPlugin();
-		_mockPluginManager.Setup(p => p.WorklogUploadPlugins).Returns([plugin.Object]);
+		_mockPluginManager.Setup(p => p.EnabledWorklogUploadPlugins).Returns([plugin.Object]);
 		_mockPluginManager.Setup(p => p.GetPlugin<IWorklogUploadPlugin>(TestPluginId)).Returns(plugin.Object);
 
 		var entries = new[]
@@ -126,7 +126,7 @@ public class PluginBasedWorklogSubmissionServiceTests
 	{
 		var date = new DateTime(2025, 1, 15);
 		var plugin = CreateMockPlugin();
-		_mockPluginManager.Setup(p => p.WorklogUploadPlugins).Returns([plugin.Object]);
+		_mockPluginManager.Setup(p => p.EnabledWorklogUploadPlugins).Returns([plugin.Object]);
 		_mockPluginManager.Setup(p => p.GetPlugin<IWorklogUploadPlugin>(TestPluginId)).Returns(plugin.Object);
 
 		var entries = new[] { CreateActiveEntry(1, "PROJ-1", date.AddHours(9)) };
@@ -380,7 +380,7 @@ public class PluginBasedWorklogSubmissionServiceTests
 	[Fact]
 	public async Task SubmitWeeklyWorklogAsync_NoPlugin_ReturnsFailure()
 	{
-		_mockPluginManager.Setup(p => p.WorklogUploadPlugins).Returns([]);
+		_mockPluginManager.Setup(p => p.EnabledWorklogUploadPlugins).Returns([]);
 
 		var result = await _sut.SubmitWeeklyWorklogAsync(DateTime.Today, TestContext.Current.CancellationToken);
 
@@ -407,7 +407,7 @@ public class PluginBasedWorklogSubmissionServiceTests
 		var weekEnd = new DateTime(2025, 1, 19); // Sunday
 		var plugin = CreateMockPlugin();
 
-		_mockPluginManager.Setup(p => p.WorklogUploadPlugins).Returns([plugin.Object]);
+		_mockPluginManager.Setup(p => p.EnabledWorklogUploadPlugins).Returns([plugin.Object]);
 		_mockPluginManager.Setup(p => p.GetPlugin<IWorklogUploadPlugin>(TestPluginId)).Returns(plugin.Object);
 		_mockDateRangeService.Setup(s => s.GetWeekRange(date)).Returns((weekStart, weekEnd));
 
@@ -541,7 +541,7 @@ public class PluginBasedWorklogSubmissionServiceTests
 	public void GetAvailableProviders_ReturnsEnabledPlugins()
 	{
 		var plugin = CreateMockPlugin("tempo", "Tempo");
-		_mockPluginManager.Setup(p => p.WorklogUploadPlugins).Returns([plugin.Object]);
+		_mockPluginManager.Setup(p => p.EnabledWorklogUploadPlugins).Returns([plugin.Object]);
 
 		var providers = _sut.GetAvailableProviders().ToList();
 
@@ -553,7 +553,7 @@ public class PluginBasedWorklogSubmissionServiceTests
 	[Fact]
 	public void GetAvailableProviders_NoPlugins_ReturnsEmpty()
 	{
-		_mockPluginManager.Setup(p => p.WorklogUploadPlugins).Returns([]);
+		_mockPluginManager.Setup(p => p.EnabledWorklogUploadPlugins).Returns([]);
 
 		_sut.GetAvailableProviders().Should().BeEmpty();
 	}
@@ -563,7 +563,7 @@ public class PluginBasedWorklogSubmissionServiceTests
 	{
 		var timedOnly = CreateMockPlugin("gorang3", "GoranG3", WorklogSubmissionMode.Timed);
 		var bothModes = CreateMockPlugin("tempo", "Tempo", WorklogSubmissionMode.Timed | WorklogSubmissionMode.Aggregated);
-		_mockPluginManager.Setup(p => p.WorklogUploadPlugins).Returns([timedOnly.Object, bothModes.Object]);
+		_mockPluginManager.Setup(p => p.EnabledWorklogUploadPlugins).Returns([timedOnly.Object, bothModes.Object]);
 
 		var providers = _sut.GetAvailableProviders().ToList();
 

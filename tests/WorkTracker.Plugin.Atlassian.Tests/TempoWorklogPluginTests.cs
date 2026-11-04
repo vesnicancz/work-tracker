@@ -362,22 +362,6 @@ public class TempoWorklogPluginTests : IAsyncDisposable
     }
 
     [Fact]
-    public async Task InitializeAsync_ReInitialization_WorksCorrectly()
-    {
-        await InitializePluginAsync();
-
-        // Re-initialize with the same config — should work without errors
-        await InitializePluginAsync();
-
-        // Plugin should still be functional
-        _httpHandler.SetupGet("/rest/api/3/issue/PROJ-123?fields=id", JiraIssueJson("PROJ-123", 10001));
-        _httpHandler.SetupPost("/4/worklogs", HttpStatusCode.OK, """{"tempoWorklogId": 1}""");
-
-        var result = await _plugin.UploadWorklogAsync(CreateWorklog(), CancellationToken.None);
-        result.IsSuccess.Should().BeTrue();
-    }
-
-    [Fact]
     public async Task InitializeAsync_AutoDetectFails_ReturnsFalse()
     {
         var configWithoutAccountId = new Dictionary<string, string>(ValidConfig);
@@ -396,30 +380,6 @@ public class TempoWorklogPluginTests : IAsyncDisposable
 
         result.Should().BeFalse();
         await plugin.DisposeAsync();
-    }
-
-    [Fact]
-    public async Task InitializeAsync_FailedReInit_PreservesOldState()
-    {
-        // First init succeeds
-        await InitializePluginAsync();
-
-        // Upload works
-        _httpHandler.SetupGet("/rest/api/3/issue/PROJ-123?fields=id", JiraIssueJson("PROJ-123", 10001));
-        _httpHandler.SetupPost("/4/worklogs", HttpStatusCode.OK, """{"tempoWorklogId": 1}""");
-        var firstResult = await _plugin.UploadWorklogAsync(CreateWorklog(), CancellationToken.None);
-        firstResult.IsSuccess.Should().BeTrue();
-
-        // Second init fails (auto-detect returns no accountId)
-        var badConfig = new Dictionary<string, string>(ValidConfig);
-        badConfig.Remove("JiraAccountId");
-        _httpHandler.SetupGet("/rest/api/3/myself", """{"displayName":"No Account Id"}""");
-        var initResult = await _plugin.InitializeAsync(badConfig, TestContext.Current.CancellationToken);
-        initResult.Should().BeFalse();
-
-        // Plugin should still work with the old clients
-        var secondResult = await _plugin.UploadWorklogAsync(CreateWorklog(), CancellationToken.None);
-        secondResult.IsSuccess.Should().BeTrue();
     }
 
     #endregion

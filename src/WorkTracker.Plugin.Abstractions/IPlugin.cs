@@ -1,9 +1,9 @@
 namespace WorkTracker.Plugin.Abstractions;
 
 /// <summary>
-/// Base interface for all WorkTracker plugins
+/// What can be asked of a plugin without starting it: what it is and what it needs to run.
 /// </summary>
-public interface IPlugin : IAsyncDisposable
+public interface IPluginDescriptor
 {
 	/// <summary>
 	/// Gets the plugin metadata
@@ -16,7 +16,24 @@ public interface IPlugin : IAsyncDisposable
 	IReadOnlyList<PluginConfigurationField> GetConfigurationFields();
 
 	/// <summary>
-	/// Initializes the plugin with configuration
+	/// Validates the plugin configuration
+	/// </summary>
+	/// <param name="configuration">Configuration to validate</param>
+	/// <param name="cancellationToken">Cancellation token</param>
+	/// <returns>Validation result with any error messages</returns>
+	Task<PluginValidationResult> ValidateConfigurationAsync(IDictionary<string, string> configuration, CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// Base interface for all WorkTracker plugins. An instance runs on one configuration for its whole life:
+/// the application initializes it once, and a new configuration means a new instance. The application
+/// also keeps an instance it never initializes, for what <see cref="IPluginDescriptor"/> offers, so the
+/// constructor must not connect to anything.
+/// </summary>
+public interface IPlugin : IPluginDescriptor, IAsyncDisposable
+{
+	/// <summary>
+	/// Initializes the plugin with configuration. Called at most once per instance.
 	/// </summary>
 	/// <param name="configuration">Plugin-specific configuration</param>
 	/// <param name="cancellationToken">Cancellation token</param>
@@ -24,15 +41,8 @@ public interface IPlugin : IAsyncDisposable
 	Task<bool> InitializeAsync(IDictionary<string, string>? configuration = null, CancellationToken cancellationToken = default);
 
 	/// <summary>
-	/// Called when the plugin is being unloaded
+	/// Called when the instance is no longer needed, also after an initialization that failed.
+	/// It isn't used again afterwards.
 	/// </summary>
 	Task ShutdownAsync();
-
-	/// <summary>
-	/// Validates the plugin configuration
-	/// </summary>
-	/// <param name="configuration">Configuration to validate</param>
-	/// <param name="cancellationToken">Cancellation token</param>
-	/// <returns>Validation result with any error messages</returns>
-	Task<PluginValidationResult> ValidateConfigurationAsync(IDictionary<string, string> configuration, CancellationToken cancellationToken = default);
 }

@@ -204,21 +204,6 @@ public class LuxaforStatusIndicatorPluginTests : IAsyncDisposable
 		device.LastColor.Should().BeNull();
 	}
 
-	[Fact]
-	public async Task InitializeAsync_TurnOffOnStartupTrue_OnReinitialize_DoesNotTurnOffAgain()
-	{
-		var device = new MockLuxaforDevice();
-		await using var plugin = CreatePluginWithMockDevice(device);
-		var config = new Dictionary<string, string>(ValidConfig) { ["turn_off_on_startup"] = "true" };
-
-		await plugin.InitializeAsync(config, TestContext.Current.CancellationToken);
-		device.TurnOffCallCount.Should().Be(1);
-
-		await plugin.InitializeAsync(config, TestContext.Current.CancellationToken);
-
-		device.TurnOffCallCount.Should().Be(1, "re-initialization must not turn off a running indicator");
-	}
-
 	#endregion
 
 	#region Device Availability

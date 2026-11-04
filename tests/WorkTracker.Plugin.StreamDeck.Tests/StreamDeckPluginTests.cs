@@ -62,30 +62,19 @@ public sealed class StreamDeckPluginTests : IAsyncLifetime
 	}
 
 	[Fact]
-	public async Task Detach_ClosesPipe()
+	public async Task Shutdown_ClosesPipe()
 	{
 		await _plugin.AttachAsync(_host.Object, TestToken);
 
-		await _plugin.DetachAsync();
+		await _plugin.ShutdownAsync();
 
 		(await CanConnectAsync()).Should().BeFalse();
 	}
 
 	[Fact]
-	public async Task Attach_AfterDetach_OpensPipeAgain()
+	public async Task Shutdown_WhenNeverAttached_DoesNothing()
 	{
-		await _plugin.AttachAsync(_host.Object, TestToken);
-		await _plugin.DetachAsync();
-
-		await _plugin.AttachAsync(_host.Object, TestToken);
-
-		(await CanConnectAsync()).Should().BeTrue();
-	}
-
-	[Fact]
-	public async Task Detach_WhenNeverAttached_DoesNothing()
-	{
-		await _plugin.Invoking(p => p.DetachAsync()).Should().NotThrowAsync();
+		await _plugin.Invoking(p => p.ShutdownAsync()).Should().NotThrowAsync();
 	}
 
 	[Fact]
@@ -108,22 +97,6 @@ public sealed class StreamDeckPluginTests : IAsyncLifetime
 		await ConnectAndReadStateAsync();
 
 		_host.Verify(h => h.GetStateAsync(TimeSpan.FromDays(3), It.IsAny<CancellationToken>()), Times.Once);
-	}
-
-	[Fact]
-	public async Task Reinitialize_WithNewWindow_PushesStateToConnectedClient()
-	{
-		await _plugin.InitializeAsync(new Dictionary<string, string> { ["resume_window_days"] = "3" }, TestToken);
-		await _plugin.AttachAsync(_host.Object, TestToken);
-		await using var client = new NamedPipeClientStream(".", _pipeName, PipeDirection.InOut, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
-		await client.ConnectAsync(TestToken);
-		using var reader = new StreamReader(client, leaveOpen: true);
-		await reader.ReadLineAsync(TestToken);
-
-		await _plugin.InitializeAsync(new Dictionary<string, string> { ["resume_window_days"] = "14" }, TestToken);
-		await reader.ReadLineAsync(TestToken);
-
-		_host.Verify(h => h.GetStateAsync(TimeSpan.FromDays(14), It.IsAny<CancellationToken>()), Times.Once);
 	}
 
 	[Theory]

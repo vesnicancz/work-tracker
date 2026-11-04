@@ -52,6 +52,8 @@ public sealed class PomodoroService : IPomodoroService, IAsyncDisposable
 		_localization = localization;
 		_timeProvider = timeProvider;
 		_logger = logger;
+
+		_pluginManager.PluginStarted += OnPluginStarted;
 	}
 
 	public PomodoroPhase CurrentPhase => _currentPhase;
@@ -292,15 +294,33 @@ public sealed class PomodoroService : IPomodoroService, IAsyncDisposable
 		PhaseChanged?.Invoke(this, newPhase);
 	}
 
+	/// <summary>
+	/// A status indicator that just started knows nothing about the phase: it was enabled or reconfigured
+	/// during a Pomodoro, or a connection test put it aside for a moment. With no Pomodoro running there is
+	/// nothing to show, and the device stays as the plugin left it.
+	/// </summary>
+	private void OnPluginStarted(object? sender, IPlugin plugin)
+	{
+		var phase = _currentPhase;
+		if (_disposed || phase == PomodoroPhase.Idle || plugin is not IStatusIndicatorPlugin indicator)
+		{
+			return;
+		}
+
+		FireAndForget(SetPluginStateSafe(indicator, ToIndicatorState(phase), phase));
+	}
+
+	private static StatusIndicatorState ToIndicatorState(PomodoroPhase phase) => phase switch
+	{
+		PomodoroPhase.Work => StatusIndicatorState.Work,
+		PomodoroPhase.ShortBreak => StatusIndicatorState.ShortBreak,
+		PomodoroPhase.LongBreak => StatusIndicatorState.LongBreak,
+		_ => StatusIndicatorState.Idle
+	};
+
 	private async Task SetStatusIndicatorsForPhaseAsync(PomodoroPhase phase)
 	{
-		var state = phase switch
-		{
-			PomodoroPhase.Work => StatusIndicatorState.Work,
-			PomodoroPhase.ShortBreak => StatusIndicatorState.ShortBreak,
-			PomodoroPhase.LongBreak => StatusIndicatorState.LongBreak,
-			_ => StatusIndicatorState.Idle
-		};
+		var state = ToIndicatorState(phase);
 
 		var tasks = _pluginManager.StatusIndicatorPlugins
 			.Select(plugin => SetPluginStateSafe(plugin, state, phase));
@@ -486,6 +506,7 @@ public sealed class PomodoroService : IPomodoroService, IAsyncDisposable
 
 		_disposed = true;
 
+		_pluginManager.PluginStarted -= OnPluginStarted;
 		StopTimer();
 
 		// Best-effort: turn off indicators with a timeout to avoid blocking app shutdown

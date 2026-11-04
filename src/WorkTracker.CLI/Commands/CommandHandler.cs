@@ -315,7 +315,7 @@ public sealed class CommandHandler
 	{
 		try
 		{
-			var enabledIds = _pluginManager.WorklogUploadPlugins
+			var enabledIds = _pluginManager.EnabledWorklogUploadPlugins
 				.Select(p => p.Metadata.Id)
 				.ToHashSet(StringComparer.OrdinalIgnoreCase);
 

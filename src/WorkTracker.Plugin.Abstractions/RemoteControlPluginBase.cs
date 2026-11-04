@@ -8,6 +8,4 @@ namespace WorkTracker.Plugin.Abstractions;
 public abstract class RemoteControlPluginBase(ILogger logger) : PluginBase(logger), IRemoteControlPlugin
 {
 	public abstract Task AttachAsync(IRemoteControlHost host, CancellationToken cancellationToken);
-
-	public abstract Task DetachAsync();
 }
