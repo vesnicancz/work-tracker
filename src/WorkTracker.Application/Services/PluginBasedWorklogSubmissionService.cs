@@ -43,18 +43,18 @@ public sealed class PluginBasedWorklogSubmissionService : IWorklogSubmissionServ
 
 	public async Task<Result<SubmissionResult>> SubmitDailyWorklogAsync(DateTime date, CancellationToken cancellationToken)
 	{
-		var plugin = ResolvePlugin(null);
-		if (plugin == null)
+		var plugin = ResolveOnlyPlugin();
+		if (plugin.IsFailure)
 		{
-			return Result.Failure<SubmissionResult>("No worklog upload plugin available");
+			return Result.Failure<SubmissionResult>(plugin);
 		}
 
-		return await SubmitDailyWorklogAsync(date, plugin.Metadata.Id, cancellationToken);
+		return await SubmitDailyWorklogAsync(date, plugin.Value.Metadata.Id, cancellationToken);
 	}
 
 	public async Task<Result<SubmissionResult>> SubmitDailyWorklogAsync(DateTime date, string providerId, CancellationToken cancellationToken)
 	{
-		var plugin = ResolvePlugin(providerId);
+		var plugin = _pluginManager.GetPlugin<IWorklogUploadPlugin>(providerId);
 		if (plugin == null)
 		{
 			return Result.Failure<SubmissionResult>($"Plugin '{providerId}' not found");
@@ -83,18 +83,18 @@ public sealed class PluginBasedWorklogSubmissionService : IWorklogSubmissionServ
 
 	public async Task<Result<SubmissionResult>> SubmitWeeklyWorklogAsync(DateTime date, CancellationToken cancellationToken)
 	{
-		var plugin = ResolvePlugin(null);
-		if (plugin == null)
+		var plugin = ResolveOnlyPlugin();
+		if (plugin.IsFailure)
 		{
-			return Result.Failure<SubmissionResult>("No worklog upload plugin available");
+			return Result.Failure<SubmissionResult>(plugin);
 		}
 
-		return await SubmitWeeklyWorklogAsync(date, plugin.Metadata.Id, cancellationToken);
+		return await SubmitWeeklyWorklogAsync(date, plugin.Value.Metadata.Id, cancellationToken);
 	}
 
 	public async Task<Result<SubmissionResult>> SubmitWeeklyWorklogAsync(DateTime date, string providerId, CancellationToken cancellationToken)
 	{
-		var plugin = ResolvePlugin(providerId);
+		var plugin = _pluginManager.GetPlugin<IWorklogUploadPlugin>(providerId);
 		if (plugin == null)
 		{
 			return Result.Failure<SubmissionResult>($"Plugin '{providerId}' not found");
@@ -153,7 +153,7 @@ public sealed class PluginBasedWorklogSubmissionService : IWorklogSubmissionServ
 			return Result.Failure<SubmissionResult>($"Invalid submission mode '{mode}' — must be exactly Timed or Aggregated");
 		}
 
-		var plugin = ResolvePlugin(providerId);
+		var plugin = _pluginManager.GetPlugin<IWorklogUploadPlugin>(providerId);
 		if (plugin == null)
 		{
 			return Result.Failure<SubmissionResult>($"Plugin '{providerId}' not found");
@@ -172,14 +172,20 @@ public sealed class PluginBasedWorklogSubmissionService : IWorklogSubmissionServ
 		return await ValidateAndUploadAsync(plugin, worklogList, mode, cancellationToken);
 	}
 
-	private IWorklogUploadPlugin? ResolvePlugin(string? providerId)
+	/// <summary>
+	/// The plugin to use when the caller named none. With several enabled there is no telling which one
+	/// was meant, and worklogs in the wrong system can't be taken back, so this doesn't pick one.
+	/// </summary>
+	private Result<IWorklogUploadPlugin> ResolveOnlyPlugin()
 	{
-		if (providerId == null)
-		{
-			return _pluginManager.WorklogUploadPlugins.FirstOrDefault();
-		}
+		var plugins = _pluginManager.WorklogUploadPlugins.ToList();
 
-		return _pluginManager.GetPlugin<IWorklogUploadPlugin>(providerId);
+		return plugins.Count switch
+		{
+			0 => Result.Failure<IWorklogUploadPlugin>("No worklog upload plugin available"),
+			1 => Result.Success(plugins[0]),
+			_ => Result.Failure<IWorklogUploadPlugin>($"Several worklog upload plugins are enabled, choose one: {string.Join(", ", plugins.Select(p => p.Metadata.Id))}")
+		};
 	}
 
 	private async Task<Result<SubmissionResult>> SubmitWorklogsInternalAsync(

@@ -22,6 +22,7 @@ public class SettingsOrchestratorTests
 	private readonly Mock<IAutostartManager> _mockAutostartManager;
 	private readonly Mock<ITrayIconService> _mockTrayIconService;
 	private readonly Mock<IRemoteControlCoordinator> _mockRemoteControlCoordinator = new();
+	private readonly Mock<IWorkSuggestionCache> _mockSuggestionCache = new();
 	private readonly Mock<INotificationService> _mockNotificationService = new();
 	private readonly Mock<ILocalizationService> _mockLocalization = new();
 	private readonly SettingsOrchestrator _orchestrator;
@@ -54,6 +55,7 @@ public class SettingsOrchestratorTests
 			_mockAutostartManager.Object,
 			_mockTrayIconService.Object,
 			_mockRemoteControlCoordinator.Object,
+			_mockSuggestionCache.Object,
 			_mockNotificationService.Object,
 			_mockLocalization.Object,
 			new Mock<ILogger<SettingsOrchestrator>>().Object);
@@ -175,6 +177,19 @@ public class SettingsOrchestratorTests
 		_mockAutostartManager.Verify(a => a.SetAutostart(true), Times.Once);
 		_mockTrayIconService.Verify(t => t.RefreshFavoritesMenu(), Times.Once);
 		_mockNotificationService.Verify(n => n.ShowError(It.IsAny<string>()), Times.Never);
+	}
+
+	[Fact]
+	public async Task SaveSettingsAsync_DropsCachedSuggestions()
+	{
+		await _orchestrator.SaveSettingsAsync(new SettingsSaveRequest
+		{
+			CloseWindowBehavior = CloseWindowBehavior.MinimizeToTray,
+			FavoriteWorkItems = new List<FavoriteWorkItem>(),
+			Plugins = new List<PluginViewModel>()
+		}, TestContext.Current.CancellationToken);
+
+		_mockSuggestionCache.Verify(c => c.Invalidate(), Times.Once);
 	}
 
 	[Fact]

@@ -806,6 +806,12 @@ Neither is your timesheet.</value>
   <data name="RemotePomodoroDisabled" xml:space="preserve">
     <value>Pomodoro is turned off in the settings.</value>
   </data>
+  <data name="PomodoroAutoStartFailed" xml:space="preserve">
+    <value>Pomodoro could not start tracking work: {0}</value>
+  </data>
+  <data name="PomodoroAutoStopFailed" xml:space="preserve">
+    <value>Pomodoro could not stop tracking work: {0}</value>
+  </data>
   <data name="TrayStopWorkFailed" xml:space="preserve">
     <value>Could not stop work: {0}</value>
   </data>

@@ -806,6 +806,12 @@ Váš výkaz práce také ne.</value>
   <data name="RemotePomodoroDisabled" xml:space="preserve">
     <value>Pomodoro je v nastavení vypnuté.</value>
   </data>
+  <data name="PomodoroAutoStartFailed" xml:space="preserve">
+    <value>Pomodoro nedokázalo spustit sledování práce: {0}</value>
+  </data>
+  <data name="PomodoroAutoStopFailed" xml:space="preserve">
+    <value>Pomodoro nedokázalo zastavit sledování práce: {0}</value>
+  </data>
   <data name="TrayStopWorkFailed" xml:space="preserve">
     <value>Práci se nepodařilo zastavit: {0}</value>
   </data>
