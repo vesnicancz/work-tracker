@@ -1,6 +1,8 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Labs.Notifications;
+using WorkTracker.Application;
+using WorkTracker.Avalonia.Services;
 using WorkTracker.Avalonia.Services.Linux;
 
 namespace WorkTracker.Avalonia;
@@ -23,13 +25,24 @@ class Program
 		}
 #endif
 
+		using var instanceGuard = SingleInstanceGuard.TryAcquire(WorkTrackerPaths.AppDataDirectory);
+		if (instanceGuard == null)
+		{
+			// Started again, most likely from the shortcut while it runs in the tray. There is no window
+			// here yet to say anything from, and the window that comes forward says it well enough.
+			SingleInstanceGuard.SignalRunningInstance(WorkTrackerPaths.AppDataDirectory, TimeSpan.FromSeconds(2));
+			return;
+		}
+
 		// OnExplicitShutdown: this is a tray-resident app whose main window may never be shown
 		// (StartMinimized) and is only hidden when closed, so it is not in the lifetime's window
 		// list. Under the default OnLastWindowClose a dialog opened from the tray menu would be
 		// the only listed window and closing it would end the process. Every exit path calls
 		// Shutdown() explicitly: the tray "Exit" item, MainWindow closing with
 		// CloseWindowBehavior.Exit, and the unrecoverable-startup-error path in App.
-		BuildAvaloniaApp().StartWithClassicDesktopLifetime(args, ShutdownMode.OnExplicitShutdown);
+		BuildAvaloniaApp()
+			.AfterSetup(builder => ((App)builder.Instance!).InstanceGuard = instanceGuard)
+			.StartWithClassicDesktopLifetime(args, ShutdownMode.OnExplicitShutdown);
 
 		// Main loop has exited — tear down the host (plugins, DB, logging) here instead of
 		// in a ShutdownRequested handler: an async handler cannot be awaited by the lifetime,

@@ -689,7 +689,7 @@ Luxafor integrace je dokumentovaná v [plugins/luxafor.md](plugins/luxafor.md).
 
 ### System tray
 
-WorkTracker je navržený jako **rezidentní aplikace v system tray** (oznamovací oblasti). Po spuštění přidá ikonu do trayové lišty a žije tam po celou dobu, dokud aplikaci explicitně neukončíš. Zavření hlavního okna aplikaci standardně neukončí — jen ji schová do tray (nastavitelné v **Nastavení → Obecné → Chování okna**).
+WorkTracker je navržený jako **rezidentní aplikace v system tray** (oznamovací oblasti). Po spuštění přidá ikonu do trayové lišty a žije tam po celou dobu, dokud aplikaci explicitně neukončíš. Zavření hlavního okna aplikaci standardně neukončí — jen ji schová do tray (nastavitelné v **Nastavení → Obecné → Chování okna**). Běží vždy jen jedna instance: když aplikaci spustíš znovu, třeba zástupcem, nová instance se ukončí a běžící ukáže své okno.
 
 Díky tomu je WorkTracker vždy „po ruce“: stav běžícího záznamu vidíš v ikoně, novou práci nebo favorite spustíš jedním klikem, a hlavní okno otvíráš jen když potřebuješ detailní přehled.
 
