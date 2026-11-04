@@ -229,7 +229,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 			var result = await _worklogStateService.StartTrackingAsync(DetectedTicketId, DetectedDescription, _cts.Token);
 			if (result.IsFailure)
 			{
-				await _dialogService.ShowErrorAsync(result.Error);
+				await _dialogService.ShowErrorAsync(_localization.LocalizeError(result));
 				return;
 			}
 			WorkInput = string.Empty;
@@ -252,7 +252,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 			var result = await _worklogStateService.StopTrackingAsync(_cts.Token);
 			if (result.IsFailure)
 			{
-				await _dialogService.ShowErrorAsync(result.Error);
+				await _dialogService.ShowErrorAsync(_localization.LocalizeError(result));
 				return;
 			}
 			_notificationService.ShowSuccess(_localization["WorkTrackingStopped"]);
@@ -325,7 +325,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 				var result = await _worklogStateService.DeleteWorkEntryAsync(workEntry.Id, _cts.Token);
 				if (result.IsFailure)
 				{
-					await _dialogService.ShowErrorAsync(result.Error);
+					await _dialogService.ShowErrorAsync(_localization.LocalizeError(result));
 					return;
 				}
 
@@ -354,7 +354,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 			if (result.IsFailure)
 			{
 				_logger.LogWarning("Failed to restart work from history: {Error}", result.Error);
-				await _dialogService.ShowErrorAsync(result.Error);
+				await _dialogService.ShowErrorAsync(_localization.LocalizeError(result));
 				return;
 			}
 			if (result.Value)

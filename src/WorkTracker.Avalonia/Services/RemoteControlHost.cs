@@ -339,8 +339,8 @@ public sealed class RemoteControlHost : IRemoteControlHost
 		_ => StatusIndicatorState.Idle
 	};
 
-	private static PluginResult ToPluginResult(Result result)
+	private PluginResult ToPluginResult(Result result)
 	{
-		return result.IsSuccess ? PluginResult.Success() : PluginResult.Failure(result.Error, PluginErrorCategory.Validation);
+		return result.IsSuccess ? PluginResult.Success() : PluginResult.Failure(_localization.LocalizeError(result), PluginErrorCategory.Validation);
 	}
 }

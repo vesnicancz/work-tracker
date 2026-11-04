@@ -812,4 +812,25 @@ Neither is your timesheet.</value>
   <data name="TrayStartFavoriteFailed" xml:space="preserve">
     <value>Could not start {0}: {1}</value>
   </data>
+  <data name="ErrorInvalidEntry" xml:space="preserve">
+    <value>Fill in a ticket or a description.</value>
+  </data>
+  <data name="ErrorInvalidEntryAfterUpdate" xml:space="preserve">
+    <value>Fill in a ticket or a description, and make sure the end is after the start.</value>
+  </data>
+  <data name="ErrorOverlap" xml:space="preserve">
+    <value>This entry overlaps with an existing one. Please check the times.</value>
+  </data>
+  <data name="ErrorPlanOutdated" xml:space="preserve">
+    <value>Other entries changed in the meantime. Nothing was saved, please try again.</value>
+  </data>
+  <data name="ErrorNoActiveWork" xml:space="preserve">
+    <value>No work is being tracked.</value>
+  </data>
+  <data name="ErrorInvalidEndTime" xml:space="preserve">
+    <value>The end must be after the start.</value>
+  </data>
+  <data name="ErrorNotFound" xml:space="preserve">
+    <value>The entry no longer exists.</value>
+  </data>
 </root>
