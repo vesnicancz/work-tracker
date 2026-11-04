@@ -293,7 +293,16 @@
     <value>Odesílání...</value>
   </data>
   <data name="RetryFailed" xml:space="preserve">
-    <value>ZNOVU ODESLAT</value>
+    <value>ODESLAT JEN NEÚSPĚŠNÉ</value>
+  </data>
+  <data name="RetryFailedToolTip" xml:space="preserve">
+    <value>Odešle jen červeně označené záznamy, které jsou pořád zaškrtnuté. Ostatní se znovu neodešlou.</value>
+  </data>
+  <data name="ResubmitAll" xml:space="preserve">
+    <value>ODESLAT VŠE ZNOVU</value>
+  </data>
+  <data name="ResubmitAllToolTip" xml:space="preserve">
+    <value>Odešle znovu všechny zaškrtnuté záznamy, včetně těch, které už se odeslaly. V cílovém systému tak mohou vzniknout duplicity.</value>
   </data>
   <data name="RetryingFailed" xml:space="preserve">
     <value>Odesílání neúspěšných záznamů...</value>

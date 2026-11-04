@@ -327,10 +327,14 @@ public class SubmitWorklogViewModelTests
 			.ReturnsAsync(new SubmissionOutcome(AllSucceeded: false, HasFailedItems: true, StatusMessage: "1 failed"));
 		using var vm = harness.CreateViewModel();
 		await vm.InitializeAsync(LocalNow.Date, isWeek: false);
+		vm.SubmitLabel.Should().Be("Submit");
+		vm.SubmitToolTip.Should().BeNull();
 
 		await vm.SendCommand.ExecuteAsync(null);
 		item.HasError = true;
 
+		vm.SubmitLabel.Should().Be("ResubmitAll", "the button sends the rows that already went through as well");
+		vm.SubmitToolTip.Should().Be("ResubmitAllToolTip");
 		vm.HasFailedItems.Should().BeTrue();
 		vm.StatusMessage.Should().Be("1 failed");
 		vm.RetryFailedCommand.CanExecute(null).Should().BeTrue();

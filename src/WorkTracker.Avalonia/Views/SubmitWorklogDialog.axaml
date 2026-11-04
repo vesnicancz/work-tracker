@@ -292,6 +292,7 @@
 
                         <Button Command="{Binding RetryFailedCommand}"
                                 IsVisible="{Binding HasFailedItems}"
+                                ToolTip.Tip="{markup:Localize RetryFailedToolTip}"
                                 Padding="20,8"
                                 Classes="warning">
                             <StackPanel Orientation="Horizontal" Spacing="6">
@@ -302,6 +303,7 @@
                         </Button>
 
                         <Button Command="{Binding SendCommand}"
+                                ToolTip.Tip="{Binding SubmitToolTip}"
                                 Padding="20,8"
                                 Classes="accent">
                             <StackPanel Orientation="Horizontal" Spacing="6">
@@ -310,7 +312,7 @@
                                 <ProgressBar IsVisible="{Binding IsSending}"
                                              IsIndeterminate="True"
                                              Width="16" Height="16" />
-                                <TextBlock Text="{markup:Localize Submit}" IsVisible="{Binding !IsSending}"
+                                <TextBlock Text="{Binding SubmitLabel}" IsVisible="{Binding !IsSending}"
                                            FontWeight="SemiBold" />
                                 <TextBlock Text="{markup:Localize Submitting}" IsVisible="{Binding IsSending}" />
                             </StackPanel>

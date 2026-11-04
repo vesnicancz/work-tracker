@@ -119,7 +119,7 @@ Pokud je plugin už připojený k MCP serveru, kroky 1 a 2 se přeskočí.
 
 Plugin inzeruje pouze `SupportedModes = Timed` (výchozí z `WorklogUploadPluginBase`). Goran G3 MCP vyžaduje pro každý záznam volání `create_my_timesheet_item` s reálným `start_time` a pak finální `submit_my_timesheet` — tato sekvence neumožňuje agregaci více záznamů do jednoho per kód+popis. Když v submission dialogu vybereš GoranG3, volba **Agregovaný** je neaktivní a mód se přepne na **Časový**.
 
-**Retry** — plugin **neretryne** automaticky. Pokud dojde k síťové chybě, záznam skončí v `Errors` a uživatel může kliknout **Znovu odeslat** v dialogu.
+**Retry** — plugin **neretryne** automaticky. Pokud dojde k síťové chybě, záznam skončí v `Errors` a uživatel může kliknout **ODESLAT JEN NEÚSPĚŠNÉ** v dialogu.
 
 Důvod: Goran G3 MCP zatím nemá idempotency token, takže retry by mohl vytvořit duplicitní záznamy. Jakmile bude idempotency, retry logika se doplní.
 
