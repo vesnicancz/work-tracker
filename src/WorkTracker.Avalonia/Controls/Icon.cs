@@ -1,3 +1,4 @@
+using WorkTracker.Avalonia.Services;
 using System;
 using System.Collections.Generic;
 using Avalonia;
@@ -67,11 +68,11 @@ public class Icon : ContentControl
 		AttachedToVisualTree += (_, _) =>
 		{
 			UpdateContent();
-			App.ThemeChanged += OnThemeChanged;
+			ThemeManager.ThemeChanged += OnThemeChanged;
 		};
 		DetachedFromVisualTree += (_, _) =>
 		{
-			App.ThemeChanged -= OnThemeChanged;
+			ThemeManager.ThemeChanged -= OnThemeChanged;
 		};
 	}
 

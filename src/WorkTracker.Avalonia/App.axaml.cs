@@ -1,9 +1,7 @@
 using System.Runtime.InteropServices;
-using System.Text.Json;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
-using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Threading;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -27,13 +25,7 @@ public partial class App : global::Avalonia.Application
 {
 	private IHost? _host;
 	private IHotkeyService? _hotkeyService;
-
-	// Active theme-mode state used to react to OS theme changes
-	private static bool s_followSystemTheme;
-	private static string s_singleTheme = ApplicationSettings.DefaultTheme;
-	private static string s_lightTheme = ThemeCatalog.DefaultLightTheme;
-	private static string s_darkTheme = ThemeCatalog.DefaultDarkTheme;
-	private static bool s_systemListenerHooked;
+	private Task _pluginStartup = Task.CompletedTask;
 
 	public override void Initialize()
 	{
@@ -49,11 +41,12 @@ public partial class App : global::Avalonia.Application
 		if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
 		{
 			// Read theme, language and startMinimized directly from settings.json (fast, no DI needed)
-			var (theme, followSystemTheme, lightTheme, darkTheme, startMinimized, language) = ReadEarlySettings();
+			var earlySettings = EarlySettings.Read(WorkTrackerPaths.SettingsFilePath);
+			var startMinimized = earlySettings.StartMinimized;
 			// Before the first window is constructed - markup extensions resolve against this culture,
 			// so applying it later would flash the previous language.
-			localization.ApplyLanguage(language);
-			ApplyThemeMode(followSystemTheme, theme, lightTheme, darkTheme);
+			localization.ApplyLanguage(earlySettings.Language);
+			ThemeManager.ApplyThemeMode(earlySettings.FollowSystemTheme, earlySettings.Theme, earlySettings.LightTheme, earlySettings.DarkTheme);
 			ApplyNativeWindowChrome();
 
 			if (!startMinimized)
@@ -220,7 +213,7 @@ public partial class App : global::Avalonia.Application
 		var pluginLogger = _host.Services.GetRequiredService<ILoggerFactory>().CreateLogger<App>();
 		var configuration = _host.Services.GetRequiredService<IConfiguration>();
 		var notificationService = _host.Services.GetRequiredService<INotificationService>();
-		_ = Task.Run(async () =>
+		_pluginStartup = Task.Run(async () =>
 		{
 			try
 			{
@@ -351,52 +344,6 @@ public partial class App : global::Avalonia.Application
 		services.AddTransient<SettingsViewModel>();
 	}
 
-	/// <summary>
-	/// Reads theme/follow-system/light/dark + startMinimized + language directly from settings.json
-	/// without DI. This allows showing the correctly themed window before Host.Build() completes.
-	/// </summary>
-	private static (string theme, bool followSystemTheme, string lightTheme, string darkTheme, bool startMinimized, string language) ReadEarlySettings()
-	{
-		var defaults = (
-			theme: ApplicationSettings.DefaultTheme,
-			followSystemTheme: false,
-			lightTheme: ThemeCatalog.DefaultLightTheme,
-			darkTheme: ThemeCatalog.DefaultDarkTheme,
-			startMinimized: false,
-			language: LanguageCatalog.SystemLanguage);
-
-		try
-		{
-			var settingsPath = WorkTrackerPaths.SettingsFilePath;
-
-			if (!File.Exists(settingsPath))
-			{
-				return defaults;
-			}
-
-			using var stream = File.OpenRead(settingsPath);
-			using var doc = JsonDocument.Parse(stream);
-			var root = doc.RootElement;
-
-			var theme = root.TryGetProperty("Theme", out var t) ? t.GetString() ?? defaults.theme : defaults.theme;
-			var followSystem = root.TryGetProperty("FollowSystemTheme", out var f) && f.GetBoolean();
-			var lightTheme = root.TryGetProperty("LightTheme", out var lt) ? lt.GetString() ?? defaults.lightTheme : defaults.lightTheme;
-			var darkTheme = root.TryGetProperty("DarkTheme", out var dt) ? dt.GetString() ?? defaults.darkTheme : defaults.darkTheme;
-			var startMinimized = root.TryGetProperty("StartMinimized", out var s) && s.GetBoolean();
-			// ValueKind guard: a non-string Language (hand-edited, or written by another tool) would
-			// throw from GetString and drop this whole method into its catch, losing the theme too.
-			var language = root.TryGetProperty("Language", out var lang) && lang.ValueKind == JsonValueKind.String
-				? lang.GetString() ?? defaults.language
-				: defaults.language;
-
-			return (theme, followSystem, lightTheme, darkTheme, startMinimized, language);
-		}
-		catch
-		{
-			return defaults;
-		}
-	}
-
 	private async void OnHotkeyPressed(object? sender, EventArgs e)
 	{
 		try
@@ -434,8 +381,11 @@ public partial class App : global::Avalonia.Application
 
 			var pluginManager = _host.Services.GetRequiredService<IPluginManager>();
 			var host = _host;
+			var pluginStartup = _pluginStartup;
 			var teardown = Task.Run(async () =>
 			{
+				// Disposing plugins that are still starting would leave them half set up
+				await pluginStartup;
 				await pluginManager.DisposeAsync();
 				await host.StopAsync();
 			});
@@ -479,22 +429,6 @@ public partial class App : global::Avalonia.Application
 	}
 
 	/// <summary>
-	/// Applies the current theme based on whether the user wants to follow the OS day/night
-	/// setting or stick to a single named theme. Also wires up (or removes) the system listener
-	/// so OS changes propagate while in follow-system mode.
-	/// </summary>
-	public static void ApplyThemeMode(bool followSystemTheme, string singleTheme, string lightTheme, string darkTheme)
-	{
-		s_followSystemTheme = followSystemTheme;
-		s_singleTheme = singleTheme;
-		s_lightTheme = lightTheme;
-		s_darkTheme = darkTheme;
-
-		EnsureSystemThemeListener();
-		SwitchTheme(ResolveEffectiveTheme());
-	}
-
-	/// <summary>
 	/// On macOS the windows keep their native frame (traffic lights, shadow, rounded corners) and
 	/// extend their content under the title bar, so the self-drawn frame has to step aside. The
 	/// values go into the application's own resources rather than a merged dictionary: own entries
@@ -517,106 +451,4 @@ public partial class App : global::Avalonia.Application
 		Resources["DialogBoxShadow"] = default(global::Avalonia.Media.BoxShadows);
 		Resources["ShowDialogTitleBar"] = true;
 	}
-
-	/// <summary>
-	/// Applies a single theme immediately and switches the app out of follow-system mode.
-	/// Used by the settings preview when the user changes the single-theme dropdown.
-	/// </summary>
-	public static void SwitchTheme(string themeName)
-	{
-		var app = (App)global::Avalonia.Application.Current!;
-		var resources = app.Resources as global::Avalonia.Controls.ResourceDictionary;
-		if (resources?.MergedDictionaries == null)
-		{
-			return;
-		}
-
-		// Remove the currently loaded theme dictionary, if any.
-		// _Defaults.axaml is the contract fallback and stays loaded; only the active theme
-		// is swapped out so its keys layer on top of (override) the defaults.
-		var existing = resources.MergedDictionaries
-			.OfType<ResourceInclude>()
-			.FirstOrDefault(r =>
-			{
-				var src = r.Source?.ToString();
-				return src != null
-					&& src.Contains("/Themes/")
-					&& !src.Contains("_Defaults.axaml");
-			});
-		if (existing != null)
-		{
-			resources.MergedDictionaries.Remove(existing);
-		}
-
-		// Resolve the URI for the requested theme
-		var uri = themeName switch
-		{
-			"Light" => new Uri("avares://WorkTracker.Avalonia/Resources/Themes/OneLightTheme.axaml"),
-			"Purple" => new Uri("avares://WorkTracker.Avalonia/Resources/Themes/PurpleTheme.axaml"),
-			"Midnight" => new Uri("avares://WorkTracker.Avalonia/Resources/Themes/MidnightTheme.axaml"),
-			"Abyss" => new Uri("avares://WorkTracker.Avalonia/Resources/Themes/Abyss.axaml"),
-			"Cobalt" => new Uri("avares://WorkTracker.Avalonia/Resources/Themes/Cobalt.axaml"),
-			"Coral" => new Uri("avares://WorkTracker.Avalonia/Resources/Themes/Coral.axaml"),
-			"Eclipse" => new Uri("avares://WorkTracker.Avalonia/Resources/Themes/Eclipse.axaml"),
-			"Sandstone" => new Uri("avares://WorkTracker.Avalonia/Resources/Themes/Sandstone.axaml"),
-			"Synthwave" => new Uri("avares://WorkTracker.Avalonia/Resources/Themes/Synthwave.axaml"),
-			ApplicationSettings.DefaultTheme => new Uri("avares://WorkTracker.Avalonia/Resources/Themes/ModernBlueTheme.axaml"),
-			_ => new Uri("avares://WorkTracker.Avalonia/Resources/Themes/OneDarkTheme.axaml")
-		};
-		resources.MergedDictionaries.Add(new ResourceInclude(uri) { Source = uri });
-
-		// Keep Avalonia's built-in FluentTheme variant in sync for native controls
-		app.RequestedThemeVariant = ThemeCatalog.IsLight(themeName)
-			? global::Avalonia.Styling.ThemeVariant.Light
-			: global::Avalonia.Styling.ThemeVariant.Dark;
-
-		ThemeChanged?.Invoke(app, EventArgs.Empty);
-	}
-
-	/// <summary>
-	/// Subscribes to OS color-mode changes once. The handler re-applies the current theme
-	/// mode, which picks light/dark when in follow-system mode and is a no-op otherwise.
-	/// </summary>
-	private static void EnsureSystemThemeListener()
-	{
-		if (s_systemListenerHooked)
-		{
-			return;
-		}
-
-		var app = (App?)global::Avalonia.Application.Current;
-		var platform = app?.PlatformSettings;
-		if (platform == null)
-		{
-			return;
-		}
-
-		platform.ColorValuesChanged += (_, _) =>
-		{
-			if (!s_followSystemTheme)
-			{
-				return;
-			}
-
-			Dispatcher.UIThread.Post(() => SwitchTheme(ResolveEffectiveTheme()));
-		};
-
-		s_systemListenerHooked = true;
-	}
-
-	private static string ResolveEffectiveTheme()
-	{
-		if (!s_followSystemTheme)
-		{
-			return s_singleTheme;
-		}
-
-		var app = (App?)global::Avalonia.Application.Current;
-		var systemVariant = app?.PlatformSettings?.GetColorValues().ThemeVariant;
-		return systemVariant == global::Avalonia.Platform.PlatformThemeVariant.Light
-			? s_lightTheme
-			: s_darkTheme;
-	}
-
-	public static event EventHandler? ThemeChanged;
 }
