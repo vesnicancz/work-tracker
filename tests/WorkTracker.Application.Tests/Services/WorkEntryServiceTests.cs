@@ -595,6 +595,77 @@ public class WorkEntryServiceTests
 		adjustmentB.NewStart.Should().Be(new DateTime(2026, 1, 15, 12, 0, 0));
 	}
 
+	private void SetupOverlappingEntries(params WorkEntry[] entries)
+	{
+		_mockRepository
+			.Setup(r => r.GetOverlappingEntriesAsync(It.IsAny<int?>(), It.IsAny<DateTime>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(entries);
+	}
+
+	// --- Outdated plan tests ---
+
+	[Fact]
+	public async Task CreateWithOverlapResolutionAsync_EntriesChangedSinceThePlan_ChangesNothing()
+	{
+		// Arrange — the plan was made for an entry ending at 11:00, which has since been moved to 11:30
+		var start = new DateTime(2026, 1, 15, 10, 0, 0);
+		var end = new DateTime(2026, 1, 15, 12, 0, 0);
+		SetupOverlappingEntries(WorkEntry.Reconstitute(10, "PROJ-300", new DateTime(2026, 1, 15, 8, 0, 0), new DateTime(2026, 1, 15, 11, 0, 0), "Existing", false, DateTime.MinValue));
+		var plan = await _service.ComputeOverlapResolutionAsync(null, start, end, TestContext.Current.CancellationToken);
+		SetupOverlappingEntries(WorkEntry.Reconstitute(10, "PROJ-300", new DateTime(2026, 1, 15, 8, 0, 0), new DateTime(2026, 1, 15, 11, 30, 0), "Existing", false, DateTime.MinValue));
+
+		// Act
+		var result = await _service.CreateWithOverlapResolutionAsync("PROJ-400", start, "New", end, plan, TestContext.Current.CancellationToken);
+
+		// Assert
+		result.IsFailure.Should().BeTrue();
+		result.Error.Should().Contain("changed in the meantime");
+		_mockRepository.Verify(r => r.UpdateAsync(It.IsAny<WorkEntry>(), It.IsAny<CancellationToken>()), Times.Never);
+		_mockRepository.Verify(r => r.AddAsync(It.IsAny<WorkEntry>(), It.IsAny<CancellationToken>()), Times.Never);
+		_mockUnitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+	}
+
+	[Fact]
+	public async Task CreateWithOverlapResolutionAsync_NewOverlapSinceThePlan_ChangesNothing()
+	{
+		// Arrange — nothing overlapped when the plan was made, then work started in that time slot
+		var start = new DateTime(2026, 1, 15, 10, 0, 0);
+		var end = new DateTime(2026, 1, 15, 12, 0, 0);
+		SetupOverlappingEntries();
+		var plan = await _service.ComputeOverlapResolutionAsync(null, start, end, TestContext.Current.CancellationToken);
+		SetupOverlappingEntries(WorkEntry.Reconstitute(10, "PROJ-300", new DateTime(2026, 1, 15, 10, 30, 0), null, null, true, DateTime.MinValue));
+
+		// Act
+		var result = await _service.CreateWithOverlapResolutionAsync("PROJ-400", start, "New", end, plan, TestContext.Current.CancellationToken);
+
+		// Assert
+		result.IsFailure.Should().BeTrue();
+		_mockUnitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+	}
+
+	[Fact]
+	public async Task UpdateWithOverlapResolutionAsync_EntriesChangedSinceThePlan_ChangesNothing()
+	{
+		// Arrange — the entry the plan would have deleted is gone
+		var start = new DateTime(2026, 1, 15, 9, 0, 0);
+		var end = new DateTime(2026, 1, 15, 12, 0, 0);
+		_mockRepository
+			.Setup(r => r.GetByIdAsync(30, It.IsAny<CancellationToken>()))
+			.ReturnsAsync(WorkEntry.Reconstitute(30, "PROJ-800", start, start.AddHours(1), "Original", false, DateTime.MinValue));
+		SetupOverlappingEntries(WorkEntry.Reconstitute(31, "PROJ-801", start.AddHours(1), start.AddHours(2), "Overlapping", false, DateTime.MinValue));
+		var plan = await _service.ComputeOverlapResolutionAsync(30, start, end, TestContext.Current.CancellationToken);
+		SetupOverlappingEntries();
+
+		// Act
+		var result = await _service.UpdateWithOverlapResolutionAsync(30, "PROJ-800", start, end, "Extended", plan, TestContext.Current.CancellationToken);
+
+		// Assert
+		result.IsFailure.Should().BeTrue();
+		result.Error.Should().Contain("changed in the meantime");
+		_mockRepository.Verify(r => r.DeleteAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+		_mockUnitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+	}
+
 	// --- CreateWithOverlapResolutionAsync tests ---
 
 	[Fact]
@@ -622,6 +693,7 @@ public class WorkEntryServiceTests
 		// Arrange
 		var start = new DateTime(2026, 1, 15, 10, 0, 0);
 		var end = new DateTime(2026, 1, 15, 12, 0, 0);
+		SetupOverlappingEntries(WorkEntry.Reconstitute(5, "OLD-1", start, end, "Old task", false, DateTime.MinValue));
 		var plan = new OverlapResolutionPlan
 		{
 			Adjustments = [new OverlapAdjustment(5, "OLD-1", "Old task", OverlapAdjustmentKind.Delete, start, end, null, null)]
@@ -644,6 +716,7 @@ public class WorkEntryServiceTests
 	{
 		// Arrange
 		var existingEntry = WorkEntry.Reconstitute(10, "PROJ-300", new DateTime(2026, 1, 15, 8, 0, 0), new DateTime(2026, 1, 15, 11, 0, 0), "Existing", false, DateTime.MinValue);
+		SetupOverlappingEntries(existingEntry);
 		var plan = new OverlapResolutionPlan
 		{
 			Adjustments = [new OverlapAdjustment(10, "PROJ-300", "Existing", OverlapAdjustmentKind.TrimEnd,
@@ -671,6 +744,7 @@ public class WorkEntryServiceTests
 	{
 		// Arrange — existing 8:00-14:00, candidate 10:00-12:00 → split into 8:00-10:00 and 12:00-14:00
 		var existingEntry = WorkEntry.Reconstitute(11, "PROJ-500", new DateTime(2026, 1, 15, 8, 0, 0), new DateTime(2026, 1, 15, 14, 0, 0), "Long task", false, DateTime.MinValue);
+		SetupOverlappingEntries(existingEntry);
 		var plan = new OverlapResolutionPlan
 		{
 			Adjustments = [new OverlapAdjustment(11, "PROJ-500", "Long task", OverlapAdjustmentKind.Split,
@@ -725,6 +799,7 @@ public class WorkEntryServiceTests
 		// Arrange
 		var entryToUpdate = WorkEntry.Reconstitute(30, "PROJ-800", new DateTime(2026, 1, 15, 9, 0, 0), new DateTime(2026, 1, 15, 10, 0, 0), "Original", false, DateTime.MinValue);
 		var overlappingEntry = WorkEntry.Reconstitute(31, "PROJ-801", new DateTime(2026, 1, 15, 10, 0, 0), new DateTime(2026, 1, 15, 13, 0, 0), "Overlapping", false, DateTime.MinValue);
+		SetupOverlappingEntries(overlappingEntry);
 		_mockRepository
 			.Setup(r => r.GetByIdAsync(30, It.IsAny<CancellationToken>()))
 			.ReturnsAsync(entryToUpdate);
@@ -777,6 +852,7 @@ public class WorkEntryServiceTests
 		// Arrange
 		var start = new DateTime(2026, 1, 15, 10, 0, 0);
 		var end = new DateTime(2026, 1, 15, 12, 0, 0);
+		SetupOverlappingEntries(WorkEntry.Reconstitute(5, "OLD-1", start, end, "Old task", false, DateTime.MinValue));
 		var plan = new OverlapResolutionPlan
 		{
 			Adjustments = [new OverlapAdjustment(5, "OLD-1", "Old task", OverlapAdjustmentKind.Delete, start, end, null, null)]
@@ -816,6 +892,7 @@ public class WorkEntryServiceTests
 	public async Task CreateWithOverlapResolutionAsync_AdjustmentFailure_DoesNotCommit()
 	{
 		// Arrange — TrimEnd adjustment references an entry that no longer exists
+		SetupOverlappingEntries(WorkEntry.Reconstitute(99, "GONE", new DateTime(2026, 1, 15, 8, 0, 0), new DateTime(2026, 1, 15, 11, 0, 0), "Gone", false, DateTime.MinValue));
 		_mockRepository
 			.Setup(r => r.GetByIdAsync(99, It.IsAny<CancellationToken>()))
 			.ReturnsAsync((WorkEntry?)null);
@@ -843,6 +920,7 @@ public class WorkEntryServiceTests
 		// Arrange
 		var entryToUpdate = WorkEntry.Reconstitute(30, "PROJ-800", new DateTime(2026, 1, 15, 9, 0, 0), new DateTime(2026, 1, 15, 10, 0, 0), "Original", false, DateTime.MinValue);
 		var overlappingEntry = WorkEntry.Reconstitute(31, "PROJ-801", new DateTime(2026, 1, 15, 10, 0, 0), new DateTime(2026, 1, 15, 13, 0, 0), "Overlapping", false, DateTime.MinValue);
+		SetupOverlappingEntries(overlappingEntry);
 		_mockRepository
 			.Setup(r => r.GetByIdAsync(30, It.IsAny<CancellationToken>()))
 			.ReturnsAsync(entryToUpdate);
