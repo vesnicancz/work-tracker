@@ -860,7 +860,7 @@ Dokumentace: [plugins/luxafor.md](plugins/luxafor.md).
 
 - **`IRemoteControlPlugin`** — `IRemoteControlHost` nedostává z DI, ale v `AttachAsync`, protože jeho implementace žije v `UI.Shared`. `AttachAsync` a `DetachAsync` volá `IRemoteControlCoordinator` podle stavu povolení, takže pipe existuje jen v GUI a jen se zapnutým pluginem. CLI plugin sice načte, ale nepřipojí, a proto plugin nesmí začít poslouchat už v `OnInitializeAsync`.
 - **`AttachAsync` a `DetachAsync` musí být idempotentní** — `AttachAsync` se volá znovu při každém uložení konfigurace pluginu.
-- **`IRemoteControlHost`** — nabízí stav (`GetStateAsync`, událost `StateChanged`), práci se záznamy (`StartWorkAsync`, `StopWorkAsync`, `ResumeLastWorkAsync`, `ShiftActiveWorkStartAsync`, `AddWorkEntryAsync`), návrhy (`GetSuggestionsAsync`) a Pomodoro (`StartPomodoroAsync`, `StopPomodoroAsync`, `SkipPomodoroPhaseAsync`).
+- **`IRemoteControlHost`** — nabízí stav (`GetStateAsync`, událost `StateChanged`), práci se záznamy (`StartWorkAsync`, `StopWorkAsync`, `ResumeLastWorkAsync`, `ShiftActiveWorkStartAsync`, `AddWorkEntryAsync`), návrhy (`GetSuggestionsAsync`), oblíbené položky (`GetFavorites`), dialog nového záznamu (`ShowNewWorkEntryDialogAsync`) a Pomodoro (`StartPomodoroAsync`, `StopPomodoroAsync`, `SkipPomodoroPhaseAsync`).
 - **Příkazy běží na UI vlákně** — zajišťuje to `RemoteControlHost` přes `IUiDispatcher`, plugin to řešit nemusí. Metody hostitele jde volat z libovolného vlákna a `StateChanged` může přijít také z libovolného vlákna.
 - **Druhá polovina je mimo .NET** — Stream Deck plugin v `streamdeck-plugin/` je TypeScript a s tímhle pluginem mluví přes named pipe.
 

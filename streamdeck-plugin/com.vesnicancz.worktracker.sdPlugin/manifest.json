@@ -113,11 +113,82 @@
 					"Image": "imgs/suggestions-back-state"
 				}
 			]
+		},
+		{
+			"UUID": "com.vesnicancz.worktracker.favorites",
+			"Name": "Favorites",
+			"Tooltip": "Shows your favorite work items on the whole device.",
+			"Icon": "imgs/favorites",
+			"Controllers": [
+				"Keypad"
+			],
+			"SupportedInMultiActions": false,
+			"States": [
+				{
+					"Image": "imgs/favorites-state"
+				}
+			]
+		},
+		{
+			"UUID": "com.vesnicancz.worktracker.favorite",
+			"Name": "Favorite",
+			"Tooltip": "Shows one favorite work item. Press to start it.",
+			"VisibleInActionsList": false,
+			"Icon": "imgs/favorites",
+			"Controllers": [
+				"Keypad"
+			],
+			"SupportedInMultiActions": false,
+			"UserTitleEnabled": false,
+			"States": [
+				{
+					"Image": "imgs/blank-state"
+				}
+			]
+		},
+		{
+			"UUID": "com.vesnicancz.worktracker.favorites-next",
+			"Name": "Next favorites",
+			"Tooltip": "Shows the next page of favorites.",
+			"VisibleInActionsList": false,
+			"Icon": "imgs/favorites",
+			"Controllers": [
+				"Keypad"
+			],
+			"SupportedInMultiActions": false,
+			"UserTitleEnabled": false,
+			"States": [
+				{
+					"Image": "imgs/blank-state"
+				}
+			]
+		},
+		{
+			"UUID": "com.vesnicancz.worktracker.favorites-back",
+			"Name": "Close favorites",
+			"Tooltip": "Goes back to the previous profile.",
+			"VisibleInActionsList": false,
+			"Icon": "imgs/favorites",
+			"Controllers": [
+				"Keypad"
+			],
+			"SupportedInMultiActions": false,
+			"States": [
+				{
+					"Image": "imgs/suggestions-back-state"
+				}
+			]
 		}
 	],
 	"Profiles": [
 		{
 			"Name": "profiles/WorkTracker",
+			"DeviceType": 7,
+			"Readonly": true,
+			"DontAutoSwitchWhenInstalled": true
+		},
+		{
+			"Name": "profiles/WorkTrackerFavorites",
 			"DeviceType": 7,
 			"Readonly": true,
 			"DontAutoSwitchWhenInstalled": true

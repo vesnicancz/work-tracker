@@ -26,6 +26,15 @@ public sealed record RemoteSuggestions(IReadOnlyList<RemoteSuggestion> Items, IR
 public sealed record RemoteSuggestion(string Title, string? TicketId, DateTimeOffset? StartTime, DateTimeOffset? EndTime, string Source);
 
 /// <summary>
+/// A work item the user keeps at hand.
+/// </summary>
+/// <param name="Name">What to show for it.</param>
+/// <param name="TicketId">The ticket to work on.</param>
+/// <param name="Description">The description of the work.</param>
+/// <param name="ShowAsTemplate">Whether it fills in the new entry dialog rather than starting work right away.</param>
+public sealed record RemoteFavorite(string Name, string? TicketId, string? Description, bool ShowAsTemplate);
+
+/// <summary>
 /// The Pomodoro timer. <paramref name="TimeRemaining"/> is the value at the moment the state was read.
 /// </summary>
 public sealed record RemotePomodoroState(

@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using WorkTracker.Application.Common;
 using WorkTracker.Application.Services;
@@ -23,6 +24,7 @@ public class RemoteControlHostTests
 	private readonly Mock<IPomodoroService> _pomodoro = new();
 	private readonly Mock<IWorkEntryService> _workEntries = new();
 	private readonly Mock<IWorkSuggestionOrchestrator> _suggestions = new();
+	private readonly Mock<IDialogService> _dialogs = new();
 	private readonly RecordingUiDispatcher _uiDispatcher = new();
 	private readonly ApplicationSettings _settings = new();
 	private readonly RemoteControlHost _host;
@@ -49,9 +51,11 @@ public class RemoteControlHostTests
 			_pomodoro.Object,
 			settingsService.Object,
 			_suggestions.Object,
+			_dialogs.Object,
 			scopeFactory.Object,
 			_uiDispatcher,
-			new FixedTimeProvider());
+			new FixedTimeProvider(),
+			NullLogger<RemoteControlHost>.Instance);
 	}
 
 	private static WorkEntry Entry(string? ticketId, DateTime start, string? description = null) =>
@@ -381,6 +385,49 @@ public class RemoteControlHostTests
 		Source = source,
 		SourceId = title
 	};
+
+	[Fact]
+	public void GetFavorites_KeepsOrderAndValues()
+	{
+		_settings.FavoriteWorkItems =
+		[
+			new FavoriteWorkItem { Name = "Support", TicketId = "PROJ-2", Description = "Helping out" },
+			new FavoriteWorkItem { Name = "Meeting", ShowAsTemplate = true }
+		];
+
+		_host.GetFavorites().Should().Equal(
+			new RemoteFavorite("Support", "PROJ-2", "Helping out", false),
+			new RemoteFavorite("Meeting", null, null, true));
+	}
+
+	[Fact]
+	public async Task ShowNewWorkEntryDialog_DoesNotWaitForTheDialogToClose()
+	{
+		var neverClosed = new TaskCompletionSource<bool>();
+		var wasOnUiThread = false;
+		_dialogs
+			.Setup(d => d.ShowNewWorkEntryDialogAsync("PROJ-1", "Coding", null, null, null))
+			.Callback(() => wasOnUiThread = _uiDispatcher.IsInside)
+			.Returns(neverClosed.Task);
+
+		var result = await _host.ShowNewWorkEntryDialogAsync("PROJ-1", "Coding", TestToken);
+
+		result.IsSuccess.Should().BeTrue();
+		wasOnUiThread.Should().BeTrue();
+		_dialogs.Verify(d => d.ShowNewWorkEntryDialogAsync("PROJ-1", "Coding", null, null, null), Times.Once);
+	}
+
+	[Fact]
+	public async Task ShowNewWorkEntryDialog_WhenTheDialogFails_StaysQuiet()
+	{
+		_dialogs
+			.Setup(d => d.ShowNewWorkEntryDialogAsync(null, null, null, null, null))
+			.ThrowsAsync(new InvalidOperationException("No window."));
+
+		var act = () => _host.ShowNewWorkEntryDialogAsync(null, null, TestToken);
+
+		await act.Should().NotThrowAsync();
+	}
 
 	[Fact]
 	public async Task PomodoroCommands_RunOnUiThread()

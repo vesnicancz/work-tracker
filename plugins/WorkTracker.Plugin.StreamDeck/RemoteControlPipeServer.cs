@@ -190,6 +190,11 @@ internal sealed class RemoteControlPipeServer(string pipeName, IRemoteControlHos
 				return new RemoteResponse(request.Id, true, null, await GetSuggestionsAsync(cancellationToken));
 			}
 
+			if (request.Command == Commands.GetFavorites)
+			{
+				return new RemoteResponse(request.Id, true, null, Favorites: host.GetFavorites());
+			}
+
 			var result = await ExecuteAsync(request, cancellationToken);
 			return new RemoteResponse(request.Id, result.IsSuccess, result.Error);
 		}
@@ -221,6 +226,7 @@ internal sealed class RemoteControlPipeServer(string pipeName, IRemoteControlHos
 		Commands.ShiftStart => host.ShiftActiveWorkStartAsync(TimeSpan.FromMinutes(request.Minutes ?? 0), cancellationToken),
 		Commands.AddWork when request.StartTime is { } startTime => host.AddWorkEntryAsync(request.TicketId, request.Description, startTime, request.EndTime, cancellationToken),
 		Commands.AddWork => Task.FromResult(PluginResult.Failure("The start time is missing.", PluginErrorCategory.Validation)),
+		Commands.ShowNewWorkDialog => host.ShowNewWorkEntryDialogAsync(request.TicketId, request.Description, cancellationToken),
 		Commands.StartPomodoro => host.StartPomodoroAsync(cancellationToken),
 		Commands.StopPomodoro => host.StopPomodoroAsync(cancellationToken),
 		Commands.SkipPomodoro => host.SkipPomodoroPhaseAsync(cancellationToken),

@@ -50,6 +50,17 @@ public interface IRemoteControlHost
 	/// </summary>
 	Task<RemoteSuggestions> GetSuggestionsAsync(CancellationToken cancellationToken);
 
+	/// <summary>
+	/// Gets the user's favorites, in the order from the settings.
+	/// </summary>
+	IReadOnlyList<RemoteFavorite> GetFavorites();
+
+	/// <summary>
+	/// Opens the application's new work entry dialog with these values, or brings forward one that is already
+	/// open. Completes once the dialog is up, without waiting for the user to close it.
+	/// </summary>
+	Task<PluginResult> ShowNewWorkEntryDialogAsync(string? ticketId, string? description, CancellationToken cancellationToken);
+
 	Task<PluginResult> StartPomodoroAsync(CancellationToken cancellationToken);
 
 	Task<PluginResult> StopPomodoroAsync(CancellationToken cancellationToken);
