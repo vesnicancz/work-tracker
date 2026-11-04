@@ -89,7 +89,7 @@ public class WorkEntryEditOrchestrator : IWorkEntryEditOrchestrator
 			if (result.IsFailure)
 			{
 				_logger.LogWarning("Failed to save work entry with resolution: {Error}", result.Error);
-				return Result.Failure<bool>(result.Error);
+				return Result.Failure<bool>(result);
 			}
 
 			return Result.Success(true);
@@ -99,7 +99,7 @@ public class WorkEntryEditOrchestrator : IWorkEntryEditOrchestrator
 		if (saveResult.IsFailure)
 		{
 			_logger.LogWarning("Failed to save work entry: {Error}", saveResult.Error);
-			return Result.Failure<bool>(saveResult.Error);
+			return Result.Failure<bool>(saveResult);
 		}
 
 		return Result.Success(true);

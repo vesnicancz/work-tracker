@@ -812,4 +812,25 @@ Váš výkaz práce také ne.</value>
   <data name="TrayStartFavoriteFailed" xml:space="preserve">
     <value>Položku {0} se nepodařilo spustit: {1}</value>
   </data>
+  <data name="ErrorInvalidEntry" xml:space="preserve">
+    <value>Vyplň ticket nebo popis.</value>
+  </data>
+  <data name="ErrorInvalidEntryAfterUpdate" xml:space="preserve">
+    <value>Vyplň ticket nebo popis a zkontroluj, že konec je až po začátku.</value>
+  </data>
+  <data name="ErrorOverlap" xml:space="preserve">
+    <value>Záznam se překrývá s jiným záznamem. Zkontroluj časy.</value>
+  </data>
+  <data name="ErrorPlanOutdated" xml:space="preserve">
+    <value>Ostatní záznamy se mezitím změnily. Nic se neuložilo, zkus to znovu.</value>
+  </data>
+  <data name="ErrorNoActiveWork" xml:space="preserve">
+    <value>Žádná práce neběží.</value>
+  </data>
+  <data name="ErrorInvalidEndTime" xml:space="preserve">
+    <value>Konec musí být až po začátku.</value>
+  </data>
+  <data name="ErrorNotFound" xml:space="preserve">
+    <value>Záznam už neexistuje.</value>
+  </data>
 </root>

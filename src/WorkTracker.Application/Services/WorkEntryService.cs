@@ -9,10 +9,6 @@ namespace WorkTracker.Application.Services;
 
 public sealed class WorkEntryService : IWorkEntryService
 {
-	private const string InvalidEntryError = "Invalid work entry data. Both ticket ID and description cannot be empty.";
-	private const string InvalidEntryAfterUpdateError = "Invalid work entry data after update. Both ticket ID and description cannot be empty, and end time must be after start time.";
-	private const string OverlapError = "This work entry overlaps with an existing entry. Please check your times.";
-	private const string PlanOutdatedError = "Other work entries changed in the meantime. Nothing was saved, please try again.";
 
 	private readonly IWorkEntryRepository _repository;
 	private readonly IUnitOfWorkFactory _unitOfWorkFactory;
@@ -70,7 +66,7 @@ public sealed class WorkEntryService : IWorkEntryService
 		if (!workEntry.IsValid())
 		{
 			_logger.LogWarning("Invalid work entry data for ticket {TicketId} ({StartTime} - {EndTime})", workEntry.TicketId, workEntry.StartTime, workEntry.EndTime);
-			return Result.Failure<WorkEntry>(InvalidEntryError);
+			return Result.Failure<WorkEntry>(WorkEntryErrors.InvalidEntry);
 		}
 
 		var overlapping = await _repository.GetOverlappingEntriesAsync(null, workEntry.StartTime, null, cancellationToken);
@@ -81,7 +77,7 @@ public sealed class WorkEntryService : IWorkEntryService
 		if (overlapping.Any(e => e.StartTime >= workEntry.StartTime && (e.EndTime == null || e.StartTime == workEntry.StartTime)))
 		{
 			_logger.LogWarning("Work entry overlaps with existing entry for ticket {TicketId} ({StartTime} - {EndTime})", workEntry.TicketId, workEntry.StartTime, workEntry.EndTime);
-			return Result.Failure<WorkEntry>(OverlapError);
+			return Result.Failure<WorkEntry>(WorkEntryErrors.Overlap);
 		}
 
 		var running = overlapping.Where(e => e.StartTime < workEntry.StartTime).ToList();
@@ -116,13 +112,13 @@ public sealed class WorkEntryService : IWorkEntryService
 		if (!workEntry.IsValid())
 		{
 			_logger.LogWarning("Invalid work entry data for ticket {TicketId} ({StartTime} - {EndTime})", workEntry.TicketId, workEntry.StartTime, workEntry.EndTime);
-			return Result.Failure<WorkEntry>(InvalidEntryError);
+			return Result.Failure<WorkEntry>(WorkEntryErrors.InvalidEntry);
 		}
 
 		if (await _repository.HasOverlappingEntriesAsync(null, workEntry.StartTime, workEntry.EndTime, cancellationToken))
 		{
 			_logger.LogWarning("Work entry overlaps with existing entry for ticket {TicketId} ({StartTime} - {EndTime})", workEntry.TicketId, workEntry.StartTime, workEntry.EndTime);
-			return Result.Failure<WorkEntry>(OverlapError);
+			return Result.Failure<WorkEntry>(WorkEntryErrors.Overlap);
 		}
 
 		return Result.Success(workEntry);
@@ -136,7 +132,7 @@ public sealed class WorkEntryService : IWorkEntryService
 		if (activeEntry == null)
 		{
 			_logger.LogWarning("No active work entry found to stop");
-			return Result.Failure<WorkEntry>("No active work entry found to stop");
+			return Result.Failure<WorkEntry>(WorkEntryErrors.NoActiveWork);
 		}
 
 		var now = Now;
@@ -145,14 +141,14 @@ public sealed class WorkEntryService : IWorkEntryService
 		if (!activeEntry.IsValid())
 		{
 			_logger.LogWarning("Invalid end time for ticket {TicketId} - start time {StartTime}, attempted end time {EndTime}", activeEntry.TicketId, activeEntry.StartTime, activeEntry.EndTime);
-			return Result.Failure<WorkEntry>("Invalid end time - must be after start time");
+			return Result.Failure<WorkEntry>(WorkEntryErrors.InvalidEndTime);
 		}
 
 		// Check for overlaps with the new end time
 		if (await _repository.HasOverlappingEntriesAsync(activeEntry, cancellationToken))
 		{
 			_logger.LogWarning("Stopped work entry for ticket {TicketId} would overlap with existing entry ({StartTime} - {EndTime})", activeEntry.TicketId, activeEntry.StartTime, activeEntry.EndTime);
-			return Result.Failure<WorkEntry>(OverlapError);
+			return Result.Failure<WorkEntry>(WorkEntryErrors.Overlap);
 		}
 
 		await _repository.UpdateAsync(activeEntry, cancellationToken);
@@ -185,7 +181,7 @@ public sealed class WorkEntryService : IWorkEntryService
 		if (workEntry == null)
 		{
 			_logger.LogWarning("Work entry with ID {Id} not found", id);
-			return Result.Failure<WorkEntry>($"Work entry with ID {id} not found");
+			return Result.Failure<WorkEntry>(WorkEntryErrors.NotFound(id));
 		}
 
 		// Always update all fields (allows setting values to null)
@@ -199,14 +195,14 @@ public sealed class WorkEntryService : IWorkEntryService
 		if (!workEntry.IsValid())
 		{
 			_logger.LogWarning("Invalid work entry data after update for entry {Id}, ticket {TicketId} ({StartTime} - {EndTime})", id, ticketId, workEntry.StartTime, workEntry.EndTime);
-			return Result.Failure<WorkEntry>(InvalidEntryAfterUpdateError);
+			return Result.Failure<WorkEntry>(WorkEntryErrors.InvalidEntryAfterUpdate);
 		}
 
 		// Check for overlaps
 		if (await _repository.HasOverlappingEntriesAsync(workEntry, cancellationToken))
 		{
 			_logger.LogWarning("Work entry {Id} would overlap with existing entry ({StartTime} - {EndTime})", id, workEntry.StartTime, workEntry.EndTime);
-			return Result.Failure<WorkEntry>(OverlapError);
+			return Result.Failure<WorkEntry>(WorkEntryErrors.Overlap);
 		}
 
 		await _repository.UpdateAsync(workEntry, cancellationToken);
@@ -224,7 +220,7 @@ public sealed class WorkEntryService : IWorkEntryService
 		if (workEntry == null)
 		{
 			_logger.LogWarning("Work entry with ID {Id} not found", id);
-			return Result.Failure($"Work entry with ID {id} not found");
+			return Result.Failure(WorkEntryErrors.NotFound(id));
 		}
 
 		await _repository.DeleteAsync(id, cancellationToken);
@@ -298,7 +294,7 @@ public sealed class WorkEntryService : IWorkEntryService
 		if (!workEntry.IsValid())
 		{
 			_logger.LogWarning("Invalid work entry data for ticket {TicketId} ({StartTime} - {EndTime})", ticketId, roundedStart, roundedEnd);
-			return Result.Failure<WorkEntry>(InvalidEntryError);
+			return Result.Failure<WorkEntry>(WorkEntryErrors.InvalidEntry);
 		}
 
 		// All adjustments + new entry in a single transaction
@@ -306,7 +302,7 @@ public sealed class WorkEntryService : IWorkEntryService
 
 		if (!await IsPlanStillValidAsync(uow.WorkEntries, plan, null, roundedStart, roundedEnd, cancellationToken))
 		{
-			return Result.Failure<WorkEntry>(PlanOutdatedError);
+			return Result.Failure<WorkEntry>(WorkEntryErrors.PlanOutdated);
 		}
 
 		var applyResult = await ApplyAdjustmentsAsync(uow.WorkEntries, plan, now, cancellationToken);
@@ -338,7 +334,7 @@ public sealed class WorkEntryService : IWorkEntryService
 		var workEntry = await uow.WorkEntries.GetByIdAsync(id, cancellationToken);
 		if (workEntry == null)
 		{
-			return Result.Failure<WorkEntry>($"Work entry with ID {id} not found");
+			return Result.Failure<WorkEntry>(WorkEntryErrors.NotFound(id));
 		}
 
 		var roundedStart = DateTimeHelper.RoundToMinute(startTime);
@@ -355,12 +351,12 @@ public sealed class WorkEntryService : IWorkEntryService
 		if (!workEntry.IsValid())
 		{
 			_logger.LogWarning("Invalid work entry data after update with resolution for entry {Id}, ticket {TicketId} ({StartTime} - {EndTime})", id, ticketId, workEntry.StartTime, workEntry.EndTime);
-			return Result.Failure<WorkEntry>(InvalidEntryAfterUpdateError);
+			return Result.Failure<WorkEntry>(WorkEntryErrors.InvalidEntryAfterUpdate);
 		}
 
 		if (!await IsPlanStillValidAsync(uow.WorkEntries, plan, id, roundedStart, roundedEnd, cancellationToken))
 		{
-			return Result.Failure<WorkEntry>(PlanOutdatedError);
+			return Result.Failure<WorkEntry>(WorkEntryErrors.PlanOutdated);
 		}
 
 		// Apply adjustments to overlapping entries

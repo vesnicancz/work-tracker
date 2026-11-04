@@ -214,7 +214,7 @@ public class WorkEntryEditViewModel : ViewModelBase
 
 			if (result.IsFailure)
 			{
-				ValidationError = result.Error;
+				ValidationError = _localization.LocalizeError(result);
 				return;
 			}
 
