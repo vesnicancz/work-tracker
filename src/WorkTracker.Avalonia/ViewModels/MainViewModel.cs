@@ -405,11 +405,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 	{
 		try
 		{
-			var result = await _dialogService.ShowSubmitWorklogDialogAsync(SelectedDate, false);
-			if (result)
-			{
-				_notificationService.ShowSuccess(_localization["WorklogsSubmittedSuccessfully"]);
-			}
+			await _dialogService.ShowSubmitWorklogDialogAsync(SelectedDate, false);
 		}
 		catch (Exception ex)
 		{

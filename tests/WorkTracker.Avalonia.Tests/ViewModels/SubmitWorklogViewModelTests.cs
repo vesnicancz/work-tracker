@@ -296,7 +296,7 @@ public class SubmitWorklogViewModelTests
 	}
 
 	[Fact]
-	public async Task Send_AllSucceeded_SetsDialogResult()
+	public async Task Send_AllSucceeded_KeepsDialogOpenAndReportsStatus()
 	{
 		var harness = new SubmitWorklogViewModelHarness();
 		harness.PreviewItems.Add(Item());
@@ -305,10 +305,12 @@ public class SubmitWorklogViewModelTests
 			.ReturnsAsync(new SubmissionOutcome(AllSucceeded: true, HasFailedItems: false, StatusMessage: "sent"));
 		using var vm = harness.CreateViewModel();
 		await vm.InitializeAsync(LocalNow.Date, isWeek: false);
+		var closed = false;
+		vm.CloseAction = () => closed = true;
 
 		await vm.SendCommand.ExecuteAsync(null);
 
-		vm.DialogResult.Should().BeTrue();
+		closed.Should().BeFalse("the dialog is used for several days in a row");
 		vm.HasFailedItems.Should().BeFalse();
 		vm.StatusMessage.Should().Be("sent");
 		vm.IsSending.Should().BeFalse();
@@ -329,7 +331,6 @@ public class SubmitWorklogViewModelTests
 		await vm.SendCommand.ExecuteAsync(null);
 		item.HasError = true;
 
-		vm.DialogResult.Should().BeFalse();
 		vm.HasFailedItems.Should().BeTrue();
 		vm.StatusMessage.Should().Be("1 failed");
 		vm.RetryFailedCommand.CanExecute(null).Should().BeTrue();

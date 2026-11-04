@@ -364,7 +364,6 @@ public class SubmitWorklogViewModel : ViewModelBase, IDisposable
 	}
 
 	public Action? CloseAction { get; set; }
-	public bool DialogResult { get; set; }
 
 	#endregion Properties
 
@@ -471,11 +470,6 @@ public class SubmitWorklogViewModel : ViewModelBase, IDisposable
 			var outcome = await _orchestrator.SubmitAsync(PreviewItems, SelectedProvider.Id, SelectedProvider.Name, _selectedMode, CancellationToken.None);
 			HasFailedItems = outcome.HasFailedItems;
 			StatusMessage = outcome.StatusMessage;
-
-			if (outcome.AllSucceeded)
-			{
-				DialogResult = true;
-			}
 		}
 		catch (Exception ex)
 		{
@@ -506,11 +500,6 @@ public class SubmitWorklogViewModel : ViewModelBase, IDisposable
 			var outcome = await _orchestrator.RetryFailedAsync(PreviewItems, SelectedProvider.Id, SelectedProvider.Name, _selectedMode, CancellationToken.None);
 			HasFailedItems = outcome.HasFailedItems;
 			StatusMessage = outcome.StatusMessage;
-
-			if (outcome.AllSucceeded)
-			{
-				DialogResult = true;
-			}
 		}
 		catch (Exception ex)
 		{
@@ -525,7 +514,6 @@ public class SubmitWorklogViewModel : ViewModelBase, IDisposable
 
 	private void Cancel()
 	{
-		DialogResult = false;
 		CloseAction?.Invoke();
 	}
 

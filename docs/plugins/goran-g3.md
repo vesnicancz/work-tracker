@@ -27,7 +27,7 @@ Plugin odesílá worklogy do interního systému **Goran G3** přes jeho MCP ser
 
 ## Entra registrace
 
-Postup je shodný s [Office 365 Calendar pluginem](office365-calendar.md#entra-registrace), ale scopes jsou jiné — místo Microsoft Graph používáš **API exposed by Goran G3** (delegated permissions na custom API v Entra). Získej konkrétní scopes od Goran G3 administrátora své organizace.
+Postup vychází z [Office 365 Calendar pluginu](office365-calendar.md#entra-registrace). Rozdíly: kvůli device code flow musí být zapnuté **Allow public client flows** a scopes jsou jiné — místo Microsoft Graph používáš **API exposed by Goran G3** (delegated permissions na custom API v Entra). Získej konkrétní scopes od Goran G3 administrátora své organizace.
 
 Pokud tvoje organizace má **centrální app registraci** pro Goran G3 (sdílenou aplikaci pro všechny interní klienty), stačí od IT dostat:
 
@@ -39,7 +39,7 @@ Pokud tvoje organizace má **centrální app registraci** pro Goran G3 (sdíleno
 
 ## Autentizace (device code flow)
 
-Stejně jako Office 365 Calendar plugin. Po vyplnění konfigurace:
+Goran G3 používá device code flow (Office 365 Calendar se přihlašuje v prohlížeči). Po vyplnění konfigurace:
 
 1. Plugin při inicializaci zavolá `ITokenProviderFactory.CreateAsync(tenantId, clientId, scopes)` a zkusí silent token; když ho má, rovnou se připojí k MCP serveru.
 2. **Nastavení → Pluginy → Goran G3 Timesheets → Otestovat připojení**. Pokud je plugin už připojený, autentizace se přeskočí.
@@ -112,7 +112,7 @@ Pokud je plugin už připojený k MCP serveru, kroky 1 a 2 se přeskočí.
    - Pošle přes `_mcpClient.CallToolAsync("create_my_timesheet_item", arguments, ct)`.
    - Pokud server vrátí success, inkrementuje `SuccessfulEntries`.
    - Pokud fail, přidá do `Errors` s `ErrorMessage` a `Worklog`.
-3. Záznamy se zpracovávají seskupené po dnech: po uploadu záznamů jednoho dne plugin zavolá `submit_my_timesheet` s argumentem `date` pro daný den. Selhání submitu se přidá do `Errors` jako `Timesheet submit failed for yyyy-MM-dd: …`.
+3. Záznamy se zpracovávají seskupené po dnech: po uploadu záznamů jednoho dne plugin zavolá `submit_my_timesheet` s argumentem `date` pro daný den, i když některé záznamy dne selhaly. Selhání submitu se přidá do `Errors` jako `Timesheet submit failed for yyyy-MM-dd: …`.
 4. Vrátí `PluginResult<WorklogSubmissionResult>`.
 
 ### Submission módy

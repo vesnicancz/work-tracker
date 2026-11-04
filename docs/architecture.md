@@ -81,6 +81,8 @@ Pokud tě zajímá **jak napsat vlastní plugin**, jdi rovnou na [plugin-develop
 │ Plugin         │ │ Plugin         │ │ Plugin     │ │ Plugin         │
 │ .Atlassian     │ │ .GoranG3       │ │ .Luxafor   │ │ .Office365Cal. │
 └────────────────┘ └────────────────┘ └────────────┘ └────────────────┘
+
+Stejně na Abstractions závisí i Plugin.StreamDeck.
 ```
 
 ---
@@ -121,7 +123,7 @@ Registrace služeb: `DependencyInjection.AddApplication(IServiceCollection)`. Vo
 Implementace externích závislostí:
 
 - **EF Core + SQLite** — `WorkTrackerDbContext`, `WorkEntryRepository`, `UnitOfWork`, `UnitOfWorkFactory`. Cesta k databázi se řídí `WorkTrackerPaths.DefaultDatabasePath` s možností přepsání přes `Database:Path` v configu (relativní cesty se vyhodnocují vůči `WorkTrackerPaths.WritableBaseDirectory` — adresáři aplikace, uvnitř macOS `.app` bundlu vůči `~/Library/Application Support/WorkTracker/`). `Database:Pooling` (default `true`) vypíná connection pooling pro databáze na removable médiích — bez poolingu se soubor zavírá po každé operaci a disk jde bezpečně vysunout. Při startu se vynucuje `PRAGMA journal_mode=DELETE` (WAL je na removable exFAT rizikový kvůli `-wal`/`-shm` souborům). Když databáze není dosažitelná (nepřipojený disk, IO chyba, read-only médium), `AddInfrastructure` i `InitializeDatabaseAsync` vyhodí `DatabaseUnavailableException` — Avalonia `App` na ni reaguje dialogem s tlačítkem *Zkusit znovu*, které zopakuje celý bootstrap; ostatní výjimky při startu jsou brány jako neopravitelné.
-- **`DbContextFactory`** — všechny repository používají `IDbContextFactory<WorkTrackerDbContext>`, ne scoped `DbContext`. Důvod: plugin manager a dlouho běžící služby (GUI) nemají HTTP request scope, takže scoped DbContext by vedl k leakům a concurrent‑use chybám.
+- **`IDbContextFactory<WorkTrackerDbContext>`** — `WorkEntryRepository` ho používá místo scoped `DbContext`. Důvod: dlouho běžící služby (GUI) nemají HTTP request scope, takže scoped DbContext by vedl k leakům a concurrent‑use chybám.
 - **`CredentialStoreSecureStorage`** — implementace `ISecureStorage` nad `GitCredentialManager` (multiplatformní: Windows Credential Manager, macOS Keychain, Linux libsecret).
 - **`PluginManager`, `PluginLoader`, `PluginLoadContext`** — načítání pluginů do vlastního `AssemblyLoadContext` (collectible) pro každou plugin assembly; všechny pluginy sdílejí jeden plugin `ServiceProvider`.
 - **`MsalTokenProviderFactory`, `MsalTokenProvider`** — MSAL Public Client s cross‑platform token cache (`Microsoft.Identity.Client.Extensions.Msal`) a dvěma způsoby interaktivní autentizace podle `InteractiveAuthFlow`, který plugin zvolí: **device code flow** a **authorization code flow s PKCE** v systémovém prohlížeči (redirect na vlastní loopback listener `SystemBrowserWebUi`).
@@ -134,7 +136,7 @@ Infrastructure **závisí** na Application a Domain, **ne naopak**.
 Platformně neutrální UI logika:
 
 - **Sub‑ViewModely** (`SuggestionsViewModel`, `PomodoroViewModel`, `PluginViewModel`, `ConfigurationFieldViewModel`, …) — `ObservableObject` z `CommunityToolkit.Mvvm`, příkazy jako `AsyncRelayCommand`/`RelayCommand` vytvořené v konstruktoru, vlastnosti přes `SetProperty` (source generátory `[RelayCommand]`/`[ObservableProperty]` projekt nepoužívá). Root ViewModely jsou v projektu Avalonia, viz [ViewModely: hybridní přístup](#viewmodely-hybridní-přístup).
-- **Orchestrátory** — třídy, které koordinují více služeb a skrývají workflow před ViewModely (např. `WorklogSubmissionOrchestrator` sestaví náhled včetně agregace, provede submit a retry a označí položky, které plugin odmítl). Dialogy otevírá Avalonia `DialogService`, ne orchestrátor.
+- **Orchestrátory** — třídy, které koordinují více služeb a skrývají workflow před ViewModely (např. `WorklogSubmissionOrchestrator` sestaví náhled včetně agregace, provede submit a retry a označí položky, které plugin odmítl). Dialogy implementuje Avalonia `DialogService`; orchestrátor je smí vyvolat jen přes `IDialogService` (viz `WorkEntryEditOrchestrator`).
 - **Služby**: `ISettingsService` (serializace `ApplicationSettings` do `settings.json`), `ILocalizationService` (resx loader s `INotifyPropertyChanged`), `IPomodoroService`.
 
 UI.Shared závisí na Application, ne přímo na Infrastructure.
@@ -199,8 +201,8 @@ Dříve existoval i třetí frontend **WPF** (Windows‑only); byl odstraněn, p
 
 ViewModely volají orchestrátory nebo přímo Application služby. Orchestrátor je užitečný, když akce:
 
-- má dialog (submit worklogu ukazuje náhled, pak modal s výběrem pluginu),
-- kombinuje víc služeb (načti entries → validuj → otevři dialog → submit → zpracuj chyby),
+- má dialog (submit worklogu ukazuje v jednom dialogu náhled i výběr pluginu a módu),
+- kombinuje víc služeb (sestav náhled → agreguj → submit → označ chyby → retry),
 - má retry/recovery logiku.
 
 Bez orchestrátoru by toto všechno skončilo ve ViewModelu a orchestrace by se míchala s prezentační logikou.
@@ -225,7 +227,7 @@ Samostatná knihovna (`WorkTracker.Plugin.Abstractions.dll`) obsahující pouze 
 
 ### Isolation: AssemblyLoadContext
 
-Každý plugin se načítá do vlastního `PluginLoadContext` (dědí `AssemblyLoadContext(isCollectible: true)`):
+Každá plugin assembly se načítá do vlastního `PluginLoadContext` (dědí `AssemblyLoadContext(isCollectible: true)`):
 
 - **Sdílené assembly** — pro každou assembly, která už je načtená v Default contextu (typicky `WorkTracker.Plugin.Abstractions`, `Microsoft.Extensions.*`, runtime), vrátí override `Load` → `null` a použije se hostitelova kopie. Porovnává se jen jméno (`AssemblyName.ReferenceMatchesDefinition`), ne verze. Pevný seznam neexistuje — sdílí se cokoli, co hostitel v tu chvíli načetl.
 - **Ostatní závislosti** plugin nese vedle sebe ve své výstupní složce a `AssemblyDependencyResolver` je řeší lokálně.
@@ -241,7 +243,7 @@ Důsledek: plugin může mít vlastní verzi závislosti, kterou hostitel nenač
 - `IHttpClientFactory`
 - `ITokenProviderFactory` (MSAL)
 
-Jeden `ServiceProvider` (`BuildServiceProvider()`) sdílejí všechny pluginy. Plugin se instanciuje přes `ActivatorUtilities.CreateInstance` z tohoto providera, takže konstruktor může brát libovolnou kombinaci těchto služeb. Žádné parameterless konstruktory.
+Jeden `ServiceProvider` (`BuildServiceProvider()`) sdílejí všechny pluginy. Plugin se instanciuje přes `ActivatorUtilities.CreateInstance` z tohoto providera, takže konstruktor může brát libovolnou kombinaci těchto služeb. Parameterless konstruktor by fungoval taky, dodávané pluginy ale konvenčně berou závislosti konstruktorem.
 
 ### Discovery
 
@@ -309,7 +311,7 @@ if (result.IsFailure)
 
 **Výjimky** jsou vyhrazeny pro:
 - programátorské chyby (`ArgumentNullException`, invarianty)
-- skutečné infrastructure selhání (I/O, DbException) — ty propagují do handlerů a logují se přes Serilog
+- skutečné infrastructure selhání (I/O, DbException) — ty propagují do handlerů; GUI je loguje přes Serilog, CLI je vypíše na stderr
 
 ### Unit of Work
 
@@ -357,7 +359,7 @@ public virtual async Task<bool> InitializeAsync(
     if (!validation.IsValid) { /* log, return false */ }
 
     var ok = await OnInitializeAsync(Configuration, ct);    // hook
-    IsInitialized = ok;
+    if (ok) { IsInitialized = true; }                       // neúspěšná reinicializace zachová předchozí stav
     return ok;
 }
 ```
@@ -394,7 +396,7 @@ Jako konkrétní ilustraci vezmeme odeslání záznamů jednoho dne z Avalonia G
    - Retry logika: až 2 opakování (celkem 3 pokusy, backoff 2 s a 4 s) na 408/429/500/502/503/504.
    - Vrátí `PluginResult<WorklogSubmissionResult>` s počty a případnými chybami.
 10. **Zpět do služby** — mapuje `PluginResult<WorklogSubmissionResult>` → `Result<SubmissionResult>` (DTO layer).
-11. **Orchestrátor a dialog** — `SubmitAsync` podle `SubmissionResult.Errors` označí chybné položky (`MarkFailedItems`) a vrátí `SubmissionOutcome`. Při úplném úspěchu se dialog zavře a `MainViewModel` zobrazí toast. Při částečném nebo úplném selhání dialog zůstane otevřený, chybné řádky zčervenají a tlačítko **Znovu odeslat** (`RetryFailedCommand` → `RetryFailedAsync`) pošle znovu zaškrtnuté chybné položky.
+11. **Orchestrátor a dialog** — `SubmitAsync` podle `SubmissionResult.Errors` označí chybné položky (`MarkFailedItems`) a vrátí `SubmissionOutcome`. Při úplném úspěchu dialog zůstane otevřený a výsledek ukáže ve stavovém řádku, aby šlo rovnou odeslat další den. Při částečném nebo úplném selhání taky zůstane otevřený, chybné řádky zčervenají a tlačítko **Znovu odeslat** (`RetryFailedCommand` → `RetryFailedAsync`) pošle znovu zaškrtnuté chybné položky.
 
 Celý tok demonstruje:
 

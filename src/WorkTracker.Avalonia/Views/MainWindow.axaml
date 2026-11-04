@@ -415,7 +415,7 @@
                         <DataGridTemplateColumn Header="{markup:Localize End}" Width="65">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <TextBlock Text="{Binding EndTime, Converter={StaticResource DateTimeToStringConverter}, ConverterParameter='HH:mm', TargetNullValue='—'}"
+                                    <TextBlock Text="{Binding EndTime, Converter={StaticResource DateTimeToStringConverter}, ConverterParameter='HH:mm'}"
                                                FontFamily="{DynamicResource GridTimeFontFamily}"
                                                Foreground="{DynamicResource TextPrimary}"
                                                VerticalAlignment="Center"

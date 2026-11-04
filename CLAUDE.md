@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 dotnet build                    # Build entire solution
-dotnet test                     # Run all tests (~1180 tests, xUnit v3 + Moq + FluentAssertions)
+dotnet test                     # Run all tests (~1290 tests, xUnit v3 + Moq + FluentAssertions)
 dotnet test -- --filter-method "*MethodName*"     # Run single test (MTP runner, xUnit v3 filters)
 dotnet test --project tests/WorkTracker.Domain.Tests   # Run one test project
 ```
@@ -36,7 +36,7 @@ Avalonia
 CLI ─> Application (no UI.Shared)
 Avalonia, CLI ─> Infrastructure (bootstrap only: AddInfrastructure, DB + plugin init)
 
-Plugin.Abstractions (IPlugin, IWorklogUploadPlugin, IWorkSuggestionPlugin, IStatusIndicatorPlugin)
+Plugin.Abstractions (IPlugin, IWorklogUploadPlugin, IWorkSuggestionPlugin, IStatusIndicatorPlugin, IRemoteControlPlugin)
   └─ Referenced by: Application (Infrastructure transitively), individual plugin projects
 ```
 
@@ -58,7 +58,7 @@ Plugins load in isolated `AssemblyLoadContext` from the `Plugins:Directories` co
 
 **Plugin DI & lifecycle:**
 - Plugins are instantiated via `ActivatorUtilities.CreateInstance` from a plugin-scoped `ServiceCollection` (built in `PluginManager`).
-- Constructor injection provides: `ILogger<T>`, `IHttpClientFactory`, `ITokenProviderFactory`. No `Activator.CreateInstance` or parameterless constructors.
+- Constructor injection provides: `ILogger<T>`, `IHttpClientFactory`, `ITokenProviderFactory`. No `Activator.CreateInstance`; by convention no parameterless constructors either.
 - `PluginBase(ILogger)` is the abstract base — provides configuration management, validation (regex), lifecycle hooks (`OnInitializeAsync`, `OnShutdownAsync`, `OnDisposeAsync`).
 - `ShutdownAsync()` calls `OnShutdownAsync()` → `DisposeAsync()` (→ `OnDisposeAsync()`) automatically.
 - `PluginResult<T>` includes `PluginErrorCategory` enum (`Validation`, `Network`, `Authentication`, `NotFound`, `Internal`).
@@ -67,7 +67,7 @@ Plugins load in isolated `AssemblyLoadContext` from the `Plugins:Directories` co
 **Infrastructure:**
 - `PluginLoader` — discovers plugin DLLs, loads assemblies, instantiates via DI.
 - `PluginManager` — registration, enabled/disabled state, lifecycle, filtering by type.
-- `MsalTokenProviderFactory` / `MsalTokenProvider` — shared MSAL auth (cross-platform encrypted token cache via `Microsoft.Identity.Client.Extensions.Msal`, device code flow) for plugins needing Azure AD. Lives in `Infrastructure/Auth/`.
+- `MsalTokenProviderFactory` / `MsalTokenProvider` — shared MSAL auth (cross-platform encrypted token cache via `Microsoft.Identity.Client.Extensions.Msal`, device code or system browser flow chosen per plugin via `InteractiveAuthFlow`) for plugins needing Azure AD. Lives in `Infrastructure/Auth/`.
 
 **Plugin configuration** is primarily persisted in the user settings file, with `appsettings.json` (under the `Plugins` section) used only as an initial fallback.
 
@@ -86,4 +86,4 @@ Existing plugins: `Plugin.Atlassian` (Tempo + Jira), `Plugin.Office365Calendar`,
 
 ## CI/CD
 
-GitHub Actions: `dotnet.yml` (build + test on push/PR to master, including `streamdeck-plugin/`), `release.yml` (multi-platform publish on `v*` tag push). CI runs on ubuntu-latest.
+GitHub Actions: `dotnet.yml` (build + test on push/PR to master, including `streamdeck-plugin/`), `release.yml` (multi-platform publish on `v*` tag push). Build and test run on ubuntu-latest; the release publishes Avalonia on Windows, Linux and macOS.

@@ -21,7 +21,7 @@ Plugin ovládá fyzický LED indikátor Luxafor a přepíná jeho barvu podle ak
 | `long_break_color` | `Text` | ❌ | `#0000FF` (modrá) | Barva během dlouhé pauzy |
 | `turn_off_on_startup` | `Checkbox` | ❌ | `false` | Po startu aplikace zařízení zhasne (řeší rušivé červené svícení po bootu OS) |
 
-Pole jsou nepovinná: prázdné použije výchozí barvu. Vyplněná hodnota musí odpovídat regexu `^#[0-9A-Fa-f]{6}$`, jinak Nastavení neuloží a ukáže chybu (a plugin by se s takovou konfigurací ani neinicializoval). Plugin v UI chybí color picker; hodnoty se zadávají jako text. Běžné volby:
+Pole jsou nepovinná: prázdné použije výchozí barvu. Vyplněná hodnota musí odpovídat regexu `^#[0-9A-Fa-f]{6}$`, jinak Nastavení u zapnutého pluginu neuloží a ukáže chybu (a plugin by se s takovou konfigurací ani neinicializoval). Plugin v UI chybí color picker; hodnoty se zadávají jako text. Běžné volby:
 
 | Barva | Hex |
 |-------|-----|
@@ -148,7 +148,7 @@ Kromě testu tlačítkem lze funkčnost ověřit i prakticky:
 1. Ujisti se, že je plugin **enabled** a konfigurace je uložená.
 2. Připoj Luxafor zařízení (USB, nebo dongle Bluetooth Pro).
 3. Spusť Pomodoro a sleduj, jestli LED přepíná barvy podle aktuální fáze: **Work**, **Short Break**, **Long Break**. Mimo běh Pomodora plugin LED zhasne (idle).
-4. Pokud se LED nemění, zkontroluj v logu `%LocalAppData%\WorkTracker\logs\worktracker-YYYYMMDD.log` (v Developmentu `WorkTracker_Development`) hlášky z `LuxaforStatusIndicatorPlugin` a stav property `IsDeviceAvailable`.
+4. Pokud se LED nemění, zkontroluj v logu `%LocalAppData%\WorkTracker\logs\worktracker-YYYYMMDD.log` (v Developmentu `WorkTracker_Development`) hlášky z `LuxaforStatusIndicatorPlugin` (`Luxafor device connected: …`, `Luxafor device unavailable: …`).
 
 Tímhle postupem ověříš obě důležité věci v jednom kroku:
 
@@ -161,7 +161,7 @@ Tímhle postupem ověříš obě důležité věci v jednom kroku:
 
 | Symptom | Příčina | Řešení |
 |---------|---------|--------|
-| Plugin loaded, ale `IsDeviceAvailable = false` | Zařízení není připojené nebo uživatel nemá přístup k HID | Spusť **Otestovat připojení** — řekne, která z těch dvou možností to je. Na Linuxu zkontroluj udev rules. |
+| Plugin je načtený, ale LED nereaguje | Zařízení není připojené nebo uživatel nemá přístup k HID | Spusť **Otestovat připojení** — řekne, která z těch dvou možností to je. Na Linuxu zkontroluj udev rules. |
 | `Luxafor device unavailable: ...` (Warning v logu) | Zařízení je zapojené, ale OS ho nepustil — chybějící udev pravidlo, macOS Input Monitoring, nebo ho drží jiná aplikace | Hláška obsahuje konkrétní důvod i hint pro danou platformu. Viz sekci **Ovladače**. |
 | LED svítí, ale pořád stejnou barvou | Zařízení si drží barvu z doby před spuštěním aplikace (zapni `turn_off_on_startup`), příkaz se nedoručil (viz log), nebo jsou v konfiguraci všechny barvy stejné. Zastavení Pomodora LED zhasne. | Zkontroluj konfiguraci a log. |
 | Bluetooth Pro se připojuje a hned odpojuje | Slabá baterie nebo interference s donglem | Nabij zařízení, dongle připoj blíž. |

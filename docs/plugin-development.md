@@ -29,6 +29,7 @@ Plugin je samostatná .NET knihovna (`.dll`), která implementuje jedno nebo ví
 - Odesílání worklogů do externího systému (Tempo, Goran G3, jiný ERP)
 - Návrhy úkolů z externího zdroje (Jira, kalendář, ticketing systém)
 - Ovládání fyzických indikátorů (LED, status tabule)
+- Ovládání běžící aplikace z externího zařízení (Stream Deck)
 
 Plugin žije ve své vlastní izolované assembly, aby:
 
@@ -64,7 +65,6 @@ Vytvoříme jednoduchý worklog upload plugin, který „odešle“ záznamy do 
 
 ```bash
 dotnet new classlib -n WorkTracker.Plugin.FileDump -o plugins/WorkTracker.Plugin.FileDump
-cd plugins/WorkTracker.Plugin.FileDump
 ```
 
 V `.csproj`:
@@ -329,7 +329,7 @@ Plugin popisuje svou konfiguraci deklarativně přes `PluginConfigurationField`.
 
 ### Typy polí
 
-Každé pole má v Nastavení popisek (`Label`), placeholder (`Placeholder`) a pod sebou šedý text s `Description`, pokud ho vyplníš. `Type` určuje ovládací prvek a validaci:
+Textové pole má v Nastavení popisek (`Label`) a placeholder (`Placeholder`), checkbox jen popisek. Pod oběma je šedý text s `Description`, pokud ho vyplníš. `Type` určuje ovládací prvek a validaci:
 
 | Typ | V Nastavení | Validace vyplněné hodnoty |
 |-----|-------------|---------------------------|
@@ -396,7 +396,7 @@ public override IReadOnlyList<PluginConfigurationField> GetConfigurationFields()
 ### Načítání hodnot v pluginu
 
 ```csharp
-protected override async Task<bool> OnInitializeAsync(
+protected override Task<bool> OnInitializeAsync(
     IDictionary<string, string> configuration,
     CancellationToken cancellationToken)
 {
@@ -407,7 +407,7 @@ protected override async Task<bool> OnInitializeAsync(
     var maxResults = int.Parse(GetConfigValue("MaxResults") ?? "20");
 
     // …použij je k inicializaci HTTP klienta…
-    return true;
+    return Task.FromResult(true);
 }
 ```
 
@@ -547,13 +547,13 @@ public class PluginResult<T> : PluginResult
 | `NotFound` | 404, entita neexistuje |
 | `Internal` | Ostatní / neurčené (výchozí) |
 
-Aplikace zatím `ErrorCategory` nevyhodnocuje — v Nastavení i při odesílání zobrazí jen text z `Error`. Kategorie je i tak součástí kontraktu a testy referenčních pluginů ji ověřují, takže ji nastavuj správně a nespoléhej na default `Internal`.
+Aplikace zatím `ErrorCategory` nevyhodnocuje — v Nastavení i při odesílání zobrazí jen text z `Error`. Kategorie je i tak součástí kontraktu a testy některých pluginů (např. Luxafor) ji ověřují, takže ji nastavuj správně a nespoléhej na default `Internal`.
 
 ---
 
 ## Autentizace: ITokenProviderFactory a interaktivní přihlášení
 
-Pluginy pro Microsoft Entra ID (Office 365, Goran G3, vlastní M365/Azure AD integrace) **musí** používat `ITokenProviderFactory` injektovaný z DI. Nevolej MSAL přímo — factory už řeší token cache, interaktivní přihlášení a cross‑platform šifrování.
+Pluginy pro Microsoft Entra ID (Office 365, Goran G3, vlastní M365/Azure AD integrace) **musí** používat `ITokenProviderFactory` injektovaný z DI. Nevolej MSAL přímo — factory už řeší token cache, interaktivní přihlášení a cross‑platform šifrování (když úložiště OS není dostupné, spadne na nešifrovaný soubor).
 
 Při vytváření token provideru plugin zvolí `InteractiveAuthFlow`:
 
@@ -824,7 +824,7 @@ Dokumentace: [plugins/atlassian.md](plugins/atlassian.md).
 
 ### `WorkTracker.Plugin.Office365Calendar`
 
-- **MSAL device code flow** přes `ITokenProviderFactory`.
+- **MSAL přihlášení v systémovém prohlížeči** (`InteractiveAuthFlow.SystemBrowser`) přes `ITokenProviderFactory`.
 - **Microsoft Graph API** — `TestConnectionAsync` ověřuje připojení a identitu přes `GET /me`; samotné načítání eventů v `GetSuggestionsAsync` pak volá `GET /me/calendarView`.
 - **Filtrace all‑day eventů** konfigurovatelná přes checkbox.
 - Ukazuje, jak propagovat `IProgress<string>` z `TestConnectionAsync` až do MSAL callbacku.

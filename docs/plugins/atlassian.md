@@ -97,7 +97,7 @@ Stiskem **Test connection** v Settings plugin aktuálně:
 |---------|---------|--------|
 | `401 Unauthorized` z Tempa | Neplatný token | Vygeneruj nový |
 | `403 Forbidden` | Token nemá oprávnění k zápisu worklogů | Vygeneruj token s oprávněním pro zápis worklogů |
-| `404 Not Found` při uploadu | Ticket key neexistuje / překlep | Zkontroluj ticket v Jiře |
+| `Could not resolve issue ID for <ticket>` při uploadu | Ticket neexistuje, nebo je Jira nedostupná či odmítá přihlášení | Zkontroluj ticket a nastavení Jiry, detail je v logu |
 | `400 Bad Request` — `Invalid startDate` | Timezone konflikt (server vs. klient) | Plugin posílá datum tak, jak je v záznamu (lokální čas, bez převodu na UTC) — pokud Tempo instance počítá v UTC, může se worklog posunout o den. |
 
 ---
@@ -199,5 +199,6 @@ Stejně jako Tempo plugin volá **jen** `_jiraClient.TestConnectionAsync` (pingn
 > dotnet user-secrets init
 > dotnet user-secrets set "Plugins:tempo.worklog:TempoApiToken" "vas-token"
 > ```
+> User Secrets se načítají jen v prostředí Development, tedy v Debug buildu. Release build je ignoruje.
 
 Aplikace při startu načte hodnoty z configu jako **výchozí** pro pluginy. Pokud má plugin konfiguraci v `settings.json`, použije se celá místo sekce z `appsettings.json` — neslučuje se po jednotlivých klíčích.
