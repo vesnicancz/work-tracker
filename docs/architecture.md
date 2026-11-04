@@ -28,15 +28,12 @@ Pokud tě zajímá **jak napsat vlastní plugin**, jdi rovnou na [plugin-develop
 │  │ .CLI         │  │ (cross-platform desktop) │                     │
 │  └──────┬───────┘  └──────────┬───────────────┘                     │
 │         │                     │                                     │
-│         │         ┌───────────┘                                     │
-│         │         │                                                 │
-│         │  ┌──────▼───────────────────────────────────────────┐     │
-│         │  │ WorkTracker.UI.Shared                            │     │
-│         │  │ - ViewModely (CommunityToolkit.Mvvm)             │     │
-│         │  │ - Orchestrátory (koordinují služby mezi UI)      │     │
-│         │  │ - ISettingsService, ILocalizationService         │     │
-│         │  │ - IPomodoroService                               │     │
-│         │  └──────────────────┬───────────────────────────────┘     │
+│         │                     │ - okna a platformní služby          │
+│         │                     │ - ViewModely (CommunityToolkit.Mvvm)│
+│         │                     │ - Orchestrátory                     │
+│         │                     │ - ISettingsService, ILocalization…  │
+│         │                     │ - IPomodoroService                  │
+│         │                     │                                     │
 └─────────────────────────────┬─┼─────────────────────────────────────┘
                               │ │
 ┌─────────────────────────────▼─▼─────────────────────────────────────┐
@@ -131,15 +128,15 @@ Implementace externích závislostí:
 
 Infrastructure **závisí** na Application a Domain, **ne naopak**.
 
-### UI.Shared (`src/WorkTracker.UI.Shared`)
+### GUI logika (`src/WorkTracker.Avalonia`)
 
-Platformně neutrální UI logika:
+Logika GUI, která nezávisí na Avalonii, takže jde testovat bez UI (hlídá to `WorkTracker.Architecture.Tests`):
 
-- **Sub‑ViewModely** (`SuggestionsViewModel`, `PomodoroViewModel`, `PluginViewModel`, `ConfigurationFieldViewModel`, …) — `ObservableObject` z `CommunityToolkit.Mvvm`, příkazy jako `AsyncRelayCommand`/`RelayCommand` vytvořené v konstruktoru, vlastnosti typicky přes `SetProperty` (source generátory `[RelayCommand]`/`[ObservableProperty]` projekt nepoužívá). Root ViewModely jsou v projektu Avalonia, viz [ViewModely: hybridní přístup](#viewmodely-hybridní-přístup).
+- **ViewModely** (`MainViewModel`, `SettingsViewModel`, `SuggestionsViewModel`, `PomodoroViewModel`, `PluginViewModel`, …) ve složce `ViewModels/` — `ObservableObject` z `CommunityToolkit.Mvvm`, příkazy jako `AsyncRelayCommand`/`RelayCommand` vytvořené v konstruktoru, vlastnosti typicky přes `SetProperty` (source generátory `[RelayCommand]`/`[ObservableProperty]` projekt nepoužívá).
 - **Orchestrátory** — třídy, které koordinují více služeb a skrývají workflow před ViewModely (např. `WorklogSubmissionOrchestrator` sestaví náhled včetně agregace, provede submit a retry a označí položky, které plugin odmítl). Dialogy implementuje Avalonia `DialogService`; orchestrátor je smí vyvolat jen přes `IDialogService` (viz `WorkEntryEditOrchestrator`).
 - **Služby**: `ISettingsService` (serializace `ApplicationSettings` do `settings.json`), `ILocalizationService` (resx loader s `INotifyPropertyChanged`), `IPomodoroService`.
 
-UI.Shared závisí na Application, ne přímo na Infrastructure.
+Tahle logika závisí na Application. Infrastructure používá jen bootstrap v `App.axaml.cs`.
 
 ### Presentation
 
@@ -157,14 +154,14 @@ Oba prezentační projekty volají `AddInfrastructure(configuration)` a pak si p
 Závislosti jdou **dovnitř**, nikdy ven:
 
 ```
-Avalonia ──> UI.Shared ──> Application ──> Domain
-CLI ─────────────────────> Application
-                               │
-                               ▼
-                      Plugin.Abstractions
-                               ▲
-                               │
-                     (implementováno pluginy)
+Avalonia ──> Application ──> Domain
+CLI ──────> Application
+                 │
+                 ▼
+        Plugin.Abstractions
+                 ▲
+                 │
+       (implementováno pluginy)
 ```
 
 ```
@@ -191,11 +188,9 @@ Projekt záměrně udržuje **dva paralelní frontendy**. Důvody:
 
 Dříve existoval i třetí frontend **WPF** (Windows‑only); byl odstraněn, protože Avalonia jeho funkčnost plně pokrývá i na Windows a duplicitní údržba se nevyplácela.
 
-### ViewModely: hybridní přístup
+### ViewModely bez Avalonie
 
-**Root ViewModely** (například `MainViewModel`, `SettingsViewModel`) jsou frontend‑specifické a žijí přímo v projektu `WorkTracker.Avalonia`. **To je záměr.** Framework‑specifické detaily (threading, messaging, styling bindings) patří k frontendu; sdílený base class pro celé obrazovky by končil kompromisy.
-
-**Sub‑ViewModely**, které nemají framework‑specifickou vazbu, ale jsou naopak znovupoužitelné (například `SuggestionsViewModel`, pomodoro komponenty, plugin konfigurační VM), žijí v `WorkTracker.UI.Shared.ViewModels` a jsou **skládané** do root ViewModelů. Vedle nich jsou v `UI.Shared` služby, orchestrátory a settings.
+ViewModely žijí v projektu `WorkTracker.Avalonia` ve složce `ViewModels/`, ale Avalonii ani `App` nepoužívají. Totéž platí pro `Orchestrators/`, `Models/` a `Helpers/`. Vlákna řeší přes `IUiDispatcher` a barvy styly v XAML. Protože to všechno leží v jednom projektu s okny, nehlídá to překladač, ale test v `WorkTracker.Architecture.Tests`. Platformní služby ve složce `Services/` Avalonii používat smějí.
 
 ### Dispatch mezi UI a služby
 
@@ -344,7 +339,7 @@ WorkTracker nepoužívá klasický scoped `DbContext` (jako v ASP.NET Core reque
 
 ### MVVM a Orchestrátory
 
-ViewModely jsou tenké — delegují akce na orchestrátory/services. Orchestrátory žijí v `UI.Shared/Orchestrators` a zapouzdřují workflow s validací a error recovery; dialogy samotné otevírá frontend (`IDialogService`). Většina je bez stavu, výjimkou je třeba `CachedWorkSuggestionOrchestrator`, který si drží cache.
+ViewModely jsou tenké — delegují akce na orchestrátory/services. Orchestrátory žijí ve složce `Orchestrators/` projektu Avalonia a zapouzdřují workflow s validací a error recovery; dialogy samotné otevírá frontend (`IDialogService`). Většina je bez stavu, výjimkou je třeba `CachedWorkSuggestionOrchestrator`, který si drží cache.
 
 ### Plugin Template Method
 

@@ -75,7 +75,7 @@ Všechna zařízení komunikují přes **HID API**. Plugin používá knihovnu [
 
 ### Reakce na Pomodoro
 
-Indikátory řídí přímo `PomodoroService` v `WorkTracker.UI.Shared` (ne Avalonia — ta `PhaseChanged` používá jen pro UI). Při startu, přechodu fáze (i přes **Přeskočit**), zastavení, resetu a při dispose služby zavolá:
+Indikátory řídí přímo `PomodoroService` (ViewModel `PhaseChanged` používá jen pro UI). Při startu, přechodu fáze (i přes **Přeskočit**), zastavení, resetu a při dispose služby zavolá:
 
 ```csharp
 private async Task SetStatusIndicatorsForPhaseAsync(PomodoroPhase phase)

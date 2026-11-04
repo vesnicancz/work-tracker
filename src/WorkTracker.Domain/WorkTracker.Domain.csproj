@@ -6,7 +6,6 @@
   <ItemGroup>
     <InternalsVisibleTo Include="WorkTracker.Domain.Tests" />
     <InternalsVisibleTo Include="WorkTracker.Application.Tests" />
-    <InternalsVisibleTo Include="WorkTracker.UI.Shared.Tests" />
     <InternalsVisibleTo Include="WorkTracker.Avalonia.Tests" />
     <InternalsVisibleTo Include="WorkTracker.Tests.Common" />
   </ItemGroup>

@@ -18,9 +18,8 @@ using WorkTracker.Avalonia.ViewModels;
 using WorkTracker.Avalonia.Views;
 using WorkTracker.Infrastructure;
 using WorkTracker.Infrastructure.Data;
-using WorkTracker.UI.Shared;
-using WorkTracker.UI.Shared.Models;
-using WorkTracker.UI.Shared.Services;
+using WorkTracker.Avalonia;
+using WorkTracker.Avalonia.Models;
 
 namespace WorkTracker.Avalonia;
 
@@ -328,7 +327,7 @@ public partial class App : global::Avalonia.Application
 	internal static void ConfigureAppServices(IServiceCollection services, IConfiguration configuration, LocalizationService localization)
 	{
 		services.AddInfrastructure(configuration);
-		services.AddUIShared();
+		services.AddPresentationServices();
 
 		services.AddSingleton(localization);
 		services.AddSingleton<ILocalizationService>(localization);

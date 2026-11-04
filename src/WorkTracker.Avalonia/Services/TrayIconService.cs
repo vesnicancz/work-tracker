@@ -10,8 +10,8 @@ using Material.Icons;
 using Material.Icons.Avalonia;
 using Microsoft.Extensions.Logging;
 using WorkTracker.Avalonia.Views;
-using WorkTracker.UI.Shared.Models;
-using WorkTracker.UI.Shared.Services;
+using WorkTracker.Avalonia.Models;
+using WorkTracker.Avalonia.Services;
 
 namespace WorkTracker.Avalonia.Services;
 

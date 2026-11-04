@@ -3,7 +3,7 @@ using System.Diagnostics;
 using Avalonia.Labs.Notifications;
 using Avalonia.Threading;
 using Microsoft.Extensions.Logging;
-using WorkTracker.UI.Shared.Services;
+using WorkTracker.Avalonia.Services;
 
 namespace WorkTracker.Avalonia.Services;
 

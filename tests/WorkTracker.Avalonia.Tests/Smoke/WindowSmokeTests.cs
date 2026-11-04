@@ -7,8 +7,8 @@ using WorkTracker.Avalonia.Controls;
 using WorkTracker.Avalonia.Tests.ViewModels;
 using WorkTracker.Avalonia.Views;
 using WorkTracker.Tests.Common.Builders;
-using WorkTracker.UI.Shared.Models;
-using WorkTracker.UI.Shared.Services;
+using WorkTracker.Avalonia.Models;
+using WorkTracker.Avalonia.Services;
 
 namespace WorkTracker.Avalonia.Tests.Smoke;
 

@@ -1,7 +1,7 @@
 using System.Collections.Specialized;
 using Avalonia.Controls;
 using Avalonia.Input;
-using WorkTracker.UI.Shared.ViewModels;
+using WorkTracker.Avalonia.ViewModels;
 
 namespace WorkTracker.Avalonia.Views;
 

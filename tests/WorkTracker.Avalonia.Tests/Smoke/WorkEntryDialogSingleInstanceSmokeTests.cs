@@ -5,8 +5,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using WorkTracker.Avalonia.Services;
 using WorkTracker.Avalonia.ViewModels;
-using WorkTracker.UI.Shared.Orchestrators;
-using WorkTracker.UI.Shared.Services;
+using WorkTracker.Avalonia.Orchestrators;
 
 namespace WorkTracker.Avalonia.Tests.Smoke;
 

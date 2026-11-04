@@ -5,10 +5,9 @@ using Microsoft.Extensions.Logging;
 using WorkTracker.Avalonia.ViewModels;
 using WorkTracker.Avalonia.Views;
 using WorkTracker.Domain.Entities;
-using WorkTracker.UI.Shared;
-using WorkTracker.UI.Shared.Orchestrators;
-using WorkTracker.UI.Shared.Services;
-using WorkTracker.UI.Shared.ViewModels;
+using WorkTracker.Avalonia;
+using WorkTracker.Avalonia.Orchestrators;
+using WorkTracker.Avalonia.Services;
 
 namespace WorkTracker.Avalonia.Services;
 

@@ -792,7 +792,7 @@ nedotčená.
 
 V CLI je UI pevně v angličtině.
 
-Nový jazyk se přidá `.resx` souborem v `src/WorkTracker.UI.Shared/Resources/Localization/` a zápisem jeho kódu do `LanguageCatalog` (`SupportedLanguages` a `DisplayName`). Viz [developer-guide.md](developer-guide.md).
+Nový jazyk se přidá `.resx` souborem v `src/WorkTracker.Avalonia/Resources/Localization/` a zápisem jeho kódu do `LanguageCatalog` (`SupportedLanguages` a `DisplayName`). Viz [developer-guide.md](developer-guide.md).
 
 ### Motivy (pouze Avalonia)
 

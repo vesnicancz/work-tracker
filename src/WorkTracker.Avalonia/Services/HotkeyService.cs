@@ -4,7 +4,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Microsoft.Extensions.Logging;
 using WorkTracker.Avalonia.Services.Linux;
 using WorkTracker.Avalonia.Services.MacOS;
-using WorkTracker.UI.Shared.Services;
+using WorkTracker.Avalonia.Services;
 
 namespace WorkTracker.Avalonia.Services;
 

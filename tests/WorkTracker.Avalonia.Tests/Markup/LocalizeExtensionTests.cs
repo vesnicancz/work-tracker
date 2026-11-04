@@ -3,7 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Data;
 using FluentAssertions;
 using WorkTracker.Avalonia.Markup;
-using WorkTracker.UI.Shared.Services;
+using WorkTracker.Avalonia.Services;
 
 namespace WorkTracker.Avalonia.Tests.Markup;
 

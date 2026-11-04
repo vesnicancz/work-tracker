@@ -6,8 +6,7 @@ using WorkTracker.Avalonia.Services;
 using WorkTracker.Avalonia.Services.MacOS;
 using WorkTracker.Avalonia.ViewModels;
 using WorkTracker.Domain.Entities;
-using WorkTracker.UI.Shared.Models;
-using WorkTracker.UI.Shared.Services;
+using WorkTracker.Avalonia.Models;
 
 namespace WorkTracker.Avalonia.Views;
 

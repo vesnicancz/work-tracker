@@ -1,0 +1,287 @@
+using System.Runtime.InteropServices;
+using System.Text.Json;
+using Microsoft.Extensions.Logging;
+using WorkTracker.Application;
+using WorkTracker.Application.Services;
+using WorkTracker.Avalonia.Models;
+
+namespace WorkTracker.Avalonia.Services;
+
+/// <summary>
+/// Service for managing application settings
+/// </summary>
+public sealed class SettingsService : ISettingsService, IDisposable
+{
+	private readonly ILogger<SettingsService> _logger;
+	private readonly ISecureStorage _secureStorage;
+	private readonly string _settingsFilePath;
+	private readonly SemaphoreSlim _writeLock = new(1, 1);
+	private ApplicationSettings _settings;
+
+	// The plugin state exactly as it sits in the file, still protected. A save only carries the
+	// plugins the caller could see, so this is what the ones it could not see are restored from.
+	private Dictionary<string, Dictionary<string, string>> _storedPluginConfigurations = new(StringComparer.Ordinal);
+	private Dictionary<string, bool> _storedEnabledPlugins = new(StringComparer.Ordinal);
+
+	private static readonly JsonSerializerOptions WriteOptions = new() { WriteIndented = true };
+
+	public SettingsService(ILogger<SettingsService> logger, ISecureStorage secureStorage, string? settingsDirectoryOverride = null)
+	{
+		_logger = logger;
+		_secureStorage = secureStorage;
+
+		var directory = string.IsNullOrWhiteSpace(settingsDirectoryOverride)
+			? WorkTrackerPaths.AppDataDirectory
+			: settingsDirectoryOverride;
+		Directory.CreateDirectory(directory);
+		_settingsFilePath = Path.Combine(directory, "settings.json");
+
+		_settings = LoadSettings();
+	}
+
+	public ApplicationSettings Settings => _settings;
+
+	private ApplicationSettings LoadSettings()
+	{
+		try
+		{
+			if (!File.Exists(_settingsFilePath))
+			{
+				_logger.LogInformation("Settings file not found, using defaults");
+				return new ApplicationSettings();
+			}
+
+			var json = File.ReadAllText(_settingsFilePath);
+			var settings = JsonSerializer.Deserialize<ApplicationSettings>(json);
+
+			if (settings == null)
+			{
+				_logger.LogWarning("Failed to deserialize settings from {Path}, using defaults", _settingsFilePath);
+				return new ApplicationSettings();
+			}
+
+			_logger.LogInformation("Settings loaded successfully");
+			CaptureStoredPluginState(settings);
+			UnprotectPluginConfigurations(settings);
+			return settings;
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Error loading settings, using defaults");
+			return new ApplicationSettings();
+		}
+	}
+
+	/// <summary>
+	/// Resolves any protected values in plugin configurations via the secure storage.
+	/// Non-protected values pass through unchanged.
+	/// </summary>
+	private void UnprotectPluginConfigurations(ApplicationSettings settings)
+	{
+		if (settings.PluginConfigurations is null)
+		{
+			return;
+		}
+
+		foreach (var pluginConfig in settings.PluginConfigurations.Values)
+		{
+			if (pluginConfig is null)
+			{
+				continue;
+			}
+
+			foreach (var key in pluginConfig.Keys.ToList())
+			{
+				pluginConfig[key] = _secureStorage.Unprotect(pluginConfig[key]);
+			}
+		}
+	}
+
+	public async Task SaveSettingsAsync(ApplicationSettings settings, CancellationToken cancellationToken = default)
+	{
+		await _writeLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+		try
+		{
+			RestorePluginStateNobodySpokeFor(settings);
+
+			var fileSettings = CreateFileSettings(settings);
+			var json = JsonSerializer.Serialize(fileSettings, WriteOptions);
+			await WriteAtomicallyAsync(json, cancellationToken).ConfigureAwait(false);
+
+			CaptureStoredPluginState(fileSettings);
+			UnprotectPluginConfigurations(settings);
+			_settings = settings;
+			_logger.LogInformation("Settings saved successfully");
+		}
+		catch (OperationCanceledException) { throw; }
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Error saving settings");
+			throw;
+		}
+		finally
+		{
+			_writeLock.Release();
+		}
+	}
+
+	/// <summary>
+	/// Remembers the plugin state in the shape the file holds it, protected values included, so a
+	/// later save can put back whatever it was not told about.
+	/// </summary>
+	private void CaptureStoredPluginState(ApplicationSettings settings)
+	{
+		_storedPluginConfigurations = settings.PluginConfigurations is null
+			? new Dictionary<string, Dictionary<string, string>>(StringComparer.Ordinal)
+			: settings.PluginConfigurations.ToDictionary(
+				pair => pair.Key,
+				pair => pair.Value is null
+					? new Dictionary<string, string>(StringComparer.Ordinal)
+					: new Dictionary<string, string>(pair.Value, StringComparer.Ordinal),
+				StringComparer.Ordinal);
+
+		_storedEnabledPlugins = settings.EnabledPlugins is null
+			? new Dictionary<string, bool>(StringComparer.Ordinal)
+			: new Dictionary<string, bool>(settings.EnabledPlugins, StringComparer.Ordinal);
+	}
+
+	/// <summary>
+	/// Puts back the configuration and enabled state of every plugin the incoming settings say
+	/// nothing about.
+	/// <para>
+	/// A caller can only speak for the plugins it actually loaded. An instance that loaded none — a
+	/// development build pointed at an empty plugins directory, a directory that was briefly
+	/// unreachable — used to persist that emptiness, wiping the configuration of every plugin it
+	/// could not see and deleting the matching secrets on the next save. Entries the caller did
+	/// send still win, so disabling or reconfiguring a loaded plugin works as before; the rest are
+	/// carried over exactly as they were read, still protected.
+	/// </para>
+	/// </summary>
+	private void RestorePluginStateNobodySpokeFor(ApplicationSettings settings)
+	{
+		if (settings.PluginConfigurations is null)
+		{
+			settings.PluginConfigurations = new Dictionary<string, Dictionary<string, string>>(StringComparer.Ordinal);
+		}
+
+		if (settings.EnabledPlugins is null)
+		{
+			settings.EnabledPlugins = new Dictionary<string, bool>(StringComparer.Ordinal);
+		}
+
+		foreach (var (pluginId, storedConfig) in _storedPluginConfigurations)
+		{
+			if (!settings.PluginConfigurations.ContainsKey(pluginId))
+			{
+				settings.PluginConfigurations[pluginId] = new Dictionary<string, string>(storedConfig, StringComparer.Ordinal);
+			}
+		}
+
+		foreach (var (pluginId, storedEnabled) in _storedEnabledPlugins)
+		{
+			if (!settings.EnabledPlugins.ContainsKey(pluginId))
+			{
+				settings.EnabledPlugins[pluginId] = storedEnabled;
+			}
+		}
+	}
+
+	/// <summary>
+	/// Builds the copy that goes to disk, with every value that is just the decrypted form of a
+	/// stored placeholder put back to that placeholder.
+	/// <para>
+	/// <see cref="Settings"/> holds decrypted values, and callers that only change an unrelated field
+	/// save that same object back. Working on a copy keeps the object in use decrypted throughout, so
+	/// a plugin initialized during the save never receives a placeholder instead of its token.
+	/// </para>
+	/// </summary>
+	private ApplicationSettings CreateFileSettings(ApplicationSettings settings)
+	{
+		var fileSettings = settings.Clone();
+
+		foreach (var (pluginId, config) in fileSettings.PluginConfigurations)
+		{
+			if (!_storedPluginConfigurations.TryGetValue(pluginId, out var storedConfig))
+			{
+				continue;
+			}
+
+			foreach (var key in config.Keys.ToList())
+			{
+				if (storedConfig.TryGetValue(key, out var storedValue)
+					&& storedValue != config[key]
+					&& _secureStorage.Unprotect(storedValue) == config[key])
+				{
+					config[key] = storedValue;
+				}
+			}
+		}
+
+		return fileSettings;
+	}
+
+	private async Task WriteAtomicallyAsync(string json, CancellationToken cancellationToken)
+	{
+		var tempPath = _settingsFilePath + ".tmp";
+		await File.WriteAllTextAsync(tempPath, json, cancellationToken).ConfigureAwait(false);
+		SwapIn(tempPath);
+	}
+
+	/// <summary>
+	/// Swaps a fully written temporary file in for the settings file, keeping the previous contents
+	/// as settings.json.bak. Writing in place risks leaving a truncated file behind if the process
+	/// dies mid-save, and the backup is what makes an unwanted save recoverable by hand.
+	/// </summary>
+	private void SwapIn(string tempPath)
+	{
+		SetOwnerOnlyPermissions(tempPath);
+
+		if (!File.Exists(_settingsFilePath))
+		{
+			File.Move(tempPath, _settingsFilePath);
+			SetOwnerOnlyPermissions(_settingsFilePath);
+			return;
+		}
+
+		var backupPath = _settingsFilePath + ".bak";
+
+		try
+		{
+			File.Replace(tempPath, _settingsFilePath, backupPath, ignoreMetadataErrors: true);
+		}
+		catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or PlatformNotSupportedException)
+		{
+			// Some file systems cannot do the three-way replace. The move below is still a rename,
+			// so the settings file is never the half-written one; only the backup loses atomicity.
+			_logger.LogWarning(ex, "Could not replace {Path} atomically, falling back to a copy and move", _settingsFilePath);
+			File.Copy(_settingsFilePath, backupPath, overwrite: true);
+			File.Move(tempPath, _settingsFilePath, overwrite: true);
+		}
+
+		SetOwnerOnlyPermissions(_settingsFilePath);
+		SetOwnerOnlyPermissions(backupPath);
+	}
+
+	public void Dispose()
+	{
+		_writeLock.Dispose();
+	}
+
+	private void SetOwnerOnlyPermissions(string filePath)
+	{
+		if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+		{
+			return;
+		}
+
+		try
+		{
+			File.SetUnixFileMode(filePath,
+				UnixFileMode.UserRead | UnixFileMode.UserWrite);
+		}
+		catch (Exception ex)
+		{
+			_logger.LogWarning(ex, "Failed to set file permissions on {Path}", filePath);
+		}
+	}
+}

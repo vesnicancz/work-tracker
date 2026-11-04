@@ -3,8 +3,8 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using WorkTracker.Application.Common;
 using WorkTracker.Domain.Entities;
-using WorkTracker.UI.Shared.Orchestrators;
-using WorkTracker.UI.Shared.Services;
+using WorkTracker.Avalonia.Orchestrators;
+using WorkTracker.Avalonia.Services;
 
 namespace WorkTracker.Avalonia.ViewModels;
 
