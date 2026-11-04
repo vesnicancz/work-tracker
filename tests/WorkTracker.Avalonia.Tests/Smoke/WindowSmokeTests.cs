@@ -30,7 +30,7 @@ public class WindowSmokeTests
 	[InlineData(PomodoroPhase.Idle, "CardBackground", "CardBorder", "TextBright")]
 	public Task PomodoroCard_ShowsTheColorsOfThePhase(PomodoroPhase phase, string background, string border, string foreground) => UiThread.Dispatch(() =>
 	{
-		App.SwitchTheme("Dark");
+		ThemeManager.SwitchTheme("Dark");
 		var harness = new MainViewModelHarness();
 		var window = new MainWindow();
 		using var viewModel = harness.CreateViewModel();
@@ -65,10 +65,10 @@ public class WindowSmokeTests
 		try
 		{
 			viewModel.Pomodoro.UpdatePhase(PomodoroPhase.Work);
-			App.SwitchTheme("Abyss");
+			ThemeManager.SwitchTheme("Abyss");
 			var abyss = window.FindControl<Border>("PomodoroCard")!.Background;
 
-			App.SwitchTheme("Dark");
+			ThemeManager.SwitchTheme("Dark");
 
 			var card = window.FindControl<Border>("PomodoroCard")!;
 			card.Background.Should().NotBeSameAs(abyss);
@@ -283,7 +283,7 @@ public class WindowSmokeTests
 		{
 			foreach (var themeName in ThemeCatalog.AllThemes)
 			{
-				App.SwitchTheme(themeName);
+				ThemeManager.SwitchTheme(themeName);
 
 				var window = new SuggestionsWindow();
 				window.Show();
@@ -301,7 +301,7 @@ public class WindowSmokeTests
 		}
 		finally
 		{
-			App.SwitchTheme(ApplicationSettings.DefaultTheme);
+			ThemeManager.SwitchTheme(ApplicationSettings.DefaultTheme);
 		}
 	});
 
@@ -310,7 +310,7 @@ public class WindowSmokeTests
 	{
 		foreach (var themeName in ThemeCatalog.AllThemes)
 		{
-			App.SwitchTheme(themeName);
+			ThemeManager.SwitchTheme(themeName);
 
 			var app = global::Avalonia.Application.Current!;
 			var expected = ThemeCatalog.IsLight(themeName) ? ThemeVariant.Light : ThemeVariant.Dark;

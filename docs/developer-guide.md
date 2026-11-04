@@ -518,7 +518,7 @@ Mechanismus má dvě poloviny a obě jsou nutné:
   „změnil se jazyk" pro běžné konzumenty). Dnes to dělá `TrayIconService` (nativní položky menu)
   a `MainViewModel` (počítané texty + cache fáze v `PomodoroViewModel`).
 
-Jazyk se načte v `App.ReadEarlySettings()` a hned aplikuje přes `localization.ApplyLanguage(...)`,
+Jazyk se načte v `EarlySettings.Read()` a hned aplikuje přes `localization.ApplyLanguage(...)`,
 tedy před konstrukcí prvního okna — jinak by při startu probliklo předchozí nastavení.
 
 ---
