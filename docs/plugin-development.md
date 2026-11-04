@@ -170,15 +170,6 @@ public sealed class FileDumpWorklogPlugin : WorklogUploadPluginBase
             return PluginResult<bool>.Failure(ex.Message, PluginErrorCategory.Internal);
         }
     }
-
-    public override Task<PluginResult<IEnumerable<PluginWorklogEntry>>> GetWorklogsAsync(
-        DateTime startDate, DateTime endDate, CancellationToken ct) =>
-        Task.FromResult(PluginResult<IEnumerable<PluginWorklogEntry>>.Success(
-            Enumerable.Empty<PluginWorklogEntry>()));
-
-    public override Task<PluginResult<bool>> WorklogExistsAsync(
-        PluginWorklogEntry worklog, CancellationToken ct) =>
-        Task.FromResult(PluginResult<bool>.Success(false));
 }
 ```
 
@@ -259,8 +250,6 @@ Dědí `PluginBase` a implementuje `IWorklogUploadPlugin`. Definuje abstraktní 
 
 - `TestConnectionAsync(IProgress<string>?, CancellationToken)`
 - `UploadWorklogAsync(PluginWorklogEntry, CancellationToken)`
-- `GetWorklogsAsync(DateTime startDate, DateTime endDate, CancellationToken)`
-- `WorklogExistsAsync(PluginWorklogEntry, CancellationToken)`
 
 Virtual metoda `UploadWorklogsAsync(IEnumerable<PluginWorklogEntry>, WorklogSubmissionMode, CancellationToken)` má **výchozí implementaci**, která prochází záznamy jeden po druhém, volá `UploadWorklogAsync` a sbírá chyby do `WorklogSubmissionResult`. Stačí přepsat, jen pokud chceš hromadné API nebo potřebuješ jiný payload podle módu (např. Tempo v Aggregated vynechává `startTime`).
 

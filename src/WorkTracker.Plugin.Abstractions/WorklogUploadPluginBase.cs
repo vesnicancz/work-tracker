@@ -73,8 +73,4 @@ public abstract class WorklogUploadPluginBase(ILogger logger) : PluginBase(logge
 
 		return PluginResult<WorklogSubmissionResult>.Success(submissionResult);
 	}
-
-	public abstract Task<PluginResult<IEnumerable<PluginWorklogEntry>>> GetWorklogsAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken);
-
-	public abstract Task<PluginResult<bool>> WorklogExistsAsync(PluginWorklogEntry worklog, CancellationToken cancellationToken);
 }

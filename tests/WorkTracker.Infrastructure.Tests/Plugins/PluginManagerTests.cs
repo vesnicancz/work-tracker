@@ -391,16 +391,6 @@ public class TestWorklogPlugin : IWorklogUploadPlugin
 		return Task.FromResult(PluginResult<WorklogSubmissionResult>.Success(result));
 	}
 
-	public Task<PluginResult<IEnumerable<PluginWorklogEntry>>> GetWorklogsAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken)
-	{
-		return Task.FromResult(PluginResult<IEnumerable<PluginWorklogEntry>>.Success(Enumerable.Empty<PluginWorklogEntry>()));
-	}
-
-	public Task<PluginResult<bool>> WorklogExistsAsync(PluginWorklogEntry worklog, CancellationToken cancellationToken)
-	{
-		return Task.FromResult(PluginResult<bool>.Success(false));
-	}
-
 	public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 }
 

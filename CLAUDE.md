@@ -51,7 +51,7 @@ Plugin.Abstractions (IPlugin, IWorklogUploadPlugin, IWorkSuggestionPlugin, IStat
 
 Plugins load in isolated `AssemblyLoadContext` from the `Plugins:Directories` config (default `plugins/` next to the executable; inside a macOS `.app` the app-data directory; Development adds the plugins' `bin/Debug` (in the CLI without Stream Deck)). Four plugin interfaces extend `IPlugin : IAsyncDisposable` (upload and suggestion via `ITestablePlugin`):
 
-- **`IWorklogUploadPlugin`** — Upload/fetch worklogs (e.g., Tempo)
+- **`IWorklogUploadPlugin`** — Upload worklogs (e.g., Tempo)
 - **`IWorkSuggestionPlugin`** — Suggest work items (e.g., Jira issues)
 - **`IStatusIndicatorPlugin`** — Physical status indicators (e.g., Luxafor LED)
 - **`IRemoteControlPlugin`** — External controllers driving the running GUI (e.g., Stream Deck). Gets its `IRemoteControlHost` from `AttachAsync`, not from DI, because the implementation lives in UI.Shared. `IRemoteControlCoordinator` attaches and detaches by enabled state; the CLI never does, so these plugins are inert there.
