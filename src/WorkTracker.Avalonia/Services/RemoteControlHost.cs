@@ -1,4 +1,3 @@
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using WorkTracker.Application.Common;
 using WorkTracker.Application.Services;
@@ -21,7 +20,7 @@ public sealed class RemoteControlHost : IRemoteControlHost
 	private readonly IDialogService _dialogService;
 	private readonly IActionFeedbackService _actionFeedback;
 	private readonly ILocalizationService _localization;
-	private readonly IServiceScopeFactory _scopeFactory;
+	private readonly IWorkEntryService _workEntryService;
 	private readonly IUiDispatcher _uiDispatcher;
 	private readonly TimeProvider _timeProvider;
 	private readonly ILogger<RemoteControlHost> _logger;
@@ -34,7 +33,7 @@ public sealed class RemoteControlHost : IRemoteControlHost
 		IDialogService dialogService,
 		IActionFeedbackService actionFeedback,
 		ILocalizationService localization,
-		IServiceScopeFactory scopeFactory,
+		IWorkEntryService workEntryService,
 		IUiDispatcher uiDispatcher,
 		TimeProvider timeProvider,
 		ILogger<RemoteControlHost> logger)
@@ -46,7 +45,7 @@ public sealed class RemoteControlHost : IRemoteControlHost
 		_dialogService = dialogService;
 		_actionFeedback = actionFeedback;
 		_localization = localization;
-		_scopeFactory = scopeFactory;
+		_workEntryService = workEntryService;
 		_uiDispatcher = uiDispatcher;
 		_timeProvider = timeProvider;
 		_logger = logger;
@@ -303,9 +302,7 @@ public sealed class RemoteControlHost : IRemoteControlHost
 		var now = _timeProvider.GetLocalNow().DateTime;
 		var oldest = now - maxAge;
 
-		using var scope = _scopeFactory.CreateScope();
-		var workEntryService = scope.ServiceProvider.GetRequiredService<IWorkEntryService>();
-		var entries = await workEntryService.GetWorkEntriesByDateRangeAsync(oldest, now, cancellationToken);
+		var entries = await _workEntryService.GetWorkEntriesByDateRangeAsync(oldest, now, cancellationToken);
 
 		// The range covers whole days, so it can return entries from earlier on the oldest day
 		return entries.Where(e => e.StartTime >= oldest).MaxBy(e => e.StartTime);

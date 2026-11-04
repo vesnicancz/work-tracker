@@ -1,4 +1,3 @@
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using WorkTracker.Application.Common;
 using WorkTracker.Domain.Services;
@@ -13,7 +12,7 @@ namespace WorkTracker.Avalonia.Services;
 /// </summary>
 public sealed class WorklogStateService : IWorklogStateService, IDisposable
 {
-	private readonly IServiceScopeFactory _scopeFactory;
+	private readonly IWorkEntryService _workEntryService;
 	private readonly IUiDispatcher _uiDispatcher;
 	private readonly ILogger<WorklogStateService> _logger;
 	private readonly SemaphoreSlim _stateLock = new(1, 1);
@@ -23,11 +22,11 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 	private bool _isTracking;
 
 	public WorklogStateService(
-		IServiceScopeFactory scopeFactory,
+		IWorkEntryService workEntryService,
 		IUiDispatcher uiDispatcher,
 		ILogger<WorklogStateService> logger)
 	{
-		_scopeFactory = scopeFactory;
+		_workEntryService = workEntryService;
 		_uiDispatcher = uiDispatcher;
 		_logger = logger;
 	}
@@ -86,11 +85,8 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 				return;
 			}
 
-			using var scope = _scopeFactory.CreateScope();
-			var workEntryService = scope.ServiceProvider.GetRequiredService<IWorkEntryService>();
-
 			// Load active work from database
-			_activeWork = await workEntryService.GetActiveWorkAsync();
+			_activeWork = await _workEntryService.GetActiveWorkAsync();
 			_isTracking = _activeWork != null;
 
 			_isInitialized = true;
@@ -159,10 +155,7 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 
 			_logger.LogDebug("Stopping work tracking for entry {Id}", _activeWork?.Id);
 
-			using var scope = _scopeFactory.CreateScope();
-			var workEntryService = scope.ServiceProvider.GetRequiredService<IWorkEntryService>();
-
-			result = await workEntryService.StopWorkAsync(cancellationToken: cancellationToken);
+			result = await _workEntryService.StopWorkAsync(cancellationToken: cancellationToken);
 
 			if (result.IsSuccess)
 			{
@@ -320,10 +313,7 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 	{
 		ThrowIfNotInitialized();
 
-		using var scope = _scopeFactory.CreateScope();
-		var workEntryService = scope.ServiceProvider.GetRequiredService<IWorkEntryService>();
-
-		return await workEntryService.ComputeOverlapResolutionAsync(excludeEntryId, startTime, endTime, cancellationToken);
+		return await _workEntryService.ComputeOverlapResolutionAsync(excludeEntryId, startTime, endTime, cancellationToken);
 	}
 
 	public Task<Result<WorkEntry>> CreateWorkEntryWithResolutionAsync(
@@ -391,10 +381,7 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 			oldActiveWork = _activeWork;
 			oldIsTracking = _isTracking;
 
-			using var scope = _scopeFactory.CreateScope();
-			var workEntryService = scope.ServiceProvider.GetRequiredService<IWorkEntryService>();
-
-			result = await operation(workEntryService, cancellationToken);
+			result = await operation(_workEntryService, cancellationToken);
 
 			if (result.IsSuccess)
 			{
@@ -444,10 +431,7 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 			oldActiveWork = _activeWork;
 			oldIsTracking = _isTracking;
 
-			using var scope = _scopeFactory.CreateScope();
-			var workEntryService = scope.ServiceProvider.GetRequiredService<IWorkEntryService>();
-
-			result = await operation(workEntryService, cancellationToken);
+			result = await operation(_workEntryService, cancellationToken);
 
 			if (result.IsSuccess)
 			{
@@ -482,10 +466,7 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 	{
 		_logger.LogDebug("Refreshing state from database");
 
-		using var scope = _scopeFactory.CreateScope();
-		var workEntryService = scope.ServiceProvider.GetRequiredService<IWorkEntryService>();
-
-		var activeWork = await workEntryService.GetActiveWorkAsync(cancellationToken);
+		var activeWork = await _workEntryService.GetActiveWorkAsync(cancellationToken);
 
 		UpdateState(activeWork, activeWork != null);
 

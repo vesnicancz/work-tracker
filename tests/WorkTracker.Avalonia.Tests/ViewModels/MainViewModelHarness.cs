@@ -1,4 +1,3 @@
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using WorkTracker.Application.Services;
@@ -47,19 +46,12 @@ internal sealed class MainViewModelHarness
 
 	public MainViewModel CreateViewModel()
 	{
-		var serviceProvider = new Mock<IServiceProvider>();
-		serviceProvider.Setup(p => p.GetService(typeof(IWorkEntryService))).Returns(WorkEntryService.Object);
-		var scope = new Mock<IServiceScope>();
-		scope.SetupGet(s => s.ServiceProvider).Returns(serviceProvider.Object);
-		var scopeFactory = new Mock<IServiceScopeFactory>();
-		scopeFactory.Setup(f => f.CreateScope()).Returns(scope.Object);
-
 		var timeProvider = new Mock<TimeProvider> { CallBase = true };
 		timeProvider.Setup(t => t.GetUtcNow()).Returns(new DateTimeOffset(LocalNow, TimeSpan.Zero));
 		timeProvider.SetupGet(t => t.LocalTimeZone).Returns(TimeZoneInfo.Utc);
 
 		return new MainViewModel(
-			scopeFactory.Object,
+			WorkEntryService.Object,
 			Dialogs.Object,
 			Notifications.Object,
 			WorklogState.Object,

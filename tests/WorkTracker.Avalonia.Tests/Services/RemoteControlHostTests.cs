@@ -1,5 +1,4 @@
 using FluentAssertions;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using WorkTracker.Application.Common;
@@ -46,13 +45,6 @@ public class RemoteControlHostTests
 		_pomodoro.Setup(p => p.GetSnapshot()).Returns(new PomodoroSnapshot(PomodoroPhase.Idle, TimeSpan.Zero, 0, 4, false));
 		SetRecentEntries();
 
-		var serviceProvider = new Mock<IServiceProvider>();
-		serviceProvider.Setup(p => p.GetService(typeof(IWorkEntryService))).Returns(_workEntries.Object);
-		var scope = new Mock<IServiceScope>();
-		scope.Setup(s => s.ServiceProvider).Returns(serviceProvider.Object);
-		var scopeFactory = new Mock<IServiceScopeFactory>();
-		scopeFactory.Setup(f => f.CreateScope()).Returns(scope.Object);
-
 		_host = new RemoteControlHost(
 			_worklogState.Object,
 			_pomodoro.Object,
@@ -61,7 +53,7 @@ public class RemoteControlHostTests
 			_dialogs.Object,
 			_feedback.Object,
 			_localization.Object,
-			scopeFactory.Object,
+			_workEntries.Object,
 			_uiDispatcher,
 			new FixedTimeProvider(),
 			NullLogger<RemoteControlHost>.Instance);

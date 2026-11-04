@@ -1,5 +1,4 @@
 using FluentAssertions;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
 using WorkTracker.Application.Common;
@@ -12,21 +11,13 @@ namespace WorkTracker.Avalonia.Tests.Services;
 public class WorklogStateServiceTests : IDisposable
 {
 	private readonly Mock<IWorkEntryService> _mockWorkEntryService = new();
-	private readonly Mock<IServiceScopeFactory> _mockScopeFactory = new();
 	private readonly RecordingUiDispatcher _uiDispatcher = new();
 	private readonly WorklogStateService _sut;
 
 	public WorklogStateServiceTests()
 	{
-		var mockScope = new Mock<IServiceScope>();
-		var mockProvider = new Mock<IServiceProvider>();
-
-		_mockScopeFactory.Setup(f => f.CreateScope()).Returns(mockScope.Object);
-		mockScope.Setup(s => s.ServiceProvider).Returns(mockProvider.Object);
-		mockProvider.Setup(p => p.GetService(typeof(IWorkEntryService))).Returns(_mockWorkEntryService.Object);
-
 		_sut = new WorklogStateService(
-			_mockScopeFactory.Object,
+			_mockWorkEntryService.Object,
 			_uiDispatcher,
 			new Mock<ILogger<WorklogStateService>>().Object);
 	}
