@@ -12,7 +12,11 @@ on:
 jobs:
   build:
 
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
     # Without this the job inherits the six-hour default. A run that hung in Actions sat there for
     # eleven minutes looking like a test failure while the log stayed unavailable, and it would have
     # kept the slot for the rest of the day before failing. The whole job takes about a minute, so
