@@ -393,7 +393,7 @@ Jako konkrétní ilustraci vezmeme odeslání záznamů jednoho dne z Avalonia G
    - `TempoWorklogPlugin` prochází záznamy v cyklu (podporuje oba módy: `SupportedModes = Timed | Aggregated`).
    - Pro každý: přeloží issue key → issue ID (s 1h cache), zavolá Tempo REST API `POST /worklogs`.
    - V **Timed** módu payload obsahuje `startDate + startTime + timeSpentSeconds`; v **Aggregated** módu plugin `startTime` z payloadu zcela vynechá (Tempo ho má jako volitelné pole).
-   - Retry logika: až 2 opakování (celkem 3 pokusy, backoff 2 s a 4 s) na 408/429/500/502/503/504.
+   - Retry logika: až 2 opakování (celkem 3 pokusy, backoff 2 s a 4 s) na 429/503. Stavy, po kterých už worklog může existovat (408/500/502/504), se neopakují.
    - Vrátí `PluginResult<WorklogSubmissionResult>` s počty a případnými chybami.
 10. **Zpět do služby** — mapuje `PluginResult<WorklogSubmissionResult>` → `Result<SubmissionResult>` (DTO layer).
 11. **Orchestrátor a dialog** — `SubmitAsync` podle `SubmissionResult.Errors` označí chybné položky (`MarkFailedItems`) a vrátí `SubmissionOutcome`. Při úplném úspěchu dialog zůstane otevřený a výsledek ukáže ve stavovém řádku, aby šlo rovnou odeslat další den. Při částečném nebo úplném selhání taky zůstane otevřený, chybné řádky zčervenají a tlačítko **ODESLAT JEN NEÚSPĚŠNÉ** (`RetryFailedCommand` → `RetryFailedAsync`) pošle znovu zaškrtnuté chybné položky.

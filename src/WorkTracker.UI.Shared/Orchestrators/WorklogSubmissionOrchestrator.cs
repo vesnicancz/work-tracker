@@ -137,7 +137,7 @@ public class WorklogSubmissionOrchestrator : IWorklogSubmissionOrchestrator
 			var submission = result.Value;
 			var hasFailedItems = MarkFailedItems(items, submission, mode);
 			var statusMessage = FormatSubmissionStatus(submission, providerName);
-			return new SubmissionOutcome(submission.FailedEntries == 0, hasFailedItems, statusMessage);
+			return new SubmissionOutcome(submission.FailedEntries == 0 && submission.Errors.Count == 0, hasFailedItems, statusMessage);
 		}
 
 		var hasExistingFailedItems = items.Any(i => !i.IsDateHeader && i.HasError);
@@ -259,7 +259,10 @@ public class WorklogSubmissionOrchestrator : IWorklogSubmissionOrchestrator
 
 	internal string FormatSubmissionStatus(SubmissionResult submission, string providerName)
 	{
-		if (submission.FailedEntries == 0)
+		// A plugin can report a failure no entry is counted for, like GoranG3 failing to submit a day
+		var failures = Math.Max(submission.FailedEntries, submission.Errors.Count);
+
+		if (failures == 0)
 		{
 			return _localization.GetFormattedString("SubmissionSuccess", submission.SuccessfulEntries, providerName);
 		}
@@ -269,7 +272,7 @@ public class WorklogSubmissionOrchestrator : IWorklogSubmissionOrchestrator
 			return _localization.GetFormattedString("SubmissionAllFailed", submission.TotalEntries, providerName);
 		}
 
-		return _localization.GetFormattedString("SubmissionPartial", submission.SuccessfulEntries, providerName, submission.FailedEntries);
+		return _localization.GetFormattedString("SubmissionPartial", submission.SuccessfulEntries, providerName, failures);
 	}
 
 	private static List<WorklogDto> ConvertToWorklogs(IEnumerable<WorklogPreviewItem> items)

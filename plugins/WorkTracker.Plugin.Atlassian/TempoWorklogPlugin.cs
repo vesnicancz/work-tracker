@@ -17,14 +17,13 @@ public sealed class TempoWorklogPlugin(IHttpClientFactory httpClientFactory, ILo
 	private static readonly TimeSpan CacheTtl = TimeSpan.FromHours(1);
 	private const int MaxRetries = 2;
 
+	// Creating a worklog is not idempotent. Only statuses saying the request was turned away are safe
+	// to repeat; after a 408, 500, 502 or 504 the worklog may already exist, and a retry would log the
+	// same time twice.
 	private static readonly HashSet<HttpStatusCode> RetryableStatusCodes =
 	[
-		HttpStatusCode.RequestTimeout,       // 408
 		HttpStatusCode.TooManyRequests,       // 429
-		HttpStatusCode.InternalServerError,   // 500
-		HttpStatusCode.BadGateway,            // 502
-		HttpStatusCode.ServiceUnavailable,    // 503
-		HttpStatusCode.GatewayTimeout         // 504
+		HttpStatusCode.ServiceUnavailable     // 503
 	];
 
 	private static class ConfigKeys

@@ -821,7 +821,7 @@ Nejjistější zdroj inspirace jsou **existující pluginy v adresáři `plugins
 - **Dvě třídy v jednom projektu**: `TempoWorklogPlugin` (upload) a `JiraSuggestionsPlugin` (suggestions).
 - **Sdílený `JiraClient`** mezi oběma třídami — ukazuje, jak v jednom plugin projektu sdílet kód mezi víc plugin instancemi.
 - **Issue key caching** (`ConcurrentDictionary` s TTL 1 hodina) pro Tempo ID lookupy.
-- **Retry logika** v Tempo uploadu: až 2 opakování (3 pokusy celkem) s backoffem 2 s a 4 s na 408/429/500/502/503/504.
+- **Retry logika** v Tempo uploadu: až 2 opakování (3 pokusy celkem) s backoffem 2 s a 4 s na 429/503. Vytvoření worklogu není idempotentní, takže stavy, po kterých už může existovat (408/500/502/504), se neopakují.
 - **`SupportsSearch => true`** v Jira suggestions, včetně JQL template se `{query}` placeholderem.
 
 Dokumentace: [plugins/atlassian.md](plugins/atlassian.md).
