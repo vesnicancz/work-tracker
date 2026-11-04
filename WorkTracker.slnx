@@ -45,6 +45,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/WorkTracker.Application.Tests/WorkTracker.Application.Tests.csproj" />
+    <Project Path="tests/WorkTracker.Architecture.Tests/WorkTracker.Architecture.Tests.csproj" />
     <Project Path="tests/WorkTracker.Avalonia.Tests/WorkTracker.Avalonia.Tests.csproj" />
     <Project Path="tests/WorkTracker.CLI.Tests/WorkTracker.CLI.Tests.csproj" />
     <Project Path="tests/WorkTracker.Domain.Tests/WorkTracker.Domain.Tests.csproj" />

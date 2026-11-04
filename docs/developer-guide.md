@@ -72,6 +72,7 @@ work-tracker/
 │   └── WorkTracker.Plugin.StreamDeck/
 ├── streamdeck-plugin/                    # Plugin pro aplikaci Stream Deck (TypeScript)
 ├── tests/                                # xUnit + Moq + FluentAssertions
+│   ├── WorkTracker.Architecture.Tests/   # Hlídá povolené závislosti mezi projekty
 │   ├── WorkTracker.Domain.Tests/
 │   ├── WorkTracker.Application.Tests/
 │   ├── WorkTracker.Infrastructure.Tests/

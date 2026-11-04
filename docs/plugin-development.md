@@ -712,7 +712,7 @@ Každý plugin **ve vlastní podsložce**. `PluginLoader` projde plugin adresá�
 
 ### Closed‑box closed‑world
 
-Plugin nese **všechny své závislosti** vedle sebe (`CopyLocalLockFileAssemblies`). Při načítání se ale `PluginLoadContext` pro každou závislost nejdřív podívá do Default `AssemblyLoadContext`u: je‑li tam už načtená assembly **stejného jména**, plugin dostane tu hostitelovu. Sdílí se tak `WorkTracker.Plugin.Abstractions`, `Microsoft.Extensions.*`, ale třeba i `WorkTracker.Domain`, na který odkazují Atlassian a GoranG3. Lokální kopie se použije jen pro assembly, které hostitel nenačetl. Co je „načtené v hostiteli“, závisí na tom, co aplikace stihla načíst do okamžiku načtení pluginu — pevný seznam neexistuje.
+Plugin nese **všechny své závislosti** vedle sebe (`CopyLocalLockFileAssemblies`). Při načítání se ale `PluginLoadContext` pro každou závislost nejdřív podívá do Default `AssemblyLoadContext`u: je‑li tam už načtená assembly **stejného jména**, plugin dostane tu hostitelovu. Sdílí se tak `WorkTracker.Plugin.Abstractions` a `Microsoft.Extensions.*`. Lokální kopie se použije jen pro assembly, které hostitel nenačetl. Co je „načtené v hostiteli“, závisí na tom, co aplikace stihla načíst do okamžiku načtení pluginu — pevný seznam neexistuje.
 
 Verze se při tom neporovnává, takže plugin **nemůže přebít** verzi závislosti, kterou má načtenou i hostitel — dostane hostitelovu. Vlastní verzi si plugin může přinést jen u závislostí, které hostitel nemá (HID knihovna, MCP klient, …).
 
