@@ -50,7 +50,8 @@ jobs:
       run: npm ci --ignore-scripts
     - name: Test
       run: npm test
-    - name: Validate manifest
-      run: npm run validate
+    # The manifest refers to the built plugin, so validating needs the build first
     - name: Build
       run: npm run build
+    - name: Validate manifest
+      run: npm run validate

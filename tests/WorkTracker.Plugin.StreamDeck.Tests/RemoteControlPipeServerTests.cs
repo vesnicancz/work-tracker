@@ -233,11 +233,8 @@ public sealed class RemoteControlPipeServerTests : IAsyncLifetime
 	{
 		await ReadMessageAsync();
 
-		_reader.Dispose();
-		await _client.DisposeAsync();
-		(_client, _reader) = await ConnectAsync();
+		var state = await ReconnectAsync();
 
-		var state = await ReadMessageAsync();
 		state.GetProperty("type").GetString().Should().Be("state");
 	}
 
@@ -263,6 +260,32 @@ public sealed class RemoteControlPipeServerTests : IAsyncLifetime
 		var client = new NamedPipeClientStream(".", _pipeName, PipeDirection.InOut, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
 		await client.ConnectAsync(_timeout.Token);
 		return (client, new StreamReader(client, leaveOpen: true));
+	}
+
+	/// <summary>
+	/// Keeps trying, as the real client does. On Unix, connecting right after a disconnect can reach the
+	/// socket of the previous connection just as the server closes it, which resets the new connection.
+	/// </summary>
+	private async Task<JsonElement> ReconnectAsync()
+	{
+		while (true)
+		{
+			_reader.Dispose();
+			await _client.DisposeAsync();
+			(_client, _reader) = await ConnectAsync();
+
+			try
+			{
+				if (await _reader.ReadLineAsync(_timeout.Token) is { } line)
+				{
+					return JsonSerializer.Deserialize<JsonElement>(line);
+				}
+			}
+			catch (IOException)
+			{
+				// Reset, try again
+			}
+		}
 	}
 
 	/// <summary>
