@@ -29,8 +29,7 @@ public interface IDialogService
 	/// </summary>
 	/// <param name="date">Date to submit worklogs for</param>
 	/// <param name="isWeek">True to submit weekly, false for daily</param>
-	/// <returns>True if user confirmed, false if cancelled</returns>
-	Task<bool> ShowSubmitWorklogDialogAsync(DateTime? date = null, bool isWeek = false);
+	Task ShowSubmitWorklogDialogAsync(DateTime? date = null, bool isWeek = false);
 
 	/// <summary>
 	/// Shows a confirmation dialog

@@ -81,7 +81,7 @@ public sealed class DialogService : IDialogService
 		return await tcs.Task;
 	}
 
-	public async Task<bool> ShowSubmitWorklogDialogAsync(DateTime? date = null, bool isWeek = false)
+	public async Task ShowSubmitWorklogDialogAsync(DateTime? date = null, bool isWeek = false)
 	{
 		using var scope = _scopeFactory.CreateScope();
 		var viewModel = scope.ServiceProvider.GetRequiredService<SubmitWorklogViewModel>();
@@ -91,10 +91,8 @@ public sealed class DialogService : IDialogService
 		var mainWindow = GetMainWindow();
 		if (mainWindow != null)
 		{
-			var result = await dialog.ShowDialog<bool?>(mainWindow);
-			return result == true;
+			await dialog.ShowDialog(mainWindow);
 		}
-		return false;
 	}
 
 	public async Task<bool> ShowConfirmationAsync(string message, string title = "Confirm")

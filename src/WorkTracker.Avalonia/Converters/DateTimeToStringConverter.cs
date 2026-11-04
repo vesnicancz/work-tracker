@@ -13,7 +13,7 @@ public class DateTimeToStringConverter : IValueConverter
 	{
 		if (value is not DateTime dateTime)
 		{
-			return "--";
+			return "-";
 		}
 
 		var format = parameter as string ?? "HH:mm";

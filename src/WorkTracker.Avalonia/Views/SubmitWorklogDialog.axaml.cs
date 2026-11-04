@@ -19,7 +19,7 @@ public partial class SubmitWorklogDialog : Window
 		_clickTimer.Tick += OnClickTimerTick;
 		Closed += (_, _) => _clickTimer.Stop();
 
-		CloseButton.Click += (_, _) => Close(false);
+		CloseButton.Click += (_, _) => Close();
 		DialogTitleBar.PointerPressed += OnDragPointerPressed;
 		DialogBorder.PointerPressed += (_, e) =>
 		{
@@ -33,7 +33,7 @@ public partial class SubmitWorklogDialog : Window
 		{
 			if (DataContext is SubmitWorklogViewModel vm)
 			{
-				vm.CloseAction = () => Close(vm.DialogResult);
+				vm.CloseAction = () => Close();
 			}
 		};
 	}

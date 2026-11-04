@@ -29,19 +29,19 @@ public class DateTimeToStringConverterTests
 	}
 
 	[Fact]
-	public void Convert_Null_ReturnsDashes()
+	public void Convert_Null_ReturnsDash()
 	{
 		var result = _converter.Convert(null, typeof(string), null, CultureInfo.InvariantCulture);
 
-		result.Should().Be("--");
+		result.Should().Be("-");
 	}
 
 	[Fact]
-	public void Convert_NonDateTime_ReturnsDashes()
+	public void Convert_NonDateTime_ReturnsDash()
 	{
 		var result = _converter.Convert("not a date", typeof(string), null, CultureInfo.InvariantCulture);
 
-		result.Should().Be("--");
+		result.Should().Be("-");
 	}
 
 	[Fact]
