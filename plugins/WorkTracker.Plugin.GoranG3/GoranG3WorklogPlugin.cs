@@ -23,7 +23,7 @@ public sealed class GoranG3WorklogPlugin(ILogger<GoranG3WorklogPlugin> logger, I
 		public const string EntraScopes = "EntraScopes";
 	}
 
-	private const string NotConnectedMessage = "Not connected to MCP server. Please use Test Connection in Settings to sign in first.";
+	private const string NotConnectedMessage = "Not connected to MCP server. Check that it is reachable, or use Test Connection in Settings to sign in.";
 
 	private readonly ITokenProviderFactory _tokenProviderFactory = tokenProviderFactory;
 	private readonly TimesheetDayBatch _dayBatch = new();
@@ -122,9 +122,22 @@ public sealed class GoranG3WorklogPlugin(ILogger<GoranG3WorklogPlugin> logger, I
 
 	protected override async Task<bool> OnInitializeAsync(IDictionary<string, string> configuration, CancellationToken cancellationToken)
 	{
-		// The configuration may now point at another server, where those entries don't exist
+		var scopes = GetRequiredConfigValue(ConfigKeys.EntraScopes)
+			.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+		// Before anything changes, so that a rejected configuration leaves the plugin as it was
+		if (scopes.Length == 0)
+		{
+			Logger.LogError("EntraScopes configuration is empty or contains only whitespace/commas");
+			return false;
+		}
+
+		// The configuration may now point at another server, where neither this connection nor the
+		// remembered entries belong
+		await DisconnectAsync();
 		_dayBatch.Reset();
 
+		_scopes = scopes;
 		_baseUrl = GetRequiredConfigValue(ConfigKeys.GoranBaseUrl).TrimEnd('/');
 		_projectCode = GetRequiredConfigValue(ConfigKeys.ProjectCode);
 		_projectPhaseCode = GetConfigValue(ConfigKeys.ProjectPhaseCode);
@@ -132,35 +145,53 @@ public sealed class GoranG3WorklogPlugin(ILogger<GoranG3WorklogPlugin> logger, I
 
 		var clientId = GetRequiredConfigValue(ConfigKeys.EntraClientId);
 		var tenantId = GetRequiredConfigValue(ConfigKeys.EntraTenantId);
-		var scopesRaw = GetRequiredConfigValue(ConfigKeys.EntraScopes);
-		_scopes = scopesRaw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-		if (_scopes.Length == 0)
-		{
-			Logger.LogError("EntraScopes configuration is empty or contains only whitespace/commas");
-			return false;
-		}
 
 		_tokenProvider = await _tokenProviderFactory.CreateAsync(tenantId, clientId, _scopes, InteractiveAuthFlow.DeviceCode);
 
-		// Try silent auth only — interactive auth happens in TestConnectionAsync where progress is available
-		var token = await _tokenProvider.AcquireTokenSilentAsync(cancellationToken);
-		if (token != null)
-		{
-			try
-			{
-				await ConnectMcpAsync(cancellationToken);
-			}
-			catch (Exception ex)
-			{
-				Logger.LogWarning(ex, "MCP server unavailable during startup, will retry on next operation");
-			}
-		}
+		await EnsureConnectedAsync(cancellationToken);
 
 		return true;
 	}
 
 	protected override async ValueTask OnDisposeAsync()
+	{
+		await DisconnectAsync();
+	}
+
+	/// <summary>
+	/// Connects if there is no connection, using silent authentication only: signing in interactively
+	/// needs the progress reporting of <see cref="TestConnectionAsync"/>. There can be no connection
+	/// because the server was down or the sign-in had expired, and neither should take a restart to fix.
+	/// </summary>
+	private async Task<bool> EnsureConnectedAsync(CancellationToken cancellationToken)
+	{
+		if (_mcpClient != null)
+		{
+			return true;
+		}
+
+		try
+		{
+			if (await _tokenProvider!.AcquireTokenSilentAsync(cancellationToken) == null)
+			{
+				return false;
+			}
+
+			await ConnectMcpAsync(cancellationToken);
+			return true;
+		}
+		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+		{
+			throw;
+		}
+		catch (Exception ex)
+		{
+			Logger.LogWarning(ex, "MCP server is not available, will try again on the next operation");
+			return false;
+		}
+	}
+
+	private async Task DisconnectAsync()
 	{
 		if (_mcpClient != null)
 		{
@@ -173,8 +204,6 @@ public sealed class GoranG3WorklogPlugin(ILogger<GoranG3WorklogPlugin> logger, I
 
 		_handler?.Dispose();
 		_handler = null;
-
-
 	}
 
 	public override async Task<PluginResult<bool>> TestConnectionAsync(IProgress<string>? progress, CancellationToken cancellationToken)
@@ -216,11 +245,7 @@ public sealed class GoranG3WorklogPlugin(ILogger<GoranG3WorklogPlugin> logger, I
 		catch (Exception ex)
 		{
 			// Reset connection state so next attempt will reconnect
-			if (_mcpClient != null)
-			{
-				await _mcpClient.DisposeAsync();
-				_mcpClient = null;
-			}
+			await DisconnectAsync();
 
 			Logger.LogError(ex, "Connection test failed");
 			return PluginResult<bool>.Failure($"Connection failed: {ex.Message}", PluginErrorCategory.Network);
@@ -229,14 +254,7 @@ public sealed class GoranG3WorklogPlugin(ILogger<GoranG3WorklogPlugin> logger, I
 
 	private async Task ConnectMcpAsync(CancellationToken cancellationToken)
 	{
-		if (_mcpClient != null)
-		{
-			await _mcpClient.DisposeAsync();
-			_mcpClient = null;
-		}
-
-		_httpClient?.Dispose();
-		_handler?.Dispose();
+		await DisconnectAsync();
 
 		_handler = new TokenInjectingHandler(_tokenProvider!);
 		_httpClient = new HttpClient(_handler, disposeHandler: false);
@@ -267,7 +285,7 @@ public sealed class GoranG3WorklogPlugin(ILogger<GoranG3WorklogPlugin> logger, I
 	{
 		EnsureInitialized();
 
-		if (_mcpClient == null)
+		if (!await EnsureConnectedAsync(cancellationToken))
 		{
 			return PluginResult<bool>.Failure(NotConnectedMessage, PluginErrorCategory.Authentication);
 		}
@@ -325,6 +343,9 @@ public sealed class GoranG3WorklogPlugin(ILogger<GoranG3WorklogPlugin> logger, I
 		}
 		catch (Exception ex)
 		{
+			// The connection may be what broke; the next operation starts with a new one
+			await DisconnectAsync();
+
 			Logger.LogError(ex, "Error uploading worklog to Goran via MCP");
 			var errorCategory = ex switch
 			{
@@ -348,7 +369,7 @@ public sealed class GoranG3WorklogPlugin(ILogger<GoranG3WorklogPlugin> logger, I
 				PluginErrorCategory.Validation);
 		}
 
-		if (_mcpClient == null)
+		if (!await EnsureConnectedAsync(cancellationToken))
 		{
 			return PluginResult<WorklogSubmissionResult>.Failure(NotConnectedMessage, PluginErrorCategory.Authentication);
 		}
@@ -388,6 +409,9 @@ public sealed class GoranG3WorklogPlugin(ILogger<GoranG3WorklogPlugin> logger, I
 		}
 		catch (Exception ex)
 		{
+			// The connection may be what broke; the next operation starts with a new one
+			await DisconnectAsync();
+
 			Logger.LogError(ex, "Error submitting timesheet for {Date}", dateStr);
 			return PluginResult<bool>.Failure($"Error: {ex.Message}");
 		}

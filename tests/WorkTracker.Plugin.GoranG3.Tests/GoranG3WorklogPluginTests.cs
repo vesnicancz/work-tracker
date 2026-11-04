@@ -128,6 +128,63 @@ public class GoranG3WorklogPluginTests : IAsyncDisposable
 
 	#endregion
 
+	#region Connecting
+
+	private static readonly Dictionary<string, string> UnreachableServerConfig = new(ValidConfig)
+	{
+		["GoranBaseUrl"] = "https://127.0.0.1:1"
+	};
+
+	private static PluginWorklogEntry Worklog() => new()
+	{
+		TicketId = "A-1",
+		StartTime = new DateTime(2026, 11, 2, 9, 0, 0),
+		EndTime = new DateTime(2026, 11, 2, 10, 0, 0),
+		DurationMinutes = 60
+	};
+
+	[Fact]
+	public async Task UploadWorklogAsync_NotSignedIn_ReportsItWithoutThrowing()
+	{
+		var tokenProvider = new SwitchableTokenProvider();
+		await using var plugin = new GoranG3WorklogPlugin(NullLogger<GoranG3WorklogPlugin>.Instance, new SingleTokenProviderFactory(tokenProvider));
+		await plugin.InitializeAsync(UnreachableServerConfig, TestContext.Current.CancellationToken);
+
+		var result = await plugin.UploadWorklogAsync(Worklog(), TestContext.Current.CancellationToken);
+
+		result.IsFailure.Should().BeTrue();
+		result.ErrorCategory.Should().Be(PluginErrorCategory.Authentication);
+	}
+
+	[Fact]
+	public async Task UploadWorklogAsync_SignedInSinceInitialization_TriesToConnect()
+	{
+		var tokenProvider = new SwitchableTokenProvider();
+		await using var plugin = new GoranG3WorklogPlugin(NullLogger<GoranG3WorklogPlugin>.Instance, new SingleTokenProviderFactory(tokenProvider));
+		await plugin.InitializeAsync(UnreachableServerConfig, TestContext.Current.CancellationToken);
+		tokenProvider.ResetSilentCalls();
+
+		tokenProvider.Token = "fake-token";
+		var result = await plugin.UploadWorklogAsync(Worklog(), TestContext.Current.CancellationToken);
+
+		tokenProvider.SilentCalls.Should().BeGreaterThan(0, "a missing connection is tried again on each operation");
+		result.IsFailure.Should().BeTrue("the server is not reachable");
+	}
+
+	[Fact]
+	public async Task UploadWorklogsAsync_ServerUnavailable_ReportsItWithoutThrowing()
+	{
+		var tokenProvider = new SwitchableTokenProvider { Token = "fake-token" };
+		await using var plugin = new GoranG3WorklogPlugin(NullLogger<GoranG3WorklogPlugin>.Instance, new SingleTokenProviderFactory(tokenProvider));
+		await plugin.InitializeAsync(UnreachableServerConfig, TestContext.Current.CancellationToken);
+
+		var result = await plugin.UploadWorklogsAsync([Worklog()], WorklogSubmissionMode.Timed, TestContext.Current.CancellationToken);
+
+		result.IsFailure.Should().BeTrue();
+	}
+
+	#endregion
+
 	#region Lifecycle
 
 	[Fact]
@@ -160,6 +217,30 @@ public class GoranG3WorklogPluginTests : IAsyncDisposable
 	}
 
 	#endregion
+}
+
+internal sealed class SwitchableTokenProvider : ITokenProvider
+{
+	public string? Token { get; set; }
+
+	public int SilentCalls { get; private set; }
+
+	public void ResetSilentCalls() => SilentCalls = 0;
+
+	public Task<string?> AcquireTokenSilentAsync(CancellationToken cancellationToken)
+	{
+		SilentCalls++;
+		return Task.FromResult(Token);
+	}
+
+	public Task<string?> AcquireTokenInteractiveAsync(IProgress<string>? progress, CancellationToken cancellationToken)
+		=> Task.FromResult(Token);
+}
+
+internal sealed class SingleTokenProviderFactory(ITokenProvider tokenProvider) : ITokenProviderFactory
+{
+	public Task<ITokenProvider> CreateAsync(string tenantId, string clientId, string[] scopes, InteractiveAuthFlow interactiveFlow)
+		=> Task.FromResult(tokenProvider);
 }
 
 internal sealed class MockTokenProvider(string? token) : ITokenProvider
