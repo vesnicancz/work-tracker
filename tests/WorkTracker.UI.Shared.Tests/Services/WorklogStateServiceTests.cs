@@ -13,6 +13,7 @@ public class WorklogStateServiceTests : IDisposable
 {
 	private readonly Mock<IWorkEntryService> _mockWorkEntryService = new();
 	private readonly Mock<IServiceScopeFactory> _mockScopeFactory = new();
+	private readonly RecordingUiDispatcher _uiDispatcher = new();
 	private readonly WorklogStateService _sut;
 
 	public WorklogStateServiceTests()
@@ -26,6 +27,7 @@ public class WorklogStateServiceTests : IDisposable
 
 		_sut = new WorklogStateService(
 			_mockScopeFactory.Object,
+			_uiDispatcher,
 			new Mock<ILogger<WorklogStateService>>().Object);
 	}
 
@@ -47,6 +49,97 @@ public class WorklogStateServiceTests : IDisposable
 			.ReturnsAsync(activeWork);
 		await _sut.InitializeAsync();
 	}
+
+	private sealed class RecordingUiDispatcher : IUiDispatcher
+	{
+		public bool IsInside { get; private set; }
+
+		public async Task<T> InvokeAsync<T>(Func<Task<T>> action, CancellationToken cancellationToken)
+		{
+			IsInside = true;
+			try
+			{
+				return await action();
+			}
+			finally
+			{
+				IsInside = false;
+			}
+		}
+	}
+
+	#region UI thread
+
+	[Fact]
+	public async Task StopTrackingAsync_RaisesEveryEventOnTheUiThread()
+	{
+		var active = CreateActiveEntry();
+		await InitializeSut(active);
+		_mockWorkEntryService
+			.Setup(s => s.StopWorkAsync(It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(Result.Success(CreateCompletedEntry()));
+
+		var raisedOnUiThread = new List<bool>();
+		_sut.ActiveWorkChanged += (_, _) => raisedOnUiThread.Add(_uiDispatcher.IsInside);
+		_sut.IsTrackingChanged += (_, _) => raisedOnUiThread.Add(_uiDispatcher.IsInside);
+		_sut.WorkEntriesModified += (_, _) => raisedOnUiThread.Add(_uiDispatcher.IsInside);
+
+		await _sut.StopTrackingAsync(CancellationToken.None);
+
+		raisedOnUiThread.Should().Equal(true, true, true);
+	}
+
+	[Fact]
+	public async Task StartTrackingAsync_RaisesEveryEventOnTheUiThread()
+	{
+		await InitializeSut();
+		_mockWorkEntryService
+			.Setup(s => s.StartWorkAsync(It.IsAny<string?>(), It.IsAny<DateTime?>(), It.IsAny<string?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(Result.Success(CreateActiveEntry()));
+
+		var raisedOnUiThread = new List<bool>();
+		_sut.ActiveWorkChanged += (_, _) => raisedOnUiThread.Add(_uiDispatcher.IsInside);
+		_sut.IsTrackingChanged += (_, _) => raisedOnUiThread.Add(_uiDispatcher.IsInside);
+		_sut.WorkEntriesModified += (_, _) => raisedOnUiThread.Add(_uiDispatcher.IsInside);
+
+		await _sut.StartTrackingAsync("PROJ-1", "desc", CancellationToken.None);
+
+		raisedOnUiThread.Should().Equal(true, true, true);
+	}
+
+	[Fact]
+	public async Task StopTrackingAsync_FailingSubscriber_StillReportsTheSavedStop()
+	{
+		await InitializeSut(CreateActiveEntry());
+		_mockWorkEntryService
+			.Setup(s => s.StopWorkAsync(It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(Result.Success(CreateCompletedEntry()));
+		_sut.IsTrackingChanged += (_, _) => throw new InvalidOperationException("subscriber failed");
+
+		var result = await _sut.StopTrackingAsync(CancellationToken.None);
+
+		result.IsSuccess.Should().BeTrue();
+		_sut.IsTracking.Should().BeFalse();
+	}
+
+	[Fact]
+	public async Task StopTrackingAsync_WhenNothingChanged_DoesNotUseTheUiThread()
+	{
+		await InitializeSut(CreateActiveEntry());
+		_mockWorkEntryService
+			.Setup(s => s.StopWorkAsync(It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(Result.Failure<WorkEntry>("nope"));
+		var dispatched = false;
+		_sut.ActiveWorkChanged += (_, _) => dispatched = true;
+		_sut.IsTrackingChanged += (_, _) => dispatched = true;
+		_sut.WorkEntriesModified += (_, _) => dispatched = true;
+
+		await _sut.StopTrackingAsync(CancellationToken.None);
+
+		dispatched.Should().BeFalse();
+	}
+
+	#endregion UI thread
 
 	#region Before initialization
 
