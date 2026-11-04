@@ -37,6 +37,12 @@ public sealed class AutostartManager : IAutostartManager
 
 	public void SetAutostart(bool enable)
 	{
+#if DEBUG
+		// The autostart entry is shared with the installed application, and saving the settings
+		// dialog rewrites it even when the checkbox did not change. A Debug build would replace the
+		// installed path with its bin\Debug one, or remove the entry altogether.
+		_logger.LogInformation("Debug build, leaving autostart untouched (requested: {Enable})", enable);
+#else
 		if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
 		{
 			SetWindowsAutostart(enable);
@@ -49,6 +55,7 @@ public sealed class AutostartManager : IAutostartManager
 		{
 			SetMacOSAutostart(enable);
 		}
+#endif
 	}
 
 	private bool GetWindowsAutostart()
