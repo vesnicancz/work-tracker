@@ -63,7 +63,6 @@ Tokeny jsou v šifrované cache (v release buildu typicky `%LocalAppData%\WorkTr
 3. Volá MCP tools (snake_case název, argumenty v JSON objektu):
    - **`create_my_timesheet_item`** — upload jednoho záznamu.
    - **`submit_my_timesheet`** — finální submit timesheetu za jeden den (při `UploadWorklogsAsync`, argument `date`).
-   - **`get_my_timesheet_items_list`** — query existujících worklogů (`GetWorklogsAsync`, `WorklogExistsAsync`).
 
 ### Struktura argumentů pro `create_my_timesheet_item`
 
@@ -122,24 +121,6 @@ Plugin inzeruje pouze `SupportedModes = Timed` (výchozí z `WorklogUploadPlugin
 **Retry** — plugin **neretryne** automaticky. Pokud dojde k síťové chybě, záznam skončí v `Errors` a uživatel může kliknout **ODESLAT JEN NEÚSPĚŠNÉ** v dialogu.
 
 Důvod: Goran G3 MCP zatím nemá idempotency token, takže retry by mohl vytvořit duplicitní záznamy. Jakmile bude idempotency, retry logika se doplní.
-
----
-
-## `WorklogExistsAsync` a `GetWorklogsAsync`
-
-Plugin podporuje i čtení existujících worklogů přes MCP tool `get_my_timesheet_items_list` — aplikace tyhle metody zatím nevolá, takže před uploadem duplicity nekontroluje.
-
-`GetWorklogsAsync(startDate, endDate)`:
-
-1. Zavolá `get_my_timesheet_items_list` s argumenty `date_from` a `date_to` ve formátu `yyyy-MM-dd`.
-2. Zparsuje textovou tabulku z odpovědi (sloupce `Date | Project | Phase | Description | Start | Duration | Status | Tags`) na `PluginWorklogEntry`. `TicketId` se nenaplňuje. Řádky bez rozpoznatelného data, začátku a délky se tiše přeskočí. Do logu jde jako varování jen řádek, při kterém parsování vyhodí výjimku.
-
-`WorklogExistsAsync(worklog)`:
-
-1. Volá `GetWorklogsAsync(worklog.StartTime.Date, worklog.StartTime.Date)`.
-2. Hledá záznam ve stejný den s přibližně stejným `startTime` (tolerance `< 1 min`) a stejnou `DurationMinutes`.
-3. **`ticketId` se při této kontrole duplicit neporovnává** — v praxi tedy dva worklogy stejné délky začínající ve stejnou minutu dostanou jeden jako duplicitu, i když mají jiný ticket.
-4. Vrací `true` / `false`.
 
 ---
 

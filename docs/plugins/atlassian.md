@@ -93,10 +93,6 @@ Stiskem **Test connection** v Settings plugin aktuálně:
 
 > **Pozor:** Tempo endpoint **ani platnost `TempoApiToken`** se tímto testem neověřuje. Tempo autorizace se projeví až při skutečném volání (upload worklogu). Pokud tedy máš špatný Tempo token, ale Jira funguje, Test connection projde a chyba se objeví až při `Odeslat záznamy práce`.
 
-### Čtení worklogů
-
-`GetWorklogsAsync` načte worklogy přes `GET worklogs?from=&to=`. `WorklogExistsAsync` z nich pozná duplicitu: stejný ticket, stejný den, začátek s odchylkou pod 1 minutu a stejná délka. Aplikace tyhle metody zatím nevolá, takže před uploadem duplicity nekontroluje.
-
 ### Časté chyby
 
 | Symptom | Příčina | Řešení |

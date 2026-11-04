@@ -2,7 +2,6 @@ using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using WorkTracker.Plugin.Abstractions;
 
@@ -340,108 +339,6 @@ public sealed class TempoWorklogPlugin(IHttpClientFactory httpClientFactory, ILo
 			Logger.LogError(ex, "Error uploading worklog to Tempo");
 			return PluginResult<bool>.Failure($"Error: {ex.Message}");
 		}
-	}
-
-	public override async Task<PluginResult<IEnumerable<PluginWorklogEntry>>> GetWorklogsAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken)
-	{
-		EnsureInitialized();
-
-		try
-		{
-			var from = startDate.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
-			var to = endDate.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
-
-			using var response = await _tempoHttpClient!.GetAsync($"worklogs?from={from}&to={to}", cancellationToken);
-
-			if (!response.IsSuccessStatusCode)
-			{
-				var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
-				return PluginResult<IEnumerable<PluginWorklogEntry>>.Failure(
-					$"Failed to get worklogs: {response.StatusCode} - {errorContent}", PluginErrorCategory.Network);
-			}
-
-			var content = await response.Content.ReadAsStringAsync(cancellationToken);
-			using var jsonDoc = JsonDocument.Parse(content);
-			var results = jsonDoc.RootElement.GetProperty("results");
-
-			var worklogs = new List<PluginWorklogEntry>();
-
-			foreach (var item in results.EnumerateArray())
-			{
-				try
-				{
-					if (!item.TryGetProperty("issue", out var issueProp) ||
-						!issueProp.TryGetProperty("key", out var keyProp))
-					{
-						continue;
-					}
-
-					var ticketId = keyProp.GetString();
-					if (string.IsNullOrEmpty(ticketId))
-					{
-						continue;
-					}
-
-					var startDateStr = item.TryGetProperty("startDate", out var sdProp) ? sdProp.GetString() : null;
-					var startTimeStr = item.TryGetProperty("startTime", out var stProp) ? stProp.GetString() : null;
-					if (string.IsNullOrEmpty(startDateStr) || string.IsNullOrEmpty(startTimeStr))
-					{
-						continue;
-					}
-
-					var timeSpentSeconds = item.TryGetProperty("timeSpentSeconds", out var tsProp) ? tsProp.GetInt32() : 0;
-					var description = item.TryGetProperty("description", out var descProp) ? descProp.GetString() : null;
-
-					if (DateTime.TryParseExact($"{startDateStr} {startTimeStr}",
-						"yyyy-MM-dd HH:mm:ss",
-						System.Globalization.CultureInfo.InvariantCulture,
-						System.Globalization.DateTimeStyles.None, out var parsedStartTime))
-					{
-						worklogs.Add(new PluginWorklogEntry
-						{
-							TicketId = ticketId,
-							Description = description,
-							StartTime = parsedStartTime,
-							EndTime = parsedStartTime.AddSeconds(timeSpentSeconds),
-							DurationMinutes = timeSpentSeconds / 60
-						});
-					}
-				}
-				catch (Exception ex)
-				{
-					Logger.LogWarning(ex, "Failed to parse worklog entry from Tempo API response");
-				}
-			}
-
-			return PluginResult<IEnumerable<PluginWorklogEntry>>.Success(worklogs);
-		}
-		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-		{
-			throw;
-		}
-		catch (Exception ex)
-		{
-			Logger.LogError(ex, "Error getting worklogs from Tempo");
-			return PluginResult<IEnumerable<PluginWorklogEntry>>.Failure($"Error: {ex.Message}");
-		}
-	}
-
-	public override async Task<PluginResult<bool>> WorklogExistsAsync(PluginWorklogEntry worklog, CancellationToken cancellationToken)
-	{
-		var result = await GetWorklogsAsync(worklog.StartTime.Date, worklog.StartTime.Date, cancellationToken);
-
-		if (result.IsFailure)
-		{
-			return PluginResult<bool>.Failure(result.Error!);
-		}
-
-		var exists = result.Value!.Any(w =>
-			w.TicketId == worklog.TicketId &&
-			w.StartTime.Date == worklog.StartTime.Date &&
-			Math.Abs((w.StartTime.TimeOfDay - worklog.StartTime.TimeOfDay).TotalMinutes) < 1 &&
-			w.DurationMinutes == worklog.DurationMinutes);
-
-		return PluginResult<bool>.Success(exists);
 	}
 
 	private async Task<int?> GetIssueIdFromKeyAsync(string issueKey, CancellationToken cancellationToken)

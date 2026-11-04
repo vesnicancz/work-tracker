@@ -176,7 +176,7 @@ WorkTracker podporuje čtyři typy pluginů:
 
 | Typ | Rozhraní | Účel |
 |-----|----------|------|
-| **Worklog Upload** | `IWorklogUploadPlugin` | Odesílání a načítání worklogů z externích systémů |
+| **Worklog Upload** | `IWorklogUploadPlugin` | Odesílání worklogů do externích systémů |
 | **Work Suggestion** | `IWorkSuggestionPlugin` | Návrhy úkolů (issues, kalendářové události) |
 | **Status Indicator** | `IStatusIndicatorPlugin` | Ovládání fyzických indikátorů stavu (LED apod.) |
 | **Remote Control** | `IRemoteControlPlugin` | Ovládání běžící aplikace z externích zařízení (Stream Deck apod.) |
@@ -221,8 +221,6 @@ public sealed class MujPlugin : WorklogUploadPluginBase
         // …vlastní logika nahrání…
         return Task.FromResult(PluginResult<bool>.Success(true));
     }
-
-    // GetWorklogsAsync, WorklogExistsAsync…
 }
 ```
 
