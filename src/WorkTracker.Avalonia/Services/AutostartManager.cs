@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 using System.Security;
 using Microsoft.Extensions.Logging;
 using WorkTracker.Avalonia.Services.Linux;
-using WorkTracker.UI.Shared.Services;
+using WorkTracker.Avalonia.Services;
 
 namespace WorkTracker.Avalonia.Services;
 

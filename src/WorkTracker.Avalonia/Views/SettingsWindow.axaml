@@ -5,7 +5,7 @@
         xmlns:material="using:Material.Icons.Avalonia"
         xmlns:markup="using:WorkTracker.Avalonia.Markup"
         xmlns:vm="using:WorkTracker.Avalonia.ViewModels"
-        xmlns:shared="using:WorkTracker.UI.Shared.ViewModels"
+        xmlns:shared="using:WorkTracker.Avalonia.ViewModels"
         x:Class="WorkTracker.Avalonia.Views.SettingsWindow"
         x:DataType="vm:SettingsViewModel"
         mc:Ignorable="d"

@@ -60,9 +60,8 @@ work-tracker/
 │   ├── WorkTracker.Domain/               # Pure business model
 │   ├── WorkTracker.Application/          # Use cases, Result<T>, DTOs
 │   ├── WorkTracker.Infrastructure/       # EF Core, plugins, MSAL, secure storage
-│   ├── WorkTracker.UI.Shared/            # Sdílené ViewModely, orchestrátory, služby
 │   ├── WorkTracker.CLI/                  # Spectre.Console klient
-│   ├── WorkTracker.Avalonia/             # Avalonia GUI (cross-platform)
+│   ├── WorkTracker.Avalonia/             # GUI: okna, ViewModely, orchestrátory, služby
 │   └── WorkTracker.Plugin.Abstractions/  # Plugin API
 ├── plugins/
 │   ├── WorkTracker.Plugin.Atlassian/
@@ -76,7 +75,6 @@ work-tracker/
 │   ├── WorkTracker.Domain.Tests/
 │   ├── WorkTracker.Application.Tests/
 │   ├── WorkTracker.Infrastructure.Tests/
-│   ├── WorkTracker.UI.Shared.Tests/
 │   ├── WorkTracker.Avalonia.Tests/
 │   ├── WorkTracker.CLI.Tests/
 │   ├── WorkTracker.Plugin.Atlassian.Tests/
@@ -171,7 +169,7 @@ dotnet test -- --filter-method "*OverlapResolution*"
 
 ### Rozlišení unit vs. integration
 
-- **Unit testy** (většina) — mock všech závislostí, bez DbContextu. `Domain.Tests`, `Application.Tests`, `UI.Shared.Tests`, `CLI.Tests` (Spectre.Console.Testing), plugin testy. `Avalonia.Tests` jsou headless UI testy (Avalonia.Headless).
+- **Unit testy** (většina) — mock všech závislostí, bez DbContextu. `Domain.Tests`, `Application.Tests`, `CLI.Tests` (Spectre.Console.Testing), plugin testy a většina `Avalonia.Tests`. Složka `Smoke` v `Avalonia.Tests` jsou headless UI testy (Avalonia.Headless).
 - **Integration testy** (menšina) — `Infrastructure.Tests` používá in‑memory SQLite (`Microsoft.Data.Sqlite` s `:memory:` connection) pro reálný EF Core tok. Helper (`SqliteInMemoryFixture` + `TestDbContextFactory`) je v `WorkTracker.Infrastructure.Tests/Helpers`.
 
 ### xUnit konvence v projektu
@@ -468,12 +466,12 @@ Entra registrace potřebuje platformu **Mobile and desktop applications** s redi
 
 ## Lokalizace
 
-Texty UI jsou v `.resx` souborech v `src/WorkTracker.UI.Shared/Resources/Localization/`:
+Texty UI jsou v `.resx` souborech v `src/WorkTracker.Avalonia/Resources/Localization/`:
 
 - `Strings.resx` — výchozí (angličtina)
 - `Strings.cs.resx` — čeština
 
-Který jazyk se použije, řídí `LanguageCatalog` (`UI.Shared/Models/`) — jediné místo, které převádí
+Který jazyk se použije, řídí `LanguageCatalog` (`Avalonia/Models/`) — jediné místo, které převádí
 uloženou hodnotu `ApplicationSettings.Language` na `CultureInfo`. Hodnota je `"system"` (následuj OS,
 výchozí), nebo kód jazyka. Je to **string, ne enum**: neznámou hodnotu `LanguageCatalog.Normalize`
 degraduje zpět na `"system"`, zatímco enum by shodil deserializaci a `SettingsService` by se svým

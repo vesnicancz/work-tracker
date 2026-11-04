@@ -28,12 +28,11 @@ dotnet publish src/WorkTracker.CLI -c Release -r win-x64
 Clean Architecture with 4 layers + plugin system. Dependencies flow inward only.
 
 ```
-Avalonia
-  └─ UI.Shared (shared ViewModels, Orchestrators, Services)
-       └─ Application (use cases, IWorkEntryService, Result<T>, DTOs)
-            └─ Domain (WorkEntry entity, repository interfaces, business rules)
+Avalonia (GUI: views, ViewModels, Orchestrators, Services)
+  └─ Application (use cases, IWorkEntryService, Result<T>, DTOs)
+       └─ Domain (WorkEntry entity, repository interfaces, business rules)
 
-CLI ─> Application (no UI.Shared)
+CLI ─> Application
 Avalonia, CLI ─> Infrastructure (bootstrap only: AddInfrastructure, DB + plugin init)
 
 Plugin.Abstractions (IPlugin, IWorklogUploadPlugin, IWorkSuggestionPlugin, IStatusIndicatorPlugin, IRemoteControlPlugin)
@@ -44,8 +43,7 @@ Plugin.Abstractions (IPlugin, IWorklogUploadPlugin, IWorkSuggestionPlugin, IStat
 - **Domain** — Pure business rules, no dependencies. Defines `IWorkEntryRepository`.
 - **Application** — Orchestrates use cases. Uses `Result<T>` for error handling (no exceptions for business logic). Registers services via `DependencyInjection.AddApplication()`.
 - **Infrastructure** — EF Core/SQLite, `PluginManager`, repository implementations. Registers everything via `DependencyInjection.AddInfrastructure()` (which calls `AddApplication()` internally).
-- **UI.Shared** — Platform-agnostic ViewModels (CommunityToolkit.Mvvm), Orchestrators that coordinate services, `ILocalizationService`, `ISettingsService`.
-- **Presentation** — Platform-specific UI. Avalonia (cross-platform, uses UI.Shared), CLI (Spectre.Console, goes straight to Application). Each has its own DI setup in `Program.cs` / `App.axaml.cs`.
+- **Presentation** — Avalonia (cross-platform GUI: views, ViewModels on CommunityToolkit.Mvvm, Orchestrators that coordinate services, `ILocalizationService`, `ISettingsService`) and CLI (Spectre.Console, goes straight to Application). Each has its own DI setup in `Program.cs` / `App.axaml.cs`.
 
 ## Plugin System
 
@@ -54,7 +52,7 @@ Plugins load in isolated `AssemblyLoadContext` from the `Plugins:Directories` co
 - **`IWorklogUploadPlugin`** — Upload worklogs (e.g., Tempo)
 - **`IWorkSuggestionPlugin`** — Suggest work items (e.g., Jira issues)
 - **`IStatusIndicatorPlugin`** — Physical status indicators (e.g., Luxafor LED)
-- **`IRemoteControlPlugin`** — External controllers driving the running GUI (e.g., Stream Deck). Gets its `IRemoteControlHost` from `AttachAsync`, not from DI, because the implementation lives in UI.Shared. `IRemoteControlCoordinator` attaches and detaches by enabled state; the CLI never does, so these plugins are inert there.
+- **`IRemoteControlPlugin`** — External controllers driving the running GUI (e.g., Stream Deck). Gets its `IRemoteControlHost` from `AttachAsync`, not from DI, because the implementation lives in the Avalonia project. `IRemoteControlCoordinator` attaches and detaches by enabled state; the CLI never does, so these plugins are inert there.
 
 **Plugin DI & lifecycle:**
 - Plugins are instantiated via `ActivatorUtilities.CreateInstance` from a plugin-scoped `ServiceCollection` (built in `PluginManager`).
@@ -78,8 +76,8 @@ Existing plugins: `Plugin.Atlassian` (Tempo + Jira), `Plugin.Office365Calendar`,
 - **.NET 10 / C# 14** (compiler default, no `LangVersion` set), nullable reference types enabled, `TreatWarningsAsErrors = true`
 - **Central Package Management** via `Directory.Packages.props` — use `<PackageReference Include="..." />` without Version in `.csproj` files
 - **Naming**: interfaces `IName`, private fields `_camelCase`, types `PascalCase` (configured in `.editorconfig`; IDE-only — `EnforceCodeStyleInBuild` is off, so the build does not enforce them)
-- **ViewModels are split** — root ViewModels live in the Avalonia project; reusable sub-ViewModels and shared logic go in `UI.Shared/ViewModels/` or `UI.Shared/Orchestrators/`.
-- **DI registration** is centralized: `Application/DependencyInjection.cs` and `Infrastructure/DependencyInjection.cs`; orchestrators and some UI.Shared services register through `AddUIShared()` in `UI.Shared/DependencyInjection.cs`, the rest and all platform services in `App.ConfigureAppServices`. Infrastructure's `AddInfrastructure()` is the single entry point for non-UI services.
+- **ViewModels stay free of the UI framework** — `ViewModels/`, `Orchestrators/`, `Models/` and `Helpers/` in the Avalonia project don't use Avalonia or `App` (checked by `WorkTracker.Architecture.Tests`), so they can be tested without a UI. Threads go through `IUiDispatcher`, colors through styles.
+- **DI registration** is centralized: `Application/DependencyInjection.cs` and `Infrastructure/DependencyInjection.cs`; orchestrators and some services register through `AddPresentationServices()` in `Avalonia/PresentationServices.cs`, the rest and all platform services in `App.ConfigureAppServices`. Infrastructure's `AddInfrastructure()` is the single entry point for non-UI services.
 - **Database** uses `IDbContextFactory<WorkTrackerDbContext>` (not scoped DbContext). SQLite stored in `%LocalAppData%\WorkTracker\` (Debug builds: `worktracker-dev.db` next to the binary).
 - **Unit of Work** (`IUnitOfWork` / `IUnitOfWorkFactory` in `Application/Interfaces/`) wraps multi-step write operations (auto-stop + start, overlap resolution) in an explicit `IDbContextTransaction`. `IUnitOfWorkFactory.CreateAsync` opens the transaction; `IUnitOfWork.SaveChangesAsync` flushes changes and commits; disposing without calling `SaveChangesAsync` triggers a transaction rollback. `WorkEntryRepository` has two modes: factory mode (standalone, each op auto-saves) and shared-context mode (inside UoW, SaveChanges deferred to the UoW). Single-operation methods use the transient repository directly.
 - **Secure storage** for API tokens via `ISecureStorage` (OS credential manager).

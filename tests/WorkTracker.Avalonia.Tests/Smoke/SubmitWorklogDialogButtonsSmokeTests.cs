@@ -5,8 +5,7 @@ using WorkTracker.Avalonia.Tests.ViewModels;
 using WorkTracker.Avalonia.ViewModels;
 using WorkTracker.Avalonia.Views;
 using WorkTracker.Plugin.Abstractions;
-using WorkTracker.UI.Shared.Orchestrators;
-using WorkTracker.UI.Shared.ViewModels;
+using WorkTracker.Avalonia.Orchestrators;
 
 namespace WorkTracker.Avalonia.Tests.Smoke;
 

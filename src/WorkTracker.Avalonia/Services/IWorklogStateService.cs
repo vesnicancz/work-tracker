@@ -1,0 +1,120 @@
+using WorkTracker.Application.Common;
+using WorkTracker.Domain.Services;
+using WorkTracker.Domain.Entities;
+
+namespace WorkTracker.Avalonia.Services;
+
+/// <summary>
+/// Service that manages the current worklog tracking state of the application.
+/// Provides a single source of truth for active work tracking.
+/// </summary>
+public interface IWorklogStateService
+{
+	/// <summary>
+	/// Gets whether the service has been initialized
+	/// </summary>
+	bool IsInitialized { get; }
+
+	/// <summary>
+	/// Gets the currently active work entry, or null if no work is being tracked
+	/// </summary>
+	WorkEntry? ActiveWork { get; }
+
+	/// <summary>
+	/// Gets whether work is currently being tracked
+	/// </summary>
+	bool IsTracking { get; }
+
+	/// <summary>
+	/// Initializes the service by loading the current state from the database.
+	/// Must be called before using any other methods or properties.
+	/// </summary>
+	Task InitializeAsync();
+
+	/// <summary>
+	/// Starts tracking a new work entry with the current time.
+	/// Automatically notifies about state changes.
+	/// </summary>
+	Task<Result<WorkEntry>> StartTrackingAsync(string? ticketId, string? description, CancellationToken cancellationToken);
+
+	/// <summary>
+	/// Stops tracking the currently active work entry.
+	/// Automatically notifies about state changes.
+	/// </summary>
+	Task<Result> StopTrackingAsync(CancellationToken cancellationToken);
+
+	/// <summary>
+	/// Creates a new work entry with custom start/end times.
+	/// Automatically notifies about state changes.
+	/// </summary>
+	Task<Result<WorkEntry>> CreateWorkEntryAsync(
+		string? ticketId,
+		DateTime startTime,
+		string? description,
+		DateTime? endTime,
+		CancellationToken cancellationToken);
+
+	/// <summary>
+	/// Updates an existing work entry.
+	/// Automatically notifies about state changes.
+	/// </summary>
+	Task<Result> UpdateWorkEntryAsync(
+		int id,
+		string? ticketId,
+		DateTime startTime,
+		DateTime? endTime,
+		string? description,
+		CancellationToken cancellationToken);
+
+	/// <summary>
+	/// Deletes a work entry.
+	/// Automatically notifies about state changes.
+	/// </summary>
+	Task<Result> DeleteWorkEntryAsync(int id, CancellationToken cancellationToken);
+
+	/// <summary>
+	/// Refreshes the state from the database.
+	/// </summary>
+	Task RefreshFromDatabaseAsync(CancellationToken cancellationToken);
+
+	/// <summary>
+	/// Event raised when the active work entry changes
+	/// </summary>
+	event EventHandler<WorkEntry?>? ActiveWorkChanged;
+
+	/// <summary>
+	/// Event raised when the tracking state changes
+	/// </summary>
+	event EventHandler<bool>? IsTrackingChanged;
+
+	/// <summary>
+	/// Event raised when work entries have been modified (created, updated, deleted).
+	/// </summary>
+	event EventHandler? WorkEntriesModified;
+
+	/// <summary>
+	/// Notifies that work entries have been modified by external operations.
+	/// Refreshes internal state from the database before raising the event.
+	/// </summary>
+	Task NotifyWorkEntriesModifiedAsync(CancellationToken cancellationToken);
+
+	/// <summary>
+	/// Computes an overlap resolution plan for a new or updated work entry.
+	/// </summary>
+	Task<OverlapResolutionPlan> ComputeOverlapResolutionAsync(
+		int? excludeEntryId, DateTime startTime, DateTime? endTime, CancellationToken cancellationToken);
+
+	/// <summary>
+	/// Creates a new work entry with automatic overlap resolution.
+	/// </summary>
+	Task<Result<WorkEntry>> CreateWorkEntryWithResolutionAsync(
+		string? ticketId, DateTime startTime, string? description, DateTime? endTime,
+		OverlapResolutionPlan plan, CancellationToken cancellationToken);
+
+	/// <summary>
+	/// Updates an existing work entry with automatic overlap resolution.
+	/// </summary>
+	Task<Result> UpdateWorkEntryWithResolutionAsync(
+		int id, string? ticketId, DateTime startTime, DateTime? endTime, string? description,
+		OverlapResolutionPlan plan, CancellationToken cancellationToken);
+}

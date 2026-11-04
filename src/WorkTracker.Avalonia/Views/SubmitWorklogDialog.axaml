@@ -6,7 +6,7 @@
         xmlns:markup="using:WorkTracker.Avalonia.Markup"
         xmlns:vm="using:WorkTracker.Avalonia.ViewModels"
         xmlns:converters="using:WorkTracker.Avalonia.Converters"
-        xmlns:shared="using:WorkTracker.UI.Shared.ViewModels"
+        xmlns:shared="using:WorkTracker.Avalonia.ViewModels"
         x:Class="WorkTracker.Avalonia.Views.SubmitWorklogDialog"
         x:DataType="vm:SubmitWorklogViewModel"
         mc:Ignorable="d"

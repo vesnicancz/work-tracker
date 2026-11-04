@@ -4,8 +4,8 @@ using Moq;
 using WorkTracker.Application.Common;
 using WorkTracker.Avalonia.ViewModels;
 using WorkTracker.Tests.Common.Builders;
-using WorkTracker.UI.Shared.Orchestrators;
-using WorkTracker.UI.Shared.Services;
+using WorkTracker.Avalonia.Orchestrators;
+using WorkTracker.Avalonia.Services;
 
 namespace WorkTracker.Avalonia.Tests.ViewModels;
 

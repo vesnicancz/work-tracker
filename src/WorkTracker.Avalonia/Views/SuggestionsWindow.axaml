@@ -4,7 +4,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:material="using:Material.Icons.Avalonia"
         xmlns:markup="using:WorkTracker.Avalonia.Markup"
-        xmlns:vm="using:WorkTracker.UI.Shared.ViewModels"
+        xmlns:vm="using:WorkTracker.Avalonia.ViewModels"
         x:Class="WorkTracker.Avalonia.Views.SuggestionsWindow"
         x:DataType="vm:SuggestionsViewModel"
         mc:Ignorable="d"

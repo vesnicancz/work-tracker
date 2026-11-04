@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Media.Imaging;
 using Microsoft.Extensions.Logging;
-using WorkTracker.UI.Shared.Services;
+using WorkTracker.Avalonia.Services;
 
 namespace WorkTracker.Avalonia.Services.Linux;
 

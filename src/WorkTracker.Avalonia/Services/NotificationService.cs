@@ -6,7 +6,7 @@ using Avalonia.Media;
 using Avalonia.Threading;
 using Material.Icons;
 using Material.Icons.Avalonia;
-using WorkTracker.UI.Shared.Services;
+using WorkTracker.Avalonia.Services;
 
 namespace WorkTracker.Avalonia.Services;
 

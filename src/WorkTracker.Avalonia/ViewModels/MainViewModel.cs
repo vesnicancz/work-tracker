@@ -6,10 +6,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using WorkTracker.Application.Services;
 using WorkTracker.Domain.Entities;
-using WorkTracker.UI.Shared;
-using WorkTracker.UI.Shared.Orchestrators;
-using WorkTracker.UI.Shared.Services;
-using WorkTracker.UI.Shared.ViewModels;
+using WorkTracker.Avalonia;
+using WorkTracker.Avalonia.Orchestrators;
+using WorkTracker.Avalonia.Services;
+using WorkTracker.Avalonia.ViewModels;
 
 namespace WorkTracker.Avalonia.ViewModels;
 

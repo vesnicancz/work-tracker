@@ -27,7 +27,6 @@
     <Project Path="src/WorkTracker.Domain/WorkTracker.Domain.csproj" />
     <Project Path="src/WorkTracker.Infrastructure/WorkTracker.Infrastructure.csproj" />
     <Project Path="src/WorkTracker.Plugin.Abstractions/WorkTracker.Plugin.Abstractions.csproj" />
-    <Project Path="src/WorkTracker.UI.Shared/WorkTracker.UI.Shared.csproj" />
   </Folder>
   <Folder Name="/docs/plugins/">
     <File Path="docs/plugins/atlassian.md" />
@@ -56,6 +55,5 @@
     <Project Path="tests/WorkTracker.Plugin.Office365Calendar.Tests/WorkTracker.Plugin.Office365Calendar.Tests.csproj" />
     <Project Path="tests/WorkTracker.Plugin.StreamDeck.Tests/WorkTracker.Plugin.StreamDeck.Tests.csproj" />
     <Project Path="tests/WorkTracker.Tests.Common/WorkTracker.Tests.Common.csproj" />
-    <Project Path="tests/WorkTracker.UI.Shared.Tests/WorkTracker.UI.Shared.Tests.csproj" />
   </Folder>
 </Solution>

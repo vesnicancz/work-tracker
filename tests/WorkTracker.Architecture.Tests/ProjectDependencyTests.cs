@@ -15,7 +15,6 @@ public class ProjectDependencyTests
 	private const string Application = "WorkTracker.Application";
 	private const string Domain = "WorkTracker.Domain";
 	private const string Infrastructure = "WorkTracker.Infrastructure";
-	private const string UiShared = "WorkTracker.UI.Shared";
 
 	private static readonly Dictionary<string, string[]> AllowedReferences = new()
 	{
@@ -23,12 +22,13 @@ public class ProjectDependencyTests
 		[Abstractions] = [],
 		[Application] = [Domain, Abstractions],
 		[Infrastructure] = [Application, Domain],
-		[UiShared] = [Application],
 		["WorkTracker.CLI"] = [Application, Infrastructure],
-		["WorkTracker.Avalonia"] = [UiShared, Infrastructure],
+		["WorkTracker.Avalonia"] = [Application, Infrastructure],
 	};
 
-	private static readonly string[] CoreProjects = [Domain, Abstractions, Application, UiShared];
+	private static readonly string[] CoreProjects = [Domain, Abstractions, Application];
+
+	private static readonly string[] FrameworkFreeFolders = ["ViewModels", "Orchestrators", "Models", "Helpers"];
 
 	private static readonly string[] PresentationAndPersistencePackages = ["Avalonia", "Microsoft.EntityFrameworkCore", "Spectre.Console"];
 
@@ -106,21 +106,25 @@ public class ProjectDependencyTests
 	}
 
 	/// <summary>
-	/// View models are tested without a UI, and what they show gets its colors and threads from the views
-	/// and <c>IUiDispatcher</c>.
+	/// View models and what they build on are tested without a UI, and get their colors and threads
+	/// from the views and <c>IUiDispatcher</c>. All of it shares a project with the views, so the
+	/// compiler doesn't keep them apart. Services are not covered, because the platform ones live there.
 	/// </summary>
-	[Fact]
-	public void ViewModels_DoNotUseAvalonia()
+	[Theory]
+	[MemberData(nameof(FrameworkFreeFolderNames))]
+	public void FrameworkFreeFolders_DoNotUseAvalonia(string folder)
 	{
-		var uiFramework = new Regex(@"(?<![\w.])(global::)?Avalonia\.|(?<![\w.])App\.\w");
+		var uiFramework = new Regex(@"(?<![\w.])(global::)?Avalonia\.|(?<![\w.])App\.(?!axaml)\w");
 
-		var violations = Directory.EnumerateFiles(Path.Combine(RepositoryRoot, "src", "WorkTracker.Avalonia", "ViewModels"), "*.cs", SearchOption.AllDirectories)
+		var violations = Directory.EnumerateFiles(Path.Combine(RepositoryRoot, "src", "WorkTracker.Avalonia", folder), "*.cs", SearchOption.AllDirectories)
 			.Where(file => uiFramework.IsMatch(File.ReadAllText(file)))
 			.Select(Path.GetFileName)
 			.ToList();
 
 		violations.Should().BeEmpty();
 	}
+
+	public static TheoryData<string> FrameworkFreeFolderNames => new(FrameworkFreeFolders);
 
 	[Fact]
 	public void CoreProjects_DoNotDependOnPresentationOrPersistencePackages()

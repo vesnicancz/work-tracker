@@ -233,12 +233,11 @@ Kompletní návod: [docs/plugin-development.md](docs/plugin-development.md).
 Clean Architecture s jednosměrnými závislostmi:
 
 ```
-Avalonia
-      └─ UI.Shared (ViewModels, Orchestrátory, ISettingsService, ILocalizationService)
-            └─ Application (IWorkEntryService, IUnitOfWork, Result<T>, DTOs)
-                  └─ Domain (WorkEntry, IWorkEntryRepository, business pravidla)
+Avalonia (GUI: okna, ViewModely, Orchestrátory, ISettingsService, ILocalizationService)
+      └─ Application (IWorkEntryService, IUnitOfWork, Result<T>, DTOs)
+            └─ Domain (WorkEntry, IWorkEntryRepository, business pravidla)
 
-CLI ─> Application (UI.Shared nepoužívá)
+CLI ─> Application
 Avalonia, CLI ─> Infrastructure (jen bootstrap: AddInfrastructure, inicializace DB a pluginů)
 
 Plugin.Abstractions (IPlugin, *PluginBase) — společné API pro všechny pluginy
@@ -255,7 +254,6 @@ work-tracker/
 │   ├── WorkTracker.Domain/               # Business entity a pravidla
 │   ├── WorkTracker.Application/          # Use cases, služby, interfaces
 │   ├── WorkTracker.Infrastructure/       # EF Core, SQLite, PluginManager, MSAL
-│   ├── WorkTracker.UI.Shared/            # Sdílené ViewModely a služby
 │   ├── WorkTracker.CLI/                  # Spectre.Console klient
 │   ├── WorkTracker.Avalonia/             # Avalonia GUI (cross-platform)
 │   └── WorkTracker.Plugin.Abstractions/  # Plugin API

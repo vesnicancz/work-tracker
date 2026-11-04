@@ -1,4 +1,4 @@
-using WorkTracker.UI.Shared.Services;
+using WorkTracker.Avalonia.Services;
 
 namespace WorkTracker.Avalonia.Services;
 

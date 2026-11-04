@@ -4,7 +4,7 @@ namespace WorkTracker.Application.Settings;
 /// The plugin-related slice of the persisted settings file.
 /// <para>
 /// Every host needs these two values to bring plugins up, but only the GUI owns the full settings
-/// model. <c>ApplicationSettings</c> (UI.Shared) derives from this type rather than redeclaring the
+/// model. <c>ApplicationSettings</c> (Avalonia) derives from this type rather than redeclaring the
 /// properties, so the JSON names can never drift apart, and the CLI reads just this slice through
 /// <see cref="IPluginSettingsReader"/> without taking a dependency on the UI layer.
 /// </para>
