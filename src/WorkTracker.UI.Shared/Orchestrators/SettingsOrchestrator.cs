@@ -164,7 +164,7 @@ public class SettingsOrchestrator : ISettingsOrchestrator
 
 	public async Task<string> TestConnectionAsync(PluginViewModel plugin, IProgress<string>? progress, CancellationToken cancellationToken)
 	{
-		if (plugin.Plugin is not ITestablePlugin testablePlugin)
+		if (plugin.Plugin is not ITestablePlugin)
 		{
 			return "✗ Test connection not available for this plugin type";
 		}
@@ -179,45 +179,89 @@ public class SettingsOrchestrator : ISettingsOrchestrator
 			return $"✗ {string.Join(Environment.NewLine, validation.Errors)}";
 		}
 
-		// The test runs against the live plugin instance, so it has to initialize it with the
-		// dialog's unsaved values. Restore the stored configuration afterwards - otherwise a test
-		// followed by Cancel would leave the running plugin on settings the user never saved.
 		var tempConfig = new Dictionary<string, string>(plugin.Configuration);
-		try
+
+		// A status indicator drives a device and knows which state to put it back to, so a second
+		// instance would leave a running Pomodoro showing the wrong color.
+		if (plugin.Plugin is IStatusIndicatorPlugin)
 		{
-			bool initialized;
 			try
 			{
-				initialized = await plugin.Plugin.InitializeAsync(tempConfig, cancellationToken);
+				return await InitializeAndTestAsync(plugin.Plugin, tempConfig, progress, cancellationToken);
 			}
-			catch (Exception ex)
+			finally
 			{
-				_logger.LogWarning(ex, "Initialization failed for plugin {PluginId} during connection test", plugin.Plugin.Metadata.Id);
-				return $"✗ Connection failed: {ex.Message}";
+				// Not the caller's token: a cancelled test still has to put the plugin back.
+				await RestoreSavedConfigurationAsync(plugin.Plugin, CancellationToken.None);
 			}
+		}
 
-			if (!initialized)
-			{
-				_logger.LogWarning("Initialization failed for plugin {PluginId} during connection test", plugin.Plugin.Metadata.Id);
-				return "✗ Connection failed: Unable to initialize plugin with current configuration";
-			}
+		// Everything else is tested on its own instance. The unsaved values never reach the running
+		// plugin, and an upload that is under way can't end up on an account that was only being tried.
+		IPlugin detached;
+		try
+		{
+			detached = _pluginManager.CreateDetachedInstance(plugin.Plugin);
+		}
+		catch (Exception ex)
+		{
+			_logger.LogWarning(ex, "Could not create an instance of plugin {PluginId} for a connection test", plugin.Plugin.Metadata.Id);
+			return $"✗ Connection failed: {ex.Message}";
+		}
 
-			var result = await testablePlugin.TestConnectionAsync(progress, cancellationToken);
-
-			if (result.IsSuccess)
-			{
-				_logger.LogInformation("Connection test successful for {PluginId}", plugin.Plugin.Metadata.Id);
-				return "✓ Connection successful";
-			}
-
-			_logger.LogWarning("Connection test failed for {PluginId}: {Error}",
-				plugin.Plugin.Metadata.Id, result.Error);
-			return $"✗ Connection failed: {result.Error}";
+		try
+		{
+			return await InitializeAndTestAsync(detached, tempConfig, progress, cancellationToken);
 		}
 		finally
 		{
-			// Not the caller's token: a cancelled test still has to put the plugin back.
-			await RestoreSavedConfigurationAsync(plugin.Plugin, CancellationToken.None);
+			await ShutDownDetachedAsync(detached);
+		}
+	}
+
+	private async Task<string> InitializeAndTestAsync(IPlugin instance, Dictionary<string, string> configuration, IProgress<string>? progress, CancellationToken cancellationToken)
+	{
+		bool initialized;
+		try
+		{
+			initialized = await instance.InitializeAsync(configuration, cancellationToken);
+		}
+		catch (Exception ex)
+		{
+			_logger.LogWarning(ex, "Initialization failed for plugin {PluginId} during connection test", instance.Metadata.Id);
+			return $"✗ Connection failed: {ex.Message}";
+		}
+
+		if (!initialized)
+		{
+			_logger.LogWarning("Initialization failed for plugin {PluginId} during connection test", instance.Metadata.Id);
+			return "✗ Connection failed: Unable to initialize plugin with current configuration";
+		}
+
+		var result = await ((ITestablePlugin)instance).TestConnectionAsync(progress, cancellationToken);
+
+		if (result.IsSuccess)
+		{
+			_logger.LogInformation("Connection test successful for {PluginId}", instance.Metadata.Id);
+			return "✓ Connection successful";
+		}
+
+		_logger.LogWarning("Connection test failed for {PluginId}: {Error}", instance.Metadata.Id, result.Error);
+		return $"✗ Connection failed: {result.Error}";
+	}
+
+	/// <summary>
+	/// Runs in a finally block, so a failure is logged and must not replace the test's result.
+	/// </summary>
+	private async Task ShutDownDetachedAsync(IPlugin plugin)
+	{
+		try
+		{
+			await plugin.ShutdownAsync();
+		}
+		catch (Exception ex)
+		{
+			_logger.LogWarning(ex, "Failed to shut down the instance of plugin {PluginId} used for a connection test", plugin.Metadata.Id);
 		}
 	}
 

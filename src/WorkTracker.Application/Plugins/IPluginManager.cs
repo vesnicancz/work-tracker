@@ -83,6 +83,12 @@ public interface IPluginManager : IAsyncDisposable
 	Task InitializePluginsAsync(Dictionary<string, Dictionary<string, string>>? configurations, CancellationToken cancellationToken);
 
 	/// <summary>
+	/// Creates a new instance of a loaded plugin that the manager doesn't know about, for trying out a
+	/// configuration without touching the running one. The caller shuts it down.
+	/// </summary>
+	IPlugin CreateDetachedInstance(IPlugin plugin);
+
+	/// <summary>
 	/// Gets a plugin by its ID
 	/// </summary>
 	IPlugin? GetPlugin(string pluginId);

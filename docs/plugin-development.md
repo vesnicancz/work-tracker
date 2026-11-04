@@ -448,7 +448,7 @@ Task<PluginResult<bool>> TestConnectionAsync(
 
 Tato metoda:
 
-- Je volaná **ručně** z UI (tlačítko **Otestovat připojení** v Nastavení → Pluginy). Plugin se před testem inicializuje s neuloženými hodnotami z formuláře a po testu se vrátí k uložené konfiguraci.
+- Je volaná **ručně** z UI (tlačítko **Otestovat připojení** v Nastavení → Pluginy). Test běží na **samostatné instanci** pluginu inicializované s neuloženými hodnotami z formuláře, kterou aplikace po testu ukončí. Běžící plugin se ho nedotkne, takže stav mezi instancemi sdílej jen přes `ITokenProviderFactory` (token z přihlášení při testu tak může použít i běžící instance). Výjimkou je `IStatusIndicatorPlugin`: ovládá fyzické zařízení, a proto se testuje přímo běžící instance, která se po testu vrátí k uložené konfiguraci.
 - Má **pravdivě ověřit**, že plugin se dokáže připojit k externímu systému s aktuální konfigurací — ne jen „plugin je nainstalovaný“.
 - Pro OAuth pluginy obvykle **spouští interaktivní přihlášení** (pokud není platný cached token).
 - Má **`IProgress<string>` pro hlášení stavu uživateli** — na co se čeká, co se děje. Bez toho uživatel u interaktivního přihlášení netuší, co se děje.
