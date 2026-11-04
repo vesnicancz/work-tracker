@@ -151,6 +151,7 @@ public partial class App : global::Avalonia.Application
 		await Infrastructure.DependencyInjection.InitializeDatabaseAsync(_host.Services);
 		var worklogStateService = _host.Services.GetRequiredService<IWorklogStateService>();
 		await worklogStateService.InitializeAsync();
+		_host.Services.GetRequiredService<IExternalWorkChangeMonitor>().Start();
 
 		// Wire up services to the window on the UI thread
 		var viewModel = _host.Services.GetRequiredService<MainViewModel>();

@@ -23,6 +23,7 @@ public static class UISharedServiceCollectionExtensions
 		services.AddSingleton<IActionFeedbackService, ActionFeedbackService>();
 		services.AddSingleton<IRemoteControlHost, RemoteControlHost>();
 		services.AddSingleton<IRemoteControlCoordinator, RemoteControlCoordinator>();
+		services.AddSingleton<IExternalWorkChangeMonitor, ExternalWorkChangeMonitor>();
 
 		services.AddSingleton<IUpdateCheckService>(sp =>
 		{

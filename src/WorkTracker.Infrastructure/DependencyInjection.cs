@@ -83,6 +83,8 @@ public static class DependencyInjection
 		// Unit of Work - Transient (stateless factory; each Create() produces a new transactional scope)
 		services.AddTransient<IUnitOfWorkFactory, UnitOfWorkFactory>();
 
+		services.AddSingleton<IWorkDataChangeDetector>(new DatabaseFileChangeDetector(dbPath));
+
 		// Secure storage — secrets stored in native OS credential store
 		// (Windows Credential Manager / macOS Keychain / Linux libsecret)
 		services.AddSingleton<ISecureStorage, CredentialStoreSecureStorage>();
