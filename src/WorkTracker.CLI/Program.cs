@@ -120,6 +120,11 @@ catch (DatabaseUnavailableException ex)
 	CliConsole.Error.MarkupLine("If it is on a removable drive, connect the drive and run the command again.");
 	return 1;
 }
+catch (DatabaseBackupFailedException ex)
+{
+	CliConsole.Error.MarkupLine($"[red]Error:[/] {Markup.Escape(ex.Message)}");
+	return 1;
+}
 
 try
 {

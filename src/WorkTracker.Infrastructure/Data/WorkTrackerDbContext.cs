@@ -42,7 +42,12 @@ public class WorkTrackerDbContext : DbContext
 
 			// Index for faster queries
 			entity.HasIndex(e => e.StartTime);
-			entity.HasIndex(e => e.IsActive);
+
+			// At most one running entry. On IsActive rather than on a null EndTime, because a unique
+			// index in SQLite considers nulls different from each other.
+			entity.HasIndex(e => e.IsActive)
+				.IsUnique()
+				.HasFilter("\"IsActive\" = 1");
 		});
 	}
 }

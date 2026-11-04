@@ -7,9 +7,13 @@ using WorkTracker.Domain.Services;
 
 namespace WorkTracker.Application.Services;
 
+/// <remarks>
+/// Every write runs in a unit of work, together with the checks it depends on. Those transactions take
+/// the write lock of the database up front, so the GUI and the CLI can't both pass a check and then both
+/// write. Only reads use the repository directly.
+/// </remarks>
 public sealed class WorkEntryService : IWorkEntryService
 {
-
 	private readonly IWorkEntryRepository _repository;
 	private readonly IUnitOfWorkFactory _unitOfWorkFactory;
 	private readonly TimeProvider _timeProvider;
@@ -43,13 +47,22 @@ public sealed class WorkEntryService : IWorkEntryService
 			return await StartOpenEndedWorkAsync(workEntry, roundedNow, cancellationToken);
 		}
 
-		var validation = await ValidateNewEntryAsync(workEntry, cancellationToken);
-		if (validation.IsFailure)
+		if (!workEntry.IsValid())
 		{
-			return validation;
+			_logger.LogWarning("Invalid work entry data for ticket {TicketId} ({StartTime} - {EndTime})", workEntry.TicketId, workEntry.StartTime, workEntry.EndTime);
+			return Result.Failure<WorkEntry>(WorkEntryErrors.InvalidEntry);
 		}
 
-		var result = await _repository.AddAsync(workEntry, cancellationToken);
+		await using var uow = await _unitOfWorkFactory.CreateAsync(cancellationToken);
+
+		if (await uow.WorkEntries.HasOverlappingEntriesAsync(null, workEntry.StartTime, workEntry.EndTime, cancellationToken))
+		{
+			_logger.LogWarning("Work entry overlaps with existing entry for ticket {TicketId} ({StartTime} - {EndTime})", workEntry.TicketId, workEntry.StartTime, workEntry.EndTime);
+			return Result.Failure<WorkEntry>(WorkEntryErrors.Overlap);
+		}
+
+		var result = await uow.WorkEntries.AddAsync(workEntry, cancellationToken);
+		await uow.SaveChangesAsync(cancellationToken);
 		_logger.LogInformation("Work started successfully with ID {Id}", result.Id);
 
 		return Result.Success(result);
@@ -69,7 +82,9 @@ public sealed class WorkEntryService : IWorkEntryService
 			return Result.Failure<WorkEntry>(WorkEntryErrors.InvalidEntry);
 		}
 
-		var overlapping = await _repository.GetOverlappingEntriesAsync(null, workEntry.StartTime, null, cancellationToken);
+		await using var uow = await _unitOfWorkFactory.CreateAsync(cancellationToken);
+
+		var overlapping = await uow.WorkEntries.GetOverlappingEntriesAsync(null, workEntry.StartTime, null, cancellationToken);
 
 		// Closing an entry at the new start only works for one that began before it. One starting at
 		// the same minute would shrink to nothing, and an open-ended one starting later can't be closed
@@ -80,17 +95,7 @@ public sealed class WorkEntryService : IWorkEntryService
 			return Result.Failure<WorkEntry>(WorkEntryErrors.Overlap);
 		}
 
-		var running = overlapping.Where(e => e.StartTime < workEntry.StartTime).ToList();
-		if (running.Count == 0)
-		{
-			var added = await _repository.AddAsync(workEntry, cancellationToken);
-			_logger.LogInformation("Work started successfully with ID {Id}", added.Id);
-			return Result.Success(added);
-		}
-
-		await using var uow = await _unitOfWorkFactory.CreateAsync(cancellationToken);
-
-		foreach (var entry in running)
+		foreach (var entry in overlapping.Where(e => e.StartTime < workEntry.StartTime))
 		{
 			_logger.LogInformation("Auto-stopping previous work {Id} on ticket {PreviousTicketId}", entry.Id, entry.TicketId);
 			entry.Stop(workEntry.StartTime, roundedNow);
@@ -100,35 +105,17 @@ public sealed class WorkEntryService : IWorkEntryService
 		var result = await uow.WorkEntries.AddAsync(workEntry, cancellationToken);
 		await uow.SaveChangesAsync(cancellationToken);
 
-		_logger.LogInformation("Previous work stopped and new work started successfully with ID {Id}", result.Id);
+		_logger.LogInformation("Work started successfully with ID {Id}", result.Id);
 		return Result.Success(result);
-	}
-
-	/// <summary>
-	/// Validates a freshly-created entry with an end time (structural + overlap check).
-	/// </summary>
-	private async Task<Result<WorkEntry>> ValidateNewEntryAsync(WorkEntry workEntry, CancellationToken cancellationToken)
-	{
-		if (!workEntry.IsValid())
-		{
-			_logger.LogWarning("Invalid work entry data for ticket {TicketId} ({StartTime} - {EndTime})", workEntry.TicketId, workEntry.StartTime, workEntry.EndTime);
-			return Result.Failure<WorkEntry>(WorkEntryErrors.InvalidEntry);
-		}
-
-		if (await _repository.HasOverlappingEntriesAsync(null, workEntry.StartTime, workEntry.EndTime, cancellationToken))
-		{
-			_logger.LogWarning("Work entry overlaps with existing entry for ticket {TicketId} ({StartTime} - {EndTime})", workEntry.TicketId, workEntry.StartTime, workEntry.EndTime);
-			return Result.Failure<WorkEntry>(WorkEntryErrors.Overlap);
-		}
-
-		return Result.Success(workEntry);
 	}
 
 	public async Task<Result<WorkEntry>> StopWorkAsync(DateTime? endTime = null, CancellationToken cancellationToken = default)
 	{
 		_logger.LogInformation("Stopping active work");
 
-		var activeEntry = await _repository.GetActiveWorkEntryAsync(cancellationToken);
+		await using var uow = await _unitOfWorkFactory.CreateAsync(cancellationToken);
+
+		var activeEntry = await uow.WorkEntries.GetActiveWorkEntryAsync(cancellationToken);
 		if (activeEntry == null)
 		{
 			_logger.LogWarning("No active work entry found to stop");
@@ -145,13 +132,14 @@ public sealed class WorkEntryService : IWorkEntryService
 		}
 
 		// Check for overlaps with the new end time
-		if (await _repository.HasOverlappingEntriesAsync(activeEntry, cancellationToken))
+		if (await uow.WorkEntries.HasOverlappingEntriesAsync(activeEntry, cancellationToken))
 		{
 			_logger.LogWarning("Stopped work entry for ticket {TicketId} would overlap with existing entry ({StartTime} - {EndTime})", activeEntry.TicketId, activeEntry.StartTime, activeEntry.EndTime);
 			return Result.Failure<WorkEntry>(WorkEntryErrors.Overlap);
 		}
 
-		await _repository.UpdateAsync(activeEntry, cancellationToken);
+		await uow.WorkEntries.UpdateAsync(activeEntry, cancellationToken);
+		await uow.SaveChangesAsync(cancellationToken);
 		_logger.LogInformation("Work stopped successfully for ticket {TicketId}", activeEntry.TicketId);
 
 		return Result.Success(activeEntry);
@@ -177,7 +165,9 @@ public sealed class WorkEntryService : IWorkEntryService
 	{
 		_logger.LogInformation("Updating work entry {Id}", id);
 
-		var workEntry = await _repository.GetByIdAsync(id, cancellationToken);
+		await using var uow = await _unitOfWorkFactory.CreateAsync(cancellationToken);
+
+		var workEntry = await uow.WorkEntries.GetByIdAsync(id, cancellationToken);
 		if (workEntry == null)
 		{
 			_logger.LogWarning("Work entry with ID {Id} not found", id);
@@ -199,13 +189,14 @@ public sealed class WorkEntryService : IWorkEntryService
 		}
 
 		// Check for overlaps
-		if (await _repository.HasOverlappingEntriesAsync(workEntry, cancellationToken))
+		if (await uow.WorkEntries.HasOverlappingEntriesAsync(workEntry, cancellationToken))
 		{
 			_logger.LogWarning("Work entry {Id} would overlap with existing entry ({StartTime} - {EndTime})", id, workEntry.StartTime, workEntry.EndTime);
 			return Result.Failure<WorkEntry>(WorkEntryErrors.Overlap);
 		}
 
-		await _repository.UpdateAsync(workEntry, cancellationToken);
+		await uow.WorkEntries.UpdateAsync(workEntry, cancellationToken);
+		await uow.SaveChangesAsync(cancellationToken);
 		_logger.LogInformation("Work entry updated successfully");
 
 		return Result.Success(workEntry);
@@ -215,15 +206,18 @@ public sealed class WorkEntryService : IWorkEntryService
 	{
 		_logger.LogInformation("Deleting work entry {Id}", id);
 
+		await using var uow = await _unitOfWorkFactory.CreateAsync(cancellationToken);
+
 		// Check if entry exists before deleting
-		var workEntry = await _repository.GetByIdAsync(id, cancellationToken);
+		var workEntry = await uow.WorkEntries.GetByIdAsync(id, cancellationToken);
 		if (workEntry == null)
 		{
 			_logger.LogWarning("Work entry with ID {Id} not found", id);
 			return Result.Failure(WorkEntryErrors.NotFound(id));
 		}
 
-		await _repository.DeleteAsync(id, cancellationToken);
+		await uow.WorkEntries.DeleteAsync(id, cancellationToken);
+		await uow.SaveChangesAsync(cancellationToken);
 		_logger.LogInformation("Work entry {Id} deleted successfully", id);
 
 		return Result.Success();

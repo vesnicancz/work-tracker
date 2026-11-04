@@ -119,7 +119,7 @@ Registrace služeb: `DependencyInjection.AddApplication(IServiceCollection)`. Vo
 
 Implementace externích závislostí:
 
-- **EF Core + SQLite** — `WorkTrackerDbContext`, `WorkEntryRepository`, `UnitOfWork`, `UnitOfWorkFactory`. Cesta k databázi se řídí `WorkTrackerPaths.DefaultDatabasePath` s možností přepsání přes `Database:Path` v configu (relativní cesty se vyhodnocují vůči `WorkTrackerPaths.WritableBaseDirectory` — adresáři aplikace, uvnitř macOS `.app` bundlu vůči `~/Library/Application Support/WorkTracker/`). `Database:Pooling` (default `true`) vypíná connection pooling pro databáze na removable médiích — bez poolingu se soubor zavírá po každé operaci a disk jde bezpečně vysunout. Při startu se vynucuje `PRAGMA journal_mode=DELETE` (WAL je na removable exFAT rizikový kvůli `-wal`/`-shm` souborům). Když databáze není dosažitelná (nepřipojený disk, IO chyba, read-only médium), `AddInfrastructure` i `InitializeDatabaseAsync` vyhodí `DatabaseUnavailableException` — Avalonia `App` na ni reaguje dialogem s tlačítkem *Zkusit znovu*, které zopakuje celý bootstrap; ostatní výjimky při startu jsou brány jako neopravitelné.
+- **EF Core + SQLite** — `WorkTrackerDbContext`, `WorkEntryRepository`, `UnitOfWork`, `UnitOfWorkFactory`. Cesta k databázi se řídí `WorkTrackerPaths.DefaultDatabasePath` s možností přepsání přes `Database:Path` v configu (relativní cesty se vyhodnocují vůči `WorkTrackerPaths.WritableBaseDirectory` — adresáři aplikace, uvnitř macOS `.app` bundlu vůči `~/Library/Application Support/WorkTracker/`). `Database:Pooling` (default `true`) vypíná connection pooling pro databáze na removable médiích — bez poolingu se soubor zavírá po každé operaci a disk jde bezpečně vysunout. Při startu se vynucuje `PRAGMA journal_mode=DELETE` (WAL je na removable exFAT rizikový kvůli `-wal`/`-shm` souborům). Když databáze není dosažitelná (nepřipojený disk, IO chyba, read-only médium), `AddInfrastructure` i `InitializeDatabaseAsync` vyhodí `DatabaseUnavailableException` — Avalonia `App` na ni reaguje dialogem s tlačítkem *Zkusit znovu*, které zopakuje celý bootstrap; ostatní výjimky při startu jsou brány jako neopravitelné. Před čekající migrací se databáze zkopíruje vedle sebe (`DatabaseMigrationBackup`), a když se to nepovede, migrace neběží (`DatabaseBackupFailedException`).
 - **`IDbContextFactory<WorkTrackerDbContext>`** — `WorkEntryRepository` ho používá místo scoped `DbContext`. Důvod: dlouho běžící služby (GUI) nemají HTTP request scope, takže scoped DbContext by vedl k leakům a concurrent‑use chybám.
 - **`CredentialStoreSecureStorage`** — implementace `ISecureStorage` nad `GitCredentialManager` (multiplatformní: Windows Credential Manager, macOS Keychain, Linux libsecret).
 - **`PluginManager`, `PluginLoader`, `PluginLoadContext`** — načítání pluginů do vlastního `AssemblyLoadContext` (collectible) pro každou plugin assembly; všechny pluginy sdílejí jeden plugin `ServiceProvider`.
@@ -310,7 +310,7 @@ if (result.IsFailure)
 
 ### Unit of Work
 
-`IUnitOfWork` obaluje sérii zápisů do jedné EF Core transakce (`IDbContextTransaction`). Používá se pro multi‑step operace, kde částečný úspěch by nechal databázi v nekonzistentním stavu:
+`IUnitOfWork` obaluje zápisy a kontroly, na kterých závisí, do jedné EF Core transakce (`IDbContextTransaction`). Jde přes něj každý zápis ve `WorkEntryService`: SQLite transakce si bere zámek pro zápis hned na začátku (`BEGIN IMMEDIATE`), takže se GUI a CLI nemůžou dostat mezi kontrolu a zápis. Pojistkou je unikátní index `IX_WorkEntries_IsActive` s filtrem `IsActive = 1`, který druhý běžící záznam odmítne i na úrovni databáze. Víc záznamů se v jedné transakci mění třeba při:
 
 - **Auto‑stop + start nového** — start záznamu bez konce, zatímco jiný běží (CLI i GUI, `WorkEntryService.StartOpenEndedWorkAsync`). Zavře se aktivní záznam i rozběhnutý meeting s nastaveným koncem.
 - **Vytvoření nebo edit s překryvem**, kdy aplikace zároveň ořízne, smaže nebo rozdělí kolidující záznam
@@ -327,7 +327,7 @@ Pokud `SaveChangesAsync` není zavoláno a `uow` se dispose‑ne, transakce se r
 - **Factory režim** (standalone) — každá operace si sama otevře `DbContext` z factory a rovnou commituje.
 - **Shared‑context režim** (v rámci UoW) — operace přispívají do `DbContext` drženého UoW, SaveChanges je odložen na UoW.
 
-`WorkEntryService` pro jednoduché operace používá transient repository přímo; pro vícekrokové zavolá UoW.
+`WorkEntryService` používá transient repository přímo jen pro čtení.
 
 ### Factory místo scoped DbContext
 

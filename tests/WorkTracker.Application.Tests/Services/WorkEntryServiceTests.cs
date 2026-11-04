@@ -982,9 +982,9 @@ public class WorkEntryServiceTests
 	}
 
 	[Fact]
-	public async Task StartWorkAsync_WithNothingRunning_DoesNotUseUnitOfWork()
+	public async Task StartWorkAsync_WithNothingRunning_ChecksAndWritesInOneTransaction()
 	{
-		// Arrange — nothing to close → single-operation path, no UoW needed
+		// Arrange — even with nothing to close, a start elsewhere could get in between the check and the write
 		SetupEntriesFromStart();
 
 		// Act
@@ -992,7 +992,8 @@ public class WorkEntryServiceTests
 
 		// Assert
 		result.IsSuccess.Should().BeTrue();
-		_mockUnitOfWorkFactory.Verify(f => f.CreateAsync(It.IsAny<CancellationToken>()), Times.Never);
+		_mockUnitOfWorkFactory.Verify(f => f.CreateAsync(It.IsAny<CancellationToken>()), Times.Once);
+		_mockUnitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
 	}
 
 	[Fact]
@@ -1011,7 +1012,7 @@ public class WorkEntryServiceTests
 		// Assert
 		result.IsFailure.Should().BeTrue();
 		result.Error.Should().Contain("overlap");
-		_mockUnitOfWorkFactory.Verify(f => f.CreateAsync(It.IsAny<CancellationToken>()), Times.Never);
+		_mockUnitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
 		_mockRepository.Verify(r => r.UpdateAsync(It.IsAny<WorkEntry>(), It.IsAny<CancellationToken>()), Times.Never);
 	}
 

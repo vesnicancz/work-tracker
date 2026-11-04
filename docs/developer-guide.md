@@ -230,7 +230,9 @@ dotnet ef migrations script \
   --startup-project src/WorkTracker.Avalonia
 ```
 
-**Runtime migrace** — aplikace při startu volá `DependencyInjection.InitializeDatabaseAsync`, která spustí `DbContext.Database.MigrateAsync()`. Žádný ruční `dotnet ef database update` na produkci.
+**Runtime migrace** — aplikace při startu volá `DependencyInjection.InitializeDatabaseAsync`, která nejdřív databázi zkopíruje vedle ní (`worktracker.db.before-<migrace>.bak`) a pak spustí `DbContext.Database.MigrateAsync()`. Když se kopie nepovede, migrace neběží a start skončí chybou (`DatabaseBackupFailedException`). Žádný ruční `dotnet ef database update` na produkci.
+
+**Migrace a existující data** — uživatelé mají v databázi i to, co dnešní pravidla nepustí (překrývající se záznamy, záznam bez ticketu a popisu), a `MaxLength` SQLite nevynucuje. Migrace nesmí předpokládat, že jsou data platná, a nesmí mazat řádky. Každou migraci, která sahá na data, pokryj v `ExistingDatabaseMigrationTests`: staví databázi migracemi předchozí verze a jde přes `InitializeDatabaseAsync` jako aplikace.
 
 **Migration file naming** — EF Core sám přidává timestamp prefix. Název migrace je v PascalCase, dostatečně popisný (`AddIsActiveIndex`, ne `Fix1`).
 
@@ -322,28 +324,19 @@ Když máš pochybnosti, volíme **menší, přímočařejší řešení**.
 
 ## Unit of Work — kdy a jak
 
-`IUnitOfWork` obalí víc zápisů do jedné EF Core transakce. Použij ho, když:
-
-- Operace upravuje **víc než jeden záznam** a částečný úspěch by byl nekonzistentní.
-- Potřebuješ **atomicitu** mezi repositoryi (typicky ještě není aplikovatelné, protože máme jen jedno `IWorkEntryRepository`, ale architektura je připravená).
+`IUnitOfWork` obalí zápisy do jedné EF Core transakce. **Každý zápis v `WorkEntryService` jde přes něj, i když mění jediný záznam**, a kontroly, na kterých zápis závisí, běží uvnitř téže transakce. Transakce si v SQLite bere zámek pro zápis hned na začátku (`BEGIN IMMEDIATE`), takže GUI a CLI nemůžou oba projít kontrolou a pak oba zapsat. Repository přímo se používá jen pro čtení.
 
 ### Příklad: start s auto‑stop běžících záznamů
 
 Zjednodušeně podle `WorkEntryService.StartOpenEndedWorkAsync` — nový záznam bez konce uzavře všechno, co v okamžiku jeho začátku ještě běží (aktivní záznam i meeting s pevným koncem):
 
 ```csharp
-var overlapping = await _repository.GetOverlappingEntriesAsync(null, workEntry.StartTime, null, ct);
-var running = overlapping.Where(e => e.StartTime < workEntry.StartTime).ToList();
-if (running.Count == 0)
-{
-    // Nic neběží — jediný zápis, UoW netřeba
-    return Result.Success(await _repository.AddAsync(workEntry, ct));
-}
-
 await using var uow = await _unitOfWorkFactory.CreateAsync(ct);
 
+var overlapping = await uow.WorkEntries.GetOverlappingEntriesAsync(null, workEntry.StartTime, null, ct);
+
 // 1) Uzavři běžící záznamy v okamžiku začátku nového
-foreach (var entry in running)
+foreach (var entry in overlapping.Where(e => e.StartTime < workEntry.StartTime))
 {
     entry.Stop(workEntry.StartTime, now);
     await uow.WorkEntries.UpdateAsync(entry, ct);
