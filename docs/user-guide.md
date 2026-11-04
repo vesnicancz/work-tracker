@@ -441,7 +441,7 @@ Stejný dialog se používá pro **vytvoření nového záznamu** (tlačítko `+
 - **Čas zahájení** — datum (date picker) + čas (textbox `HH:mm` v monospace fontu, 80 px široký). Oba prvky vedle sebe.
 - **Nastavit čas ukončení** — checkbox. Když je **odznačený**, záznam se uloží jako **aktivní** (běžící, bez konce). Když je označený, rozbalí se pod ním:
   - **Čas ukončení** — stejná dvojice (datum + čas) jako u začátku.
-- **Validační chyba** — červený text pod poli, průběžně při psaní: chybí ticket i popis, nebo konec není po začátku. Dokud tam je, tlačítko **ULOŽIT** nejde stisknout. Neplatně zapsaný čas se tiše ignoruje (zůstane předchozí hodnota), holé číslo se ale přečte jako počet dní. Překryv s jiným záznamem chyba není: po ULOŽIT se otevře dialog **Detekován překryv časů** s navrženými úpravami. Výjimkou je případ, kdy se jen ukončuje aktivní záznam, ten proběhne bez dialogu.
+- **Validační chyba** — červený text pod poli, průběžně při psaní: chybí ticket i popis, nebo konec není po začátku. Dokud tam je, tlačítko **ULOŽIT** nejde stisknout. Čas se zapisuje jako `9:05` nebo `09:05`, volitelně se sekundami. Cokoli jiného, například samotné `12`, se tiše ignoruje (zůstane předchozí hodnota). Překryv s jiným záznamem chyba není: po ULOŽIT se otevře dialog **Detekován překryv časů** s navrženými úpravami. Výjimkou je případ, kdy se jen ukončuje aktivní záznam, ten proběhne bez dialogu.
 
 **Tlačítka dole** (v pravém dolním rohu):
 

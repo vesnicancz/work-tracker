@@ -19,6 +19,8 @@ namespace WorkTracker.Avalonia.Converters;
 /// </summary>
 public class TimeSpanToStringConverter : IValueConverter
 {
+	private static readonly string[] TimeOfDayFormats = [@"h\:mm", @"h\:m", @"h\:mm\:ss"];
+
 	public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
 	{
 		// Edit mode: format as HH:mm
@@ -66,13 +68,11 @@ public class TimeSpanToStringConverter : IValueConverter
 		// Edit mode round-trip: parse "HH:mm" back to TimeSpan
 		if (parameter as string == "HH:mm" && value is string str)
 		{
-			if (TimeSpan.TryParseExact(str, @"h\:mm", culture, out var ts))
+			// Not TimeSpan.TryParse: it reads a bare number as days, and the binding converts on every
+			// keystroke, so typing "12:30" would pass through 12 days.
+			if (TimeSpan.TryParseExact(str, TimeOfDayFormats, culture, out var ts))
 			{
 				return ts;
-			}
-			if (TimeSpan.TryParse(str, culture, out var ts2))
-			{
-				return ts2;
 			}
 		}
 
