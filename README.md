@@ -136,6 +136,8 @@ Obsah složky:
 WorkTracker/
 ├── worktracker.db          # SQLite databáze (automaticky migrováno)
 ├── settings.json           # Uživatelské nastavení (pluginy, téma, Pomodoro…)
+├── settings.json.bak       # Předchozí verze nastavení
+├── plugins/                # Pluginy (jen GUI na macOS v `.app`, jinde vedle spustitelného souboru)
 ├── logs/                   # Serilog (rolling denně, 14 souborů)
 └── keys/                   # MSAL token cache (standardně šifrovaná OS keystoreem; na některých Linux instalacích může spadnout na nešifrovanou cache — viz warning v logu)
 ```
@@ -158,7 +160,7 @@ Citlivé údaje (API tokeny, hesla) aplikace ukládá přes `ISecureStorage` do 
 
 - **Windows** — Credential Manager (DPAPI)
 - **macOS** — Keychain
-- **Linux** — libsecret / GNOME Keyring
+- **Linux** — libsecret / GNOME Keyring (mimo desktopovou relaci je potřeba nastavit `GCM_CREDENTIAL_STORE`)
 
 V souboru `settings.json` je na jejich místě uložený pouze placeholder `CS:{pluginId}:{fieldKey}`, nikdy plaintext. OAuth tokeny pro pluginy používající MSAL (Office 365 Calendar, Goran G3) jsou v zašifrované cache v `keys/` a při vypršení refresh tokenu je potřeba se znovu přihlásit přes **Otestovat připojení** (Office 365 Calendar v prohlížeči, Goran G3 přes device code flow).
 

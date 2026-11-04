@@ -4,7 +4,7 @@
 |-----------|----------------------------|
 | Třída | `LuxaforStatusIndicatorPlugin` |
 | Rozhraní | `IStatusIndicatorPlugin` |
-| Hardware | Luxafor Flag / Bluetooth Pro (přes USB dongle) / Mute Button / Smart Button |
+| Hardware | Luxafor Flag / Bluetooth Pro (přes USB dongle) / Mute Button / Smart Button / Colorblind |
 | Knihovna | `DotLuxafor` 0.2.2 (lokální feed `packages/`) |
 | API | `ILuxaforDeviceManager.Open()` → `DeviceOpenResult` → `ILuxaforDevice` (`SetColorAsync`, `TurnOffAsync`) |
 
@@ -44,7 +44,7 @@ Zařízení podporovaná knihovnou DotLuxafor:
 
 - **Luxafor Flag** (USB) — pohodlné pro stacionární setup.
 - **Luxafor Bluetooth Pro** — bezdrátové; počítač s ním komunikuje přes přiložený USB dongle, takže párování v OS není potřeba.
-- **Luxafor Mute Button** a **Smart Button**.
+- **Luxafor Mute Button**, **Smart Button** a **Colorblind**.
 
 Všechna zařízení komunikují přes **HID API**. Plugin používá knihovnu [`DotLuxafor`](https://github.com/vesnicancz/dotluxafor). Projekt ji bere z lokálního feedu: `.nupkg` leží v repu ve složce `packages/` a `nuget.config` ji mapuje jako zdroj `local`. Upgrade = dát nový `.nupkg` do `packages/` a přepsat verzi v `Directory.Packages.props`. Knihovna nabízí vysokoúrovňové API `ILuxaforDeviceManager` / `ILuxaforDevice` specifické pro Luxafor protokol — plugin sám žádnou HID logiku neimplementuje.
 
@@ -131,7 +131,7 @@ Ačkoli WorkTracker v běžném provozu nevolá `SetStateAsync` z více vláken,
 
 Property `IsDeviceAvailable` vrací `true`, když má plugin otevřený handle (`_device` je non-null a `IsConnected`). Vzhledem k tomu, co `IsConnected` doopravdy znamená (viz výše), je to **„handle držíme"**, ne „zařízení je fyzicky připojené" — po odpojení zůstane `true`, dokud se nepokusíme o příkaz. Přesnou odpověď by dalo `IsPresent(descriptor)`, ale property by pak při každém čtení enumerovala USB zařízení; plugin proto zůstává u levné varianty.
 
-Při selhání operace v `SetStateAsync` plugin zařízení zavře a další volání se pokusí o znovupřipojení přes `GetOrOpenDevice()`. V aktuální implementaci **není počítaný limit** reconnect pokusů — plugin bude při každém dalším volání zkoušet reconnect znovu, dokud se nepodaří nebo dokud zařízení nezmizí nadobro.
+Při selhání operace v `SetStateAsync` plugin zařízení zavře a další volání se pokusí o znovupřipojení přes `GetOrOpenDevice()`. V aktuální implementaci **není počítaný limit** reconnect pokusů — plugin bude při každém dalším volání zkoušet reconnect znovu bez omezení.
 
 ---
 

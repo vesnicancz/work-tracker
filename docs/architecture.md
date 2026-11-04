@@ -135,7 +135,7 @@ Infrastructure **závisí** na Application a Domain, **ne naopak**.
 
 Platformně neutrální UI logika:
 
-- **Sub‑ViewModely** (`SuggestionsViewModel`, `PomodoroViewModel`, `PluginViewModel`, `ConfigurationFieldViewModel`, …) — `ObservableObject` z `CommunityToolkit.Mvvm`, příkazy jako `AsyncRelayCommand`/`RelayCommand` vytvořené v konstruktoru, vlastnosti přes `SetProperty` (source generátory `[RelayCommand]`/`[ObservableProperty]` projekt nepoužívá). Root ViewModely jsou v projektu Avalonia, viz [ViewModely: hybridní přístup](#viewmodely-hybridní-přístup).
+- **Sub‑ViewModely** (`SuggestionsViewModel`, `PomodoroViewModel`, `PluginViewModel`, `ConfigurationFieldViewModel`, …) — `ObservableObject` z `CommunityToolkit.Mvvm`, příkazy jako `AsyncRelayCommand`/`RelayCommand` vytvořené v konstruktoru, vlastnosti typicky přes `SetProperty` (source generátory `[RelayCommand]`/`[ObservableProperty]` projekt nepoužívá). Root ViewModely jsou v projektu Avalonia, viz [ViewModely: hybridní přístup](#viewmodely-hybridní-přístup).
 - **Orchestrátory** — třídy, které koordinují více služeb a skrývají workflow před ViewModely (např. `WorklogSubmissionOrchestrator` sestaví náhled včetně agregace, provede submit a retry a označí položky, které plugin odmítl). Dialogy implementuje Avalonia `DialogService`; orchestrátor je smí vyvolat jen přes `IDialogService` (viz `WorkEntryEditOrchestrator`).
 - **Služby**: `ISettingsService` (serializace `ApplicationSettings` do `settings.json`), `ILocalizationService` (resx loader s `INotifyPropertyChanged`), `IPomodoroService`.
 
@@ -195,7 +195,7 @@ Dříve existoval i třetí frontend **WPF** (Windows‑only); byl odstraněn, p
 
 **Root ViewModely** (například `MainViewModel`, `SettingsViewModel`) jsou frontend‑specifické a žijí přímo v projektu `WorkTracker.Avalonia`. **To je záměr.** Framework‑specifické detaily (threading, messaging, styling bindings) patří k frontendu; sdílený base class pro celé obrazovky by končil kompromisy.
 
-**Sub‑ViewModely**, které nemají framework‑specifickou vazbu, ale jsou naopak znovupoužitelné (například `SuggestionsViewModel`, pomodoro komponenty, plugin konfigurační VM), žijí v `WorkTracker.UI.Shared.ViewModels` a jsou **skládané** do root ViewModelů. Vedle nich jsou v `UI.Shared` bezstavové služby, orchestrátory a settings.
+**Sub‑ViewModely**, které nemají framework‑specifickou vazbu, ale jsou naopak znovupoužitelné (například `SuggestionsViewModel`, pomodoro komponenty, plugin konfigurační VM), žijí v `WorkTracker.UI.Shared.ViewModels` a jsou **skládané** do root ViewModelů. Vedle nich jsou v `UI.Shared` služby, orchestrátory a settings.
 
 ### Dispatch mezi UI a služby
 
@@ -223,7 +223,7 @@ Samostatná knihovna (`WorkTracker.Plugin.Abstractions.dll`) obsahující pouze 
 - Datové typy: `PluginMetadata`, `PluginConfigurationField`, `PluginResult<T>`, `PluginErrorCategory`, `PluginValidationResult`
 - Přenosové typy: `PluginWorklogEntry`, `WorklogSubmissionResult`, `WorklogSubmissionError`, `WorkSuggestion`, `StatusIndicatorState`, `RemoteControlState`
 - Enum kapacit: `WorklogSubmissionMode` (`[Flags]` — `Timed`, `Aggregated`) pro inzerci režimů, které plugin přijímá
-- Autentizace: `ITokenProvider`, `ITokenProviderFactory`
+- Autentizace: `ITokenProvider`, `ITokenProviderFactory`, `InteractiveAuthFlow`
 
 ### Isolation: AssemblyLoadContext
 
@@ -267,7 +267,7 @@ Shutdown/Unload:
             └ OnShutdownAsync (hook)
             └ DisposeAsync
         → Remove from _loadedPlugins
-        → PluginLoadContext.Unload()
+        → PluginLoadContext.Unload()  (jen když kontext nesdílí jiný plugin)
 ```
 
 `PluginBase` implementuje šablonové metody tak, že autor pluginu override‑uje jen hooks (`OnInitializeAsync`, `OnShutdownAsync`, `OnValidateConfigurationAsync`, `OnDisposeAsync`).
@@ -301,10 +301,10 @@ Statické továrny jsou na negenerickém `Result`: `Result.Success()`, `Result.F
 Volající (ViewModel, CLI handler) prostě zkontroluje `IsSuccess`:
 
 ```csharp
-var result = await _workEntryService.StartWorkAsync(…);
+var result = await _worklogStateService.StartTrackingAsync(…);
 if (result.IsFailure)
 {
-    _notificationService.ShowError(result.Error);
+    await _dialogService.ShowErrorAsync(result.Error);
     return;
 }
 ```
@@ -318,7 +318,7 @@ if (result.IsFailure)
 `IUnitOfWork` obaluje sérii zápisů do jedné EF Core transakce (`IDbContextTransaction`). Používá se pro multi‑step operace, kde částečný úspěch by nechal databázi v nekonzistentním stavu:
 
 - **Auto‑stop + start nového** — start záznamu bez konce, zatímco jiný běží (CLI i GUI, `WorkEntryService.StartOpenEndedWorkAsync`). Zavře se aktivní záznam i rozběhnutý meeting s nastaveným koncem.
-- **Edit se vzniklým překryvem**, kdy aplikace zároveň ořízne kolidující záznam
+- **Vytvoření nebo edit s překryvem**, kdy aplikace zároveň ořízne, smaže nebo rozdělí kolidující záznam
 
 ```csharp
 await using var uow = await _uowFactory.CreateAsync(ct);
@@ -403,4 +403,4 @@ Celý tok demonstruje:
 - **Vrstvy**: UI → Orchestrator → Application service → Plugin (přes abstraction).
 - **Separation**: Application layer nezná HTTP nebo Tempo API — jen `IWorklogUploadPlugin`.
 - **Result pattern**: na každé hranici se chyby propagují jako data, ne jako výjimky.
-- **Plugin isolation**: Tempo implementace sedí v separátní DLL v `plugins/`, může být updatována nezávisle.
+- **Plugin isolation**: Tempo implementace sedí spolu s Jira suggestions ve `WorkTracker.Plugin.Atlassian.dll` v `plugins/` a jde aktualizovat nezávisle na aplikaci.

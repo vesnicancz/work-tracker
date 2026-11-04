@@ -293,7 +293,7 @@ if (result.IsFailure) return result;
 
 ### Async
 
-- I/O metody jsou async (`Task<T>` nebo `ValueTask<T>`). Výjimkou je `ISecureStorage` a synchronní varianty v `SettingsService`.
+- I/O metody jsou async (`Task<T>` nebo `ValueTask<T>`). Výjimkou jsou například `ISecureStorage`, synchronní varianty v `SettingsService`, `AutostartManager` a rané čtení `settings.json` v `App`.
 - `CancellationToken` jako **poslední parametr**. V novém kódu bez default value (`= default`), pokud nemá volající opravdu co předat. Starší API (`IWorkEntryRepository`, `IWorkEntryService`, část Plugin.Abstractions) ho zatím mají.
 - Pojmenování: metoda končí `Async`.
 

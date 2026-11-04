@@ -7,7 +7,7 @@ Balíček `WorkTracker.Plugin.Atlassian` obsahuje **dva pluginy** sdílející s
 | `tempo.worklog` | `TempoWorklogPlugin` | `IWorklogUploadPlugin` | Upload worklogů do Tempo Timesheets |
 | `jira.suggestions` | `JiraSuggestionsPlugin` | `IWorkSuggestionPlugin` | Work suggestions z Jira issues (JQL) |
 
-Oba pluginy se instalují jako jeden `.dll` soubor, ale jsou nezávisle enable/disable v Settings. Každý má vlastní sadu konfiguračních polí.
+Oba pluginy jsou v jedné assembly a instalují se jedním balíčkem `WorkTracker-Plugin-Atlassian-*.zip`, ale jsou nezávisle enable/disable v Settings. Každý má vlastní sadu konfiguračních polí.
 
 ---
 
@@ -17,12 +17,14 @@ Oba pluginy se instalují jako jeden `.dll` soubor, ale jsou nezávisle enable/d
 
 | Pole | Typ | Povinné | Default | Popis |
 |------|-----|---------|---------|-------|
-| `TempoBaseUrl` | `Url` | ✅ | `https://api.eu.tempo.io/4` | Base URL Tempo REST API. Pro US klienty použij `https://api.tempo.io/4`. |
+| `TempoBaseUrl` | `Url` | ✅ | `https://api.eu.tempo.io/4` | Base URL Tempo REST API. Pro US klienty použij `https://api.tempo.io/4`. Musí začínat `https://`. |
 | `TempoApiToken` | `Password` | ✅ | — | API token z Tempo. Uložený v secure storage. |
-| `JiraBaseUrl` | `Url` | ✅ | — | Jira base URL (např. `https://vase-firma.atlassian.net`). Plugin ho používá pro překlad issue key → numerické issue ID, které Tempo vyžaduje. |
+| `JiraBaseUrl` | `Url` | ✅ | — | Jira base URL (např. `https://vase-firma.atlassian.net`). Plugin ho používá pro překlad issue key → numerické issue ID, které Tempo vyžaduje. Musí začínat `https://`. |
 | `JiraEmail` | `Email` | ✅ | — | Login email pro Jira Basic auth. |
 | `JiraApiToken` | `Password` | ✅ | — | Jira API token pro Basic auth. Uložený v secure storage. |
 | `JiraAccountId` | `Text` | ❌ | (auto‑detekce) | Atlassian accountId (typicky 24znakový opaque řetězec, **ne GUID**). Když necháš prázdné, plugin si ho při inicializaci sám zjistí přes `GET /rest/api/3/myself`. |
+
+Když je `JiraAccountId` prázdné a auto‑detekce selže, plugin se neinicializuje.
 
 ### Získání tokenů
 
@@ -91,6 +93,10 @@ Stiskem **Test connection** v Settings plugin aktuálně:
 
 > **Pozor:** Tempo endpoint **ani platnost `TempoApiToken`** se tímto testem neověřuje. Tempo autorizace se projeví až při skutečném volání (upload worklogu). Pokud tedy máš špatný Tempo token, ale Jira funguje, Test connection projde a chyba se objeví až při `Odeslat záznamy práce`.
 
+### Čtení worklogů
+
+`GetWorklogsAsync` načte worklogy přes `GET worklogs?from=&to=`. `WorklogExistsAsync` z nich pozná duplicitu: stejný ticket, stejný den, začátek s odchylkou pod 1 minutu a stejná délka. Aplikace tyhle metody zatím nevolá, takže před uploadem duplicity nekontroluje.
+
 ### Časté chyby
 
 | Symptom | Příčina | Řešení |
@@ -110,12 +116,12 @@ Plugin sdílí konfigurační pole Jira s Tempo plugin (`JiraConfigFields` v kó
 
 | Pole | Typ | Povinné | Default | Popis |
 |------|-----|---------|---------|-------|
-| `JiraBaseUrl` | `Url` | ✅ | — | Jira base URL, např. `https://vase-firma.atlassian.net` |
+| `JiraBaseUrl` | `Url` | ✅ | — | Jira base URL, např. `https://vase-firma.atlassian.net`. Musí začínat `https://`. |
 | `JiraEmail` | `Email` | ✅ | — | Login email pro Basic auth |
 | `JiraApiToken` | `Password` | ✅ | — | Jira API token (viz níže) |
 | `JqlFilter` | `MultilineText` | ❌ | `assignee = currentUser() AND status != Done ORDER BY updated DESC` | JQL pro list úkolů v Suggestions dialogu |
 | `SearchJqlFilter` | `MultilineText` | ❌ | — | JQL pro search pole; použij `{query}` jako placeholder |
-| `MaxResults` | `Number` | ❌ | `20` | Max počet výsledků |
+| `MaxResults` | `Number` | ❌ | `20` | Max počet výsledků, jen číslice |
 
 ### Získání API tokenu
 
@@ -199,6 +205,6 @@ Stejně jako Tempo plugin volá **jen** `_jiraClient.TestConnectionAsync` (pingn
 > dotnet user-secrets init
 > dotnet user-secrets set "Plugins:tempo.worklog:TempoApiToken" "vas-token"
 > ```
-> User Secrets se načítají jen v prostředí Development, tedy v Debug buildu. Release build je ignoruje.
+> User Secrets se načítají jen v prostředí Development. Debug build ho nastaví sám, pokud `DOTNET_ENVIRONMENT` nepřepíšeš, v ostatních prostředích se ignorují.
 
 Aplikace při startu načte hodnoty z configu jako **výchozí** pro pluginy. Pokud má plugin konfiguraci v `settings.json`, použije se celá místo sekce z `appsettings.json` — neslučuje se po jednotlivých klíčích.
