@@ -49,11 +49,12 @@ Plugin.Abstractions (IPlugin, IWorklogUploadPlugin, IWorkSuggestionPlugin, IStat
 
 ## Plugin System
 
-Plugins load in isolated `AssemblyLoadContext` from the `Plugins:Directories` config (default `plugins/` next to the executable; inside a macOS `.app` the app-data directory; Development adds each plugin's `bin/Debug`). Three plugin interfaces extend `IPlugin : IAsyncDisposable` (upload and suggestion via `ITestablePlugin`):
+Plugins load in isolated `AssemblyLoadContext` from the `Plugins:Directories` config (default `plugins/` next to the executable; inside a macOS `.app` the app-data directory; Development adds each plugin's `bin/Debug`). Four plugin interfaces extend `IPlugin : IAsyncDisposable` (upload and suggestion via `ITestablePlugin`):
 
 - **`IWorklogUploadPlugin`** — Upload/fetch worklogs (e.g., Tempo)
 - **`IWorkSuggestionPlugin`** — Suggest work items (e.g., Jira issues)
 - **`IStatusIndicatorPlugin`** — Physical status indicators (e.g., Luxafor LED)
+- **`IRemoteControlPlugin`** — External controllers driving the running GUI (e.g., Stream Deck). Gets its `IRemoteControlHost` from `AttachAsync`, not from DI, because the implementation lives in UI.Shared. `IRemoteControlCoordinator` attaches and detaches by enabled state; the CLI never does, so these plugins are inert there.
 
 **Plugin DI & lifecycle:**
 - Plugins are instantiated via `ActivatorUtilities.CreateInstance` from a plugin-scoped `ServiceCollection` (built in `PluginManager`).
@@ -70,7 +71,7 @@ Plugins load in isolated `AssemblyLoadContext` from the `Plugins:Directories` co
 
 **Plugin configuration** is primarily persisted in the user settings file, with `appsettings.json` (under the `Plugins` section) used only as an initial fallback.
 
-Existing plugins: `Plugin.Atlassian` (Tempo + Jira), `Plugin.Office365Calendar`, `Plugin.GoranG3`, `Plugin.Luxafor`.
+Existing plugins: `Plugin.Atlassian` (Tempo + Jira), `Plugin.Office365Calendar`, `Plugin.GoranG3`, `Plugin.Luxafor`, `Plugin.StreamDeck` (its Stream Deck app counterpart is the TypeScript project in `streamdeck-plugin/`, connected over a named pipe).
 
 ## Conventions
 
@@ -85,4 +86,4 @@ Existing plugins: `Plugin.Atlassian` (Tempo + Jira), `Plugin.Office365Calendar`,
 
 ## CI/CD
 
-GitHub Actions: `dotnet.yml` (build + test on push/PR to master), `release.yml` (multi-platform publish on `v*` tag push). CI runs on ubuntu-latest.
+GitHub Actions: `dotnet.yml` (build + test on push/PR to master, including `streamdeck-plugin/`), `release.yml` (multi-platform publish on `v*` tag push). CI runs on ubuntu-latest.

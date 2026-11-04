@@ -17,6 +17,7 @@ public class SettingsOrchestrator : ISettingsOrchestrator
 	private readonly IConfiguration _configuration;
 	private readonly IAutostartManager _autostartManager;
 	private readonly ITrayIconService _trayIconService;
+	private readonly IRemoteControlCoordinator _remoteControlCoordinator;
 	private readonly ILogger<SettingsOrchestrator> _logger;
 
 	public SettingsOrchestrator(
@@ -26,8 +27,10 @@ public class SettingsOrchestrator : ISettingsOrchestrator
 		IConfiguration configuration,
 		IAutostartManager autostartManager,
 		ITrayIconService trayIconService,
+		IRemoteControlCoordinator remoteControlCoordinator,
 		ILogger<SettingsOrchestrator> logger)
 	{
+		_remoteControlCoordinator = remoteControlCoordinator;
 		_settingsService = settingsService;
 		_pluginManager = pluginManager;
 		_secureStorage = secureStorage;
@@ -145,6 +148,9 @@ public class SettingsOrchestrator : ISettingsOrchestrator
 
 		// Re-initialize plugins with new configuration
 		await _pluginManager.InitializePluginsAsync(settings.PluginConfigurations, cancellationToken);
+
+		// Connect remote control plugins that were just enabled, disconnect those just disabled
+		await _remoteControlCoordinator.SyncAsync(cancellationToken);
 
 		// Apply autostart setting
 		_autostartManager.SetAutostart(request.StartWithWindows);

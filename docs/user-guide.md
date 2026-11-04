@@ -33,7 +33,8 @@ Na stránce [Releases](https://github.com/vesnicancz/work-tracker/releases/lates
 |---------|-------|-----------|
 | `WorkTracker-{verze}-{platforma}.zip` / `.dmg` | GUI aplikace (na macOS jako `.dmg`) | `windows-x64`, `windows-arm64`, `linux-x64`, `macos-arm64` |
 | `WorkTracker-CLI-{verze}-{platforma}.zip` | Konzolová aplikace | `windows-x64`, `windows-arm64`, `linux-x64`, `macos-arm64` |
-| `WorkTracker-Plugin-{Name}-{verze}.zip` | Platformně neutrální pluginy (Atlassian, GoranG3, Luxafor, Office365Calendar) | — |
+| `WorkTracker-Plugin-{Name}-{verze}.zip` | Platformně neutrální pluginy (Atlassian, GoranG3, Luxafor, Office365Calendar, StreamDeck) | — |
+| `WorkTracker-StreamDeck-{verze}.streamDeckPlugin` | Doplněk do aplikace Stream Deck, viz [plugins/stream-deck.md](plugins/stream-deck.md) | — |
 
 `macos-arm64` je build pro Macy s Apple Siliconem (M1 a novější).
 

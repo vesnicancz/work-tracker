@@ -1,6 +1,7 @@
 using System.Net.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using WorkTracker.Plugin.Abstractions;
 using WorkTracker.UI.Shared.Orchestrators;
 using WorkTracker.UI.Shared.Services;
 
@@ -19,6 +20,8 @@ public static class UISharedServiceCollectionExtensions
 		services.AddSingleton<IWorkSuggestionCache>(sp => sp.GetRequiredService<CachedWorkSuggestionOrchestrator>());
 		services.AddSingleton<IPomodoroService, PomodoroService>();
 		services.AddSingleton<ISuggestionsViewState, SuggestionsViewState>();
+		services.AddSingleton<IRemoteControlHost, RemoteControlHost>();
+		services.AddSingleton<IRemoteControlCoordinator, RemoteControlCoordinator>();
 
 		services.AddSingleton<IUpdateCheckService>(sp =>
 		{

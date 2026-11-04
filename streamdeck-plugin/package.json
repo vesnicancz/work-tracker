@@ -1,0 +1,27 @@
+{
+	"name": "worktracker-streamdeck-plugin",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"build": "tsc --noEmit && rollup -c",
+		"watch": "rollup -c -w --watch.onEnd=\"streamdeck restart com.vesnicancz.worktracker\"",
+		"test": "node --test test/*.test.ts",
+		"validate": "streamdeck validate com.vesnicancz.worktracker.sdPlugin",
+		"pack": "npm run build && streamdeck pack com.vesnicancz.worktracker.sdPlugin --force --output dist"
+	},
+	"devDependencies": {
+		"@elgato/cli": "1.10.4",
+		"@rollup/plugin-commonjs": "^29.0.2",
+		"@rollup/plugin-node-resolve": "^15.2.2",
+		"@rollup/plugin-terser": "^1.0.0",
+		"@rollup/plugin-typescript": "^12.1.0",
+		"@tsconfig/node20": "^20.1.2",
+		"@types/node": "~24.1.0",
+		"rollup": "^4.0.2",
+		"tslib": "^2.6.2",
+		"typescript": "^5.2.2"
+	},
+	"dependencies": {
+		"@elgato/streamdeck": "3.0.4"
+	}
+}

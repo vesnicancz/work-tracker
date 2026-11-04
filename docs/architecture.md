@@ -216,10 +216,10 @@ Detaily pro autory pluginů jsou v [plugin-development.md](plugin-development.md
 Samostatná knihovna (`WorkTracker.Plugin.Abstractions.dll`) obsahující pouze veřejné API:
 
 - `IPlugin`, `ITestablePlugin`
-- `IWorklogUploadPlugin`, `IWorkSuggestionPlugin`, `IStatusIndicatorPlugin`
-- Abstraktní base classes `PluginBase`, `WorklogUploadPluginBase`, `WorkSuggestionPluginBase`, `StatusIndicatorPluginBase`
+- `IWorklogUploadPlugin`, `IWorkSuggestionPlugin`, `IStatusIndicatorPlugin`, `IRemoteControlPlugin` (a `IRemoteControlHost`, přes který plugin aplikaci ovládá)
+- Abstraktní base classes `PluginBase`, `WorklogUploadPluginBase`, `WorkSuggestionPluginBase`, `StatusIndicatorPluginBase`, `RemoteControlPluginBase`
 - Datové typy: `PluginMetadata`, `PluginConfigurationField`, `PluginResult<T>`, `PluginErrorCategory`, `PluginValidationResult`
-- Přenosové typy: `PluginWorklogEntry`, `WorklogSubmissionResult`, `WorklogSubmissionError`, `WorkSuggestion`, `StatusIndicatorState`
+- Přenosové typy: `PluginWorklogEntry`, `WorklogSubmissionResult`, `WorklogSubmissionError`, `WorkSuggestion`, `StatusIndicatorState`, `RemoteControlState`
 - Enum kapacit: `WorklogSubmissionMode` (`[Flags]` — `Timed`, `Aggregated`) pro inzerci režimů, které plugin přijímá
 - Autentizace: `ITokenProvider`, `ITokenProviderFactory`
 

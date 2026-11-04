@@ -43,6 +43,16 @@ public interface IPluginManager : IAsyncDisposable
 	IEnumerable<IWorkSuggestionPlugin> WorkSuggestionPlugins { get; }
 
 	/// <summary>
+	/// Gets all loaded remote control plugins (unfiltered - includes disabled plugins)
+	/// </summary>
+	IEnumerable<IRemoteControlPlugin> AllRemoteControlPlugins { get; }
+
+	/// <summary>
+	/// Gets all enabled remote control plugins (filtered by enabled state)
+	/// </summary>
+	IEnumerable<IRemoteControlPlugin> RemoteControlPlugins { get; }
+
+	/// <summary>
 	/// Sets which plugins are enabled
 	/// </summary>
 	void SetEnabledPlugins(IEnumerable<string> pluginIds);
