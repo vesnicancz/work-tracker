@@ -26,6 +26,8 @@ internal static class RemoteControlProtocol
 		public const string ShiftStart = "shiftStart";
 		public const string AddWork = "addWork";
 		public const string GetSuggestions = "getSuggestions";
+		public const string GetFavorites = "getFavorites";
+		public const string ShowNewWorkDialog = "showNewWorkDialog";
 		public const string StartPomodoro = "startPomodoro";
 		public const string StopPomodoro = "stopPomodoro";
 		public const string SkipPomodoro = "skipPomodoro";
@@ -34,7 +36,7 @@ internal static class RemoteControlProtocol
 
 internal sealed record RemoteRequest(long? Id, string? Command, string? TicketId, string? Description, int? Minutes, DateTimeOffset? StartTime, DateTimeOffset? EndTime);
 
-internal sealed record RemoteResponse(long? Id, bool Success, string? Error, RemoteSuggestions? Suggestions = null)
+internal sealed record RemoteResponse(long? Id, bool Success, string? Error, RemoteSuggestions? Suggestions = null, IReadOnlyList<RemoteFavorite>? Favorites = null)
 {
 	public string Type => "result";
 }

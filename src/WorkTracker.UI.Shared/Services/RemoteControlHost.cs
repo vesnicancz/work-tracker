@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using WorkTracker.Application.Common;
 using WorkTracker.Application.Services;
 using WorkTracker.Domain.Entities;
@@ -17,26 +18,32 @@ public sealed class RemoteControlHost : IRemoteControlHost
 	private readonly IPomodoroService _pomodoroService;
 	private readonly ISettingsService _settingsService;
 	private readonly IWorkSuggestionOrchestrator _suggestionOrchestrator;
+	private readonly IDialogService _dialogService;
 	private readonly IServiceScopeFactory _scopeFactory;
 	private readonly IUiDispatcher _uiDispatcher;
 	private readonly TimeProvider _timeProvider;
+	private readonly ILogger<RemoteControlHost> _logger;
 
 	public RemoteControlHost(
 		IWorklogStateService worklogStateService,
 		IPomodoroService pomodoroService,
 		ISettingsService settingsService,
 		IWorkSuggestionOrchestrator suggestionOrchestrator,
+		IDialogService dialogService,
 		IServiceScopeFactory scopeFactory,
 		IUiDispatcher uiDispatcher,
-		TimeProvider timeProvider)
+		TimeProvider timeProvider,
+		ILogger<RemoteControlHost> logger)
 	{
 		_worklogStateService = worklogStateService;
 		_pomodoroService = pomodoroService;
 		_settingsService = settingsService;
 		_suggestionOrchestrator = suggestionOrchestrator;
+		_dialogService = dialogService;
 		_scopeFactory = scopeFactory;
 		_uiDispatcher = uiDispatcher;
 		_timeProvider = timeProvider;
+		_logger = logger;
 
 		_worklogStateService.ActiveWorkChanged += (_, _) => RaiseStateChanged();
 		_worklogStateService.WorkEntriesModified += (_, _) => RaiseStateChanged();
@@ -136,6 +143,22 @@ public sealed class RemoteControlHost : IRemoteControlHost
 			groups.Where(g => g.Error != null).Select(g => g.PluginName).ToList());
 	}
 
+	public IReadOnlyList<RemoteFavorite> GetFavorites()
+	{
+		return _settingsService.Settings.FavoriteWorkItems
+			.Select(f => new RemoteFavorite(f.Name, f.TicketId, f.Description, f.ShowAsTemplate))
+			.ToList();
+	}
+
+	public Task<PluginResult> ShowNewWorkEntryDialogAsync(string? ticketId, string? description, CancellationToken cancellationToken)
+	{
+		return OnUiThreadAsync(() =>
+		{
+			// Not awaited: it completes when the user closes the dialog, and the caller cannot wait for that
+			_ = ShowNewWorkEntryDialogCoreAsync(ticketId, description);
+		}, cancellationToken);
+	}
+
 	public Task<PluginResult> StartPomodoroAsync(CancellationToken cancellationToken)
 	{
 		if (!_settingsService.Settings.Pomodoro.Enabled)
@@ -170,6 +193,18 @@ public sealed class RemoteControlHost : IRemoteControlHost
 			action();
 			return Task.FromResult(PluginResult.Success());
 		}, cancellationToken);
+	}
+
+	private async Task ShowNewWorkEntryDialogCoreAsync(string? ticketId, string? description)
+	{
+		try
+		{
+			await _dialogService.ShowNewWorkEntryDialogAsync(ticketId, description);
+		}
+		catch (Exception ex)
+		{
+			_logger.LogWarning(ex, "The new work entry dialog failed");
+		}
 	}
 
 	private async Task<WorkEntry?> FindLastWorkAsync(TimeSpan maxAge, CancellationToken cancellationToken)

@@ -213,6 +213,37 @@ public sealed class RemoteControlPipeServerTests : IAsyncLifetime
 		response.GetProperty("error").GetString().Should().Be("Too slow.");
 	}
 
+	[Fact]
+	public async Task GetFavorites_ReturnsThemInTheResponse()
+	{
+		_host.Setup(h => h.GetFavorites()).Returns(
+			[new RemoteFavorite("Support", "PROJ-2", null, false), new RemoteFavorite("Meeting", null, "Weekly", true)]);
+
+		var response = await SendAsync("""{"id":4,"command":"getFavorites"}""");
+
+		response.GetProperty("id").GetInt64().Should().Be(4);
+		response.GetProperty("success").GetBoolean().Should().BeTrue();
+
+		var favorites = response.GetProperty("favorites");
+		favorites[0].GetProperty("name").GetString().Should().Be("Support");
+		favorites[0].GetProperty("ticketId").GetString().Should().Be("PROJ-2");
+		favorites[0].GetProperty("description").ValueKind.Should().Be(JsonValueKind.Null);
+		favorites[0].GetProperty("showAsTemplate").GetBoolean().Should().BeFalse();
+		favorites[1].GetProperty("description").GetString().Should().Be("Weekly");
+		favorites[1].GetProperty("showAsTemplate").GetBoolean().Should().BeTrue();
+	}
+
+	[Fact]
+	public async Task ShowNewWorkDialog_PassesTheValuesToHost()
+	{
+		_host.Setup(h => h.ShowNewWorkEntryDialogAsync("PROJ-1", "Coding", It.IsAny<CancellationToken>())).ReturnsAsync(PluginResult.Success());
+
+		var response = await SendAsync("""{"id":1,"command":"showNewWorkDialog","ticketId":"PROJ-1","description":"Coding"}""");
+
+		response.GetProperty("success").GetBoolean().Should().BeTrue();
+		_host.Verify(h => h.ShowNewWorkEntryDialogAsync("PROJ-1", "Coding", It.IsAny<CancellationToken>()), Times.Once);
+	}
+
 	[Theory]
 	[InlineData("not json")]
 	[InlineData("""{"id":1,"command":"selfDestruct"}""")]

@@ -1,5 +1,5 @@
-import type { Suggestion, WorkItem } from "./protocol";
-import type { SuggestionBoard } from "./suggestion-board";
+import type { KeyBoard } from "./key-board";
+import type { Favorite, Suggestion, WorkItem } from "./protocol";
 
 // One Dark Pro, same as the application
 const BACKGROUND_COLOR = "#282C34";
@@ -9,6 +9,7 @@ const EVENT_COLOR = "#E5C07B";
 const ACTIVE_COLOR = "#98C379";
 const ERROR_COLOR = "#E06C75";
 const OVER_COLOR = "#5C6370";
+const TEMPLATE_COLOR = "#C678DD";
 
 const KEY_SIZE = 144;
 const HEADING_MAX_CHARACTERS = 10;
@@ -45,6 +46,27 @@ export function getSuggestionKeyView(suggestion: Suggestion, isActive: boolean, 
 	};
 }
 
+/**
+ * A template only opens a dialog, so it never counts as the running work.
+ */
+export function isActiveFavorite(favorite: Favorite, activeWork: WorkItem | null | undefined): boolean {
+	return !favorite.showAsTemplate && !!activeWork && activeWork.ticketId === favorite.ticketId && activeWork.description === favorite.description;
+}
+
+/**
+ * What a key shows for a favorite: its ticket, if it has one, and its name below. A template differs in
+ * color, because a press on it opens a dialog in the application rather than starting work.
+ */
+export function getFavoriteKeyView(favorite: Favorite, isActive: boolean): KeyView {
+	const headingColor = isActive ? ACTIVE_COLOR : favorite.showAsTemplate ? TEMPLATE_COLOR : TICKET_COLOR;
+	const lineColor = isActive ? ACTIVE_COLOR : favorite.showAsTemplate ? TEMPLATE_COLOR : TEXT_COLOR;
+
+	return {
+		heading: favorite.ticketId ? { text: truncate(favorite.ticketId, HEADING_MAX_CHARACTERS), color: headingColor } : null,
+		lines: wrapText(favorite.name, LINE_MAX_CHARACTERS, MAX_LINES).map((text) => ({ text, color: lineColor }))
+	};
+}
+
 export function getEmptyKeyView(): KeyView {
 	return { heading: null, lines: [] };
 }
@@ -52,7 +74,7 @@ export function getEmptyKeyView(): KeyView {
 /**
  * The key that turns the pages, which also tells how loading went.
  */
-export function getNextKeyView(board: SuggestionBoard): KeyView {
+export function getNextKeyView(board: KeyBoard<unknown>): KeyView {
 	if (board.status === "loading") {
 		return { heading: { text: "Loading", color: TEXT_COLOR }, lines: [] };
 	}

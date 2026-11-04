@@ -57,6 +57,10 @@ export class WorkTrackerClient {
 		return this.send("getSuggestions", {}, SUGGESTIONS_TIMEOUT_MS);
 	}
 
+	getFavorites(): Promise<CommandResult> {
+		return this.send("getFavorites");
+	}
+
 	send(command: Command, args: CommandArguments = {}, timeoutMs: number = COMMAND_TIMEOUT_MS): Promise<CommandResult> {
 		const socket = this.#socket;
 		if (!socket || this.state === null) {

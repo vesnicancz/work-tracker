@@ -39,6 +39,18 @@ Tlačítko **Suggestions** přepne celé zařízení na profil WorkTracker a na�
 
 Seznam je společný pro všechny pluginy: nejdřív události, které ještě neskončily, podle času, potom skončené události od nejnovější a nakonec položky bez času v pořadí pluginů. Ticket, popis a časy se berou z návrhu stejně jako v dialogu a běžící práce začatá před událostí skončí na jejím začátku. Pokud by vložení změnilo jiné záznamy, aplikace se v dialogu ptá, tady se nemá kde zeptat: tlačítko ukáže varování, nic se nezmění a událost je potřeba vložit v aplikaci. Velikost stránky se řídí počtem tlačítek **Suggestion** v profilu a pořadí jejich pozicí, po řádcích zleva doprava. Vyhledávat na Stream Decku nejde.
 
+### Oblíbené (tlačítka)
+
+Tlačítko **Favorites** přepne celé zařízení na profil WorkTracker Favorites a načte oblíbené položky z Nastavení v tamním pořadí. Seznam se čte při každém otevření profilu, změna v Nastavení se tedy na už otevřeném profilu neprojeví.
+
+| Tlačítko | Co ukazuje | Stisk |
+|----------|------------|-------|
+| **Favorite** | Ticket, pokud ho položka má, a pod ním její název, běžící práce zeleně, šablona fialově | Spustí práci s ticketem a popisem položky, už běžící práci zastaví. Šablona otevře v aplikaci dialog nového záznamu s předvyplněnými hodnotami. Pak se vrátí na předchozí profil. |
+| **Next favorites** | Stránku a `Loading`, `None` nebo `Failed` | Další stránka, po poslední zase první |
+| **Close favorites** | Šipku zpět | Vrátí se na předchozí profil, nic nespustí |
+
+Na rozdíl od nabídky v tray ikoně stisk už běžící položku zastaví, stejně jako u návrhů. Za běžící se položka považuje, když se shoduje ticket i popis práce, šablona nikdy. Dialog se otevře jako z tray ikony, a pokud už je otevřený, jen se přenese dopředu a zůstanou v něm jeho hodnoty.
+
 ---
 
 ## Konfigurační pole
@@ -56,8 +68,10 @@ Limit se počítá od začátku poslední práce. Po uložení v Nastavení se p
 1. Stáhni z releasu `WorkTracker-Plugin-StreamDeck-{verze}.zip` a rozbal ho do adresáře s pluginy (viz [README](../../README.md)).
 2. Povol **Stream Deck** v **Nastavení → Pluginy**.
 3. V rozbalené složce otevři dvojklikem `WorkTracker-StreamDeck-{verze}.streamDeckPlugin`, tím se nainstaluje do aplikace Stream Deck.
-4. V aplikaci Stream Deck přetáhni akci **WorkTracker → Work** na ovladač a **WorkTracker → Suggestions** na tlačítko.
-5. Při prvním stisku **Suggestions** potvrď instalaci profilu WorkTracker. Profil je určený pro Stream Deck + a nejde upravovat.
+4. V aplikaci Stream Deck přetáhni akci **WorkTracker → Work** na ovladač a **WorkTracker → Suggestions** a **WorkTracker → Favorites** na tlačítka.
+5. Při prvním stisku **Suggestions** a **Favorites** potvrď instalaci profilu. Profily jsou určené pro Stream Deck + a nejdou upravovat.
+
+Na macOS zatím integrace na zařízení ověřená není, vyzkoušená je jen na Windows.
 
 ## Vývoj
 
@@ -76,7 +90,7 @@ WorkTracker plugin se v Debug buildu načítá z `plugins/WorkTracker.Plugin.Str
 
 Logy Stream Deck pluginu jsou v `streamdeck-plugin/com.vesnicancz.worktracker.sdPlugin/logs/`.
 
-Přibalený profil je `com.vesnicancz.worktracker.sdPlugin/profiles/WorkTracker.streamDeckProfile`, vzniká exportem z aplikace Stream Deck. Pomocné akce jsou v manifestu skryté přes `VisibleInActionsList`, takže pro novou úpravu rozložení je potřeba je dočasně zapnout. Export je ZIP: než ho přidáš do repa, zkontroluj v manifestu profilu klíč `AppIdentifier`. Pokud je profil navázaný na aplikaci, je v něm absolutní cesta z tvého počítače a musí se odstranit.
+Přibalené profily jsou v `com.vesnicancz.worktracker.sdPlugin/profiles/`. `WorkTracker.streamDeckProfile` vzniká exportem z aplikace Stream Deck. `WorkTrackerFavorites.streamDeckProfile` je jeho kopie s novými UUID profilu, stránek a akcí, ve které jsou akce návrhů nahrazené akcemi oblíbených. Změnu rozložení je tedy potřeba udělat v obou. Pomocné akce jsou v manifestu skryté přes `VisibleInActionsList`, takže pro novou úpravu rozložení je potřeba je dočasně zapnout. Export je ZIP: než ho přidáš do repa, zkontroluj v manifestu profilu klíč `AppIdentifier`. Pokud je profil navázaný na aplikaci, je v něm absolutní cesta z tvého počítače a musí se odstranit.
 
 ---
 
@@ -101,6 +115,8 @@ Protokol je popsaný na dvou místech, která je potřeba udržovat v souladu: `
 | `shiftStart` | `minutes` | Posune začátek běžící práce, kolize s jiným záznamem skončí chybou |
 | `addWork` | `ticketId`, `description`, `startTime`, `endTime` | Vloží záznam s daným časem (`startTime` je povinný, bez `endTime` práce běží dál), běžící práce začatá před ním skončí na jeho začátku, každá jiná kolize skončí chybou |
 | `getSuggestions` | | Vrátí dnešní návrhy v poli `suggestions` odpovědi |
+| `getFavorites` | | Vrátí oblíbené položky v poli `favorites` odpovědi |
+| `showNewWorkDialog` | `ticketId`, `description` | Otevře v aplikaci dialog nového záznamu s těmito hodnotami, odpověď nečeká na jeho zavření |
 | `startPomodoro`, `stopPomodoro`, `skipPomodoro` | | Ovládá Pomodoro, start selže, když je Pomodoro v Nastavení vypnuté |
 
 Neznámý příkaz vrátí chybu `Unknown command '…'`.
@@ -124,4 +140,4 @@ Neznámý příkaz vrátí chybu `Unknown command '…'`.
 
 Plynutí času se neposílá, klient si ho počítá sám.
 
-Ovladač Work používá `toggleWork` a `shiftStart`, tlačítka návrhů `getSuggestions`, `addWork`, `startWork` a `stopWork`. Ostatní příkazy a stav Pomodora jsou připravené pro další akce.
+Ovladač Work používá `toggleWork` a `shiftStart`, tlačítka návrhů `getSuggestions`, `addWork`, `startWork` a `stopWork`, tlačítka oblíbených `getFavorites`, `showNewWorkDialog`, `startWork` a `stopWork`. Ostatní příkazy a stav Pomodora jsou připravené pro další akce.

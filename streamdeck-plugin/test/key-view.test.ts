@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { SuggestionBoard } from "../src/suggestion-board.ts";
-import { getNextKeyView, getSuggestionKeyView, isActiveSuggestion, renderKeyImage, wrapText } from "../src/suggestion-key-view.ts";
+import { KeyBoard } from "../src/key-board.ts";
+import { getFavoriteKeyView, getNextKeyView, getSuggestionKeyView, isActiveFavorite, isActiveSuggestion, renderKeyImage, wrapText } from "../src/key-view.ts";
+import { readSuggestions } from "../src/suggestion-board.ts";
 
 const ticket = { title: "Fix login", ticketId: "PROJ-1", startTime: null, endTime: null, source: "Jira" };
 const event = { title: "Standup", ticketId: null, startTime: "2026-11-04T10:30:00+01:00", endTime: "2026-11-04T11:00:00+01:00", source: "O365 Calendar" };
@@ -14,7 +15,7 @@ function decode(image) {
 }
 
 async function loadedBoard(items, failedSources = [], pageSize = 6) {
-	const board = new SuggestionBoard(async () => ({ success: true, error: null, suggestions: { items, failedSources } }));
+	const board = new KeyBoard(async () => ({ success: true, error: null, suggestions: { items, failedSources } }), readSuggestions);
 	board.setPageSize(pageSize);
 	await board.load(new Date("2026-11-04T09:00:00+01:00"));
 	return board;
@@ -96,9 +97,62 @@ describe("isActiveSuggestion", () => {
 	});
 });
 
+describe("getFavoriteKeyView", () => {
+	const favorite = { name: "Support", ticketId: "PROJ-2", description: "Helping out", showAsTemplate: false };
+
+	it("heads a favorite with its ticket and shows its name", () => {
+		const view = getFavoriteKeyView(favorite, false);
+
+		assert.equal(view.heading.text, "PROJ-2");
+		assert.deepEqual(view.lines.map((line) => line.text), ["Support"]);
+	});
+
+	it("has no heading without a ticket", () => {
+		assert.equal(getFavoriteKeyView({ ...favorite, ticketId: null }, false).heading, null);
+	});
+
+	it("marks the running work", () => {
+		const running = getFavoriteKeyView(favorite, true);
+
+		assert.notEqual(running.heading.color, getFavoriteKeyView(favorite, false).heading.color);
+		assert.equal(running.lines[0].color, running.heading.color);
+	});
+
+	it("tells a template from a favorite that starts right away", () => {
+		const template = getFavoriteKeyView({ ...favorite, showAsTemplate: true }, false);
+		const plain = getFavoriteKeyView(favorite, false);
+
+		assert.notEqual(template.heading.color, plain.heading.color);
+		assert.notEqual(template.lines[0].color, plain.lines[0].color);
+	});
+});
+
+describe("isActiveFavorite", () => {
+	const favorite = { name: "Support", ticketId: "PROJ-2", description: "Helping out", showAsTemplate: false };
+	const work = { ticketId: "PROJ-2", description: "Helping out", startedAt: "2026-11-04T09:00:00+01:00" };
+
+	it("matches the same ticket and description, not the name", () => {
+		assert.equal(isActiveFavorite(favorite, work), true);
+		assert.equal(isActiveFavorite(favorite, { ...work, description: "Support" }), false);
+	});
+
+	it("matches values that are missing on both sides", () => {
+		assert.equal(isActiveFavorite({ ...favorite, description: null }, { ...work, description: null }), true);
+	});
+
+	it("does not match other work or none", () => {
+		assert.equal(isActiveFavorite(favorite, { ...work, ticketId: "PROJ-3" }), false);
+		assert.equal(isActiveFavorite(favorite, null), false);
+	});
+
+	it("never takes a template for the running work", () => {
+		assert.equal(isActiveFavorite({ ...favorite, showAsTemplate: true }, work), false);
+	});
+});
+
 describe("getNextKeyView", () => {
 	it("says when loading failed", async () => {
-		const board = new SuggestionBoard(async () => ({ success: false, error: "Not connected." }));
+		const board = new KeyBoard(async () => ({ success: false, error: "Not connected." }), readSuggestions);
 		await board.load();
 
 		assert.equal(getNextKeyView(board).heading.text, "Failed");

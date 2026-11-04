@@ -37,10 +37,18 @@ export type Suggestions = {
 	failedSources: string[];
 };
 
+export type Favorite = {
+	name: string;
+	ticketId: string | null;
+	description: string | null;
+	showAsTemplate: boolean;
+};
+
 export type CommandResult = {
 	success: boolean;
 	error: string | null;
 	suggestions?: Suggestions | null;
+	favorites?: Favorite[] | null;
 };
 
 export type StateMessage = RemoteState & { type: "state" };
@@ -57,6 +65,8 @@ export type Command =
 	| "shiftStart"
 	| "addWork"
 	| "getSuggestions"
+	| "getFavorites"
+	| "showNewWorkDialog"
 	| "startPomodoro"
 	| "stopPomodoro"
 	| "skipPomodoro";
