@@ -8,6 +8,38 @@ public class TimeSpanToStringConverterTests
 {
 	private readonly TimeSpanToStringConverter _converter = new();
 
+	[Theory]
+	[InlineData("9:05", 9, 5, 0)]
+	[InlineData("09:05", 9, 5, 0)]
+	[InlineData("12:3", 12, 3, 0)]
+	[InlineData("23:59", 23, 59, 0)]
+	[InlineData("9:05:30", 9, 5, 30)]
+	public void ConvertBack_EditMode_TimeOfDay_IsParsed(string input, int hours, int minutes, int seconds)
+	{
+		var result = _converter.ConvertBack(input, typeof(TimeSpan), "HH:mm", CultureInfo.InvariantCulture);
+
+		result.Should().Be(new TimeSpan(hours, minutes, seconds));
+	}
+
+	/// <summary>
+	/// TimeSpan.TryParse reads a bare number as days, so "12" used to become 12 days, on the way to
+	/// typing "12:30" as well. None of these is a time of day, so the previous value stays.
+	/// </summary>
+	[Theory]
+	[InlineData("12")]
+	[InlineData("1.02:00")]
+	[InlineData("-1:00")]
+	[InlineData("24:00")]
+	[InlineData("12:60")]
+	[InlineData("abc")]
+	[InlineData("")]
+	public void ConvertBack_EditMode_NotATimeOfDay_LeavesTheValueAlone(string input)
+	{
+		var result = _converter.ConvertBack(input, typeof(TimeSpan), "HH:mm", CultureInfo.InvariantCulture);
+
+		result.Should().Be(global::Avalonia.Data.BindingOperations.DoNothing);
+	}
+
 	[Fact]
 	public void Convert_Display_HoursAndMinutes()
 	{
