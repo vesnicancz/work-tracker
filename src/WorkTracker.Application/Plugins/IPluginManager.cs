@@ -78,9 +78,10 @@ public interface IPluginManager : IAsyncDisposable
 	bool LoadEmbeddedPlugin<T>() where T : class, IPlugin;
 
 	/// <summary>
-	/// Initializes all loaded plugins with their configurations
+	/// Initializes the enabled plugins whose configuration differs from what they already run on.
 	/// </summary>
-	Task InitializePluginsAsync(Dictionary<string, Dictionary<string, string>>? configurations, CancellationToken cancellationToken);
+	/// <returns>The plugins that could not be started. Details are in the log.</returns>
+	Task<IReadOnlyList<PluginMetadata>> InitializePluginsAsync(Dictionary<string, Dictionary<string, string>>? configurations, CancellationToken cancellationToken);
 
 	/// <summary>
 	/// Creates a new instance of a loaded plugin that the manager doesn't know about, for trying out a

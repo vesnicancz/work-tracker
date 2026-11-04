@@ -13,6 +13,7 @@ using WorkTracker.Infrastructure.Plugins;
 using WorkTracker.Domain.Interfaces;
 using WorkTracker.Infrastructure.Data;
 using WorkTracker.Infrastructure.Repositories;
+using WorkTracker.Plugin.Abstractions;
 using WorkTracker.Infrastructure.Security;
 
 namespace WorkTracker.Infrastructure;
@@ -203,7 +204,7 @@ public static class DependencyInjection
 	/// <summary>
 	/// Loads embedded and external plugins, then initializes them with configurations from user settings or appsettings.json.
 	/// </summary>
-	public static async Task InitializePluginsAsync(
+	public static async Task<IReadOnlyList<PluginMetadata>> InitializePluginsAsync(
 		IServiceProvider serviceProvider,
 		IConfiguration configuration,
 		Dictionary<string, bool>? enabledPlugins = null,
@@ -256,6 +257,6 @@ public static class DependencyInjection
 		}
 
 		// Initialize plugins with their configurations
-		await pluginManager.InitializePluginsAsync(pluginConfigs, cancellationToken);
+		return await pluginManager.InitializePluginsAsync(pluginConfigs, cancellationToken);
 	}
 }

@@ -22,6 +22,8 @@ public class SettingsOrchestratorTests
 	private readonly Mock<IAutostartManager> _mockAutostartManager;
 	private readonly Mock<ITrayIconService> _mockTrayIconService;
 	private readonly Mock<IRemoteControlCoordinator> _mockRemoteControlCoordinator = new();
+	private readonly Mock<INotificationService> _mockNotificationService = new();
+	private readonly Mock<ILocalizationService> _mockLocalization = new();
 	private readonly SettingsOrchestrator _orchestrator;
 
 	public SettingsOrchestratorTests()
@@ -37,6 +39,12 @@ public class SettingsOrchestratorTests
 		_mockSecureStorage.Setup(s => s.Protect(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>())).Returns((string v, string _, string _) => v);
 		_mockSecureStorage.Setup(s => s.Unprotect(It.IsAny<string>())).Returns((string v) => v);
 		_mockPluginManager.Setup(m => m.CreateDetachedInstance(It.IsAny<IPlugin>())).Returns((IPlugin p) => p);
+		_mockPluginManager
+			.Setup(m => m.InitializePluginsAsync(It.IsAny<Dictionary<string, Dictionary<string, string>>?>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync([]);
+		_mockLocalization
+			.Setup(l => l.GetFormattedString(It.IsAny<string>(), It.IsAny<object[]>()))
+			.Returns((string key, object[] args) => $"{key}: {string.Join(", ", args)}");
 
 		_orchestrator = new SettingsOrchestrator(
 			_mockSettingsService.Object,
@@ -46,6 +54,8 @@ public class SettingsOrchestratorTests
 			_mockAutostartManager.Object,
 			_mockTrayIconService.Object,
 			_mockRemoteControlCoordinator.Object,
+			_mockNotificationService.Object,
+			_mockLocalization.Object,
 			new Mock<ILogger<SettingsOrchestrator>>().Object);
 	}
 
@@ -163,6 +173,25 @@ public class SettingsOrchestratorTests
 		_mockPluginManager.Verify(p => p.SetEnabledPlugins(It.IsAny<IEnumerable<string>>()), Times.Once);
 		_mockPluginManager.Verify(p => p.InitializePluginsAsync(It.IsAny<Dictionary<string, Dictionary<string, string>>>(), It.IsAny<CancellationToken>()), Times.Once);
 		_mockAutostartManager.Verify(a => a.SetAutostart(true), Times.Once);
+		_mockTrayIconService.Verify(t => t.RefreshFavoritesMenu(), Times.Once);
+		_mockNotificationService.Verify(n => n.ShowError(It.IsAny<string>()), Times.Never);
+	}
+
+	[Fact]
+	public async Task SaveSettingsAsync_PluginCouldNotStart_TellsTheUserAndFinishesSaving()
+	{
+		_mockPluginManager
+			.Setup(m => m.InitializePluginsAsync(It.IsAny<Dictionary<string, Dictionary<string, string>>?>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync([new PluginMetadata { Id = "tempo", Name = "Tempo", Version = new Version(1, 0), Author = "Test" }]);
+
+		await _orchestrator.SaveSettingsAsync(new SettingsSaveRequest
+		{
+			CloseWindowBehavior = CloseWindowBehavior.MinimizeToTray,
+			FavoriteWorkItems = new List<FavoriteWorkItem>(),
+			Plugins = new List<PluginViewModel>()
+		}, TestContext.Current.CancellationToken);
+
+		_mockNotificationService.Verify(n => n.ShowError(It.Is<string>(m => m.Contains("PluginInitializationFailed") && m.Contains("Tempo"))), Times.Once);
 		_mockTrayIconService.Verify(t => t.RefreshFavoritesMenu(), Times.Once);
 	}
 

@@ -100,6 +100,78 @@ public class PluginManagerTests : IAsyncDisposable
 		worklogPlugins[0].Should().BeOfType<TestWorklogPlugin>();
 	}
 
+	private static Dictionary<string, Dictionary<string, string>> ConfigWith(string pluginId, string value) => new()
+	{
+		[pluginId] = new Dictionary<string, string> { ["key"] = value }
+	};
+
+	[Fact]
+	public async Task InitializePluginsAsync_SameConfigurationAgain_LeavesThePluginAlone()
+	{
+		_pluginManager.LoadEmbeddedPlugin<CountingPlugin>();
+		_pluginManager.SetEnabledPlugins(["counting.plugin"]);
+
+		await _pluginManager.InitializePluginsAsync(ConfigWith("counting.plugin", "a"), TestContext.Current.CancellationToken);
+		await _pluginManager.InitializePluginsAsync(ConfigWith("counting.plugin", "a"), TestContext.Current.CancellationToken);
+
+		((CountingPlugin)_pluginManager.GetPlugin("counting.plugin")!).InitializeCount.Should().Be(1);
+	}
+
+	[Fact]
+	public async Task InitializePluginsAsync_ChangedConfiguration_InitializesAgain()
+	{
+		_pluginManager.LoadEmbeddedPlugin<CountingPlugin>();
+		_pluginManager.SetEnabledPlugins(["counting.plugin"]);
+
+		await _pluginManager.InitializePluginsAsync(ConfigWith("counting.plugin", "a"), TestContext.Current.CancellationToken);
+		await _pluginManager.InitializePluginsAsync(ConfigWith("counting.plugin", "b"), TestContext.Current.CancellationToken);
+		await _pluginManager.InitializePluginsAsync(null, TestContext.Current.CancellationToken);
+
+		((CountingPlugin)_pluginManager.GetPlugin("counting.plugin")!).InitializeCount.Should().Be(3);
+	}
+
+	[Fact]
+	public async Task InitializePluginsAsync_ReEnabledOnTheSameConfiguration_LeavesThePluginAlone()
+	{
+		_pluginManager.LoadEmbeddedPlugin<CountingPlugin>();
+		_pluginManager.SetEnabledPlugins(["counting.plugin"]);
+		await _pluginManager.InitializePluginsAsync(ConfigWith("counting.plugin", "a"), TestContext.Current.CancellationToken);
+
+		_pluginManager.SetEnabledPlugins([]);
+		await _pluginManager.InitializePluginsAsync(ConfigWith("counting.plugin", "a"), TestContext.Current.CancellationToken);
+		_pluginManager.SetEnabledPlugins(["counting.plugin"]);
+		await _pluginManager.InitializePluginsAsync(ConfigWith("counting.plugin", "a"), TestContext.Current.CancellationToken);
+
+		((CountingPlugin)_pluginManager.GetPlugin("counting.plugin")!).InitializeCount.Should().Be(1);
+	}
+
+	[Fact]
+	public async Task InitializePluginsAsync_PluginReturnsFalse_IsReportedAndTriedAgainNextTime()
+	{
+		_pluginManager.LoadEmbeddedPlugin<RefusingPlugin>();
+		_pluginManager.LoadEmbeddedPlugin<CountingPlugin>();
+		_pluginManager.SetEnabledPlugins(["refusing.plugin", "counting.plugin"]);
+
+		var first = await _pluginManager.InitializePluginsAsync(null, TestContext.Current.CancellationToken);
+		var second = await _pluginManager.InitializePluginsAsync(null, TestContext.Current.CancellationToken);
+
+		first.Should().ContainSingle().Which.Id.Should().Be("refusing.plugin");
+		second.Should().ContainSingle();
+		((RefusingPlugin)_pluginManager.GetPlugin("refusing.plugin")!).InitializeCount.Should().Be(2);
+		((CountingPlugin)_pluginManager.GetPlugin("counting.plugin")!).InitializeCount.Should().Be(1);
+	}
+
+	[Fact]
+	public async Task InitializePluginsAsync_PluginThrows_IsReported()
+	{
+		_pluginManager.LoadEmbeddedPlugin<ThrowingPlugin>();
+		_pluginManager.SetEnabledPlugins(["throwing.plugin"]);
+
+		var failed = await _pluginManager.InitializePluginsAsync(null, TestContext.Current.CancellationToken);
+
+		failed.Should().ContainSingle().Which.Id.Should().Be("throwing.plugin");
+	}
+
 	[Fact]
 	public async Task InitializePluginsAsync_ShouldInitializeAllPlugins()
 	{
@@ -315,6 +387,45 @@ public class PluginManagerTests : IAsyncDisposable
 }
 
 // Test plugins
+public abstract class InitializationTestPlugin(string id) : IPlugin
+{
+	public int InitializeCount { get; private set; }
+
+	public PluginMetadata Metadata => new() { Id = id, Name = id, Version = new Version(1, 0, 0), Author = "Test" };
+
+	protected abstract bool Initialize();
+
+	public Task<bool> InitializeAsync(IDictionary<string, string>? configuration = null, CancellationToken cancellationToken = default)
+	{
+		InitializeCount++;
+		return Task.FromResult(Initialize());
+	}
+
+	public Task ShutdownAsync() => Task.CompletedTask;
+
+	public IReadOnlyList<PluginConfigurationField> GetConfigurationFields() => [];
+
+	public Task<PluginValidationResult> ValidateConfigurationAsync(IDictionary<string, string> configuration, CancellationToken cancellationToken = default) =>
+		Task.FromResult(PluginValidationResult.Success());
+
+	public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+}
+
+public sealed class CountingPlugin() : InitializationTestPlugin("counting.plugin")
+{
+	protected override bool Initialize() => true;
+}
+
+public sealed class RefusingPlugin() : InitializationTestPlugin("refusing.plugin")
+{
+	protected override bool Initialize() => false;
+}
+
+public sealed class ThrowingPlugin() : InitializationTestPlugin("throwing.plugin")
+{
+	protected override bool Initialize() => throw new InvalidOperationException("broken");
+}
+
 public class TestPlugin : IPlugin
 {
 	public bool IsInitialized { get; private set; }
