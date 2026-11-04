@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Identity.Client;
 using Moq;
 using WorkTracker.Infrastructure.Auth;
+using WorkTracker.Plugin.Abstractions;
 
 namespace WorkTracker.Infrastructure.Tests.Auth;
 
@@ -11,6 +12,9 @@ public class MsalTokenProviderTests
 {
 	private readonly ILogger _logger = NullLogger.Instance;
 	private readonly string[] _scopes = ["https://graph.microsoft.com/.default"];
+
+	private MsalTokenProvider CreateDeviceCodeProvider(IPublicClientApplication app)
+		=> new(app, _ => throw new InvalidOperationException("Device code flow must not build a loopback app"), _scopes, InteractiveAuthFlow.DeviceCode, _logger);
 
 	[Fact]
 	public async Task AcquireTokenSilentAsync_NoAccounts_ReturnsNull()
@@ -22,7 +26,7 @@ public class MsalTokenProviderTests
 		mockApp.Setup(a => a.GetAccountsAsync())
 			.ReturnsAsync(Array.Empty<IAccount>());
 
-		var provider = new MsalTokenProvider(mockApp.Object, _scopes, _logger);
+		var provider = CreateDeviceCodeProvider(mockApp.Object);
 
 		// Act
 		var token = await provider.AcquireTokenSilentAsync(TestContext.Current.CancellationToken);
@@ -39,7 +43,7 @@ public class MsalTokenProviderTests
 		mockApp.Setup(a => a.GetAccountsAsync())
 			.ThrowsAsync(new InvalidOperationException("MSAL error"));
 
-		var provider = new MsalTokenProvider(mockApp.Object, _scopes, _logger);
+		var provider = CreateDeviceCodeProvider(mockApp.Object);
 
 		// Act
 		var token = await provider.AcquireTokenSilentAsync(TestContext.Current.CancellationToken);
@@ -64,7 +68,7 @@ public class MsalTokenProviderTests
 				It.IsAny<Func<DeviceCodeResult, Task>>()))
 			.Throws(new MsalServiceException("error", "Device code failed"));
 
-		var provider = new MsalTokenProvider(mockApp.Object, _scopes, _logger);
+		var provider = CreateDeviceCodeProvider(mockApp.Object);
 
 		// Act
 		var token = await provider.AcquireTokenInteractiveAsync(null, TestContext.Current.CancellationToken);
@@ -88,7 +92,7 @@ public class MsalTokenProviderTests
 				It.IsAny<Func<DeviceCodeResult, Task>>()))
 			.Throws(new Exception("Network error"));
 
-		var provider = new MsalTokenProvider(mockApp.Object, _scopes, _logger);
+		var provider = CreateDeviceCodeProvider(mockApp.Object);
 
 		// Act
 		var token = await provider.AcquireTokenInteractiveAsync(
@@ -117,7 +121,7 @@ public class MsalTokenProviderTests
 				It.IsAny<IAccount>()))
 			.Throws(new MsalUiRequiredException("error", "UI required"));
 
-		var provider = new MsalTokenProvider(mockApp.Object, _scopes, _logger);
+		var provider = CreateDeviceCodeProvider(mockApp.Object);
 
 		// Act
 		var token = await provider.AcquireTokenSilentAsync(TestContext.Current.CancellationToken);
@@ -142,7 +146,7 @@ public class MsalTokenProviderTests
 				It.IsAny<IAccount>()))
 			.Throws(new MsalUiRequiredException("error", "Need interactive login"));
 
-		var provider = new MsalTokenProvider(mockApp.Object, _scopes, _logger);
+		var provider = CreateDeviceCodeProvider(mockApp.Object);
 
 		// Act
 		var token = await provider.AcquireTokenSilentAsync(TestContext.Current.CancellationToken);
@@ -172,7 +176,7 @@ public class MsalTokenProviderTests
 				It.IsAny<Func<DeviceCodeResult, Task>>()))
 			.Throws(new MsalServiceException("error", "Device code also failed"));
 
-		var provider = new MsalTokenProvider(mockApp.Object, _scopes, _logger);
+		var provider = CreateDeviceCodeProvider(mockApp.Object);
 
 		// Act
 		var token = await provider.AcquireTokenInteractiveAsync(null, TestContext.Current.CancellationToken);
@@ -182,5 +186,37 @@ public class MsalTokenProviderTests
 		mockApp.Verify(a => a.AcquireTokenWithDeviceCode(
 			It.IsAny<IEnumerable<string>>(),
 			It.IsAny<Func<DeviceCodeResult, Task>>()), Times.Once);
+	}
+
+	[Fact]
+	public async Task AcquireTokenInteractiveAsync_SystemBrowser_UsesLoopbackAppInsteadOfDeviceCode()
+	{
+		// Arrange
+		var mockApp = new Mock<IPublicClientApplication>();
+		mockApp.Setup(a => a.GetAccountsAsync())
+			.ReturnsAsync(Array.Empty<IAccount>());
+
+		// AcquireTokenInteractive returns a sealed builder — let it throw to exercise the catch path.
+		var loopbackApp = new Mock<IPublicClientApplication>();
+		loopbackApp.Setup(a => a.AcquireTokenInteractive(It.IsAny<IEnumerable<string>>()))
+			.Throws(new MsalServiceException("error", "Browser sign-in failed"));
+
+		string? redirectUri = null;
+		var provider = new MsalTokenProvider(mockApp.Object, uri =>
+		{
+			redirectUri = uri;
+			return loopbackApp.Object;
+		}, _scopes, InteractiveAuthFlow.SystemBrowser, _logger);
+
+		// Act
+		var token = await provider.AcquireTokenInteractiveAsync(null, TestContext.Current.CancellationToken);
+
+		// Assert
+		token.Should().BeNull();
+		redirectUri.Should().MatchRegex(@"^http://localhost:\d+$");
+		loopbackApp.Verify(a => a.AcquireTokenInteractive(It.IsAny<IEnumerable<string>>()), Times.Once);
+		mockApp.Verify(a => a.AcquireTokenWithDeviceCode(
+			It.IsAny<IEnumerable<string>>(),
+			It.IsAny<Func<DeviceCodeResult, Task>>()), Times.Never);
 	}
 }

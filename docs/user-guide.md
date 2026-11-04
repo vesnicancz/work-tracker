@@ -122,7 +122,7 @@ Logy se rotují denně, uchovává se posledních **14 souborů**. Citlivá data
 Pokud potřebuješ data přenést na jiný stroj, obvykle stačí zkopírovat `worktracker.db`, `settings.json` a případně `logs/`. Pozor na dvě věci, které **se přenést nedají**:
 
 - **Tokeny v OS credential storu** (šifrovaná pole z `settings.json`) — leží mimo tuto složku a bude nutné je na cílovém stroji znovu zadat v Nastavení.
-- **MSAL cache v `keys/`** — je vázaná na konkrétní OS účet a stroj přes DPAPI (Windows), Keychain (macOS) nebo libsecret (Linux), takže po zkopírování jinam typicky nebude čitelná. Na některých Linux instalacích navíc může být uložená méně chráněně. Při migraci je bezpečnější `keys/` **nekopírovat** a na cílovém stroji se znovu přihlásit přes device code flow.
+- **MSAL cache v `keys/`** — je vázaná na konkrétní OS účet a stroj přes DPAPI (Windows), Keychain (macOS) nebo libsecret (Linux), takže po zkopírování jinam typicky nebude čitelná. Na některých Linux instalacích navíc může být uložená méně chráněně. Při migraci je bezpečnější `keys/` **nekopírovat** a na cílovém stroji se znovu přihlásit přes **Otestovat připojení**.
 
 ### Přepis cesty k databázi
 
@@ -533,18 +533,20 @@ Při čtení se placeholder transparentně nahradí skutečnou hodnotou. Nový t
 | macOS | Keychain Access → přihlašovací klíčenka → hledej „worktracker“ |
 | Linux | Seahorse (Hesla a klíče) → hledej „worktracker“ |
 
-### OAuth pluginy (MSAL device code flow)
+### OAuth pluginy (MSAL)
 
-Pluginy, které autentizují uživatele přes Microsoft Entra ID (Office 365 Calendar, Goran G3), používají **device code flow**:
+Pluginy, které autentizují uživatele přes Microsoft Entra ID, se přihlašují jedním ze dvou způsobů:
+
+- **Office 365 Calendar** — přihlášení v prohlížeči (authorization code flow s PKCE).
+- **Goran G3** — **device code flow**.
 
 1. V **Nastavení → Pluginy** vybereš plugin v rozbalovacím seznamu a klikneš na **Otestovat připojení**.
-2. Plugin zavolá `AcquireTokenInteractiveAsync`, který spustí MSAL device code flow.
-3. Pod tlačítkem se místo výsledku testu objeví anglická výzva s kódem a URL (`⏳ Open browser and enter code: …` a pod ní např. `https://microsoft.com/devicelogin`).
-4. Aplikace se současně pokusí otevřít browser. Zadáš code a přihlásíš se.
-5. MSAL uloží token do šifrované cache — na Windows do `keys/` (DPAPI), na macOS do Keychain a na Linuxu do keyringu (soubor v `keys/` jen jako nešifrovaný fallback).
-6. Plugin má token k dispozici, při vypršení se obnoví tiše (`AcquireTokenSilentAsync`).
-
-> **Proč device code, a ne interaktivní popup?** MSAL `AcquireTokenInteractive` má v Avalonia známý deadlock v UI vlákně. Device code flow běží v pozadí a nevyžaduje embedded browser — spolehlivě funguje napříč platformami.
+2. Plugin zavolá `AcquireTokenInteractiveAsync`, který spustí interaktivní přihlášení.
+3. Pod tlačítkem se místo výsledku testu objeví anglická výzva:
+   - Office 365 Calendar: `⏳ Complete the sign-in in your browser…` — aplikace otevře přihlašovací stránku Microsoftu ve výchozím prohlížeči. Po přihlášení prohlížeč ukáže „Sign-in complete“ a okno můžeš zavřít.
+   - Goran G3: výzva s kódem a URL (`⏳ Open browser and enter code: …` a pod ní např. `https://microsoft.com/devicelogin`). Aplikace se současně pokusí otevřít browser; zadáš code a přihlásíš se.
+4. MSAL uloží token do šifrované cache — na Windows do `keys/` (DPAPI), na macOS do Keychain a na Linuxu do keyringu (soubor v `keys/` jen jako nešifrovaný fallback).
+5. Plugin má token k dispozici, při vypršení se obnoví tiše (`AcquireTokenSilentAsync`).
 
 Detaily pro jednotlivé pluginy viz [plugins/](plugins/).
 
@@ -838,13 +840,13 @@ Zkratku na Linuxu neregistruje aplikace, ale desktop přes portál — podrobnos
 3. Zkontroluj nastavení zkratek v desktopu (na KDE *Systémová nastavení → Klávesové zkratky*, položka WorkTracker). Kombinaci mohlo něco jiného předběhnout; tady se dá přiřadit ručně.
 4. Pokud zkratka funguje jen do restartu aplikace, spouštíš ji nejspíš z terminálu — viz [Zkratka se po restartu ztratí](#zkratka-se-po-restartu-ztratí).
 
-### MSAL device code flow neotevře browser
+### Přihlášení přes MSAL neotevře browser
 
-Aplikace zkusí `Process.Start` s URL z MSAL callbacku, ale na některých linuxových minimalistických WM tato heuristika selže. V tom případě URL a user code najdeš pod tlačítkem **Otestovat připojení** — otevři je ručně v jakémkoli browseru.
+Aplikace zkusí `Process.Start` s přihlašovací URL, ale na některých linuxových minimalistických WM tato heuristika selže. V tom případě adresu (u device code flow i user code) najdeš pod tlačítkem **Otestovat připojení** — otevři ji ručně v jakémkoli browseru. U přihlášení v prohlížeči (Office 365 Calendar) ji otevři na stejném počítači — prohlížeč se po přihlášení vrací na `http://localhost`.
 
 ### Token expiroval, plugin hlásí 401
 
-1. V **Nastavení → Pluginy** vyber plugin v rozbalovacím seznamu a klikni na **Otestovat připojení** — to spustí nový device code flow.
+1. V **Nastavení → Pluginy** vyber plugin v rozbalovacím seznamu a klikni na **Otestovat připojení** — to spustí nové interaktivní přihlášení.
 2. Pokud neustále selhává, smaž obsah `keys/` a zkus znovu. Na macOS a Linuxu leží MSAL cache v Keychain / keyringu, takže tam je potřeba odstranit i odpovídající položku WorkTrackeru.
 
 ### Nejdou odeslat worklogy — validace selhává

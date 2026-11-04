@@ -160,7 +160,7 @@ Citlivé údaje (API tokeny, hesla) aplikace ukládá přes `ISecureStorage` do 
 - **macOS** — Keychain
 - **Linux** — libsecret / GNOME Keyring
 
-V souboru `settings.json` je na jejich místě uložený pouze placeholder `CS:{pluginId}:{fieldKey}`, nikdy plaintext. OAuth tokeny pro pluginy používající MSAL (Office 365 Calendar, Goran G3) jsou v zašifrované cache v `keys/` a při vypršení se obnovují přes **device code flow**.
+V souboru `settings.json` je na jejich místě uložený pouze placeholder `CS:{pluginId}:{fieldKey}`, nikdy plaintext. OAuth tokeny pro pluginy používající MSAL (Office 365 Calendar, Goran G3) jsou v zašifrované cache v `keys/` a při vypršení refresh tokenu je potřeba se znovu přihlásit přes **Otestovat připojení** (Office 365 Calendar v prohlížeči, Goran G3 přes device code flow).
 
 > **Pluginy v CLI:** `WorkTracker.CLI` čte enabled stav i konfiguraci pluginů ze stejného `settings.json` jako GUI, takže `send` funguje i z terminálu. Zapínají a konfigurují se ale pouze v GUI (Avalonia → **Nastavení → Pluginy**) — CLI je jen používá. Co je zrovna k dispozici, ukáže `WorkTracker.CLI providers`. Jednotlivé plugin docs v [docs/plugins/](docs/plugins/) obsahují ukázkové `appsettings.json` schéma pluginu jako referenci pro integrátory s vlastním hostem.
 
@@ -183,7 +183,7 @@ WorkTracker podporuje tři typy pluginů:
 | Plugin | Popis | Dokumentace |
 |--------|-------|-------------|
 | **Atlassian** | Tempo upload worklogů + Jira suggestions (sdílený `JiraClient`) | [docs/plugins/atlassian.md](docs/plugins/atlassian.md) |
-| **Office 365 Calendar** | Work suggestions z kalendářových událostí (MSAL device code) | [docs/plugins/office365-calendar.md](docs/plugins/office365-calendar.md) |
+| **Office 365 Calendar** | Work suggestions z kalendářových událostí (MSAL, přihlášení v prohlížeči) | [docs/plugins/office365-calendar.md](docs/plugins/office365-calendar.md) |
 | **Goran G3** | Upload worklogů přes MCP server s Entra ID autentizací | [docs/plugins/goran-g3.md](docs/plugins/goran-g3.md) |
 | **Luxafor** | Zobrazení Pomodoro fáze na Luxafor Bluetooth Pro LED | [docs/plugins/luxafor.md](docs/plugins/luxafor.md) |
 

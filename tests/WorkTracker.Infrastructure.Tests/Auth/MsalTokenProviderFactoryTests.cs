@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using WorkTracker.Infrastructure.Auth;
+using WorkTracker.Plugin.Abstractions;
 
 namespace WorkTracker.Infrastructure.Tests.Auth;
 
@@ -12,7 +13,7 @@ public class MsalTokenProviderFactoryTests
 	[Fact]
 	public async Task CreateAsync_WithValidParams_ReturnsNonNullProvider()
 	{
-		var provider = await _factory.CreateAsync("tenant-id", "client-id", _scopes);
+		var provider = await _factory.CreateAsync("tenant-id", "client-id", _scopes, InteractiveAuthFlow.DeviceCode);
 
 		provider.Should().NotBeNull();
 		provider.Should().BeOfType<MsalTokenProvider>();
@@ -21,8 +22,8 @@ public class MsalTokenProviderFactoryTests
 	[Fact]
 	public async Task CreateAsync_DifferentCredentials_ReturnsDifferentInstances()
 	{
-		var provider1 = await _factory.CreateAsync("tenant-a", "client-a", _scopes);
-		var provider2 = await _factory.CreateAsync("tenant-b", "client-b", _scopes);
+		var provider1 = await _factory.CreateAsync("tenant-a", "client-a", _scopes, InteractiveAuthFlow.DeviceCode);
+		var provider2 = await _factory.CreateAsync("tenant-b", "client-b", _scopes, InteractiveAuthFlow.DeviceCode);
 
 		provider1.Should().NotBeSameAs(provider2);
 	}
@@ -30,8 +31,8 @@ public class MsalTokenProviderFactoryTests
 	[Fact]
 	public async Task CreateAsync_SameCredentialsTwice_ReturnsSeparateInstances()
 	{
-		var provider1 = await _factory.CreateAsync("tenant-id", "client-id", _scopes);
-		var provider2 = await _factory.CreateAsync("tenant-id", "client-id", _scopes);
+		var provider1 = await _factory.CreateAsync("tenant-id", "client-id", _scopes, InteractiveAuthFlow.DeviceCode);
+		var provider2 = await _factory.CreateAsync("tenant-id", "client-id", _scopes, InteractiveAuthFlow.DeviceCode);
 
 		provider1.Should().NotBeSameAs(provider2);
 	}

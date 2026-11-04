@@ -42,7 +42,7 @@ public sealed class Office365CalendarPlugin(
 	{
 		Id = "o365.calendar",
 		Name = "Office 365 Calendar",
-		Version = new Version(1, 0, 0),
+		Version = new Version(2, 0, 0),
 		Author = "WorkTracker Team",
 		Description = "Suggests work items based on Office 365 calendar events via Microsoft Graph API",
 		Website = "https://learn.microsoft.com/en-us/graph/api/calendar-list-calendarview",
@@ -90,7 +90,7 @@ public sealed class Office365CalendarPlugin(
 		var clientId = GetRequiredConfigValue(ConfigKeys.ClientId);
 		_includeAllDayEvents = string.Equals(GetConfigValue(ConfigKeys.IncludeAllDayEvents), "true", StringComparison.OrdinalIgnoreCase);
 
-		_tokenProvider = await _tokenProviderFactory.CreateAsync(tenantId, clientId, GraphScopes);
+		_tokenProvider = await _tokenProviderFactory.CreateAsync(tenantId, clientId, GraphScopes, InteractiveAuthFlow.SystemBrowser);
 
 		_httpClient?.Dispose();
 		_httpClient = _httpClientFactory.CreateClient();

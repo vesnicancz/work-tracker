@@ -124,7 +124,7 @@ Implementace externích závislostí:
 - **`DbContextFactory`** — všechny repository používají `IDbContextFactory<WorkTrackerDbContext>`, ne scoped `DbContext`. Důvod: plugin manager a dlouho běžící služby (GUI) nemají HTTP request scope, takže scoped DbContext by vedl k leakům a concurrent‑use chybám.
 - **`CredentialStoreSecureStorage`** — implementace `ISecureStorage` nad `GitCredentialManager` (multiplatformní: Windows Credential Manager, macOS Keychain, Linux libsecret).
 - **`PluginManager`, `PluginLoader`, `PluginLoadContext`** — načítání pluginů do vlastního `AssemblyLoadContext` (collectible) pro každou plugin assembly; všechny pluginy sdílejí jeden plugin `ServiceProvider`.
-- **`MsalTokenProviderFactory`, `MsalTokenProvider`** — MSAL Public Client s cross‑platform token cache (`Microsoft.Identity.Client.Extensions.Msal`) a **device code flow** pro interaktivní autentizaci.
+- **`MsalTokenProviderFactory`, `MsalTokenProvider`** — MSAL Public Client s cross‑platform token cache (`Microsoft.Identity.Client.Extensions.Msal`) a dvěma způsoby interaktivní autentizace podle `InteractiveAuthFlow`, který plugin zvolí: **device code flow** a **authorization code flow s PKCE** v systémovém prohlížeči (redirect na vlastní loopback listener `SystemBrowserWebUi`).
 - **`DependencyInjection.AddInfrastructure(IConfiguration)`** — jediný entry point pro registraci Application+Infrastructure služeb. Volá `AddApplication()` sám.
 
 Infrastructure **závisí** na Application a Domain, **ne naopak**.

@@ -103,7 +103,7 @@ public class Office365CalendarPluginTests : IAsyncDisposable
 	public void Metadata_HasCorrectNameAndVersion()
 	{
 		_plugin.Metadata.Name.Should().Be("Office 365 Calendar");
-		_plugin.Metadata.Version.Should().Be(new Version(1, 0, 0));
+		_plugin.Metadata.Version.Should().Be(new Version(2, 0, 0));
 	}
 
 	#endregion
@@ -484,7 +484,7 @@ internal sealed class MockTokenProvider(string? token) : ITokenProvider
 
 internal sealed class MockTokenProviderFactory(string? token = "fake-token") : ITokenProviderFactory
 {
-	public Task<ITokenProvider> CreateAsync(string tenantId, string clientId, string[] scopes)
+	public Task<ITokenProvider> CreateAsync(string tenantId, string clientId, string[] scopes, InteractiveAuthFlow interactiveFlow)
 		=> Task.FromResult<ITokenProvider>(new MockTokenProvider(token));
 }
 
