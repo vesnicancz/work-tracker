@@ -29,6 +29,8 @@ public class PluginBasedWorklogSubmissionServiceTests
 			_mockValidator.Object,
 			_mockPluginManager.Object,
 			new Mock<ILogger<PluginBasedWorklogSubmissionService>>().Object);
+
+		SetupValidatorValid();
 	}
 
 	private static WorkEntry CreateCompletedEntry(int id, string ticketId, DateTime start, DateTime end) =>
@@ -190,11 +192,44 @@ public class PluginBasedWorklogSubmissionServiceTests
 		var result = await _sut.SubmitDailyWorklogAsync(date, TestPluginId, TestContext.Current.CancellationToken);
 
 		result.IsSuccess.Should().BeTrue();
-		result.Value!.TotalEntries.Should().Be(1);
+		result.Value!.TotalEntries.Should().Be(2);
+		result.Value.SuccessfulEntries.Should().Be(1);
+		result.Value.FailedEntries.Should().Be(1);
+		var error = result.Value.Errors.Should().ContainSingle().Subject;
+		error.TicketId.Should().Be("PROJ-2");
+		error.ErrorMessage.Should().Be("Invalid");
+		error.Details.Should().Be("10:00-12:00");
 	}
 
 	[Fact]
-	public async Task SubmitDailyWorklogAsync_AllEntriesInvalid_ReturnsFailure()
+	public async Task SubmitCustomWorklogsAsync_SomeInvalid_UploadsOnlyTheValidAndReportsTheRest()
+	{
+		var plugin = CreateMockPlugin();
+		_mockPluginManager.Setup(p => p.GetPlugin<IWorklogUploadPlugin>(TestPluginId)).Returns(plugin.Object);
+		_mockValidator
+			.Setup(v => v.Validate(It.Is<WorklogDto>(w => w.TicketId == "BAD-1")))
+			.Returns(ValidationResult.Failure("Duration must be greater than 0"));
+		IEnumerable<PluginWorklogEntry>? uploaded = null;
+		plugin.Setup(p => p.UploadWorklogsAsync(It.IsAny<IEnumerable<PluginWorklogEntry>>(), WorklogSubmissionMode.Timed, It.IsAny<CancellationToken>()))
+			.Callback<IEnumerable<PluginWorklogEntry>, WorklogSubmissionMode, CancellationToken>((worklogs, _, _) => uploaded = worklogs.ToList())
+			.ReturnsAsync(PluginResult<WorklogSubmissionResult>.Success(new WorklogSubmissionResult { TotalEntries = 1, SuccessfulEntries = 1 }));
+		var start = new DateTime(2025, 1, 15, 9, 0, 0);
+		WorklogDto[] worklogs =
+		[
+			new() { TicketId = "OK-1", StartTime = start, EndTime = start.AddHours(1), DurationMinutes = 60 },
+			new() { TicketId = "BAD-1", StartTime = start.AddHours(1), EndTime = start.AddHours(2), DurationMinutes = 0 }
+		];
+
+		var result = await _sut.SubmitCustomWorklogsAsync(worklogs, TestPluginId, WorklogSubmissionMode.Timed, TestContext.Current.CancellationToken);
+
+		uploaded.Should().ContainSingle().Which.TicketId.Should().Be("OK-1");
+		result.Value!.SuccessfulEntries.Should().Be(1);
+		result.Value.FailedEntries.Should().Be(1);
+		result.Value.Errors.Should().ContainSingle().Which.ErrorMessage.Should().Contain("greater than 0");
+	}
+
+	[Fact]
+	public async Task SubmitDailyWorklogAsync_AllEntriesInvalid_ReportsThemWithoutCallingThePlugin()
 	{
 		var date = new DateTime(2025, 1, 15);
 		var plugin = CreateMockPlugin();
@@ -209,8 +244,11 @@ public class PluginBasedWorklogSubmissionServiceTests
 
 		var result = await _sut.SubmitDailyWorklogAsync(date, TestPluginId, TestContext.Current.CancellationToken);
 
-		result.IsSuccess.Should().BeFalse();
-		result.Error.Should().Contain("No valid worklogs to submit");
+		result.IsSuccess.Should().BeTrue();
+		result.Value!.SuccessfulEntries.Should().Be(0);
+		result.Value.FailedEntries.Should().Be(1);
+		result.Value.Errors.Should().ContainSingle().Which.ErrorMessage.Should().Be("Invalid");
+		plugin.Verify(p => p.UploadWorklogsAsync(It.IsAny<IEnumerable<PluginWorklogEntry>>(), It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()), Times.Never);
 	}
 
 	[Fact]

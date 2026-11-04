@@ -623,7 +623,7 @@ Kliknutím na hlavičku skupinu rozbalíš nebo sbalíš (`ToggleGroupCommand`).
 
 Interně pipeline:
 
-- Do náhledu se dostanou jen ukončené záznamy (s `EndTime`). Odešle se všechno zaškrtnuté — `IWorklogValidator` se v GUI neuplatní (běží jen u `send` v CLI) a chyby hlásí až plugin.
+- Do náhledu se dostanou jen ukončené záznamy (s `EndTime`). Odešle se všechno zaškrtnuté, co projde `IWorklogValidator` (stejná kontrola jako u `send` v CLI). Řádek, který neprojde, se označí jako chybný s důvodem. Ostatní chyby hlásí až plugin.
 - V **Agregovaném** módu orchestrátor nejprve seskupí DTO per den podle `(TicketId, Description)` a součtem spočítá `DurationMinutes`.
 - Záznamy se mapují přes `WorklogMapper` na `PluginWorklogEntry`.
 - Service ověří, že zvolený plugin daný mód inzeruje (`SupportedModes.HasFlag(mode)`), jinak vrátí `Failure`.
@@ -882,7 +882,7 @@ Aplikace zkusí `Process.Start` s přihlašovací URL, ale na některých linuxo
 
 Aktivní (nedokončené) záznamy se do odeslání vůbec nedostanou — musí mít `EndTime`.
 
-V CLI (`send`) navíc `IWorklogValidator` přeskočí záznamy, které nemají začátek před koncem, mají nulovou nebo zápornou délku nebo jsou delší než 24 h. Důvod najdeš v logu. Když jsou neplatné všechny, `send` skončí chybou `No valid worklogs to submit`.
+V GUI i v CLI (`send`) `IWorklogValidator` neodešle záznamy, které mají konec před začátkem, nulovou nebo zápornou délku nebo jsou delší než 24 h. Takový záznam se vykáže jako neúspěšný i s důvodem a `send` pak skončí s exit kódem `1`. Záznam začatý a ukončený během jedné minuty se odešle jako jedna minuta.
 
 V GUI se validátor nepoužívá: odešle se všechno zaškrtnuté a chybné řádky dialog označí červeně až podle chyby z pluginu.
 

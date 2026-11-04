@@ -382,12 +382,12 @@ Jako konkrétní ilustraci vezmeme odeslání záznamů jednoho dne z Avalonia G
    - Převede je na `WorklogDto` (`DurationMinutes` zaokrouhleno nahoru, minimálně 1).
    - Vrátí `WorklogSubmissionDto { SubmissionDate, Worklogs }`.
 6. **Dialog** — Uživatel vidí náhled, vybere plugin (dropdown obsahuje všechny povolené upload pluginy, `GetAvailableProviders`) a **submission mode** (Timed / Aggregated; radio button módu, který `ProviderInfo.SupportedModes` neobsahuje, je disabled přes `CanUseTimedMode` / `CanUseAggregatedMode`) a potvrdí. Volba se persistuje per plugin: `ApplicationSettings.SubmissionModeByProvider` (pluginId → mode) plus `LastSubmissionProviderId` pro plugin, na kterém se dialog otevře; `LastSubmissionMode` zůstává globálním fallbackem pro plugin, který v mapě ještě není. Výběr pluginu přehodí mode na ten jeho (`ResolveModeFor`), nepodporovaný zapamatovaný mode se ignoruje. V **Aggregated** módu orchestrátor před zobrazením preview seskupí DTO podle `(TicketId, Description)` per den a součtem nastaví `DurationMinutes`; `StartTime` skupiny = nejstarší start.
-7. **Orchestrátor** — Na tlačítko **Odeslat** zavolá `SubmitWorklogViewModel` metodu `WorklogSubmissionOrchestrator.SubmitAsync`, která zaškrtnuté položky převede zpět na `WorklogDto` a zavolá `IWorklogSubmissionService.SubmitCustomWorklogsAsync(worklogs, providerId, mode, ct)`. (`SubmitDailyWorklogAsync` / `SubmitWeeklyWorklogAsync` používá jen CLI `send`, drží Timed default a jako jediné prochází `IWorklogValidator`.)
+7. **Orchestrátor** — Na tlačítko **Odeslat** zavolá `SubmitWorklogViewModel` metodu `WorklogSubmissionOrchestrator.SubmitAsync`, která zaškrtnuté položky převede zpět na `WorklogDto` a zavolá `IWorklogSubmissionService.SubmitCustomWorklogsAsync(worklogs, providerId, mode, ct)`. (`SubmitDailyWorklogAsync` / `SubmitWeeklyWorklogAsync` používá jen CLI `send` a drží Timed default. Všechny cesty procházejí `IWorklogValidator`; neplatné záznamy se vrátí jako neúspěšné.)
 8. **PluginBasedWorklogSubmissionService.SubmitCustomWorklogsAsync**:
    - Validuje, že `mode` je single value (Timed nebo Aggregated) — jinak `Failure`.
    - `ResolvePlugin(providerId)` → vrátí `IWorklogUploadPlugin`.
    - Ověří, že plugin daný mode podporuje (`plugin.SupportedModes.HasFlag(mode)`).
-   - Převede všechny `WorklogDto` přes `WorklogMapper.ToPluginWorklogs()` na `PluginWorklogEntry` (bez další validace).
+   - Převede všechny `WorklogDto` přes `WorklogMapper.ToPluginWorklogs()` na `PluginWorklogEntry`; neplatné řádky předtím zachytí `IWorklogValidator`.
    - Zavolá `plugin.UploadWorklogsAsync(entries, mode, ct)`.
 9. **Plugin (Tempo)** —
    - `TempoWorklogPlugin` prochází záznamy v cyklu (podporuje oba módy: `SupportedModes = Timed | Aggregated`).
