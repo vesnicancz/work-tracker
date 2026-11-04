@@ -1,4 +1,4 @@
-using Avalonia.Platform;
+using Avalonia.Controls;
 using FluentAssertions;
 using WorkTracker.Avalonia.Models;
 using WorkTracker.Avalonia.Services;
@@ -7,15 +7,24 @@ namespace WorkTracker.Avalonia.Tests.Smoke;
 
 public class ThemeCatalogSmokeTests
 {
+	/// <summary>
+	/// Goes by the source folder, because compiled XAML doesn't show up among the assets at runtime.
+	/// </summary>
 	[Fact]
-	public Task Catalog_ListsEveryThemeFile() => UiThread.Dispatch(() =>
+	public void Catalog_ListsEveryThemeFile()
 	{
-		var files = AssetLoader.GetAssets(new Uri("avares://WorkTracker.Avalonia/Resources/Themes"), null)
-			.Select(uri => Path.GetFileName(uri.AbsolutePath))
+		var root = new DirectoryInfo(AppContext.BaseDirectory);
+		while (!File.Exists(Path.Combine(root.FullName, "WorkTracker.slnx")))
+		{
+			root = root.Parent!;
+		}
+
+		var files = Directory.EnumerateFiles(Path.Combine(root.FullName, "src", "WorkTracker.Avalonia", "Resources", "Themes"), "*.axaml")
+			.Select(Path.GetFileName)
 			.Where(name => name != "_Defaults.axaml");
 
 		files.Should().BeEquivalentTo(ThemeCatalog.Themes.Select(t => t.FileName));
-	});
+	}
 
 	[Fact]
 	public void Find_UnknownName_GivesTheDefaultDarkTheme()
