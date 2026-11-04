@@ -167,7 +167,7 @@ public class WorklogSubmissionOrchestratorTests
 			FailedEntries = 1,
 			Errors = new List<SubmissionError>
 			{
-				new() { TicketId = "PROJ-1", Date = FixedDate, ErrorMessage = "Conflict", Details = $"{items[0].StartTime:HH:mm}-{items[0].EndTime:HH:mm}" }
+				new() { TicketId = "PROJ-1", Date = FixedDate, ErrorMessage = "Conflict", WorklogIndex = 0 }
 			}
 		};
 		_mockSubmissionService
@@ -208,7 +208,7 @@ public class WorklogSubmissionOrchestratorTests
 			TotalEntries = 1,
 			SuccessfulEntries = 0,
 			FailedEntries = 1,
-			Errors = new List<SubmissionError> { new() { TicketId = "PROJ-1", Date = FixedDate, ErrorMessage = "err", Details = $"{items[0].StartTime:HH:mm}-{items[0].EndTime:HH:mm}" } }
+			Errors = new List<SubmissionError> { new() { TicketId = "PROJ-1", Date = FixedDate, ErrorMessage = "err", WorklogIndex = 0 } }
 		};
 		_mockSubmissionService
 			.Setup(s => s.SubmitCustomWorklogsAsync(It.IsAny<IEnumerable<WorklogDto>>(), "tempo", It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
@@ -276,7 +276,7 @@ public class WorklogSubmissionOrchestratorTests
 		var items = CreatePreviewItems("PROJ-1");
 		var submission = new SubmissionResult { Errors = new List<SubmissionError>() };
 
-		_orchestrator.MarkFailedItems(items, submission, WorklogSubmissionMode.Timed).Should().BeFalse();
+		_orchestrator.MarkFailedItems(items, items, submission).Should().BeFalse();
 		items[0].HasError.Should().BeFalse();
 	}
 
@@ -288,11 +288,11 @@ public class WorklogSubmissionOrchestratorTests
 		{
 			Errors = new List<SubmissionError>
 			{
-				new() { TicketId = "PROJ-1", Date = FixedDate, ErrorMessage = "Conflict", Details = $"{items[0].StartTime:HH:mm}-{items[0].EndTime:HH:mm}" }
+				new() { TicketId = "PROJ-1", Date = FixedDate, ErrorMessage = "Conflict", WorklogIndex = 0 }
 			}
 		};
 
-		_orchestrator.MarkFailedItems(items, submission, WorklogSubmissionMode.Timed).Should().BeTrue();
+		_orchestrator.MarkFailedItems(items, items, submission).Should().BeTrue();
 		items[0].HasError.Should().BeTrue();
 		items[0].ErrorMessage.Should().Be("Conflict");
 	}
@@ -306,7 +306,7 @@ public class WorklogSubmissionOrchestratorTests
 
 		var submission = new SubmissionResult { Errors = new List<SubmissionError>() };
 
-		_orchestrator.MarkFailedItems(items, submission, WorklogSubmissionMode.Timed);
+		_orchestrator.MarkFailedItems(items, items, submission);
 		items[0].HasError.Should().BeFalse();
 		items[0].ErrorMessage.Should().BeNull();
 	}
@@ -633,7 +633,7 @@ public class WorklogSubmissionOrchestratorTests
 	}
 
 	[Fact]
-	public void MarkFailedItems_Aggregated_MatchesByTicketAndDescription()
+	public void MarkFailedItems_Aggregated_MarksTheSubmittedRow()
 	{
 		var item = new WorklogPreviewItem
 		{
@@ -647,13 +647,64 @@ public class WorklogSubmissionOrchestratorTests
 		{
 			Errors = new List<SubmissionError>
 			{
-				new() { TicketId = "PROJ-1", Date = FixedDate, Description = "Work", ErrorMessage = "Conflict" }
+				new() { TicketId = "PROJ-1", Date = FixedDate, Description = "Work", ErrorMessage = "Conflict", WorklogIndex = 0 }
 			}
 		};
 
-		_orchestrator.MarkFailedItems(items, submission, WorklogSubmissionMode.Aggregated).Should().BeTrue();
+		_orchestrator.MarkFailedItems(items, items, submission).Should().BeTrue();
 		item.HasError.Should().BeTrue();
 		item.ErrorMessage.Should().Be("Conflict");
+	}
+
+	[Fact]
+	public void MarkFailedItems_RowsThatLookAlike_MarksTheOneThatFailed()
+	{
+		var items = CreatePreviewItems("PROJ-1").Concat(CreatePreviewItems("PROJ-1")).ToList();
+		var submission = new SubmissionResult
+		{
+			Errors = [new SubmissionError { TicketId = "PROJ-1", Date = FixedDate, ErrorMessage = "Conflict", WorklogIndex = 1 }]
+		};
+
+		_orchestrator.MarkFailedItems(items, items, submission);
+
+		items[0].HasError.Should().BeFalse();
+		items[1].HasError.Should().BeTrue();
+	}
+
+	[Fact]
+	public async Task SubmitAsync_UncheckedRowBeforeTheFailure_MarksTheRowThatWasSent()
+	{
+		var items = CreatePreviewItems("PROJ-1").Concat(CreatePreviewItems("PROJ-2")).ToList();
+		items[0].IsSelected = false;
+		var submission = new SubmissionResult
+		{
+			TotalEntries = 1,
+			FailedEntries = 1,
+			Errors = [new SubmissionError { TicketId = "PROJ-2", Date = FixedDate, ErrorMessage = "Conflict", WorklogIndex = 0 }]
+		};
+		_mockSubmissionService
+			.Setup(s => s.SubmitCustomWorklogsAsync(It.IsAny<IEnumerable<WorklogDto>>(), "tempo", It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(Result.Success(submission));
+
+		await _orchestrator.SubmitAsync(items, "tempo", "Tempo", WorklogSubmissionMode.Timed, TestContext.Current.CancellationToken);
+
+		items[0].HasError.Should().BeFalse();
+		items[1].HasError.Should().BeTrue();
+	}
+
+	[Fact]
+	public void MarkFailedItems_ErrorWithoutAPosition_MarksTheFirstRowOfThatDayAndTicket()
+	{
+		var items = CreatePreviewItems("PROJ-1").Concat(CreatePreviewItems("PROJ-2")).ToList();
+		var submission = new SubmissionResult
+		{
+			Errors = [new SubmissionError { TicketId = "PROJ-2", Date = FixedDate, ErrorMessage = "Conflict" }]
+		};
+
+		_orchestrator.MarkFailedItems(items, items, submission);
+
+		items[0].HasError.Should().BeFalse();
+		items[1].HasError.Should().BeTrue();
 	}
 
 	#endregion Aggregated mode
