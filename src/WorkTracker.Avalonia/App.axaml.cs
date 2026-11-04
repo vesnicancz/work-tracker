@@ -27,6 +27,11 @@ public partial class App : global::Avalonia.Application
 	private IHotkeyService? _hotkeyService;
 	private Task _pluginStartup = Task.CompletedTask;
 
+	/// <summary>
+	/// Set by <see cref="Program"/>. Tests and the designer run without one.
+	/// </summary>
+	internal SingleInstanceGuard? InstanceGuard { get; set; }
+
 	public override void Initialize()
 	{
 		AvaloniaXamlLoader.Load(this);
@@ -57,6 +62,8 @@ public partial class App : global::Avalonia.Application
 				mainWindow.Show();
 			}
 
+			InstanceGuard?.Listen(() => Dispatcher.UIThread.Post(() => BringMainWindowForward(desktop)));
+
 			Dispatcher.UIThread.Post(async () =>
 			{
 				try
@@ -71,6 +78,20 @@ public partial class App : global::Avalonia.Application
 		}
 
 		base.OnFrameworkInitializationCompleted();
+	}
+
+	/// <summary>
+	/// The application was started again. Started minimized there is no window until the bootstrap
+	/// creates it, and by then the tray icon is there to open it.
+	/// </summary>
+	private static void BringMainWindowForward(IClassicDesktopStyleApplicationLifetime desktop)
+	{
+		if (desktop.MainWindow is { } window)
+		{
+			window.Show();
+			window.WindowState = WindowState.Normal;
+			window.Activate();
+		}
 	}
 
 	/// <summary>
