@@ -565,7 +565,7 @@ Otevřeš ho kliknutím na ikonu **žárovky** v pravém horním rohu hlavního 
 
 Dialog má titulek **Návrhy** a je rozdělen svisle na:
 
-- **Titulková lišta** s tlačítky **Obnovit** (znovu načte návrhy ze všech pluginů) a **Zavřít**. Na macOS tlačítko Zavřít nahrazuje nativní ovládání okna. Ve fialovém motivu mimo macOS je lišta skrytá, takže tato tlačítka chybí.
+- **Titulková lišta** s tlačítky **Obnovit** (znovu načte návrhy ze všech pluginů) a **Zavřít**. Na macOS tlačítko Zavřít nahrazuje nativní ovládání okna.
 - **Tenký progress bar** pod titulkem, viditelný během načítání.
 - **Seznam skupin** — každý aktivní `IWorkSuggestionPlugin` se zobrazí jako samostatná **akordeónová karta**.
 
