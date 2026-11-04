@@ -143,9 +143,12 @@ public static class DependencyInjection
 			// (no filesystem journaling, abrupt removal). DELETE mode is a no-op if already set.
 			await context.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=DELETE;", cancellationToken);
 
+			// A failure here stops the startup before anything changes: no migration runs without the copy.
+			await DatabaseMigrationBackup.CreateIfNeededAsync(context, cancellationToken);
+
 			await context.Database.MigrateAsync(cancellationToken);
 		}
-		catch (Exception ex) when (IsDatabaseOutOfReach(ex))
+		catch (Exception ex) when (ex is not DatabaseBackupFailedException && IsDatabaseOutOfReach(ex))
 		{
 			var dataSource = context.Database.GetDbConnection().DataSource;
 			throw new DatabaseUnavailableException(dataSource,

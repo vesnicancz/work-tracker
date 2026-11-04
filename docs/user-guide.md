@@ -110,6 +110,7 @@ Obsah:
 ```
 WorkTracker/
 ├── worktracker.db              SQLite databáze (automaticky migrovaná)
+├── worktracker.db.before-*.bak Kopie databáze z doby před migrací (po ověření můžeš smazat)
 ├── settings.json               Uživatelské nastavení (pluginy, téma, Pomodoro…)
 ├── settings.json.bak           Předchozí verze nastavení
 ├── logs/
