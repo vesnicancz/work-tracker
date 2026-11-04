@@ -176,7 +176,7 @@ CLI klient se jmenuje `WorkTracker.CLI` (při vývoji spouštěn jako `dotnet ru
 
 CLI a GUI pracují se stejnou databází. Běžící GUI změny provedené přes CLI samo načte, nejpozději do několika sekund.
 
-Každý příkaz načte jen to, co potřebuje: `help` a `version` fungují i bez dostupné databáze, pluginy se spouštějí jen pro `send` a `providers`.
+Každý příkaz načte jen to, co potřebuje: `help` a `version` fungují i bez dostupné databáze, `providers` pluginy jen vypíše, nikam se nepřipojuje, a `send` spustí jen worklog plugin, do kterého se odesílá. LED Luxafor ani jiné pluginy běžícího GUI se tak CLI nedotkne.
 
 > **Poznámka k zápisu příkazů:** Příklady v této kapitole píšou jen `WorkTracker.CLI` pro čitelnost. Podle platformy a nastavení `PATH` potřebuješ:
 >

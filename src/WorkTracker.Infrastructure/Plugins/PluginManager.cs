@@ -261,7 +261,16 @@ public sealed class PluginManager : IPluginManager
 	/// configuration is left alone: reinitializing drops its connections, and saving an unrelated setting
 	/// is no reason for that.
 	/// </summary>
-	public async Task<IReadOnlyList<PluginMetadata>> InitializePluginsAsync(Dictionary<string, Dictionary<string, string>>? configurations, CancellationToken cancellationToken)
+	public Task<IReadOnlyList<PluginMetadata>> InitializePluginsAsync(Dictionary<string, Dictionary<string, string>>? configurations, CancellationToken cancellationToken)
+	{
+		return InitializePluginsAsync(configurations, _ => true, cancellationToken);
+	}
+
+	/// <summary>
+	/// Initializes only those enabled plugins that <paramref name="shouldStart"/> picks. The others stay
+	/// listed with their metadata, without connecting to anything.
+	/// </summary>
+	public async Task<IReadOnlyList<PluginMetadata>> InitializePluginsAsync(Dictionary<string, Dictionary<string, string>>? configurations, Func<IPlugin, bool> shouldStart, CancellationToken cancellationToken)
 	{
 		List<KeyValuePair<string, IPlugin>> pluginsSnapshot;
 		HashSet<string> enabledSnapshot;
@@ -283,6 +292,12 @@ public sealed class PluginManager : IPluginManager
 			if (!enabledSnapshot.Contains(pluginId))
 			{
 				_logger.LogDebug("Skipping initialization of disabled plugin: {Name}", plugin.Metadata.Name);
+				continue;
+			}
+
+			if (!shouldStart(plugin))
+			{
+				_logger.LogDebug("Skipping initialization of plugin not needed now: {Name}", plugin.Metadata.Name);
 				continue;
 			}
 
