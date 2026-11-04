@@ -82,6 +82,7 @@ work-tracker/
 │   ├── WorkTracker.Plugin.GoranG3.Tests/
 │   ├── WorkTracker.Plugin.Luxafor.Tests/
 │   ├── WorkTracker.Plugin.Office365Calendar.Tests/
+│   ├── WorkTracker.Plugin.StreamDeck.Tests/
 │   └── WorkTracker.Tests.Common/         # Sdílené test helpery (WorkEntryBuilder, MockPluginFactory)
 ├── docs/
 ├── resources/
@@ -141,7 +142,7 @@ Pluginy samy nejsou spustitelné. Build:
 dotnet build plugins/WorkTracker.Plugin.Atlassian
 ```
 
-Pro lokální testování v Avalonia nic dalšího není potřeba: Development konfigurace (`appsettings.Development.json`, `Plugins:Directories`) načítá všechny čtyři pluginy přímo z jejich `plugins/*/bin/Debug/net10.0`. Nový plugin tam stačí přidat do seznamu. `dotnet publish` pluginu do `bin/Debug/net10.0/plugins/` má smysl, jen když chceš vyzkoušet rozložení jako po instalaci.
+Pro lokální testování v Avalonia nic dalšího není potřeba: Development konfigurace (`appsettings.Development.json`, `Plugins:Directories`) načítá všech pět pluginů (CLI čtyři, bez Stream Decku) přímo z jejich `plugins/*/bin/Debug/net10.0`. Nový plugin tam stačí přidat do seznamu. `dotnet publish` pluginu do `bin/Debug/net10.0/plugins/` má smysl, jen když chceš vyzkoušet rozložení jako po instalaci.
 
 ---
 
@@ -292,7 +293,7 @@ if (result.IsFailure) return result;
 
 ### Async
 
-- Všechny I/O metody jsou async. `Task<T>` nebo `ValueTask<T>`.
+- I/O metody jsou async (`Task<T>` nebo `ValueTask<T>`). Výjimkou je `ISecureStorage` a synchronní varianty v `SettingsService`.
 - `CancellationToken` jako **poslední parametr**. V novém kódu bez default value (`= default`), pokud nemá volající opravdu co předat. Starší API (`IWorkEntryRepository`, `IWorkEntryService`, část Plugin.Abstractions) ho zatím mají.
 - Pojmenování: metoda končí `Async`.
 

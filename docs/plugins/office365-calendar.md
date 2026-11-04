@@ -127,12 +127,12 @@ Pokud chceš ticket zadat, uprav záznam před uložením.
 
 | Symptom | Příčina | Řešení |
 |---------|---------|--------|
-| `AADSTS50011: The redirect URI … does not match` | V Entra registraci chybí redirect URI `http://localhost` na platformě Mobile and desktop applications | Azure Portal → App → Authentication → Add a platform |
-| `AADSTS65001: The user or administrator has not consented` | Chybí consent pro `Calendars.Read` | V API permissions klikni **Grant admin consent** |
+| Test connection hlásí `Authentication failed — could not acquire token.`, v logu `AADSTS50011: The redirect URI … does not match` | V Entra registraci chybí redirect URI `http://localhost` na platformě Mobile and desktop applications | Azure Portal → App → Authentication → Add a platform |
+| Test connection hlásí `Authentication failed — could not acquire token.`, v logu `AADSTS65001: The user or administrator has not consented` | Chybí consent pro `Calendars.Read` | V API permissions klikni **Grant admin consent** |
 | Warning v logu `Encrypted token cache not available, falling back to unprotected file` | Linux bez libsecret (headless) | Nainstaluj `libsecret-1-0` nebo přijmi nešifrovanou cache (soubor `msal_…_plain.bin` v `keys/`) |
-| `Sign-in was not completed in the browser within 5 minutes` | Přihlášení v prohlížeči nebylo dokončeno do 5 minut (nebo bylo okno zavřeno) | Klikni **Otestovat připojení** znovu |
+| Test connection hlásí `Authentication failed — could not acquire token.`, v logu `Sign-in was not completed in the browser within 5 minutes` | Přihlášení v prohlížeči nebylo dokončeno do 5 minut (nebo bylo okno zavřeno) | Klikni **Otestovat připojení** znovu |
 | Plugin vrací prázdný seznam eventů | Není žádný meeting daný den — nebo timezone konflikt | Zkontroluj, že datum ve vyhledávání odpovídá místnímu času |
-| Test connection hlásí `403 Forbidden` | Delegated permission chybí nebo není admin consent | Zkontroluj API permissions v Entra |
+| Návrhy hlásí `Calendar fetch failed (403): …` | Chybí delegated permission `Calendars.Read` nebo admin consent | Zkontroluj API permissions v Entra |
 
 ---
 

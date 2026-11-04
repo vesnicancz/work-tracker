@@ -61,6 +61,8 @@ Limit se počítá od začátku poslední práce. Po uložení v Nastavení se p
 
 ## Vývoj
 
+Testy spouštějí TypeScript přímo, použij proto Node.js 24 jako CI (manifest pro běh pluginu uvádí Node.js 20).
+
 ```bash
 cd streamdeck-plugin
 npm ci

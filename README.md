@@ -21,18 +21,18 @@ WorkTracker je desktopová aplikace pro sledování času stráveného na pracov
 - **Avalonia GUI** — moderní cross‑platform rozhraní (Windows, Linux, macOS)
 - **CLI** — terminálový klient (Spectre.Console) pro rychlé ovládání z příkazové řádky
 
-Jádro aplikace je rozšiřitelné pomocí pluginů, které jsou načítané z izolovaných `AssemblyLoadContext`. Pluginy pro integraci s Jirou, Tempem, Office 365 kalendářem, Goran G3, Luxafor LED indikátorem a Stream Deckem jsou publikované jako samostatné `WorkTracker-Plugin-*.zip` balíčky — nejsou součástí balíčku aplikace, stáhni si je podle potřeby a rozbal do adresáře `plugins/` vedle spustitelného souboru (na macOS do `~/Library/Application Support/WorkTracker/plugins/`).
+Jádro aplikace je rozšiřitelné pomocí pluginů, které jsou načítané z izolovaných `AssemblyLoadContext`. Pluginy pro integraci s Jirou, Tempem, Office 365 kalendářem, Goran G3, Luxafor LED indikátorem a Stream Deckem jsou publikované jako samostatné `WorkTracker-Plugin-*.zip` balíčky — nejsou součástí balíčku aplikace, stáhni si je podle potřeby a rozbal do adresáře `plugins/` vedle spustitelného souboru (GUI na macOS do `~/Library/Application Support/WorkTracker/plugins/`).
 
 ### Hlavní funkce
 
 - Start / stop / edit / delete pracovních záznamů s automatickou detekcí Jira ticket kódu
-- Denní a týdenní přehledy, navigace „Přejít na dnešek“
+- Denní přehled s navigací „Přejít na dnešek“, odeslání worklogů za den nebo týden
 - Odesílání worklogů do externích systémů s náhledem, volbou mezi časovým a agregovaným módem (součet per den × ticket + popis) a opakovaným pokusem u selhání
 - Návrhy práce (Work Suggestions) z Jira issues a kalendářových událostí
 - Detekce a řešení překrývajících se časových intervalů (Unit of Work transakce)
 - Pomodoro timer s OS notifikacemi a volitelnou indikací na Luxafor LED
 - Oblíbené položky jako šablony pro rychlé spuštění
-- System tray ikona s toggle okna klikem, notifikacemi a rychlým menu
+- System tray ikona s toggle okna klikem a rychlým menu
 - Automatická kontrola aktualizací
 - Lokalizace (čeština, angličtina)
 
@@ -162,7 +162,7 @@ Citlivé údaje (API tokeny, hesla) aplikace ukládá přes `ISecureStorage` do 
 
 V souboru `settings.json` je na jejich místě uložený pouze placeholder `CS:{pluginId}:{fieldKey}`, nikdy plaintext. OAuth tokeny pro pluginy používající MSAL (Office 365 Calendar, Goran G3) jsou v zašifrované cache v `keys/` a při vypršení refresh tokenu je potřeba se znovu přihlásit přes **Otestovat připojení** (Office 365 Calendar v prohlížeči, Goran G3 přes device code flow).
 
-> **Pluginy v CLI:** `WorkTracker.CLI` čte enabled stav i konfiguraci pluginů ze stejného `settings.json` jako GUI, takže `send` funguje i z terminálu. Zapínají a konfigurují se ale pouze v GUI (Avalonia → **Nastavení → Pluginy**) — CLI je jen používá. Co je zrovna k dispozici, ukáže `WorkTracker.CLI providers`. Jednotlivé plugin docs v [docs/plugins/](docs/plugins/) obsahují ukázkové `appsettings.json` schéma pluginu jako referenci pro integrátory s vlastním hostem.
+> **Pluginy v CLI:** `WorkTracker.CLI` čte enabled stav i konfiguraci pluginů ze stejného `settings.json` jako GUI, takže `send` funguje i z terminálu. Samotný plugin je ale potřeba rozbalit i do složky `plugins/` vedle CLI. Zapínají a konfigurují se ale pouze v GUI (Avalonia → **Nastavení → Pluginy**) — CLI je jen používá. Co je zrovna k dispozici, ukáže `WorkTracker.CLI providers`. Plugin docs v [docs/plugins/](docs/plugins/) kromě Stream Decku obsahují ukázkové `appsettings.json` schéma pluginu jako referenci pro integrátory s vlastním hostem.
 
 > **Bezpečnost:** Necommituj API tokeny do Gitu.
 
@@ -294,4 +294,3 @@ Při hlášení bugu uveď verzi aplikace (`WorkTracker.CLI version`), OS, .NET 
 ## Kontakt
 
 - [GitHub Issues](https://github.com/vesnicancz/work-tracker/issues)
-- [GitHub Discussions](https://github.com/vesnicancz/work-tracker/discussions)
