@@ -16,7 +16,8 @@ public sealed class RemoteControlPipeServerTests : IAsyncLifetime
 
 	private static readonly TimeSpan MaxAge = TimeSpan.FromDays(3);
 
-	private readonly string _pipeName = $"worktracker-test-{Guid.NewGuid():N}";
+	// Short: on macOS the path of the socket behind the pipe can have at most 104 characters
+	private readonly string _pipeName = $"wt-{Guid.NewGuid():N}"[..11];
 	private readonly Mock<IRemoteControlHost> _host = new();
 	private readonly CancellationTokenSource _timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
 	private RemoteControlPipeServer _server = null!;
