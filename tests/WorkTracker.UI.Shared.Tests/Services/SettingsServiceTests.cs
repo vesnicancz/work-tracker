@@ -96,7 +96,7 @@ public class SettingsServiceTests : IDisposable
 	#region SaveSettings + LoadSettings round-trip
 
 	[Fact]
-	public void SaveThenLoad_PreservesValues()
+	public async Task SaveThenLoad_PreservesValues()
 	{
 		var sut = CreateSut();
 
@@ -107,7 +107,7 @@ public class SettingsServiceTests : IDisposable
 			StartWithWindows = true
 		};
 
-		sut.SaveSettings(settings);
+		await sut.SaveSettingsAsync(settings, TestContext.Current.CancellationToken);
 
 		// Create a new instance to reload from file
 		var sut2 = CreateSut();
@@ -116,7 +116,7 @@ public class SettingsServiceTests : IDisposable
 	}
 
 	[Fact]
-	public void SaveSettings_WithPluginConfigs_WritesJson()
+	public async Task SaveSettings_WithPluginConfigs_WritesJson()
 	{
 		var sut = CreateSut();
 
@@ -128,7 +128,7 @@ public class SettingsServiceTests : IDisposable
 			}
 		};
 
-		sut.SaveSettings(settings);
+		await sut.SaveSettingsAsync(settings, TestContext.Current.CancellationToken);
 
 		var json = File.ReadAllText(Path.Combine(_settingsDir, "settings.json"));
 		json.Should().Contain("tempo");
@@ -148,7 +148,7 @@ public class SettingsServiceTests : IDisposable
 
 		await sut.SaveSettingsAsync(settings, TestContext.Current.CancellationToken);
 
-		var loaded = await sut.LoadSettingsAsync(TestContext.Current.CancellationToken);
+		var loaded = CreateSut().Settings;
 		loaded.Theme.Should().Be("Async Theme");
 	}
 
@@ -167,12 +167,12 @@ public class SettingsServiceTests : IDisposable
 	}
 
 	[Fact]
-	public void SaveSettings_UpdatesCache()
+	public async Task SaveSettings_UpdatesCache()
 	{
 		var sut = CreateSut();
 
 		var newSettings = new ApplicationSettings { Theme = "Updated" };
-		sut.SaveSettings(newSettings);
+		await sut.SaveSettingsAsync(newSettings, TestContext.Current.CancellationToken);
 
 		sut.Settings.Theme.Should().Be("Updated");
 	}
@@ -229,11 +229,11 @@ public class SettingsServiceTests : IDisposable
 	}
 
 	[Fact]
-	public void SaveSettings_Language_RoundTrips()
+	public async Task SaveSettings_Language_RoundTrips()
 	{
 		var sut = CreateSut();
 
-		sut.SaveSettings(new ApplicationSettings { Language = "cs" });
+		await sut.SaveSettingsAsync(new ApplicationSettings { Language = "cs" }, TestContext.Current.CancellationToken);
 
 		CreateSut().Settings.Language.Should().Be("cs");
 	}
@@ -317,7 +317,7 @@ public class SettingsServiceTests : IDisposable
 	}
 
 	[Fact]
-	public void SaveSettings_NoPluginsInRequest_KeepsStoredPluginState()
+	public async Task SaveSettings_NoPluginsInRequest_KeepsStoredPluginState()
 	{
 		WriteSettingsFile(SettingsWithPlugins(("tempo.worklog", "CS:tempo.worklog:ApiToken", true)));
 		var sut = CreateSut();
@@ -326,7 +326,7 @@ public class SettingsServiceTests : IDisposable
 		saved.PluginConfigurations = new Dictionary<string, Dictionary<string, string>>();
 		saved.EnabledPlugins = new Dictionary<string, bool>();
 
-		sut.SaveSettings(saved);
+		await sut.SaveSettingsAsync(saved, TestContext.Current.CancellationToken);
 
 		var onDisk = JsonSerializer.Deserialize<ApplicationSettings>(
 			File.ReadAllText(Path.Combine(_settingsDir, "settings.json")))!;
@@ -381,21 +381,6 @@ public class SettingsServiceTests : IDisposable
 		var backup = await File.ReadAllTextAsync(Path.Combine(_settingsDir, "settings.json.bak"), TestContext.Current.CancellationToken);
 		backup.Should().NotContain("plaintext-token");
 
-		sut.Settings.PluginConfigurations["tempo.worklog"]["ApiToken"].Should().Be("plaintext-token");
-	}
-
-	[Fact]
-	public void SaveSettings_LiveSettingsObject_KeepsSecretsProtected()
-	{
-		_mockSecureStorage.Setup(s => s.Unprotect("CS:tempo.worklog:ApiToken")).Returns("plaintext-token");
-		WriteSettingsFile(SettingsWithPlugins(("tempo.worklog", "CS:tempo.worklog:ApiToken", true)));
-		var sut = CreateSut();
-
-		sut.SaveSettings(sut.Settings);
-
-		var raw = File.ReadAllText(Path.Combine(_settingsDir, "settings.json"));
-		raw.Should().Contain("CS:tempo.worklog:ApiToken");
-		raw.Should().NotContain("plaintext-token");
 		sut.Settings.PluginConfigurations["tempo.worklog"]["ApiToken"].Should().Be("plaintext-token");
 	}
 

@@ -41,15 +41,14 @@ public sealed class SettingsService : ISettingsService, IDisposable
 
 	public ApplicationSettings Settings => _settings;
 
-	public ApplicationSettings LoadSettings()
+	private ApplicationSettings LoadSettings()
 	{
 		try
 		{
 			if (!File.Exists(_settingsFilePath))
 			{
 				_logger.LogInformation("Settings file not found, using defaults");
-				_settings = new ApplicationSettings();
-				return _settings;
+				return new ApplicationSettings();
 			}
 
 			var json = File.ReadAllText(_settingsFilePath);
@@ -58,57 +57,18 @@ public sealed class SettingsService : ISettingsService, IDisposable
 			if (settings == null)
 			{
 				_logger.LogWarning("Failed to deserialize settings from {Path}, using defaults", _settingsFilePath);
-				_settings = new ApplicationSettings();
-				return _settings;
+				return new ApplicationSettings();
 			}
 
 			_logger.LogInformation("Settings loaded successfully");
 			CaptureStoredPluginState(settings);
 			UnprotectPluginConfigurations(settings);
-			_settings = settings;
-			return _settings;
+			return settings;
 		}
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Error loading settings, using defaults");
-			_settings = new ApplicationSettings();
-			return _settings;
-		}
-	}
-
-	public async Task<ApplicationSettings> LoadSettingsAsync(CancellationToken cancellationToken = default)
-	{
-		try
-		{
-			if (!File.Exists(_settingsFilePath))
-			{
-				_logger.LogInformation("Settings file not found, using defaults");
-				_settings = new ApplicationSettings();
-				return _settings;
-			}
-
-			var json = await File.ReadAllTextAsync(_settingsFilePath, cancellationToken);
-			var settings = JsonSerializer.Deserialize<ApplicationSettings>(json);
-
-			if (settings == null)
-			{
-				_logger.LogWarning("Failed to deserialize settings from {Path}, using defaults", _settingsFilePath);
-				_settings = new ApplicationSettings();
-				return _settings;
-			}
-
-			_logger.LogInformation("Settings loaded successfully");
-			CaptureStoredPluginState(settings);
-			UnprotectPluginConfigurations(settings);
-			_settings = settings;
-			return _settings;
-		}
-		catch (OperationCanceledException) { throw; }
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Error loading settings, using defaults");
-			_settings = new ApplicationSettings();
-			return _settings;
+			return new ApplicationSettings();
 		}
 	}
 
@@ -137,39 +97,8 @@ public sealed class SettingsService : ISettingsService, IDisposable
 		}
 	}
 
-	public void SaveSettings(ApplicationSettings settings)
-	{
-		// Serialize with the async path so concurrent sync + async callers don't race on the file.
-		_writeLock.Wait();
-		try
-		{
-			RestorePluginStateNobodySpokeFor(settings);
-
-			var fileSettings = CreateFileSettings(settings);
-			var json = JsonSerializer.Serialize(fileSettings, WriteOptions);
-			WriteAtomically(json);
-
-			CaptureStoredPluginState(fileSettings);
-			UnprotectPluginConfigurations(settings);
-			_settings = settings;
-			_logger.LogInformation("Settings saved successfully");
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Error saving settings");
-			throw;
-		}
-		finally
-		{
-			_writeLock.Release();
-		}
-	}
-
 	public async Task SaveSettingsAsync(ApplicationSettings settings, CancellationToken cancellationToken = default)
 	{
-		// ConfigureAwait(false) on both awaits: prevents deadlocks when a sync SaveSettings call
-		// on a UI thread is waiting on _writeLock while this async path's continuations would
-		// otherwise need to marshal back to that same (blocked) UI context.
 		await _writeLock.WaitAsync(cancellationToken).ConfigureAwait(false);
 		try
 		{
@@ -289,13 +218,6 @@ public sealed class SettingsService : ISettingsService, IDisposable
 		}
 
 		return fileSettings;
-	}
-
-	private void WriteAtomically(string json)
-	{
-		var tempPath = _settingsFilePath + ".tmp";
-		File.WriteAllText(tempPath, json);
-		SwapIn(tempPath);
 	}
 
 	private async Task WriteAtomicallyAsync(string json, CancellationToken cancellationToken)
