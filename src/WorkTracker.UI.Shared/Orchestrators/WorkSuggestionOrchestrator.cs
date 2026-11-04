@@ -63,7 +63,8 @@ public class WorkSuggestionOrchestrator : IWorkSuggestionOrchestrator
 					IconHint = plugin.Metadata.IconName ?? "LightbulbOutline"
 				};
 			}
-			catch (OperationCanceledException) { throw; }
+			// Only the caller's cancellation ends the whole call. A plugin's own timeout is that plugin's failure.
+			catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
 			catch (Exception ex)
 			{
 				_logger.LogError(ex, "Plugin {Name} threw an exception: {Message}", plugin.Metadata.Name, ex.Message);
@@ -110,7 +111,7 @@ public class WorkSuggestionOrchestrator : IWorkSuggestionOrchestrator
 				.ThenBy(s => s.Title)
 				.ToList();
 		}
-		catch (OperationCanceledException) { throw; }
+		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Search in plugin {Name} threw an exception", plugin.Metadata.Name);

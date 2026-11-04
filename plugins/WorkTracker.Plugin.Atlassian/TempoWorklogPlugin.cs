@@ -332,6 +332,10 @@ public sealed class TempoWorklogPlugin(IHttpClientFactory httpClientFactory, ILo
 
 			return PluginResult<bool>.Failure(lastError ?? "Upload failed", PluginErrorCategory.Network);
 		}
+		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+		{
+			throw;
+		}
 		catch (Exception ex)
 		{
 			Logger.LogError(ex, "Error uploading worklog to Tempo");
@@ -412,6 +416,10 @@ public sealed class TempoWorklogPlugin(IHttpClientFactory httpClientFactory, ILo
 
 			return PluginResult<IEnumerable<PluginWorklogEntry>>.Success(worklogs);
 		}
+		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+		{
+			throw;
+		}
 		catch (Exception ex)
 		{
 			Logger.LogError(ex, "Error getting worklogs from Tempo");
@@ -462,6 +470,10 @@ public sealed class TempoWorklogPlugin(IHttpClientFactory httpClientFactory, ILo
 
 			Logger.LogWarning("Could not parse issue ID from response for {IssueKey}", issueKey);
 			return null;
+		}
+		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+		{
+			throw;
 		}
 		catch (Exception ex)
 		{
