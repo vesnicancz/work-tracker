@@ -145,10 +145,11 @@ public sealed class SettingsService : ISettingsService, IDisposable
 		{
 			RestorePluginStateNobodySpokeFor(settings);
 
-			var json = JsonSerializer.Serialize(settings, WriteOptions);
+			var fileSettings = CreateFileSettings(settings);
+			var json = JsonSerializer.Serialize(fileSettings, WriteOptions);
 			WriteAtomically(json);
 
-			CaptureStoredPluginState(settings);
+			CaptureStoredPluginState(fileSettings);
 			UnprotectPluginConfigurations(settings);
 			_settings = settings;
 			_logger.LogInformation("Settings saved successfully");
@@ -174,10 +175,11 @@ public sealed class SettingsService : ISettingsService, IDisposable
 		{
 			RestorePluginStateNobodySpokeFor(settings);
 
-			var json = JsonSerializer.Serialize(settings, WriteOptions);
+			var fileSettings = CreateFileSettings(settings);
+			var json = JsonSerializer.Serialize(fileSettings, WriteOptions);
 			await WriteAtomicallyAsync(json, cancellationToken).ConfigureAwait(false);
 
-			CaptureStoredPluginState(settings);
+			CaptureStoredPluginState(fileSettings);
 			UnprotectPluginConfigurations(settings);
 			_settings = settings;
 			_logger.LogInformation("Settings saved successfully");
@@ -253,6 +255,40 @@ public sealed class SettingsService : ISettingsService, IDisposable
 				settings.EnabledPlugins[pluginId] = storedEnabled;
 			}
 		}
+	}
+
+	/// <summary>
+	/// Builds the copy that goes to disk, with every value that is just the decrypted form of a
+	/// stored placeholder put back to that placeholder.
+	/// <para>
+	/// <see cref="Settings"/> holds decrypted values, and callers that only change an unrelated field
+	/// save that same object back. Working on a copy keeps the object in use decrypted throughout, so
+	/// a plugin initialized during the save never receives a placeholder instead of its token.
+	/// </para>
+	/// </summary>
+	private ApplicationSettings CreateFileSettings(ApplicationSettings settings)
+	{
+		var fileSettings = settings.Clone();
+
+		foreach (var (pluginId, config) in fileSettings.PluginConfigurations)
+		{
+			if (!_storedPluginConfigurations.TryGetValue(pluginId, out var storedConfig))
+			{
+				continue;
+			}
+
+			foreach (var key in config.Keys.ToList())
+			{
+				if (storedConfig.TryGetValue(key, out var storedValue)
+					&& storedValue != config[key]
+					&& _secureStorage.Unprotect(storedValue) == config[key])
+				{
+					config[key] = storedValue;
+				}
+			}
+		}
+
+		return fileSettings;
 	}
 
 	private void WriteAtomically(string json)

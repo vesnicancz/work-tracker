@@ -358,6 +358,77 @@ public class SettingsServiceTests : IDisposable
 		raw.Should().NotContain("plaintext-token");
 	}
 
+	/// <summary>
+	/// The submit dialog and the suggestions window change one field on the live settings object and
+	/// save it. That object holds decrypted values, which used to reach the file and its backup.
+	/// </summary>
+	[Fact]
+	public async Task SaveSettingsAsync_LiveSettingsObject_KeepsSecretsProtected()
+	{
+		_mockSecureStorage.Setup(s => s.Unprotect("CS:tempo.worklog:ApiToken")).Returns("plaintext-token");
+		WriteSettingsFile(SettingsWithPlugins(("tempo.worklog", "CS:tempo.worklog:ApiToken", true)));
+		var sut = CreateSut();
+
+		var settings = sut.Settings;
+		settings.LastSubmissionProviderId = "tempo.worklog";
+		await sut.SaveSettingsAsync(settings, TestContext.Current.CancellationToken);
+		await sut.SaveSettingsAsync(settings, TestContext.Current.CancellationToken);
+
+		var raw = await File.ReadAllTextAsync(Path.Combine(_settingsDir, "settings.json"), TestContext.Current.CancellationToken);
+		raw.Should().Contain("CS:tempo.worklog:ApiToken");
+		raw.Should().NotContain("plaintext-token");
+
+		var backup = await File.ReadAllTextAsync(Path.Combine(_settingsDir, "settings.json.bak"), TestContext.Current.CancellationToken);
+		backup.Should().NotContain("plaintext-token");
+
+		sut.Settings.PluginConfigurations["tempo.worklog"]["ApiToken"].Should().Be("plaintext-token");
+	}
+
+	[Fact]
+	public void SaveSettings_LiveSettingsObject_KeepsSecretsProtected()
+	{
+		_mockSecureStorage.Setup(s => s.Unprotect("CS:tempo.worklog:ApiToken")).Returns("plaintext-token");
+		WriteSettingsFile(SettingsWithPlugins(("tempo.worklog", "CS:tempo.worklog:ApiToken", true)));
+		var sut = CreateSut();
+
+		sut.SaveSettings(sut.Settings);
+
+		var raw = File.ReadAllText(Path.Combine(_settingsDir, "settings.json"));
+		raw.Should().Contain("CS:tempo.worklog:ApiToken");
+		raw.Should().NotContain("plaintext-token");
+		sut.Settings.PluginConfigurations["tempo.worklog"]["ApiToken"].Should().Be("plaintext-token");
+	}
+
+	/// <summary>
+	/// A value the caller actually changed is not the stored secret any more, so the old placeholder
+	/// must not silently win over it.
+	/// </summary>
+	[Fact]
+	public async Task SaveSettingsAsync_ChangedValue_IsNotReplacedByStoredPlaceholder()
+	{
+		_mockSecureStorage.Setup(s => s.Unprotect("CS:tempo.worklog:ApiToken")).Returns("plaintext-token");
+		WriteSettingsFile(SettingsWithPlugins(("tempo.worklog", "CS:tempo.worklog:ApiToken", true)));
+		var sut = CreateSut();
+
+		var saved = sut.Settings.Clone();
+		saved.PluginConfigurations["tempo.worklog"]["ApiToken"] = "CS:tempo.worklog:ApiToken2";
+		await sut.SaveSettingsAsync(saved, TestContext.Current.CancellationToken);
+
+		var raw = await File.ReadAllTextAsync(Path.Combine(_settingsDir, "settings.json"), TestContext.Current.CancellationToken);
+		raw.Should().Contain("CS:tempo.worklog:ApiToken2");
+	}
+
+	[Fact]
+	public async Task SaveSettingsAsync_PluginWithNullConfiguration_StillSaves()
+	{
+		WriteRawSettingsFile("""{ "PluginConfigurations": { "tempo.worklog": null } }""");
+		var sut = CreateSut();
+
+		await sut.SaveSettingsAsync(sut.Settings, TestContext.Current.CancellationToken);
+
+		File.Exists(Path.Combine(_settingsDir, "settings.json.bak")).Should().BeTrue();
+	}
+
 	[Fact]
 	public async Task SaveSettingsAsync_ExistingFile_KeepsPreviousContentsAsBackup()
 	{

@@ -131,7 +131,7 @@ public class ApplicationSettings : PluginSettings
 		CheckForUpdates = CheckForUpdates,
 		PluginConfigurations = PluginConfigurations.ToDictionary(
 			pair => pair.Key,
-			pair => new Dictionary<string, string>(pair.Value)),
+			pair => pair.Value is null ? new Dictionary<string, string>() : new Dictionary<string, string>(pair.Value)),
 		EnabledPlugins = new Dictionary<string, bool>(EnabledPlugins),
 		FavoriteWorkItems = FavoriteWorkItems.Select(item => new FavoriteWorkItem
 		{
