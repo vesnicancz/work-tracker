@@ -12,6 +12,7 @@ public sealed class WorkEntryService : IWorkEntryService
 	private const string InvalidEntryError = "Invalid work entry data. Both ticket ID and description cannot be empty.";
 	private const string InvalidEntryAfterUpdateError = "Invalid work entry data after update. Both ticket ID and description cannot be empty, and end time must be after start time.";
 	private const string OverlapError = "This work entry overlaps with an existing entry. Please check your times.";
+	private const string PlanOutdatedError = "Other work entries changed in the meantime. Nothing was saved, please try again.";
 
 	private readonly IWorkEntryRepository _repository;
 	private readonly IUnitOfWorkFactory _unitOfWorkFactory;
@@ -237,17 +238,19 @@ public sealed class WorkEntryService : IWorkEntryService
 		return await _repository.GetByDateRangeAsync(startDate, endDate, cancellationToken);
 	}
 
-	public async Task<OverlapResolutionPlan> ComputeOverlapResolutionAsync(int? excludeEntryId, DateTime startTime, DateTime? endTime, CancellationToken cancellationToken)
+	public Task<OverlapResolutionPlan> ComputeOverlapResolutionAsync(int? excludeEntryId, DateTime startTime, DateTime? endTime, CancellationToken cancellationToken)
 	{
-		var roundedStart = DateTimeHelper.RoundToMinute(startTime);
-		var roundedEnd = DateTimeHelper.RoundToMinute(endTime);
+		return BuildOverlapPlanAsync(_repository, excludeEntryId, DateTimeHelper.RoundToMinute(startTime), DateTimeHelper.RoundToMinute(endTime), cancellationToken);
+	}
 
+	private static async Task<OverlapResolutionPlan> BuildOverlapPlanAsync(IWorkEntryRepository repository, int? excludeEntryId, DateTime roundedStart, DateTime? roundedEnd, CancellationToken cancellationToken)
+	{
 		// For the query: when endTime is null (active/ongoing entry), use +1 minute
 		// to detect overlaps at the exact start time (predicate uses StartTime < end)
 		// while avoiding matching all future entries
 		var queryEnd = roundedEnd ?? roundedStart.AddMinutes(1);
 
-		var overlapping = await _repository.GetOverlappingEntriesAsync(excludeEntryId, roundedStart, queryEnd, cancellationToken);
+		var overlapping = await repository.GetOverlappingEntriesAsync(excludeEntryId, roundedStart, queryEnd, cancellationToken);
 
 		if (overlapping.Count == 0)
 		{
@@ -260,6 +263,23 @@ public sealed class WorkEntryService : IWorkEntryService
 		var adjustments = OverlapResolver.Resolve(overlapping, roundedStart, candidateEnd);
 
 		return new OverlapResolutionPlan { Adjustments = adjustments };
+	}
+
+	/// <summary>
+	/// A plan is computed before the user confirms it, and the entries can change while the question is
+	/// open: the CLI, a remote controller or the Pomodoro timer don't wait for the dialog. Applying it
+	/// then would delete or trim entries by what they used to be, so the transaction checks it first.
+	/// </summary>
+	private async Task<bool> IsPlanStillValidAsync(IWorkEntryRepository repository, OverlapResolutionPlan plan, int? excludeEntryId, DateTime roundedStart, DateTime? roundedEnd, CancellationToken cancellationToken)
+	{
+		var currentPlan = await BuildOverlapPlanAsync(repository, excludeEntryId, roundedStart, roundedEnd, cancellationToken);
+		if (currentPlan.Adjustments.SequenceEqual(plan.Adjustments))
+		{
+			return true;
+		}
+
+		_logger.LogWarning("Overlap resolution plan is out of date ({StartTime} - {EndTime}), nothing was changed", roundedStart, roundedEnd);
+		return false;
 	}
 
 	public async Task<Result<WorkEntry>> CreateWithOverlapResolutionAsync(
@@ -283,6 +303,11 @@ public sealed class WorkEntryService : IWorkEntryService
 
 		// All adjustments + new entry in a single transaction
 		await using var uow = await _unitOfWorkFactory.CreateAsync(cancellationToken);
+
+		if (!await IsPlanStillValidAsync(uow.WorkEntries, plan, null, roundedStart, roundedEnd, cancellationToken))
+		{
+			return Result.Failure<WorkEntry>(PlanOutdatedError);
+		}
 
 		var applyResult = await ApplyAdjustmentsAsync(uow.WorkEntries, plan, now, cancellationToken);
 		if (applyResult.IsFailure)
@@ -316,11 +341,14 @@ public sealed class WorkEntryService : IWorkEntryService
 			return Result.Failure<WorkEntry>($"Work entry with ID {id} not found");
 		}
 
+		var roundedStart = DateTimeHelper.RoundToMinute(startTime);
+		var roundedEnd = DateTimeHelper.RoundToMinute(endTime);
+
 		// Validate the updated fields before applying any adjustments to avoid partial state changes
 		workEntry.UpdateFields(
 			ticketId,
-			DateTimeHelper.RoundToMinute(startTime),
-			DateTimeHelper.RoundToMinute(endTime),
+			roundedStart,
+			roundedEnd,
 			description,
 			DateTimeHelper.RoundToMinute(now));
 
@@ -328,6 +356,11 @@ public sealed class WorkEntryService : IWorkEntryService
 		{
 			_logger.LogWarning("Invalid work entry data after update with resolution for entry {Id}, ticket {TicketId} ({StartTime} - {EndTime})", id, ticketId, workEntry.StartTime, workEntry.EndTime);
 			return Result.Failure<WorkEntry>(InvalidEntryAfterUpdateError);
+		}
+
+		if (!await IsPlanStillValidAsync(uow.WorkEntries, plan, id, roundedStart, roundedEnd, cancellationToken))
+		{
+			return Result.Failure<WorkEntry>(PlanOutdatedError);
 		}
 
 		// Apply adjustments to overlapping entries

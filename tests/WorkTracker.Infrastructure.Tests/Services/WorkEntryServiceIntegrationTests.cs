@@ -179,4 +179,36 @@ public sealed class WorkEntryServiceIntegrationTests : IAsyncLifetime
 		all.Single(e => e.TicketId == "PROJ-EXISTING").EndTime.Should().Be(new DateTime(2026, 1, 15, 10, 0, 0));
 		all.Should().Contain(e => e.TicketId == "PROJ-NEW");
 	}
+
+	[Fact]
+	public async Task CreateWithOverlapResolutionAsync_EntryChangedAfterThePlan_LeavesTheDatabaseAlone_OnRealDb()
+	{
+		// Arrange — the plan trims this entry, then something else moves its end while the question is open
+		var start = new DateTime(2026, 1, 15, 10, 0, 0);
+		var end = new DateTime(2026, 1, 15, 12, 0, 0);
+		var existing = WorkEntry.Create("PROJ-EXISTING", new DateTime(2026, 1, 15, 8, 0, 0), new DateTime(2026, 1, 15, 11, 0, 0), "Long task", DateTime.Now);
+		using (var seed = _fixture.CreateVerificationContext())
+		{
+			await seed.WorkEntries.AddAsync(existing, TestContext.Current.CancellationToken);
+			await seed.SaveChangesAsync(TestContext.Current.CancellationToken);
+		}
+
+		var plan = await _service.ComputeOverlapResolutionAsync(null, start, end, TestContext.Current.CancellationToken);
+		var movedEnd = new DateTime(2026, 1, 15, 11, 30, 0);
+		using (var other = _fixture.CreateVerificationContext())
+		{
+			var entry = await other.WorkEntries.SingleAsync(TestContext.Current.CancellationToken);
+			entry.AdjustEndTime(movedEnd, DateTime.Now);
+			await other.SaveChangesAsync(TestContext.Current.CancellationToken);
+		}
+
+		// Act
+		var result = await _service.CreateWithOverlapResolutionAsync("PROJ-NEW", start, "New task", end, plan, TestContext.Current.CancellationToken);
+
+		// Assert
+		result.IsFailure.Should().BeTrue();
+		using var verify = _fixture.CreateVerificationContext();
+		var all = await verify.WorkEntries.AsNoTracking().ToListAsync(TestContext.Current.CancellationToken);
+		all.Should().ContainSingle().Which.EndTime.Should().Be(movedEnd);
+	}
 }
