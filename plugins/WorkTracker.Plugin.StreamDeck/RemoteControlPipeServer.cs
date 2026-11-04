@@ -117,13 +117,26 @@ internal sealed class RemoteControlPipeServer(string pipeName, IRemoteControlHos
 		_refreshState = () => stateChanges.Writer.TryWrite(true);
 		stateChanges.Writer.TryWrite(true);
 		var pushing = PushStateAsync(pipe, writeLock, stateChanges.Reader, connection.Token);
+		var suggestionRequests = new List<Task>();
 
 		try
 		{
 			using var reader = new StreamReader(pipe, leaveOpen: true);
 			while (await reader.ReadLineAsync(cancellationToken) is { } line)
 			{
-				var response = await HandleLineAsync(line, cancellationToken);
+				var request = ParseRequest(line);
+
+				// Suggestions can take many seconds. A press in the meantime must not wait behind them:
+				// the client would give up on it and report a failure, and it would still run later.
+				// Responses carry the id of their request, so they may arrive in any order.
+				if (request?.Command == Commands.GetSuggestions)
+				{
+					suggestionRequests.RemoveAll(task => task.IsCompleted);
+					suggestionRequests.Add(RespondToSuggestionsAsync(pipe, writeLock, request, connection.Token));
+					continue;
+				}
+
+				var response = await HandleRequestAsync(request, cancellationToken);
 				await WriteAsync(pipe, writeLock, response, cancellationToken);
 			}
 		}
@@ -132,7 +145,26 @@ internal sealed class RemoteControlPipeServer(string pipeName, IRemoteControlHos
 			host.StateChanged -= OnStateChanged;
 			_refreshState = null;
 			await connection.CancelAsync();
+			await Task.WhenAll(suggestionRequests);
 			await pushing;
+		}
+	}
+
+	private async Task RespondToSuggestionsAsync(Stream pipe, SemaphoreSlim writeLock, RemoteRequest request, CancellationToken cancellationToken)
+	{
+		try
+		{
+			var response = await HandleRequestAsync(request, cancellationToken);
+			await WriteAsync(pipe, writeLock, response, cancellationToken);
+		}
+		catch (OperationCanceledException)
+		{
+			// The connection is over
+		}
+		catch (IOException ex)
+		{
+			// The read loop sees the broken pipe too and ends the connection
+			logger.LogDebug(ex, "Stream Deck went away while sending suggestions");
 		}
 	}
 
@@ -165,19 +197,21 @@ internal sealed class RemoteControlPipeServer(string pipeName, IRemoteControlHos
 		}
 	}
 
-	private async Task<RemoteResponse> HandleLineAsync(string line, CancellationToken cancellationToken)
+	private RemoteRequest? ParseRequest(string line)
 	{
-		RemoteRequest? request;
 		try
 		{
-			request = JsonSerializer.Deserialize<RemoteRequest>(line, JsonOptions);
+			return JsonSerializer.Deserialize<RemoteRequest>(line, JsonOptions);
 		}
 		catch (JsonException ex)
 		{
 			logger.LogWarning(ex, "Received malformed request from Stream Deck");
-			return new RemoteResponse(null, false, "Malformed request.");
+			return null;
 		}
+	}
 
+	private async Task<RemoteResponse> HandleRequestAsync(RemoteRequest? request, CancellationToken cancellationToken)
+	{
 		if (request == null)
 		{
 			return new RemoteResponse(null, false, "Malformed request.");
@@ -249,13 +283,12 @@ internal sealed class RemoteControlPipeServer(string pipeName, IRemoteControlHos
 
 	private static async Task WriteAsync<T>(Stream pipe, SemaphoreSlim writeLock, T message, CancellationToken cancellationToken)
 	{
-		var bytes = JsonSerializer.SerializeToUtf8Bytes(message, JsonOptions);
+		byte[] line = [.. JsonSerializer.SerializeToUtf8Bytes(message, JsonOptions), (byte)'\n'];
 
 		await writeLock.WaitAsync(cancellationToken);
 		try
 		{
-			await pipe.WriteAsync(bytes, cancellationToken);
-			pipe.WriteByte((byte)'\n');
+			await pipe.WriteAsync(line, cancellationToken);
 			await pipe.FlushAsync(cancellationToken);
 		}
 		finally

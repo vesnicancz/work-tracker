@@ -2,6 +2,11 @@ import net from "node:net";
 
 import type { Command, CommandArguments, CommandResult, RemoteState, ServerMessage } from "./protocol";
 
+/**
+ * Raised, here and in RemoteControlProtocol.cs, by a change the other side can't cope with.
+ */
+export const PROTOCOL_VERSION = 1;
+
 const RECONNECT_DELAY_MS = 2000;
 const COMMAND_TIMEOUT_MS = 10000;
 
@@ -30,6 +35,7 @@ export class WorkTrackerClient {
 	#buffer = "";
 	#nextId = 1;
 	#stopped = false;
+	#incompatible = false;
 
 	state: RemoteState | null = null;
 
@@ -62,6 +68,10 @@ export class WorkTrackerClient {
 	}
 
 	send(command: Command, args: CommandArguments = {}, timeoutMs: number = COMMAND_TIMEOUT_MS): Promise<CommandResult> {
+		if (this.#incompatible) {
+			return Promise.resolve({ success: false, error: "WorkTracker and this plugin are different versions. Update both." });
+		}
+
 		const socket = this.#socket;
 		if (!socket || this.state === null) {
 			return Promise.resolve({ success: false, error: "WorkTracker is not connected." });
@@ -100,12 +110,32 @@ export class WorkTrackerClient {
 		while ((newline = this.#buffer.indexOf("\n")) >= 0) {
 			const line = this.#buffer.slice(0, newline);
 			this.#buffer = this.#buffer.slice(newline + 1);
-			this.#onMessage(JSON.parse(line) as ServerMessage);
+			this.#onLine(line);
 		}
+	}
+
+	#onLine(line: string): void {
+		let message: ServerMessage;
+		try {
+			message = JSON.parse(line) as ServerMessage;
+		} catch {
+			// Thrown here it would take the whole plugin down. A command waiting for it times out.
+			return;
+		}
+
+		this.#onMessage(message);
 	}
 
 	#onMessage(message: ServerMessage): void {
 		if (message.type === "state") {
+			if (message.protocol !== undefined && message.protocol !== PROTOCOL_VERSION) {
+				this.#incompatible = true;
+				if (this.state !== null) {
+					this.#setState(null);
+				}
+				return;
+			}
+
 			const { activeWork, lastWork, pomodoro } = message;
 			this.#setState({ activeWork, lastWork, pomodoro });
 			return;
@@ -122,6 +152,7 @@ export class WorkTrackerClient {
 
 	#onClose(): void {
 		this.#socket = null;
+		this.#incompatible = false;
 
 		for (const pending of this.#pending.values()) {
 			clearTimeout(pending.timeout);

@@ -100,7 +100,9 @@ Přibalené profily jsou v `com.vesnicancz.worktracker.sdPlugin/profiles/`. `Wor
 
 Named pipe `worktracker-streamdeck` (na macOS a Linuxu socket `worktracker-streamdeck.sock` v dočasném adresáři), přístupná jen aktuálnímu uživateli. Klient je vždy jeden, nový se připojí, až se ten předchozí odpojí. Zprávy jsou JSON objekty, jeden na řádek.
 
-Protokol je popsaný na dvou místech, která je potřeba udržovat v souladu: `RemoteControlProtocol.cs` a `streamdeck-plugin/src/protocol.ts`.
+Protokol je popsaný na dvou místech, která je potřeba udržovat v souladu: `RemoteControlProtocol.cs` a `streamdeck-plugin/src/protocol.ts`. Hlídají je ukázkové zprávy v `streamdeck-plugin/test/fixtures/protocol`, které čtou testy obou stran. Změna, kterou druhá strana nezvládne, zvyšuje číslo verze protokolu (`Version` v `RemoteControlProtocol.cs`, `PROTOCOL_VERSION` v `client.ts`). Server ji posílá ve zprávě se stavem a klient jiné číslo odmítne s hláškou, že je potřeba aktualizovat obě části.
+
+Načítání návrhů běží mimo čtení příkazů, takže stisk ovladače na něj nečeká. Odpovědi se k příkazům párují podle `id` a můžou přijít v jiném pořadí.
 
 **Příkaz od klienta:**
 

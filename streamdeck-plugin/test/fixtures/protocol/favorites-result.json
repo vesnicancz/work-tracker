@@ -1,0 +1,11 @@
+{
+	"type": "result",
+	"id": 4,
+	"success": true,
+	"error": null,
+	"suggestions": null,
+	"favorites": [
+		{ "name": "Support", "ticketId": "PROJ-2", "description": null, "showAsTemplate": false },
+		{ "name": "Meeting", "ticketId": null, "description": "Weekly", "showAsTemplate": true }
+	]
+}

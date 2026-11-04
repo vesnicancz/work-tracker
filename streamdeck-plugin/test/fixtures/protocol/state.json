@@ -1,0 +1,7 @@
+{
+	"type": "state",
+	"protocol": 1,
+	"activeWork": { "ticketId": "PROJ-1", "description": "Coding", "startedAt": "2026-11-04T09:30:00+01:00" },
+	"lastWork": null,
+	"pomodoro": { "phase": "shortBreak", "remainingSeconds": 90, "completedPomodoros": 2, "pomodorosBeforeLongBreak": 4 }
+}

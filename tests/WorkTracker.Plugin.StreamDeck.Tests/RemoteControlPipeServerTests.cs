@@ -203,6 +203,43 @@ public sealed class RemoteControlPipeServerTests : IAsyncLifetime
 	}
 
 	[Fact]
+	public async Task GetSuggestions_StillLoading_DoesNotHoldUpACommand()
+	{
+		var suggestions = new TaskCompletionSource<RemoteSuggestions>();
+		_host.Setup(h => h.GetSuggestionsAsync(It.IsAny<CancellationToken>())).Returns(suggestions.Task);
+		_host.Setup(h => h.StopWorkAsync(It.IsAny<CancellationToken>())).ReturnsAsync(PluginResult.Success());
+		await ReadMessageAsync();
+
+		await _client.WriteAsync("""{"id":1,"command":"getSuggestions"}"""u8.ToArray().Concat("\n"u8.ToArray()).ToArray(), _timeout.Token);
+		await _client.FlushAsync(_timeout.Token);
+
+		var commandResponse = await SendAsync("""{"id":2,"command":"stopWork"}""");
+		commandResponse.GetProperty("id").GetInt64().Should().Be(2);
+
+		suggestions.SetResult(new RemoteSuggestions([], []));
+		var suggestionsResponse = await ReadMessageAsync();
+		suggestionsResponse.GetProperty("id").GetInt64().Should().Be(1);
+	}
+
+	[Fact]
+	public async Task GetSuggestions_ClientLeavesWhileLoading_ServerServesTheNextClient()
+	{
+		_host.Setup(h => h.GetSuggestionsAsync(It.IsAny<CancellationToken>()))
+			.Returns(async (CancellationToken token) =>
+			{
+				await Task.Delay(Timeout.Infinite, token);
+				return new RemoteSuggestions([], []);
+			});
+		await ReadMessageAsync();
+		await _client.WriteAsync("""{"id":1,"command":"getSuggestions"}"""u8.ToArray().Concat("\n"u8.ToArray()).ToArray(), _timeout.Token);
+		await _client.FlushAsync(_timeout.Token);
+
+		var state = await ReconnectAsync();
+
+		state.GetProperty("type").GetString().Should().Be("state");
+	}
+
+	[Fact]
 	public async Task GetSuggestions_HostException_IsReportedToClient()
 	{
 		_host.Setup(h => h.GetSuggestionsAsync(It.IsAny<CancellationToken>())).ThrowsAsync(new OperationCanceledException("Too slow."));
