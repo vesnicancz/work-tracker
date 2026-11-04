@@ -112,7 +112,7 @@ Pokud je plugin už připojený k MCP serveru, kroky 1 a 2 se přeskočí.
    - Pošle přes `_mcpClient.CallToolAsync("create_my_timesheet_item", arguments, ct)`.
    - Pokud server vrátí success, inkrementuje `SuccessfulEntries`.
    - Pokud fail, přidá do `Errors` s `ErrorMessage` a `Worklog`.
-3. Záznamy se zpracovávají seskupené po dnech: po uploadu záznamů jednoho dne plugin zavolá `submit_my_timesheet` s argumentem `date` pro daný den. Pokud některé záznamy dne selhaly, submit se přeskočí a den se odešle až po úspěšném opakování. Selhání submitu se přidá do `Errors` jako `Timesheet submit failed for yyyy-MM-dd: …`.
+3. Záznamy se zpracovávají seskupené po dnech: po uploadu záznamů jednoho dne plugin zavolá `submit_my_timesheet` s argumentem `date` pro daný den. Každý den se posuzuje samostatně. Pokud některé jeho záznamy selhaly, submit se přeskočí a den se uzavře, až po opravě projde tlačítko **ODESLAT JEN NEÚSPĚŠNÉ**; ostatních dnů se to netýká. Selhání submitu se přidá do `Errors` jako `Timesheet submit failed for yyyy-MM-dd: …`. Plugin si do uzavření dne pamatuje už nahrané záznamy, takže opakování po selhaném submitu den jen uzavře a záznam nevytvoří podruhé. Tahle paměť je jen v běžící instanci pluginu a po uzavření dne, změně konfigurace nebo restartu aplikace zaniká.
 4. Vrátí `PluginResult<WorklogSubmissionResult>`.
 
 ### Submission módy
