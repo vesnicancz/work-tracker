@@ -11,18 +11,18 @@ namespace WorkTracker.Application.Services;
 /// <remarks>
 /// Every write runs in a unit of work, together with the checks it depends on. Those transactions take
 /// the write lock of the database up front, so the GUI and the CLI can't both pass a check and then both
-/// write. Only reads use the repository directly.
+/// write.
 /// </remarks>
 public sealed class WorkEntryService : IWorkEntryService
 {
-	private readonly IWorkEntryRepository _repository;
+	private readonly IWorkEntryReader _reader;
 	private readonly IUnitOfWorkFactory _unitOfWorkFactory;
 	private readonly TimeProvider _timeProvider;
 	private readonly ILogger<WorkEntryService> _logger;
 
-	public WorkEntryService(IWorkEntryRepository repository, IUnitOfWorkFactory unitOfWorkFactory, TimeProvider timeProvider, ILogger<WorkEntryService> logger)
+	public WorkEntryService(IWorkEntryReader reader, IUnitOfWorkFactory unitOfWorkFactory, TimeProvider timeProvider, ILogger<WorkEntryService> logger)
 	{
-		_repository = repository;
+		_reader = reader;
 		_unitOfWorkFactory = unitOfWorkFactory;
 		_timeProvider = timeProvider;
 		_logger = logger;
@@ -143,17 +143,17 @@ public sealed class WorkEntryService : IWorkEntryService
 
 	public async Task<WorkEntry?> GetActiveWorkAsync(CancellationToken cancellationToken)
 	{
-		return await _repository.GetActiveWorkEntryAsync(cancellationToken);
+		return await _reader.GetActiveWorkEntryAsync(cancellationToken);
 	}
 
 	public async Task<WorkEntry?> GetWorkEntryByIdAsync(int id, CancellationToken cancellationToken)
 	{
-		return await _repository.GetByIdAsync(id, cancellationToken);
+		return await _reader.GetByIdAsync(id, cancellationToken);
 	}
 
 	public async Task<IEnumerable<WorkEntry>> GetWorkEntriesByDateAsync(DateTime date, CancellationToken cancellationToken)
 	{
-		return await _repository.GetByDateAsync(date, cancellationToken);
+		return await _reader.GetByDateAsync(date, cancellationToken);
 	}
 
 	public Task<Result<WorkEntry>> UpdateWorkEntryAsync(int id, string? ticketId, DateTime startTime, DateTime? endTime, string? description, CancellationToken cancellationToken)
@@ -257,22 +257,22 @@ public sealed class WorkEntryService : IWorkEntryService
 
 	public async Task<IEnumerable<WorkEntry>> GetWorkEntriesByDateRangeAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken)
 	{
-		return await _repository.GetByDateRangeAsync(startDate, endDate, cancellationToken);
+		return await _reader.GetByDateRangeAsync(startDate, endDate, cancellationToken);
 	}
 
 	public Task<OverlapResolutionPlan> ComputeOverlapResolutionAsync(int? excludeEntryId, DateTime startTime, DateTime? endTime, CancellationToken cancellationToken)
 	{
-		return BuildOverlapPlanAsync(_repository, excludeEntryId, DateTimeHelper.RoundToMinute(startTime), DateTimeHelper.RoundToMinute(endTime), cancellationToken);
+		return BuildOverlapPlanAsync(_reader, excludeEntryId, DateTimeHelper.RoundToMinute(startTime), DateTimeHelper.RoundToMinute(endTime), cancellationToken);
 	}
 
-	private static async Task<OverlapResolutionPlan> BuildOverlapPlanAsync(IWorkEntryRepository repository, int? excludeEntryId, DateTime roundedStart, DateTime? roundedEnd, CancellationToken cancellationToken)
+	private static async Task<OverlapResolutionPlan> BuildOverlapPlanAsync(IWorkEntryReader reader, int? excludeEntryId, DateTime roundedStart, DateTime? roundedEnd, CancellationToken cancellationToken)
 	{
 		// For the query: when endTime is null (active/ongoing entry), use +1 minute
 		// to detect overlaps at the exact start time (predicate uses StartTime < end)
 		// while avoiding matching all future entries
 		var queryEnd = roundedEnd ?? roundedStart.AddMinutes(1);
 
-		var overlapping = await repository.GetOverlappingEntriesAsync(excludeEntryId, roundedStart, queryEnd, cancellationToken);
+		var overlapping = await reader.GetOverlappingEntriesAsync(excludeEntryId, roundedStart, queryEnd, cancellationToken);
 
 		if (overlapping.Count == 0)
 		{
@@ -292,9 +292,9 @@ public sealed class WorkEntryService : IWorkEntryService
 	/// open: the CLI, a remote controller or the Pomodoro timer don't wait for the dialog. Applying it
 	/// then would delete or trim entries by what they used to be, so the transaction checks it first.
 	/// </summary>
-	private async Task<bool> IsPlanStillValidAsync(IWorkEntryRepository repository, OverlapResolutionPlan plan, int? excludeEntryId, DateTime roundedStart, DateTime? roundedEnd, CancellationToken cancellationToken)
+	private async Task<bool> IsPlanStillValidAsync(IWorkEntryReader reader, OverlapResolutionPlan plan, int? excludeEntryId, DateTime roundedStart, DateTime? roundedEnd, CancellationToken cancellationToken)
 	{
-		var currentPlan = await BuildOverlapPlanAsync(repository, excludeEntryId, roundedStart, roundedEnd, cancellationToken);
+		var currentPlan = await BuildOverlapPlanAsync(reader, excludeEntryId, roundedStart, roundedEnd, cancellationToken);
 		if (currentPlan.Adjustments.SequenceEqual(plan.Adjustments))
 		{
 			return true;

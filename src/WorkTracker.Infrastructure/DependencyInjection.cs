@@ -63,8 +63,8 @@ public static class DependencyInjection
 		services.AddDbContextFactory<WorkTrackerDbContext>(options =>
 			options.UseSqlite(connectionString));
 
-		// Repositories - Transient (stateless, uses factory)
-		services.AddTransient<IWorkEntryRepository, WorkEntryRepository>();
+		// Reads - Transient (stateless, uses factory). The repository for writes comes from the unit of work.
+		services.AddTransient<IWorkEntryReader, WorkEntryReader>();
 
 		// Unit of Work - Transient (stateless factory; each Create() produces a new transactional scope)
 		services.AddTransient<IUnitOfWorkFactory, UnitOfWorkFactory>();

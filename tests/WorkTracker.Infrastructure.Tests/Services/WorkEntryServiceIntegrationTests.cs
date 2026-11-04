@@ -24,10 +24,10 @@ public sealed class WorkEntryServiceIntegrationTests : IAsyncLifetime
 	{
 		_fixture = new SqliteInMemoryFixture();
 
-		var repository = new WorkEntryRepository(_fixture.ContextFactory);
+		var reader = new WorkEntryReader(_fixture.ContextFactory);
 		var uowFactory = new UnitOfWorkFactory(_fixture.ContextFactory, NullLogger<UnitOfWork>.Instance);
 		_service = new WorkEntryService(
-			repository,
+			reader,
 			uowFactory,
 			TimeProvider.System,
 			NullLogger<WorkEntryService>.Instance);
