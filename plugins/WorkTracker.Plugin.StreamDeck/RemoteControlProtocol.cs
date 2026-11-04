@@ -8,10 +8,17 @@ namespace WorkTracker.Plugin.StreamDeck;
 /// The wire format: one JSON object per line. The client sends <see cref="RemoteRequest"/>s; the
 /// server answers each with a <see cref="RemoteResponse"/> and, independently of them, pushes a
 /// <see cref="RemoteStateMessage"/> on connect and on every state change. Keep in sync with
-/// <c>streamdeck-plugin/src/protocol.ts</c>.
+/// <c>streamdeck-plugin/src/protocol.ts</c>; the files in <c>streamdeck-plugin/test/fixtures/protocol</c>
+/// are checked by the tests of both sides.
 /// </summary>
 internal static class RemoteControlProtocol
 {
+	/// <summary>
+	/// Raised, here and in <c>protocol.ts</c>, by a change the other side can't cope with. The plugin and
+	/// the Stream Deck part are released separately, so they can meet at different versions.
+	/// </summary>
+	public const int Version = 1;
+
 	public static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
 	{
 		Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
@@ -44,6 +51,8 @@ internal sealed record RemoteResponse(long? Id, bool Success, string? Error, Rem
 internal sealed record RemoteStateMessage(RemoteWorkMessage? ActiveWork, RemoteWorkMessage? LastWork, RemotePomodoroMessage Pomodoro)
 {
 	public string Type => "state";
+
+	public int Protocol => RemoteControlProtocol.Version;
 
 	public static RemoteStateMessage From(RemoteControlState state) => new(
 		RemoteWorkMessage.From(state.ActiveWork),

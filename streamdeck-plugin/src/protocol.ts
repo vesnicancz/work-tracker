@@ -1,6 +1,7 @@
 /**
  * The wire format: one JSON object per line. Keep in sync with
- * plugins/WorkTracker.Plugin.StreamDeck/RemoteControlProtocol.cs.
+ * plugins/WorkTracker.Plugin.StreamDeck/RemoteControlProtocol.cs; the files in test/fixtures/protocol
+ * are checked by the tests of both sides.
  */
 
 export type WorkItem = {
@@ -51,7 +52,8 @@ export type CommandResult = {
 	favorites?: Favorite[] | null;
 };
 
-export type StateMessage = RemoteState & { type: "state" };
+// WorkTracker versions from before the protocol had a version don't send one
+export type StateMessage = RemoteState & { type: "state"; protocol?: number };
 
 export type ResultMessage = CommandResult & { type: "result"; id: number | null };
 

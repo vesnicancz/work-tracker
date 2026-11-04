@@ -1,0 +1,14 @@
+{
+	"type": "result",
+	"id": 3,
+	"success": true,
+	"error": null,
+	"suggestions": {
+		"items": [
+			{ "title": "Standup", "ticketId": null, "startTime": "2026-11-04T10:00:00+01:00", "endTime": "2026-11-04T10:15:00+01:00", "source": "O365 Calendar" },
+			{ "title": "Fix login", "ticketId": "PROJ-1", "startTime": null, "endTime": null, "source": "Jira" }
+		],
+		"failedSources": ["GitHub"]
+	},
+	"favorites": null
+}
