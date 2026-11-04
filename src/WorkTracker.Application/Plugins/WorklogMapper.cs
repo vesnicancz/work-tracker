@@ -22,12 +22,4 @@ public static class WorklogMapper
 			DurationMinutes = worklog.DurationMinutes
 		};
 	}
-
-	/// <summary>
-	/// Converts a collection of WorklogDto to plugin PluginWorklogEntry
-	/// </summary>
-	public static IEnumerable<PluginWorklogEntry> ToPluginWorklogs(this IEnumerable<WorklogDto> worklogs)
-	{
-		return worklogs.Select(ToPluginWorklog);
-	}
 }

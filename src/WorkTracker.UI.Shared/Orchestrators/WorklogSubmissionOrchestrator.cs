@@ -128,14 +128,15 @@ public class WorklogSubmissionOrchestrator : IWorklogSubmissionOrchestrator
 	public async Task<SubmissionOutcome> SubmitAsync(
 		IReadOnlyList<WorklogPreviewItem> items, string providerId, string providerName, WorklogSubmissionMode mode, CancellationToken cancellationToken)
 	{
-		var worklogs = ConvertToWorklogs(items.Where(i => !i.IsDateHeader && i.IsSelected));
+		var submittedItems = items.Where(i => !i.IsDateHeader && i.IsSelected).ToList();
+		var worklogs = ConvertToWorklogs(submittedItems);
 
 		var result = await _submissionService.SubmitCustomWorklogsAsync(worklogs, providerId, mode, cancellationToken);
 
 		if (result.IsSuccess && result.Value != null)
 		{
 			var submission = result.Value;
-			var hasFailedItems = MarkFailedItems(items, submission, mode);
+			var hasFailedItems = MarkFailedItems(items, submittedItems, submission);
 			var statusMessage = FormatSubmissionStatus(submission, providerName);
 			return new SubmissionOutcome(submission.FailedEntries == 0 && submission.Errors.Count == 0, hasFailedItems, statusMessage);
 		}
@@ -161,7 +162,7 @@ public class WorklogSubmissionOrchestrator : IWorklogSubmissionOrchestrator
 		if (result.IsSuccess && result.Value != null)
 		{
 			var submission = result.Value;
-			MarkFailedItems(attemptedItems, submission, mode);
+			MarkFailedItems(attemptedItems, attemptedItems, submission);
 			var hasFailedItems = items.Any(i => !i.IsDateHeader && i.HasError);
 			var statusMessage = FormatSubmissionStatus(submission, providerName);
 			return new SubmissionOutcome(!hasFailedItems, hasFailedItems, statusMessage);
@@ -171,7 +172,13 @@ public class WorklogSubmissionOrchestrator : IWorklogSubmissionOrchestrator
 			_localization.GetFormattedString("ErrorPrefix", result.Error));
 	}
 
-	internal bool MarkFailedItems(IReadOnlyList<WorklogPreviewItem> items, SubmissionResult submission, WorklogSubmissionMode mode)
+	/// <summary>
+	/// Clears the error state of <paramref name="items"/> and marks the rows that failed.
+	/// </summary>
+	/// <param name="items">The rows whose previous error state no longer applies.</param>
+	/// <param name="submittedItems">The rows that were submitted, in the order they were sent.</param>
+	/// <param name="submission">The result of the submission.</param>
+	internal bool MarkFailedItems(IReadOnlyList<WorklogPreviewItem> items, IReadOnlyList<WorklogPreviewItem> submittedItems, SubmissionResult submission)
 	{
 		var dataItems = items.Where(i => !i.IsDateHeader).ToList();
 
@@ -189,35 +196,14 @@ public class WorklogSubmissionOrchestrator : IWorklogSubmissionOrchestrator
 
 		foreach (var error in submission.Errors)
 		{
-			WorklogPreviewItem? match;
-			if (mode == WorklogSubmissionMode.Aggregated)
-			{
-				// In aggregated mode StartTime/EndTime are representative only — match by Date + TicketId + Description.
-				match = dataItems.FirstOrDefault(i =>
-					!i.HasError &&
-					i.Date.Date == error.Date.Date &&
-					(i.TicketId ?? string.Empty) == (error.TicketId ?? string.Empty) &&
-					(i.Description ?? string.Empty) == (error.Description ?? string.Empty));
-
-				// Fallback: Date + TicketId only
-				match ??= dataItems.FirstOrDefault(i =>
+			// A plugin that reports a worklog it wasn't handed has no position. The failure still has
+			// to show somewhere, so it goes on the first row of that day and ticket.
+			var match = error.WorklogIndex is { } index
+				? submittedItems[index]
+				: submittedItems.FirstOrDefault(i =>
 					!i.HasError &&
 					i.Date.Date == error.Date.Date &&
 					(string.IsNullOrEmpty(error.TicketId) || i.TicketId == error.TicketId));
-			}
-			else
-			{
-				match = dataItems.FirstOrDefault(i =>
-					i.Date.Date == error.Date.Date &&
-					(string.IsNullOrEmpty(error.TicketId) || i.TicketId == error.TicketId) &&
-					error.Details == $"{i.StartTime:HH:mm}-{i.EndTime:HH:mm}");
-
-				// Fallback: match by TicketId + Date only (ignore TicketId when error has none)
-				match ??= dataItems.FirstOrDefault(i =>
-					i.Date.Date == error.Date.Date &&
-					(string.IsNullOrEmpty(error.TicketId) || i.TicketId == error.TicketId) &&
-					!i.HasError);
-			}
 
 			if (match != null)
 			{

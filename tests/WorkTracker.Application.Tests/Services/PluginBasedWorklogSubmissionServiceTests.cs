@@ -198,7 +198,61 @@ public class PluginBasedWorklogSubmissionServiceTests
 		var error = result.Value.Errors.Should().ContainSingle().Subject;
 		error.TicketId.Should().Be("PROJ-2");
 		error.ErrorMessage.Should().Be("Invalid");
-		error.Details.Should().Be("10:00-12:00");
+		error.WorklogIndex.Should().Be(1);
+	}
+
+	[Fact]
+	public async Task SubmitCustomWorklogsAsync_PluginErrorAfterARejectedRow_PointsAtTheSubmittedPosition()
+	{
+		var plugin = CreateMockPlugin();
+		_mockPluginManager.Setup(p => p.GetPlugin<IWorklogUploadPlugin>(TestPluginId)).Returns(plugin.Object);
+		_mockValidator
+			.Setup(v => v.Validate(It.Is<WorklogDto>(w => w.TicketId == "BAD-1")))
+			.Returns(ValidationResult.Failure("Invalid"));
+		plugin.Setup(p => p.UploadWorklogsAsync(It.IsAny<IEnumerable<PluginWorklogEntry>>(), WorklogSubmissionMode.Timed, It.IsAny<CancellationToken>()))
+			.ReturnsAsync((IEnumerable<PluginWorklogEntry> entries, WorklogSubmissionMode _, CancellationToken _) =>
+			{
+				var uploaded = entries.ToList();
+				return PluginResult<WorklogSubmissionResult>.Success(new WorklogSubmissionResult
+				{
+					TotalEntries = uploaded.Count,
+					SuccessfulEntries = 1,
+					FailedEntries = 1,
+					Errors = [new WorklogSubmissionError { Worklog = uploaded[1], ErrorMessage = "rejected by server" }]
+				});
+			});
+		var start = new DateTime(2025, 1, 15, 9, 0, 0);
+		WorklogDto[] worklogs =
+		[
+			new() { TicketId = "SAME-1", StartTime = start, EndTime = start.AddHours(1), DurationMinutes = 60 },
+			new() { TicketId = "BAD-1", StartTime = start, EndTime = start.AddHours(1), DurationMinutes = 0 },
+			new() { TicketId = "SAME-1", StartTime = start, EndTime = start.AddHours(1), DurationMinutes = 60 }
+		];
+
+		var result = await _sut.SubmitCustomWorklogsAsync(worklogs, TestPluginId, WorklogSubmissionMode.Timed, TestContext.Current.CancellationToken);
+
+		result.Value!.Errors.Single(e => e.ErrorMessage == "rejected by server").WorklogIndex.Should().Be(2);
+		result.Value.Errors.Single(e => e.ErrorMessage == "Invalid").WorklogIndex.Should().Be(1);
+	}
+
+	[Fact]
+	public async Task SubmitCustomWorklogsAsync_PluginReportsAWorklogItWasNotHanded_HasNoPosition()
+	{
+		var plugin = CreateMockPlugin();
+		_mockPluginManager.Setup(p => p.GetPlugin<IWorklogUploadPlugin>(TestPluginId)).Returns(plugin.Object);
+		plugin.Setup(p => p.UploadWorklogsAsync(It.IsAny<IEnumerable<PluginWorklogEntry>>(), WorklogSubmissionMode.Timed, It.IsAny<CancellationToken>()))
+			.ReturnsAsync(PluginResult<WorklogSubmissionResult>.Success(new WorklogSubmissionResult
+			{
+				TotalEntries = 1,
+				FailedEntries = 1,
+				Errors = [new WorklogSubmissionError { Worklog = new PluginWorklogEntry { TicketId = "OK-1" }, ErrorMessage = "failed" }]
+			}));
+		var start = new DateTime(2025, 1, 15, 9, 0, 0);
+		WorklogDto[] worklogs = [new() { TicketId = "OK-1", StartTime = start, EndTime = start.AddHours(1), DurationMinutes = 60 }];
+
+		var result = await _sut.SubmitCustomWorklogsAsync(worklogs, TestPluginId, WorklogSubmissionMode.Timed, TestContext.Current.CancellationToken);
+
+		result.Value!.Errors.Should().ContainSingle().Which.WorklogIndex.Should().BeNull();
 	}
 
 	[Fact]

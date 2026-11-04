@@ -387,7 +387,7 @@ Jako konkrétní ilustraci vezmeme odeslání záznamů jednoho dne z Avalonia G
    - Validuje, že `mode` je single value (Timed nebo Aggregated) — jinak `Failure`.
    - `ResolvePlugin(providerId)` → vrátí `IWorklogUploadPlugin`.
    - Ověří, že plugin daný mode podporuje (`plugin.SupportedModes.HasFlag(mode)`).
-   - Převede všechny `WorklogDto` přes `WorklogMapper.ToPluginWorklogs()` na `PluginWorklogEntry`; neplatné řádky předtím zachytí `IWorklogValidator`.
+   - Převede všechny `WorklogDto` přes `WorklogMapper.ToPluginWorklog()` na `PluginWorklogEntry`; neplatné řádky předtím zachytí `IWorklogValidator`.
    - Zavolá `plugin.UploadWorklogsAsync(entries, mode, ct)`.
 9. **Plugin (Tempo)** —
    - `TempoWorklogPlugin` prochází záznamy v cyklu (podporuje oba módy: `SupportedModes = Timed | Aggregated`).

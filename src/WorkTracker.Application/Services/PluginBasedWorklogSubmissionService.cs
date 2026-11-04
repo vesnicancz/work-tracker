@@ -222,21 +222,29 @@ public sealed class PluginBasedWorklogSubmissionService : IWorklogSubmissionServ
 		WorklogSubmissionMode mode,
 		CancellationToken cancellationToken)
 	{
-		var valid = new List<WorklogDto>();
+		var valid = new List<(PluginWorklogEntry Worklog, int Index)>();
 		var rejected = new List<SubmissionError>();
 
-		foreach (var worklog in worklogs)
+		for (var index = 0; index < worklogs.Count; index++)
 		{
+			var worklog = worklogs[index];
 			var validation = _validator.Validate(worklog);
 			if (validation.IsValid)
 			{
-				valid.Add(worklog);
+				valid.Add((worklog.ToPluginWorklog(), index));
 			}
 			else
 			{
 				var reason = string.Join(", ", validation.Errors);
 				_logger.LogWarning("Not submitting invalid worklog: {Errors}", reason);
-				rejected.Add(ToSubmissionError(worklog.TicketId, worklog.Description, worklog.StartTime, worklog.EndTime, reason));
+				rejected.Add(new SubmissionError
+				{
+					TicketId = worklog.TicketId ?? string.Empty,
+					Date = worklog.StartTime.Date,
+					Description = worklog.Description,
+					ErrorMessage = reason,
+					WorklogIndex = index
+				});
 			}
 		}
 
@@ -268,11 +276,11 @@ public sealed class PluginBasedWorklogSubmissionService : IWorklogSubmissionServ
 
 	private async Task<Result<SubmissionResult>> UploadAndMapResultAsync(
 		IWorklogUploadPlugin plugin,
-		List<WorklogDto> worklogs,
+		List<(PluginWorklogEntry Worklog, int Index)> worklogs,
 		WorklogSubmissionMode mode,
 		CancellationToken cancellationToken)
 	{
-		var result = await plugin.UploadWorklogsAsync(worklogs.ToPluginWorklogs(), mode, cancellationToken);
+		var result = await plugin.UploadWorklogsAsync(worklogs.Select(w => w.Worklog).ToList(), mode, cancellationToken);
 
 		if (result.IsFailure)
 		{
@@ -285,23 +293,25 @@ public sealed class PluginBasedWorklogSubmissionService : IWorklogSubmissionServ
 			TotalEntries = pluginResult.TotalEntries,
 			SuccessfulEntries = pluginResult.SuccessfulEntries,
 			FailedEntries = pluginResult.FailedEntries,
-			Errors = MapPluginErrors(pluginResult.Errors)
+			Errors = MapPluginErrors(pluginResult.Errors, worklogs)
 		});
 	}
 
-	private static List<SubmissionError> MapPluginErrors(IReadOnlyList<WorklogSubmissionError> pluginErrors)
+	/// <summary>
+	/// Plugins report a failure with the entry they were handed, which is how it finds its way back to
+	/// the worklog. Two entries can look exactly alike, so their values couldn't tell them apart.
+	/// </summary>
+	private static List<SubmissionError> MapPluginErrors(IReadOnlyList<WorklogSubmissionError> pluginErrors, List<(PluginWorklogEntry Worklog, int Index)> worklogs)
 	{
-		return pluginErrors
-			.Select(e => ToSubmissionError(e.Worklog.TicketId, e.Worklog.Description, e.Worklog.StartTime, e.Worklog.EndTime, e.ErrorMessage))
-			.ToList();
-	}
+		var positions = worklogs.ToDictionary(w => w.Worklog, w => w.Index);
 
-	private static SubmissionError ToSubmissionError(string? ticketId, string? description, DateTime startTime, DateTime endTime, string errorMessage) => new()
-	{
-		TicketId = ticketId ?? string.Empty,
-		Date = startTime.Date,
-		Description = description,
-		ErrorMessage = errorMessage,
-		Details = $"{startTime:HH:mm}-{endTime:HH:mm}"
-	};
+		return pluginErrors.Select(e => new SubmissionError
+		{
+			TicketId = e.Worklog.TicketId ?? string.Empty,
+			Date = e.Worklog.StartTime.Date,
+			Description = e.Worklog.Description,
+			ErrorMessage = e.ErrorMessage,
+			WorklogIndex = positions.TryGetValue(e.Worklog, out var index) ? index : null
+		}).ToList();
+	}
 }

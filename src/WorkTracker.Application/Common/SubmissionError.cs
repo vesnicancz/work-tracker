@@ -11,8 +11,8 @@ public class SubmissionError
 	public string ErrorMessage { get; set; } = string.Empty;
 
 	/// <summary>
-	/// In timed mode: "HH:mm-HH:mm" identifying the entry. Unused in aggregated mode
-	/// (use <see cref="Description"/> for matching instead).
+	/// Position of the failed worklog in the list that was submitted, or null when the plugin reported
+	/// a worklog it wasn't handed.
 	/// </summary>
-	public string? Details { get; set; }
+	public int? WorklogIndex { get; set; }
 }
