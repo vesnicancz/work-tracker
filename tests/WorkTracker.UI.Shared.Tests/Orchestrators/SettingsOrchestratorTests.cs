@@ -36,6 +36,7 @@ public class SettingsOrchestratorTests
 		_mockSettingsService.Setup(s => s.Settings).Returns(new ApplicationSettings());
 		_mockSecureStorage.Setup(s => s.Protect(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>())).Returns((string v, string _, string _) => v);
 		_mockSecureStorage.Setup(s => s.Unprotect(It.IsAny<string>())).Returns((string v) => v);
+		_mockPluginManager.Setup(m => m.CreateDetachedInstance(It.IsAny<IPlugin>())).Returns((IPlugin p) => p);
 
 		_orchestrator = new SettingsOrchestrator(
 			_mockSettingsService.Object,
@@ -415,6 +416,80 @@ public class SettingsOrchestratorTests
 		result.Should().StartWith("✗").And.Contain("Field 'API URL' must be an absolute http or https URL");
 		worklogPlugin.Verify(p => p.InitializeAsync(It.IsAny<IDictionary<string, string>>(), It.IsAny<CancellationToken>()), Times.Never);
 		worklogPlugin.Verify(p => p.TestConnectionAsync(It.IsAny<IProgress<string>?>(), It.IsAny<CancellationToken>()), Times.Never);
+	}
+
+	[Fact]
+	public async Task TestConnectionAsync_RunsOnASeparateInstanceAndLeavesTheRunningPluginAlone()
+	{
+		var running = MockPluginFactory.CreateWorklogPlugin("tempo", "Tempo");
+		var detached = MockPluginFactory.CreateWorklogPlugin("tempo", "Tempo");
+		detached.Setup(p => p.InitializeAsync(It.IsAny<IDictionary<string, string>>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+		detached.Setup(p => p.TestConnectionAsync(It.IsAny<IProgress<string>?>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(PluginResult<bool>.Success(true));
+		_mockPluginManager.Setup(m => m.CreateDetachedInstance(running.Object)).Returns(detached.Object);
+		var vm = new PluginViewModel(running.Object);
+		vm.Configuration["ApiUrl"] = "https://unsaved";
+
+		var result = await _orchestrator.TestConnectionAsync(vm, null, TestContext.Current.CancellationToken);
+
+		result.Should().Contain("successful");
+		detached.Verify(p => p.InitializeAsync(It.Is<IDictionary<string, string>>(c => c["ApiUrl"] == "https://unsaved"), It.IsAny<CancellationToken>()), Times.Once);
+		detached.Verify(p => p.ShutdownAsync(), Times.Once);
+		running.Verify(p => p.InitializeAsync(It.IsAny<IDictionary<string, string>>(), It.IsAny<CancellationToken>()), Times.Never);
+		running.Verify(p => p.TestConnectionAsync(It.IsAny<IProgress<string>?>(), It.IsAny<CancellationToken>()), Times.Never);
+		running.Verify(p => p.ShutdownAsync(), Times.Never);
+	}
+
+	[Fact]
+	public async Task TestConnectionAsync_TestThrows_StillShutsTheSeparateInstanceDown()
+	{
+		var running = MockPluginFactory.CreateWorklogPlugin("tempo", "Tempo");
+		var detached = MockPluginFactory.CreateWorklogPlugin("tempo", "Tempo");
+		detached.Setup(p => p.InitializeAsync(It.IsAny<IDictionary<string, string>>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+		detached.Setup(p => p.TestConnectionAsync(It.IsAny<IProgress<string>?>(), It.IsAny<CancellationToken>()))
+			.ThrowsAsync(new OperationCanceledException());
+		_mockPluginManager.Setup(m => m.CreateDetachedInstance(running.Object)).Returns(detached.Object);
+
+		var act = () => _orchestrator.TestConnectionAsync(new PluginViewModel(running.Object), null, TestContext.Current.CancellationToken);
+
+		await act.Should().ThrowAsync<OperationCanceledException>();
+		detached.Verify(p => p.ShutdownAsync(), Times.Once);
+	}
+
+	[Fact]
+	public async Task TestConnectionAsync_InstanceCannotBeCreated_ReportsIt()
+	{
+		var running = MockPluginFactory.CreateWorklogPlugin("tempo", "Tempo");
+		_mockPluginManager.Setup(m => m.CreateDetachedInstance(running.Object)).Throws(new InvalidOperationException("no constructor"));
+
+		var result = await _orchestrator.TestConnectionAsync(new PluginViewModel(running.Object), null, TestContext.Current.CancellationToken);
+
+		result.Should().StartWith("✗").And.Contain("no constructor");
+	}
+
+	[Fact]
+	public async Task TestConnectionAsync_StatusIndicator_TestsTheRunningInstanceAndRestoresItsConfiguration()
+	{
+		var plugin = new Mock<IStatusIndicatorPlugin>();
+		plugin.Setup(p => p.Metadata).Returns(new PluginMetadata { Id = "luxafor", Name = "Luxafor", Version = new Version(1, 0), Author = "Test" });
+		plugin.Setup(p => p.GetConfigurationFields()).Returns([]);
+		plugin.Setup(p => p.ValidateConfigurationAsync(It.IsAny<IDictionary<string, string>>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(PluginValidationResult.Success());
+		plugin.Setup(p => p.InitializeAsync(It.IsAny<IDictionary<string, string>>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+		var testable = plugin.As<ITestablePlugin>();
+		testable.Setup(p => p.TestConnectionAsync(It.IsAny<IProgress<string>?>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(PluginResult<bool>.Success(true));
+		_mockSettingsService.Setup(s => s.Settings).Returns(new ApplicationSettings
+		{
+			PluginConfigurations = { ["luxafor"] = new Dictionary<string, string> { ["WorkColor"] = "Saved" } }
+		});
+
+		var result = await _orchestrator.TestConnectionAsync(new PluginViewModel(plugin.Object), null, TestContext.Current.CancellationToken);
+
+		result.Should().Contain("successful");
+		_mockPluginManager.Verify(m => m.CreateDetachedInstance(It.IsAny<IPlugin>()), Times.Never);
+		plugin.Verify(p => p.InitializeAsync(It.Is<IDictionary<string, string>>(c => c.ContainsKey("WorkColor") && c["WorkColor"] == "Saved"), It.IsAny<CancellationToken>()), Times.Once);
+		plugin.Verify(p => p.ShutdownAsync(), Times.Never);
 	}
 
 	#endregion TestConnectionAsync

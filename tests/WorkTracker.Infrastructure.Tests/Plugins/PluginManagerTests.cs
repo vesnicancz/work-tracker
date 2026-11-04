@@ -34,6 +34,19 @@ public class PluginManagerTests : IAsyncDisposable
 	}
 
 	[Fact]
+	public void CreateDetachedInstance_ReturnsANewInstanceTheManagerDoesNotKnow()
+	{
+		_pluginManager.LoadEmbeddedPlugin<TestPlugin>();
+		var running = _pluginManager.LoadedPlugins["test.plugin"];
+
+		var detached = _pluginManager.CreateDetachedInstance(running);
+
+		detached.Should().BeOfType<TestPlugin>().And.NotBeSameAs(running);
+		_pluginManager.LoadedPlugins["test.plugin"].Should().BeSameAs(running);
+		_pluginManager.LoadedPlugins.Should().ContainSingle();
+	}
+
+	[Fact]
 	public void LoadEmbeddedPlugin_SamePluginTwice_ShouldFailSecondTime()
 	{
 		// Arrange

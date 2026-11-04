@@ -60,6 +60,11 @@ internal sealed class PluginLoader(IServiceProvider pluginServiceProvider, ILogg
 		return ActivatorUtilities.CreateInstance<T>(pluginServiceProvider);
 	}
 
+	public IPlugin CreateInstance(Type pluginType)
+	{
+		return (IPlugin)ActivatorUtilities.CreateInstance(pluginServiceProvider, pluginType);
+	}
+
 	public IReadOnlyList<string> DiscoverPluginFiles(IEnumerable<string> directories)
 	{
 		var results = new List<string>();

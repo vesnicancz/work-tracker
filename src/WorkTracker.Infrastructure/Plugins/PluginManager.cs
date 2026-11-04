@@ -302,6 +302,11 @@ public sealed class PluginManager : IPluginManager
 		}
 	}
 
+	public IPlugin CreateDetachedInstance(IPlugin plugin)
+	{
+		return _loader.CreateInstance(plugin.GetType());
+	}
+
 	/// <summary>
 	/// Gets a plugin by its ID
 	/// </summary>
