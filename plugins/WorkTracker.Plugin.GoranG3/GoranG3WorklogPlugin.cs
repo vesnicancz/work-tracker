@@ -28,6 +28,11 @@ public sealed class GoranG3WorklogPlugin(ILogger<GoranG3WorklogPlugin> logger, I
 	private readonly ITokenProviderFactory _tokenProviderFactory = tokenProviderFactory;
 	private readonly TimesheetDayBatch _dayBatch = new();
 
+	/// <summary>
+	/// Sends the requests. Tests replace it to talk to a fake server instead of the network.
+	/// </summary>
+	internal Func<HttpMessageHandler> InnerHandlerFactory { get; init; } = () => new HttpClientHandler();
+
 	private ITokenProvider? _tokenProvider;
 	private string[]? _scopes;
 	private string? _baseUrl;
@@ -227,7 +232,7 @@ public sealed class GoranG3WorklogPlugin(ILogger<GoranG3WorklogPlugin> logger, I
 					return PluginResult<bool>.Failure("Authentication failed — could not acquire token.", PluginErrorCategory.Authentication);
 				}
 
-				progress?.Report("Connecting to MCP server...");
+				progress?.Report($"Connecting to {_baseUrl}/mcp...");
 				await ConnectMcpAsync(cancellationToken);
 			}
 
@@ -256,7 +261,7 @@ public sealed class GoranG3WorklogPlugin(ILogger<GoranG3WorklogPlugin> logger, I
 	{
 		await DisconnectAsync();
 
-		_handler = new TokenInjectingHandler(_tokenProvider!);
+		_handler = new TokenInjectingHandler(_tokenProvider!, InnerHandlerFactory());
 		_httpClient = new HttpClient(_handler, disposeHandler: false);
 
 		var transport = new HttpClientTransport(
@@ -274,6 +279,7 @@ public sealed class GoranG3WorklogPlugin(ILogger<GoranG3WorklogPlugin> logger, I
 		try
 		{
 			_mcpClient = await McpClient.CreateAsync(transport, cancellationToken: timeoutCts.Token);
+			Logger.LogInformation("Connected to Goran G3 MCP server at {Endpoint}", $"{_baseUrl}/mcp");
 		}
 		catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
 		{
