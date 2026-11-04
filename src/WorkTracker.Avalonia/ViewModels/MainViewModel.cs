@@ -2,7 +2,6 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Windows.Input;
 using CommunityToolkit.Mvvm.Input;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using WorkTracker.Application.Services;
 using WorkTracker.Domain.Entities;
@@ -15,7 +14,7 @@ namespace WorkTracker.Avalonia.ViewModels;
 
 public class MainViewModel : ViewModelBase, IDisposable
 {
-	private readonly IServiceScopeFactory _scopeFactory;
+	private readonly IWorkEntryService _workEntryService;
 	private readonly IDialogService _dialogService;
 	private readonly INotificationService _notificationService;
 	private readonly IWorklogStateService _worklogStateService;
@@ -42,7 +41,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 	private string _totalDayDuration = "00:00:00";
 
 	public MainViewModel(
-		IServiceScopeFactory scopeFactory,
+		IWorkEntryService workEntryService,
 		IDialogService dialogService,
 		INotificationService notificationService,
 		IWorklogStateService worklogStateService,
@@ -55,7 +54,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 		IUiDispatcher uiDispatcher,
 		ILogger<MainViewModel> logger)
 	{
-		_scopeFactory = scopeFactory;
+		_workEntryService = workEntryService;
 		_dialogService = dialogService;
 		_notificationService = notificationService;
 		_worklogStateService = worklogStateService;
@@ -403,9 +402,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 		try
 		{
 			_cts.Token.ThrowIfCancellationRequested();
-			using var scope = _scopeFactory.CreateScope();
-			var workEntryService = scope.ServiceProvider.GetRequiredService<IWorkEntryService>();
-			var entries = await workEntryService.GetWorkEntriesByDateAsync(SelectedDate, _cts.Token);
+			var entries = await _workEntryService.GetWorkEntriesByDateAsync(SelectedDate, _cts.Token);
 			WorkEntries = new ObservableCollection<WorkEntry>(entries.OrderBy(e => e.StartTime));
 			UpdateTotalDayDuration();
 		}
