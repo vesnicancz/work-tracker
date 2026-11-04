@@ -14,6 +14,7 @@ namespace WorkTracker.UI.Shared.Services;
 public sealed class WorklogStateService : IWorklogStateService, IDisposable
 {
 	private readonly IServiceScopeFactory _scopeFactory;
+	private readonly IUiDispatcher _uiDispatcher;
 	private readonly ILogger<WorklogStateService> _logger;
 	private readonly SemaphoreSlim _stateLock = new(1, 1);
 
@@ -23,9 +24,11 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 
 	public WorklogStateService(
 		IServiceScopeFactory scopeFactory,
+		IUiDispatcher uiDispatcher,
 		ILogger<WorklogStateService> logger)
 	{
 		_scopeFactory = scopeFactory;
+		_uiDispatcher = uiDispatcher;
 		_logger = logger;
 	}
 
@@ -140,6 +143,7 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 		WorkEntry? oldActiveWork = null;
 		var oldIsTracking = false;
 		var workEntriesModified = false;
+		Result result;
 
 		await _stateLock.WaitAsync(cancellationToken);
 		try
@@ -158,7 +162,7 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 			using var scope = _scopeFactory.CreateScope();
 			var workEntryService = scope.ServiceProvider.GetRequiredService<IWorkEntryService>();
 
-			var result = await workEntryService.StopWorkAsync(cancellationToken: cancellationToken);
+			result = await workEntryService.StopWorkAsync(cancellationToken: cancellationToken);
 
 			if (result.IsSuccess)
 			{
@@ -170,20 +174,20 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 			{
 				_logger.LogWarning("Failed StopTracking: {Error}", result.Error);
 			}
-
-			return result;
 		}
 		catch (OperationCanceledException) { throw; }
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Unexpected error in StopTracking");
-			return Result.Failure($"Unexpected error: {ex.Message}");
+			result = Result.Failure($"Unexpected error: {ex.Message}");
 		}
 		finally
 		{
 			_stateLock.Release();
-			RaiseEvents(oldActiveWork, oldIsTracking, workEntriesModified);
 		}
+
+		await RaiseEventsAsync(oldActiveWork, oldIsTracking, workEntriesModified);
+		return result;
 	}
 
 	public async Task RefreshFromDatabaseAsync(CancellationToken cancellationToken)
@@ -212,7 +216,7 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 			_stateLock.Release();
 		}
 
-		RaiseEvents(oldActiveWork, oldIsTracking, workEntriesModified: false);
+		await RaiseEventsAsync(oldActiveWork, oldIsTracking, workEntriesModified: false);
 	}
 
 	public Task<Result<WorkEntry>> CreateWorkEntryAsync(
@@ -308,7 +312,7 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 			_stateLock.Release();
 		}
 
-		RaiseEvents(oldActiveWork, oldIsTracking, workEntriesModified: refreshed);
+		await RaiseEventsAsync(oldActiveWork, oldIsTracking, workEntriesModified: refreshed);
 	}
 
 	public async Task<OverlapResolutionPlan> ComputeOverlapResolutionAsync(
@@ -379,6 +383,7 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 		WorkEntry? oldActiveWork = null;
 		var oldIsTracking = false;
 		var workEntriesModified = false;
+		Result<T> result;
 
 		await _stateLock.WaitAsync(cancellationToken);
 		try
@@ -389,7 +394,7 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 			using var scope = _scopeFactory.CreateScope();
 			var workEntryService = scope.ServiceProvider.GetRequiredService<IWorkEntryService>();
 
-			var result = await operation(workEntryService, cancellationToken);
+			result = await operation(workEntryService, cancellationToken);
 
 			if (result.IsSuccess)
 			{
@@ -400,20 +405,20 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 			{
 				_logger.LogWarning("Failed {Operation}: {Error}", operationName, result.Error);
 			}
-
-			return result;
 		}
 		catch (OperationCanceledException) { throw; }
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Unexpected error in {Operation}", operationName);
-			return Result.Failure<T>($"Unexpected error: {ex.Message}");
+			result = Result.Failure<T>($"Unexpected error: {ex.Message}");
 		}
 		finally
 		{
 			_stateLock.Release();
-			RaiseEvents(oldActiveWork, oldIsTracking, workEntriesModified);
 		}
+
+		await RaiseEventsAsync(oldActiveWork, oldIsTracking, workEntriesModified);
+		return result;
 	}
 
 	/// <summary>
@@ -431,6 +436,7 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 		WorkEntry? oldActiveWork = null;
 		var oldIsTracking = false;
 		var workEntriesModified = false;
+		Result result;
 
 		await _stateLock.WaitAsync(cancellationToken);
 		try
@@ -441,7 +447,7 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 			using var scope = _scopeFactory.CreateScope();
 			var workEntryService = scope.ServiceProvider.GetRequiredService<IWorkEntryService>();
 
-			var result = await operation(workEntryService, cancellationToken);
+			result = await operation(workEntryService, cancellationToken);
 
 			if (result.IsSuccess)
 			{
@@ -452,20 +458,20 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 			{
 				_logger.LogWarning("Failed {Operation}: {Error}", operationName, result.Error);
 			}
-
-			return result;
 		}
 		catch (OperationCanceledException) { throw; }
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Unexpected error in {Operation}", operationName);
-			return Result.Failure($"Unexpected error: {ex.Message}");
+			result = Result.Failure($"Unexpected error: {ex.Message}");
 		}
 		finally
 		{
 			_stateLock.Release();
-			RaiseEvents(oldActiveWork, oldIsTracking, workEntriesModified);
 		}
+
+		await RaiseEventsAsync(oldActiveWork, oldIsTracking, workEntriesModified);
+		return result;
 	}
 
 	#endregion Locked Execution Helpers
@@ -497,9 +503,33 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 	}
 
 	/// <summary>
-	/// Raises events for state changes. Must be called AFTER releasing _stateLock
-	/// to prevent deadlocks if subscribers call back into this service.
+	/// Raises events for state changes on the UI thread, because subscribers touch UI objects and
+	/// not every caller starts there: the Pomodoro timer calls in from the thread pool.
+	/// Must be called AFTER releasing _stateLock to prevent deadlocks if subscribers call back into
+	/// this service. The change is already saved by now, so a failing subscriber is only logged and
+	/// does not turn the operation into a failure.
 	/// </summary>
+	private async Task RaiseEventsAsync(WorkEntry? oldActiveWork, bool oldIsTracking, bool workEntriesModified)
+	{
+		if (_activeWork == oldActiveWork && _isTracking == oldIsTracking && !workEntriesModified)
+		{
+			return;
+		}
+
+		try
+		{
+			await _uiDispatcher.InvokeAsync(() =>
+			{
+				RaiseEvents(oldActiveWork, oldIsTracking, workEntriesModified);
+				return Task.FromResult(true);
+			}, CancellationToken.None);
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "A subscriber failed while handling a worklog state change");
+		}
+	}
+
 	private void RaiseEvents(WorkEntry? oldActiveWork, bool oldIsTracking, bool workEntriesModified)
 	{
 		if (_activeWork != oldActiveWork)
