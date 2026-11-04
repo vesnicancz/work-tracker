@@ -166,6 +166,24 @@ public class SettingsOrchestratorTests
 	}
 
 	[Fact]
+	public async Task SaveSettingsAsync_SavesNotificationSettings()
+	{
+		_mockSettingsService.Setup(s => s.Settings).Returns(new ApplicationSettings());
+
+		var request = new SettingsSaveRequest
+		{
+			ShowRemoteControlNotifications = false,
+			Pomodoro = new PomodoroSettings { ShowSystemNotifications = false }
+		};
+
+		await _orchestrator.SaveSettingsAsync(request, TestContext.Current.CancellationToken);
+
+		_mockSettingsService.Verify(s => s.SaveSettingsAsync(It.Is<ApplicationSettings>(a =>
+			!a.ShowRemoteControlNotifications &&
+			!a.Pomodoro.ShowSystemNotifications), It.IsAny<CancellationToken>()), Times.Once);
+	}
+
+	[Fact]
 	public async Task SaveSettingsAsync_NullTheme_PreservesExisting()
 	{
 		var existingSettings = new ApplicationSettings { Theme = "Midnight" };

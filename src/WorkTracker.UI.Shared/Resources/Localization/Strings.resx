@@ -753,4 +753,60 @@ Neither is your timesheet.</value>
   <data name="DatabaseUnavailableMessage" xml:space="preserve">
     <value>The database could not be opened:&#xA;&#xA;{0}&#xA;&#xA;If it is stored on a removable drive, connect the drive and choose Retry.</value>
   </data>
+
+  <!-- Notifications -->
+  <data name="Notifications" xml:space="preserve">
+    <value>Notifications</value>
+  </data>
+  <data name="ShowRemoteControlNotifications" xml:space="preserve">
+    <value>Actions from external controllers</value>
+  </data>
+  <data name="ShowRemoteControlNotificationsDesc" xml:space="preserve">
+    <value>Confirm actions started from a device such as Stream Deck. Errors are always shown.</value>
+  </data>
+  <data name="PomodoroShowSystemNotifications" xml:space="preserve">
+    <value>System notifications for phase changes</value>
+  </data>
+  <data name="PomodoroShowSystemNotificationsDesc" xml:space="preserve">
+    <value>Alerts you when a work phase or a break begins, even while the application window is hidden.</value>
+  </data>
+  <data name="RemoteWorkStarted" xml:space="preserve">
+    <value>Work started: {0}</value>
+  </data>
+  <data name="RemoteWorkStopped" xml:space="preserve">
+    <value>Work stopped: {0}</value>
+  </data>
+  <data name="RemoteEntryAdded" xml:space="preserve">
+    <value>Entry added: {0}</value>
+  </data>
+  <data name="RemotePomodoroStarted" xml:space="preserve">
+    <value>Pomodoro started</value>
+  </data>
+  <data name="RemotePomodoroStopped" xml:space="preserve">
+    <value>Pomodoro stopped</value>
+  </data>
+  <data name="RemoteActionFailed" xml:space="preserve">
+    <value>The action failed: {0}</value>
+  </data>
+  <data name="RemoteNoRecentWork" xml:space="preserve">
+    <value>There is no recent work to resume.</value>
+  </data>
+  <data name="RemoteNoActiveWork" xml:space="preserve">
+    <value>No work is being tracked.</value>
+  </data>
+  <data name="RemoteStartInFuture" xml:space="preserve">
+    <value>Work cannot start in the future.</value>
+  </data>
+  <data name="RemoteEntryWouldChangeOthers" xml:space="preserve">
+    <value>The entry would change other entries. Add it in the application.</value>
+  </data>
+  <data name="RemotePomodoroDisabled" xml:space="preserve">
+    <value>Pomodoro is turned off in the settings.</value>
+  </data>
+  <data name="TrayStopWorkFailed" xml:space="preserve">
+    <value>Could not stop work: {0}</value>
+  </data>
+  <data name="TrayStartFavoriteFailed" xml:space="preserve">
+    <value>Could not start {0}: {1}</value>
+  </data>
 </root>

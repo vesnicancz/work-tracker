@@ -9,6 +9,7 @@ public class SettingsSaveRequest
 	public bool StartWithWindows { get; set; }
 	public bool StartMinimized { get; set; }
 	public bool CheckForUpdates { get; set; }
+	public bool ShowRemoteControlNotifications { get; set; }
 	public string? Theme { get; set; }
 	public bool FollowSystemTheme { get; set; }
 	public string? LightTheme { get; set; }

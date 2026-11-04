@@ -65,6 +65,12 @@ public class ApplicationSettings : PluginSettings
 	public bool CheckForUpdates { get; set; } = true;
 
 	/// <summary>
+	/// Whether to confirm actions started from a remote controller such as Stream Deck.
+	/// Failures of those actions are reported regardless.
+	/// </summary>
+	public bool ShowRemoteControlNotifications { get; set; } = true;
+
+	/// <summary>
 	/// Favorite work items for quick access from tray menu
 	/// </summary>
 	public List<FavoriteWorkItem> FavoriteWorkItems { get; set; } = new();
@@ -129,6 +135,7 @@ public class ApplicationSettings : PluginSettings
 		StartWithWindows = StartWithWindows,
 		StartMinimized = StartMinimized,
 		CheckForUpdates = CheckForUpdates,
+		ShowRemoteControlNotifications = ShowRemoteControlNotifications,
 		PluginConfigurations = PluginConfigurations.ToDictionary(
 			pair => pair.Key,
 			pair => pair.Value is null ? new Dictionary<string, string>() : new Dictionary<string, string>(pair.Value)),
@@ -154,7 +161,8 @@ public class ApplicationSettings : PluginSettings
 			LongBreakMinutes = Pomodoro.LongBreakMinutes,
 			PomodorosBeforeLongBreak = Pomodoro.PomodorosBeforeLongBreak,
 			AutoStartWorkTracking = Pomodoro.AutoStartWorkTracking,
-			AutoStopWorkTracking = Pomodoro.AutoStopWorkTracking
+			AutoStopWorkTracking = Pomodoro.AutoStopWorkTracking,
+			ShowSystemNotifications = Pomodoro.ShowSystemNotifications
 		}
 	};
 }

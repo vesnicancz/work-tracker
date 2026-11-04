@@ -25,6 +25,8 @@ public class RemoteControlHostTests
 	private readonly Mock<IWorkEntryService> _workEntries = new();
 	private readonly Mock<IWorkSuggestionOrchestrator> _suggestions = new();
 	private readonly Mock<IDialogService> _dialogs = new();
+	private readonly Mock<IActionFeedbackService> _feedback = new();
+	private readonly Mock<ILocalizationService> _localization = new();
 	private readonly RecordingUiDispatcher _uiDispatcher = new();
 	private readonly ApplicationSettings _settings = new();
 	private readonly RemoteControlHost _host;
@@ -35,6 +37,11 @@ public class RemoteControlHostTests
 	{
 		var settingsService = new Mock<ISettingsService>();
 		settingsService.Setup(s => s.Settings).Returns(_settings);
+
+		_localization.Setup(l => l[It.IsAny<string>()]).Returns((string key) => key);
+		_localization
+			.Setup(l => l.GetFormattedString(It.IsAny<string>(), It.IsAny<object[]>()))
+			.Returns((string key, object[] args) => $"{key}: {string.Join(", ", args)}");
 
 		_pomodoro.Setup(p => p.GetSnapshot()).Returns(new PomodoroSnapshot(PomodoroPhase.Idle, TimeSpan.Zero, 0, 4, false));
 		SetRecentEntries();
@@ -52,6 +59,8 @@ public class RemoteControlHostTests
 			settingsService.Object,
 			_suggestions.Object,
 			_dialogs.Object,
+			_feedback.Object,
+			_localization.Object,
 			scopeFactory.Object,
 			_uiDispatcher,
 			new FixedTimeProvider(),
@@ -455,6 +464,240 @@ public class RemoteControlHostTests
 
 		result.IsFailure.Should().BeTrue();
 		_pomodoro.Verify(p => p.Start(), Times.Never);
+	}
+
+	[Fact]
+	public async Task StartWork_ConfirmsWhatStarted()
+	{
+		SetStartSucceeds();
+
+		await _host.StartWorkAsync("PROJ-1", "Coding", TestToken);
+
+		VerifySuccessReported("RemoteWorkStarted: PROJ-1 – Coding");
+		VerifyNoFailureReported();
+	}
+
+	[Fact]
+	public async Task StartWork_WithoutTicket_ConfirmsJustTheDescription()
+	{
+		SetStartSucceeds();
+
+		await _host.StartWorkAsync(null, "Coding", TestToken);
+
+		VerifySuccessReported("RemoteWorkStarted: Coding");
+	}
+
+	[Fact]
+	public async Task StartWork_WithConfirmationsTurnedOff_StaysQuiet()
+	{
+		_settings.ShowRemoteControlNotifications = false;
+		SetStartSucceeds();
+
+		await _host.StartWorkAsync("PROJ-1", "Coding", TestToken);
+
+		VerifyNothingReported();
+	}
+
+	[Fact]
+	public async Task StartWork_Failure_IsReportedEvenWithConfirmationsTurnedOff()
+	{
+		_settings.ShowRemoteControlNotifications = false;
+		_worklogState
+			.Setup(s => s.StartTrackingAsync(It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(Result.Failure<WorkEntry>("Nope."));
+
+		await _host.StartWorkAsync("PROJ-1", "Coding", TestToken);
+
+		_feedback.Verify(f => f.ReportFailureAsync("Nope.", It.IsAny<CancellationToken>()), Times.Once);
+		_feedback.Verify(f => f.ReportSuccessAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+	}
+
+	[Fact]
+	public async Task StartWork_WhenTheServiceThrows_ReportsAndRethrows()
+	{
+		_worklogState
+			.Setup(s => s.StartTrackingAsync(It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+			.ThrowsAsync(new InvalidOperationException("Database gone."));
+
+		var act = () => _host.StartWorkAsync("PROJ-1", "Coding", TestToken);
+
+		await act.Should().ThrowAsync<InvalidOperationException>();
+		_feedback.Verify(f => f.ReportFailureAsync("RemoteActionFailed: Database gone.", It.IsAny<CancellationToken>()), Times.Once);
+	}
+
+	[Fact]
+	public async Task StartWork_WhenCancelled_ReportsNothing()
+	{
+		_worklogState
+			.Setup(s => s.StartTrackingAsync(It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+			.ThrowsAsync(new OperationCanceledException());
+
+		var act = () => _host.StartWorkAsync("PROJ-1", "Coding", TestToken);
+
+		await act.Should().ThrowAsync<OperationCanceledException>();
+		VerifyNothingReported();
+	}
+
+	[Fact]
+	public async Task StopWork_ConfirmsWhatStopped()
+	{
+		_worklogState.Setup(s => s.ActiveWork).Returns(Entry("PROJ-1", Now.AddHours(-1), "Coding"));
+		_worklogState
+			.Setup(s => s.StopTrackingAsync(It.IsAny<CancellationToken>()))
+			.Callback(() => _worklogState.Setup(s => s.ActiveWork).Returns((WorkEntry?)null))
+			.ReturnsAsync(Result.Success());
+
+		await _host.StopWorkAsync(TestToken);
+
+		VerifySuccessReported("RemoteWorkStopped: PROJ-1 – Coding");
+	}
+
+	[Fact]
+	public async Task ResumeLastWork_ConfirmsOnce()
+	{
+		SetRecentEntries(Entry("PROJ-1", Now.AddHours(-1), "Coding"));
+		SetStartSucceeds();
+
+		await _host.ResumeLastWorkAsync(MaxAge, TestToken);
+
+		VerifySuccessReported("RemoteWorkStarted: PROJ-1 – Coding");
+	}
+
+	[Fact]
+	public async Task ResumeLastWork_WithoutRecentWork_ReportsFailure()
+	{
+		_settings.ShowRemoteControlNotifications = false;
+
+		var result = await _host.ResumeLastWorkAsync(MaxAge, TestToken);
+
+		result.Error.Should().Be("RemoteNoRecentWork");
+		_feedback.Verify(f => f.ReportFailureAsync("RemoteNoRecentWork", It.IsAny<CancellationToken>()), Times.Once);
+	}
+
+	[Fact]
+	public async Task ShiftActiveWorkStart_Success_StaysQuiet()
+	{
+		_worklogState.Setup(s => s.ActiveWork).Returns(Entry("PROJ-1", Now.AddHours(-1), "Coding"));
+		_worklogState
+			.Setup(s => s.UpdateWorkEntryAsync(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<DateTime>(), It.IsAny<DateTime?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(Result.Success());
+
+		await _host.ShiftActiveWorkStartAsync(TimeSpan.FromMinutes(-5), TestToken);
+
+		VerifyNothingReported();
+	}
+
+	[Fact]
+	public async Task ShiftActiveWorkStart_Failure_IsReported()
+	{
+		await _host.ShiftActiveWorkStartAsync(TimeSpan.FromMinutes(-5), TestToken);
+
+		_feedback.Verify(f => f.ReportFailureAsync("RemoteNoActiveWork", It.IsAny<CancellationToken>()), Times.Once);
+	}
+
+	[Fact]
+	public async Task AddWorkEntry_ConfirmsWhatWasAdded()
+	{
+		SetOverlapPlan();
+		_worklogState
+			.Setup(s => s.CreateWorkEntryAsync(It.IsAny<string?>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(Result.Success(Entry(null, Now)));
+
+		await _host.AddWorkEntryAsync(null, "Standup", MeetingStart, MeetingEnd, TestToken);
+
+		VerifySuccessReported("RemoteEntryAdded: Standup");
+	}
+
+	[Fact]
+	public async Task AddWorkEntry_ThatWouldChangeOtherEntries_ReportsFailure()
+	{
+		SetOverlapPlan(Adjustment(OverlapAdjustmentKind.Delete, Now.AddHours(-1)));
+
+		await _host.AddWorkEntryAsync(null, "Standup", MeetingStart, MeetingEnd, TestToken);
+
+		_feedback.Verify(f => f.ReportFailureAsync("RemoteEntryWouldChangeOthers", It.IsAny<CancellationToken>()), Times.Once);
+	}
+
+	[Fact]
+	public async Task ShowNewWorkEntryDialog_ReportsNothing()
+	{
+		await _host.ShowNewWorkEntryDialogAsync("PROJ-1", "Coding", TestToken);
+
+		VerifyNothingReported();
+	}
+
+	[Fact]
+	public async Task StartPomodoro_ThatStartsTheTimer_Confirms()
+	{
+		_settings.Pomodoro.Enabled = true;
+		_pomodoro.SetupSequence(p => p.IsRunning).Returns(false).Returns(true);
+
+		await _host.StartPomodoroAsync(TestToken);
+
+		VerifySuccessReported("RemotePomodoroStarted");
+	}
+
+	[Fact]
+	public async Task StartPomodoro_AlreadyRunning_StaysQuiet()
+	{
+		_settings.Pomodoro.Enabled = true;
+		_pomodoro.Setup(p => p.IsRunning).Returns(true);
+
+		await _host.StartPomodoroAsync(TestToken);
+
+		VerifyNothingReported();
+	}
+
+	[Fact]
+	public async Task StartPomodoro_WhenTurnedOffInSettings_ReportsFailure()
+	{
+		_settings.Pomodoro.Enabled = false;
+
+		await _host.StartPomodoroAsync(TestToken);
+
+		_feedback.Verify(f => f.ReportFailureAsync("RemotePomodoroDisabled", It.IsAny<CancellationToken>()), Times.Once);
+	}
+
+	[Fact]
+	public async Task StopPomodoro_ThatStopsTheTimer_Confirms()
+	{
+		_pomodoro.SetupSequence(p => p.IsRunning).Returns(true).Returns(false);
+
+		await _host.StopPomodoroAsync(TestToken);
+
+		VerifySuccessReported("RemotePomodoroStopped");
+	}
+
+	[Fact]
+	public async Task SkipPomodoroPhase_LeavesTheNotificationToThePhaseTransition()
+	{
+		await _host.SkipPomodoroPhaseAsync(TestToken);
+
+		VerifyNothingReported();
+	}
+
+	private void SetStartSucceeds()
+	{
+		_worklogState
+			.Setup(s => s.StartTrackingAsync(It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(Result.Success(Entry("PROJ-1", Now, "Coding")));
+	}
+
+	private void VerifySuccessReported(string message)
+	{
+		_feedback.Verify(f => f.ReportSuccessAsync(message, It.IsAny<CancellationToken>()), Times.Once);
+		_feedback.Verify(f => f.ReportSuccessAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
+	}
+
+	private void VerifyNoFailureReported()
+	{
+		_feedback.Verify(f => f.ReportFailureAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+	}
+
+	private void VerifyNothingReported()
+	{
+		_feedback.Verify(f => f.ReportSuccessAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+		VerifyNoFailureReported();
 	}
 
 	private void VerifyNoUpdate()

@@ -12,6 +12,7 @@ public sealed class SystemNotificationService : ISystemNotificationService, IDis
 	private readonly ILogger<SystemNotificationService> _logger;
 	private readonly ConcurrentDictionary<uint, string> _pendingActionUrls = new();
 	private INativeNotificationManager? _manager;
+	private INativeNotification? _replaceableNotification;
 
 	public SystemNotificationService(ILogger<SystemNotificationService> logger)
 	{
@@ -38,17 +39,27 @@ public sealed class SystemNotificationService : ISystemNotificationService, IDis
 	/// why the same code appeared to work there.
 	/// </para>
 	/// </summary>
-	public async Task ShowNotificationAsync(string title, string message, string? actionUrl)
+	public Task ShowNotificationAsync(string title, string message, string? actionUrl) =>
+		OnUiThreadAsync(() => Show(title, message, actionUrl));
+
+	public Task ShowReplacingNotificationAsync(string title, string message) =>
+		OnUiThreadAsync(() =>
+		{
+			CloseReplaceableNotification();
+			_replaceableNotification = Show(title, message, null);
+		});
+
+	private async Task OnUiThreadAsync(Action show)
 	{
 		try
 		{
 			if (Dispatcher.UIThread.CheckAccess())
 			{
-				Show(title, message, actionUrl);
+				show();
 				return;
 			}
 
-			await Dispatcher.UIThread.InvokeAsync(() => Show(title, message, actionUrl));
+			await Dispatcher.UIThread.InvokeAsync(show);
 		}
 		catch (Exception ex)
 		{
@@ -57,18 +68,35 @@ public sealed class SystemNotificationService : ISystemNotificationService, IDis
 	}
 
 	/// <summary>
+	/// A failure here only leaves the old notification on screen, so it must not cost the new one.
+	/// </summary>
+	private void CloseReplaceableNotification()
+	{
+		try
+		{
+			_replaceableNotification?.Close();
+		}
+		catch (Exception ex)
+		{
+			_logger.LogWarning(ex, "Failed to close the previous system notification");
+		}
+
+		_replaceableNotification = null;
+	}
+
+	/// <summary>
 	/// Hands the notification to the platform. Runs on the UI thread. A notification that cannot be
 	/// created is logged rather than dropped in silence: both of these used to be a bare return,
 	/// which is why a notification that never appeared left nothing behind to explain it.
 	/// </summary>
-	private void Show(string title, string message, string? actionUrl)
+	private INativeNotification? Show(string title, string message, string? actionUrl)
 	{
 		var manager = NativeNotificationManager.Current;
 		if (manager == null)
 		{
 			_logger.LogWarning(
 				"No native notification manager is registered; dropping the notification {Title}", title);
-			return;
+			return null;
 		}
 
 		var notification = manager.CreateNotification(null);
@@ -76,7 +104,7 @@ public sealed class SystemNotificationService : ISystemNotificationService, IDis
 		{
 			_logger.LogWarning(
 				"{Manager} created no notification; dropping {Title}", manager.GetType().Name, title);
-			return;
+			return null;
 		}
 
 		notification.Title = title;
@@ -88,6 +116,7 @@ public sealed class SystemNotificationService : ISystemNotificationService, IDis
 		}
 
 		notification.Show();
+		return notification;
 	}
 
 	public void Dispose()

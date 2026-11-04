@@ -36,6 +36,7 @@ public class PluginViewModel : ObservableObject
 	public string Version => Plugin.Metadata.Version.ToString();
 	public string Author => Plugin.Metadata.Author;
 	public bool SupportsTestConnection => Plugin is ITestablePlugin;
+	public bool IsRemoteControl => Plugin is IRemoteControlPlugin;
 
 	public bool IsEnabled
 	{

@@ -318,6 +318,11 @@ public sealed class PomodoroService : IPomodoroService, IAsyncDisposable
 
 	private void ShowSystemNotificationForPhase(PomodoroPhase phase)
 	{
+		if (!_settingsService.Settings.Pomodoro.ShowSystemNotifications)
+		{
+			return;
+		}
+
 		var message = phase switch
 		{
 			PomodoroPhase.Work => _localization["PomodoroWorkPhaseStarted"],

@@ -2,6 +2,7 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using WorkTracker.Avalonia.ViewModels;
+using WorkTracker.Plugin.Abstractions;
 using WorkTracker.UI.Shared.Models;
 using WorkTracker.UI.Shared.Orchestrators;
 using WorkTracker.UI.Shared.Services;
@@ -44,6 +45,84 @@ public class SettingsViewModelTests
 	}
 
 	private static FavoriteWorkItem Favorite(string name) => new() { Name = name };
+
+	private static PluginViewModel Plugin<TPlugin>(bool isEnabled)
+		where TPlugin : class, IPlugin
+	{
+		var plugin = new Mock<TPlugin>();
+		plugin.Setup(p => p.GetConfigurationFields()).Returns(new List<PluginConfigurationField>());
+
+		return new PluginViewModel(plugin.Object) { IsEnabled = isEnabled };
+	}
+
+	#region Notification settings
+
+	[Fact]
+	public void HasEnabledRemoteControlPlugin_WithoutPlugins_IsFalse()
+	{
+		var vm = new Harness().CreateViewModel();
+
+		vm.HasEnabledRemoteControlPlugin.Should().BeFalse();
+	}
+
+	[Fact]
+	public void HasEnabledRemoteControlPlugin_WithOnlyAnotherEnabledPlugin_IsFalse()
+	{
+		var harness = new Harness();
+		harness.Orchestrator.Setup(o => o.LoadPlugins()).Returns([Plugin<IStatusIndicatorPlugin>(isEnabled: true)]);
+
+		var vm = harness.CreateViewModel();
+
+		vm.HasEnabledRemoteControlPlugin.Should().BeFalse();
+	}
+
+	[Fact]
+	public void HasEnabledRemoteControlPlugin_WithEnabledRemoteControlPlugin_IsTrue()
+	{
+		var harness = new Harness();
+		harness.Orchestrator.Setup(o => o.LoadPlugins()).Returns([Plugin<IRemoteControlPlugin>(isEnabled: true)]);
+
+		var vm = harness.CreateViewModel();
+
+		vm.HasEnabledRemoteControlPlugin.Should().BeTrue();
+	}
+
+	[Fact]
+	public void HasEnabledRemoteControlPlugin_FollowsThePluginBeingSwitched()
+	{
+		var plugin = Plugin<IRemoteControlPlugin>(isEnabled: false);
+		var harness = new Harness();
+		harness.Orchestrator.Setup(o => o.LoadPlugins()).Returns([plugin]);
+		var vm = harness.CreateViewModel();
+		using var monitor = vm.Monitor();
+
+		plugin.IsEnabled = true;
+
+		vm.HasEnabledRemoteControlPlugin.Should().BeTrue();
+		monitor.Should().RaisePropertyChangeFor(x => x.HasEnabledRemoteControlPlugin);
+	}
+
+	[Fact]
+	public async Task Save_WithFeatureTurnedOff_KeepsItsNotificationSettings()
+	{
+		var harness = new Harness();
+		harness.SettingsModel.ShowRemoteControlNotifications = false;
+		harness.SettingsModel.Pomodoro.Enabled = false;
+		harness.SettingsModel.Pomodoro.ShowSystemNotifications = false;
+		SettingsSaveRequest? saved = null;
+		harness.Orchestrator
+			.Setup(o => o.SaveSettingsAsync(It.IsAny<SettingsSaveRequest>(), It.IsAny<CancellationToken>()))
+			.Callback((SettingsSaveRequest request, CancellationToken _) => saved = request)
+			.Returns(Task.CompletedTask);
+		var vm = harness.CreateViewModel();
+
+		await vm.SaveCommand.ExecuteAsync(null);
+
+		saved!.ShowRemoteControlNotifications.Should().BeFalse();
+		saved.Pomodoro.ShowSystemNotifications.Should().BeFalse();
+	}
+
+	#endregion Notification settings
 
 	#region Language
 
@@ -251,6 +330,8 @@ public class SettingsViewModelTests
 		harness.SettingsModel.CloseWindowBehavior = CloseWindowBehavior.ExitApplication;
 		harness.SettingsModel.StartMinimized = true;
 		harness.SettingsModel.CheckForUpdates = false;
+		harness.SettingsModel.ShowRemoteControlNotifications = false;
+		harness.SettingsModel.Pomodoro.ShowSystemNotifications = false;
 		harness.SettingsModel.Theme = "One Dark";
 		harness.SettingsModel.Pomodoro.WorkMinutes = 50;
 		harness.SettingsModel.FavoriteWorkItems.Add(Favorite("Standup"));
@@ -262,6 +343,8 @@ public class SettingsViewModelTests
 		vm.IsExitApplication.Should().BeTrue();
 		vm.StartMinimized.Should().BeTrue();
 		vm.CheckForUpdates.Should().BeFalse();
+		vm.ShowRemoteControlNotifications.Should().BeFalse();
+		vm.PomodoroShowSystemNotifications.Should().BeFalse();
 		vm.StartWithWindows.Should().BeTrue();
 		vm.SelectedTheme.Should().Be("One Dark");
 		vm.PomodoroWorkMinutes.Should().Be(50);

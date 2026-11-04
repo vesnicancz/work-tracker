@@ -6,6 +6,12 @@ namespace WorkTracker.UI.Shared.Services;
 public interface INotificationService
 {
 	/// <summary>
+	/// Whether the user would see a toast right now, which takes the main window being shown and active.
+	/// Must be read on the UI thread.
+	/// </summary>
+	bool IsVisibleToUser { get; }
+
+	/// <summary>
 	/// Shows a success notification
 	/// </summary>
 	/// <param name="message">Message to display</param>

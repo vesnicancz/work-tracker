@@ -9,4 +9,5 @@ public class PomodoroSettings
 	public int PomodorosBeforeLongBreak { get; set; } = 4;
 	public bool AutoStartWorkTracking { get; set; }
 	public bool AutoStopWorkTracking { get; set; }
+	public bool ShowSystemNotifications { get; set; } = true;
 }

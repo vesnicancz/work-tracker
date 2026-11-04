@@ -862,6 +862,7 @@ Dokumentace: [plugins/luxafor.md](plugins/luxafor.md).
 - **`AttachAsync` a `DetachAsync` musí být idempotentní** — `AttachAsync` se volá znovu při každém uložení konfigurace pluginu.
 - **`IRemoteControlHost`** — nabízí stav (`GetStateAsync`, událost `StateChanged`), práci se záznamy (`StartWorkAsync`, `StopWorkAsync`, `ResumeLastWorkAsync`, `ShiftActiveWorkStartAsync`, `AddWorkEntryAsync`), návrhy (`GetSuggestionsAsync`), oblíbené položky (`GetFavorites`), dialog nového záznamu (`ShowNewWorkEntryDialogAsync`) a Pomodoro (`StartPomodoroAsync`, `StopPomodoroAsync`, `SkipPomodoroPhaseAsync`).
 - **Příkazy běží na UI vlákně** — zajišťuje to `RemoteControlHost` přes `IUiDispatcher`, plugin to řešit nemusí. Metody hostitele jde volat z libovolného vlákna a `StateChanged` může přijít také z libovolného vlákna.
+- **Výsledek příkazu oznamuje hostitel** — `RemoteControlHost` ukáže uživateli potvrzení nebo chybu přes `IActionFeedbackService`, plugin vlastní notifikace nezobrazuje. Potvrzení uživatel vypíná v nastavení, chyby se ukazují vždy. Bez potvrzení zůstává `ShiftActiveWorkStartAsync`, `SkipPomodoroPhaseAsync` (oznámí ho přechod fáze) a `ShowNewWorkEntryDialogAsync`. Text chyb hostitele je lokalizovaný, plugin ho proto nemá vyhodnocovat; k tomu slouží `PluginErrorCategory`.
 - **Druhá polovina je mimo .NET** — Stream Deck plugin v `streamdeck-plugin/` je TypeScript a s tímhle pluginem mluví přes named pipe.
 
 Dokumentace: [plugins/stream-deck.md](plugins/stream-deck.md).

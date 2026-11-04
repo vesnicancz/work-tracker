@@ -284,6 +284,20 @@ public class PomodoroServiceTests : IAsyncLifetime
 	}
 
 	[Fact]
+	public void Skip_WithSystemNotificationsTurnedOff_KeepsOnlyTheToast()
+	{
+		_settingsService.Object.Settings.Pomodoro.ShowSystemNotifications = false;
+		_sut.Start();
+
+		_sut.Skip(); // Work -> ShortBreak
+
+		_systemNotification.Verify(
+			n => n.ShowNotificationAsync(It.IsAny<string>(), It.IsAny<string>()),
+			Times.Never);
+		_notificationService.Verify(n => n.ShowSuccess("PomodoroCompleted"), Times.Once);
+	}
+
+	[Fact]
 	public void Skip_FromBreakToWork_ShowsSystemNotification()
 	{
 		_sut.Start();
