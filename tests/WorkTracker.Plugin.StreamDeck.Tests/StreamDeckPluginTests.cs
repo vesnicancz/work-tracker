@@ -8,7 +8,7 @@ namespace WorkTracker.Plugin.StreamDeck.Tests;
 
 public sealed class StreamDeckPluginTests : IAsyncLifetime
 {
-	private readonly string _pipeName = $"worktracker-test-{Guid.NewGuid():N}";
+	private readonly string _pipeName = $"wt-{Guid.NewGuid():N}"[..11];
 	private readonly Mock<IRemoteControlHost> _host = new();
 	private StreamDeckPlugin _plugin = null!;
 
