@@ -7,7 +7,7 @@ Průvodce pro autory pluginů. Pokud tě zajímá **jak plugin systém funguje i
 ## Obsah
 
 1. [Co je plugin](#co-je-plugin)
-2. [Tři typy pluginů](#tři-typy-pluginů)
+2. [Čtyři typy pluginů](#čtyři-typy-pluginů)
 3. [Quick start: minimální plugin](#quick-start-minimální-plugin)
 4. [PluginBase a base classes](#pluginbase-a-base-classes)
 5. [Metadata](#metadata)
@@ -43,13 +43,14 @@ Nově nalezený plugin je **ve výchozím stavu vypnutý** — uživatel ho mus�
 
 ---
 
-## Tři typy pluginů
+## Čtyři typy pluginů
 
 | Typ | Rozhraní | Base class | Kdy použít |
 |-----|----------|------------|------------|
 | **Worklog Upload** | `IWorklogUploadPlugin` | `WorklogUploadPluginBase` | Chceš odesílat / číst worklogy z externího systému. |
 | **Work Suggestion** | `IWorkSuggestionPlugin` | `WorkSuggestionPluginBase` | Chceš aplikaci dodat seznam úkolů k zobrazení v Suggestions dialogu. |
 | **Status Indicator** | `IStatusIndicatorPlugin` | `StatusIndicatorPluginBase` | Chceš reagovat na Pomodoro fáze ovládáním externího zařízení. |
+| **Remote Control** | `IRemoteControlPlugin` | `RemoteControlPluginBase` | Chceš běžící aplikaci číst a ovládat z externího zařízení. |
 
 Jedna třída může implementovat **víc** rozhraní (např. Luxafor: `StatusIndicatorPluginBase` + `ITestablePlugin`) a jedna DLL může obsahovat **víc** pluginových tříd — loader instanciuje každou neabstraktní třídu implementující `IPlugin`. Každá je pak samostatný plugin s vlastním `Id` (např. `Plugin.Atlassian` obsahuje `TempoWorklogPlugin` a `JiraSuggestionsPlugin`, které sdílí `JiraClient`).
 
@@ -850,6 +851,14 @@ Dokumentace: [plugins/goran-g3.md](plugins/goran-g3.md).
 - **Thread‑safe** s `SemaphoreSlim` — hlídá stav pluginu (otevírání a zavírání zařízení, poslední stav), aby se souběžná volání nepraly o handle.
 
 Dokumentace: [plugins/luxafor.md](plugins/luxafor.md).
+
+### `WorkTracker.Plugin.StreamDeck`
+
+- **`IRemoteControlPlugin`** — `IRemoteControlHost` nedostává z DI, ale v `AttachAsync`, protože jeho implementace žije v `UI.Shared`. `AttachAsync` a `DetachAsync` volá `IRemoteControlCoordinator` podle stavu povolení, takže pipe existuje jen v GUI a jen se zapnutým pluginem. CLI plugin sice načte, ale nepřipojí, a proto plugin nesmí začít poslouchat už v `OnInitializeAsync`.
+- **Příkazy běží na UI vlákně** — zajišťuje to `RemoteControlHost` přes `IUiDispatcher`, plugin to řešit nemusí. Metody hostitele jde volat z libovolného vlákna a `StateChanged` může přijít také z libovolného vlákna.
+- **Druhá polovina je mimo .NET** — Stream Deck plugin v `streamdeck-plugin/` je TypeScript a s tímhle pluginem mluví přes named pipe.
+
+Dokumentace: [plugins/stream-deck.md](plugins/stream-deck.md).
 
 ---
 

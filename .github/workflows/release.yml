@@ -252,6 +252,9 @@ jobs:
           - plugin: Office365Calendar
             project: plugins/WorkTracker.Plugin.Office365Calendar/WorkTracker.Plugin.Office365Calendar.csproj
             artifact: WorkTracker.Plugin.Office365Calendar
+          - plugin: StreamDeck
+            project: plugins/WorkTracker.Plugin.StreamDeck/WorkTracker.Plugin.StreamDeck.csproj
+            artifact: WorkTracker.Plugin.StreamDeck
     steps:
       - uses: actions/checkout@v6
         with:
@@ -268,6 +271,33 @@ jobs:
           -c ${{ env.CONFIGURATION }}
           -p:DebugType=none
           -o publish/${{ matrix.artifact }}
+
+      # The two sides of the Stream Deck integration share a protocol, so they ship together: the
+      # package for the Stream Deck app goes into the folder of the WorkTracker plugin.
+      - name: Setup Node.js
+        if: matrix.plugin == 'StreamDeck'
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Test and build the Stream Deck app plugin
+        if: matrix.plugin == 'StreamDeck'
+        working-directory: streamdeck-plugin
+        run: |
+          npm ci --ignore-scripts
+          npm test
+          npm run build
+
+      # The Stream Deck app installs the file on a double click, so the extension has to stay.
+      # Stream Deck versions are four numbers: the tag lacks the fourth, and its prerelease suffix is
+      # not allowed, so that one stays only in the file name.
+      - name: Pack the Stream Deck app plugin
+        if: matrix.plugin == 'StreamDeck'
+        working-directory: streamdeck-plugin
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          npx streamdeck pack com.vesnicancz.worktracker.sdPlugin --version "${VERSION%%-*}.0" --output dist
+          mv dist/com.vesnicancz.worktracker.streamDeckPlugin "../publish/${{ matrix.artifact }}/WorkTracker-StreamDeck-$VERSION.streamDeckPlugin"
 
       # See the same step in publish-avalonia for the naming scheme. Plugins are platform-neutral,
       # so there is no platform suffix. Only the zip is renamed: the folder inside keeps the

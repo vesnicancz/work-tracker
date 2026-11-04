@@ -68,7 +68,9 @@ work-tracker/
 │   ├── WorkTracker.Plugin.Atlassian/
 │   ├── WorkTracker.Plugin.Office365Calendar/
 │   ├── WorkTracker.Plugin.GoranG3/
-│   └── WorkTracker.Plugin.Luxafor/
+│   ├── WorkTracker.Plugin.Luxafor/
+│   └── WorkTracker.Plugin.StreamDeck/
+├── streamdeck-plugin/                    # Plugin pro aplikaci Stream Deck (TypeScript)
 ├── tests/                                # xUnit + Moq + FluentAssertions
 │   ├── WorkTracker.Domain.Tests/
 │   ├── WorkTracker.Application.Tests/
@@ -572,6 +574,8 @@ Push + PR na `master`:
 4. `dotnet build --no-restore`
 5. `dotnet test --no-build --verbosity normal`
 
+Samostatný job `streamdeck-plugin` otestuje, zvaliduje a sestaví TypeScriptový plugin v `streamdeck-plugin/` (`actions/setup-node@v7`, Node 24).
+
 Běží na `ubuntu-latest` — všechny projekty cílí na cross‑platform `net10.0`, takže build i testy projdou na Linuxu bez speciálního nastavení.
 
 ### `.github/workflows/release.yml`
@@ -584,7 +588,7 @@ Trigger: push tagu `v*`. Jobs:
 4. **publish-avalonia** (matrix: win-x64, win-arm64, linux-x64, osx-arm64) — Avalonia pro všechny platformy. macOS varianta navíc projde krokem *Bundle and sign .app* a místo zipu se z ní balí `.dmg` (viz níže).
 
    Obě matice mají stejnou sadu RID: co dostane GUI, dostane i CLI. Intel Macy (`osx-x64`) se nebuildí — Macy se prodávají s Apple Siliconem od roku 2020 a na těch starších rozjede .NET host z `osx-arm64` buildu Rosetta.
-5. **publish-plugins** (matrix: Atlassian, Luxafor, GoranG3, Office365Calendar) — každý plugin samostatně.
+5. **publish-plugins** (matrix: Atlassian, Luxafor, GoranG3, Office365Calendar, StreamDeck) — každý plugin samostatně. U StreamDecku navíc otestuje a sbalí `streamdeck-plugin/` do `.streamDeckPlugin` s verzí z tagu a přidá ho do složky pluginu, obě části tak vycházejí společně.
 6. **release** — stáhne artifacty a vytvoří rovnou publikovaný GitHub Release s automaticky vygenerovanými poznámkami (`generate_release_notes`).
 
 Artifacty jsou framework‑dependent (bez runtime). Kdo chce self‑contained, buildí si sám.
@@ -671,7 +675,7 @@ Zavři všechny běžící instance aplikace (i ty v tray), pak `dotnet build` z
 
 1. Zkontroluj, že `.dll` skutečně je v plugin adresáři: výchozí `plugins/` vedle binárky (na macOS `~/Library/Application Support/WorkTracker/plugins/`), případně v adresářích z `Plugins:Directories`. Prohledávají se i podsložky.
 2. Plugin musí **začínat prefixem** `WorkTracker.Plugin.` (loader filtruje podle jména souboru, `WorkTracker.Plugin.Abstractions.dll` přeskakuje).
-3. DLL musí obsahovat **non‑abstract třídu implementující `IPlugin`** (v praxi jedno z `IWorklogUploadPlugin` / `IWorkSuggestionPlugin` / `IStatusIndicatorPlugin`). Abstraktní třídy a interfaces jsou přeskočené.
+3. DLL musí obsahovat **non‑abstract třídu implementující `IPlugin`** (v praxi jedno z `IWorklogUploadPlugin` / `IWorkSuggestionPlugin` / `IStatusIndicatorPlugin` / `IRemoteControlPlugin`). Abstraktní třídy a interfaces jsou přeskočené.
 4. V logu najdeš selhání načtení (`Failed to load plugin …`, `No plugin types found in …`) i úspěšně načtené pluginy (`Loaded plugin: …`). Jednotlivé pokusy (`Loading plugin from …`) jsou jen na úrovni Debug, takže se do logu nezapíšou.
 5. Nově nalezený plugin je ve výchozím stavu **vypnutý** — zapni ho v Nastavení → Pluginy.
 

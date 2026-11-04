@@ -71,6 +71,10 @@ public sealed class PluginManager : IPluginManager
 
 	public IEnumerable<IWorkSuggestionPlugin> WorkSuggestionPlugins => GetPlugins<IWorkSuggestionPlugin>(enabledOnly: true);
 
+	public IEnumerable<IRemoteControlPlugin> AllRemoteControlPlugins => GetPlugins<IRemoteControlPlugin>(enabledOnly: false);
+
+	public IEnumerable<IRemoteControlPlugin> RemoteControlPlugins => GetPlugins<IRemoteControlPlugin>(enabledOnly: true);
+
 	private List<T> GetPlugins<T>(bool enabledOnly) where T : IPlugin
 	{
 		lock (_lock)

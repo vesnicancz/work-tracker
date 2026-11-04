@@ -229,6 +229,8 @@ public partial class App : global::Avalonia.Application
 					settingsService.Settings.EnabledPlugins,
 					settingsService.Settings.PluginConfigurations);
 
+				await _host.Services.GetRequiredService<IRemoteControlCoordinator>().SyncAsync(CancellationToken.None);
+
 				// Refresh suggestions now that plugins are loaded
 				await Dispatcher.UIThread.InvokeAsync(viewModel.NotifyPluginsLoaded);
 			}
@@ -340,6 +342,7 @@ public partial class App : global::Avalonia.Application
 		services.AddSingleton<IThemeService, ThemeService>();
 		services.AddSingleton<IDesktopIntegrationService, LinuxDesktopIntegrationService>();
 		services.AddSingleton<IHotkeyService, HotkeyService>();
+		services.AddSingleton<IUiDispatcher, AvaloniaUiDispatcher>();
 
 		services.AddSingleton<MainViewModel>();
 		services.AddTransient<WorkEntryEditViewModel>();

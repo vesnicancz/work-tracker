@@ -21,6 +21,7 @@ public class SettingsOrchestratorTests
 	private readonly Mock<IConfiguration> _mockConfiguration;
 	private readonly Mock<IAutostartManager> _mockAutostartManager;
 	private readonly Mock<ITrayIconService> _mockTrayIconService;
+	private readonly Mock<IRemoteControlCoordinator> _mockRemoteControlCoordinator = new();
 	private readonly SettingsOrchestrator _orchestrator;
 
 	public SettingsOrchestratorTests()
@@ -43,6 +44,7 @@ public class SettingsOrchestratorTests
 			_mockConfiguration.Object,
 			_mockAutostartManager.Object,
 			_mockTrayIconService.Object,
+			_mockRemoteControlCoordinator.Object,
 			new Mock<ILogger<SettingsOrchestrator>>().Object);
 	}
 

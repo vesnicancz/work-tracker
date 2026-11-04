@@ -21,7 +21,7 @@ WorkTracker je desktopová aplikace pro sledování času stráveného na pracov
 - **Avalonia GUI** — moderní cross‑platform rozhraní (Windows, Linux, macOS)
 - **CLI** — terminálový klient (Spectre.Console) pro rychlé ovládání z příkazové řádky
 
-Jádro aplikace je rozšiřitelné pomocí pluginů, které jsou načítané z izolovaných `AssemblyLoadContext`. Pluginy pro integraci s Jirou, Tempem, Office 365 kalendářem, Goran G3 a Luxafor LED indikátorem jsou publikované jako samostatné `WorkTracker-Plugin-*.zip` balíčky — nejsou součástí balíčku aplikace, stáhni si je podle potřeby a rozbal do adresáře `plugins/` vedle spustitelného souboru (na macOS do `~/Library/Application Support/WorkTracker/plugins/`).
+Jádro aplikace je rozšiřitelné pomocí pluginů, které jsou načítané z izolovaných `AssemblyLoadContext`. Pluginy pro integraci s Jirou, Tempem, Office 365 kalendářem, Goran G3, Luxafor LED indikátorem a Stream Deckem jsou publikované jako samostatné `WorkTracker-Plugin-*.zip` balíčky — nejsou součástí balíčku aplikace, stáhni si je podle potřeby a rozbal do adresáře `plugins/` vedle spustitelného souboru (na macOS do `~/Library/Application Support/WorkTracker/plugins/`).
 
 ### Hlavní funkce
 
@@ -170,13 +170,14 @@ V souboru `settings.json` je na jejich místě uložený pouze placeholder `CS:{
 
 ## Plugin systém
 
-WorkTracker podporuje tři typy pluginů:
+WorkTracker podporuje čtyři typy pluginů:
 
 | Typ | Rozhraní | Účel |
 |-----|----------|------|
 | **Worklog Upload** | `IWorklogUploadPlugin` | Odesílání a načítání worklogů z externích systémů |
 | **Work Suggestion** | `IWorkSuggestionPlugin` | Návrhy úkolů (issues, kalendářové události) |
 | **Status Indicator** | `IStatusIndicatorPlugin` | Ovládání fyzických indikátorů stavu (LED apod.) |
+| **Remote Control** | `IRemoteControlPlugin` | Ovládání běžící aplikace z externích zařízení (Stream Deck apod.) |
 
 ### Dodávané pluginy
 
@@ -186,6 +187,7 @@ WorkTracker podporuje tři typy pluginů:
 | **Office 365 Calendar** | Work suggestions z kalendářových událostí (MSAL, přihlášení v prohlížeči) | [docs/plugins/office365-calendar.md](docs/plugins/office365-calendar.md) |
 | **Goran G3** | Upload worklogů přes MCP server s Entra ID autentizací | [docs/plugins/goran-g3.md](docs/plugins/goran-g3.md) |
 | **Luxafor** | Zobrazení Pomodoro fáze na Luxafor Bluetooth Pro LED | [docs/plugins/luxafor.md](docs/plugins/luxafor.md) |
+| **Stream Deck** | Ovládání trackingu z ovladače Stream Deck + | [docs/plugins/stream-deck.md](docs/plugins/stream-deck.md) |
 
 ### Vlastní plugin
 
@@ -261,7 +263,9 @@ work-tracker/
 │   ├── WorkTracker.Plugin.Atlassian/         # Tempo + Jira Suggestions
 │   ├── WorkTracker.Plugin.Office365Calendar/ # O365 Calendar suggestions
 │   ├── WorkTracker.Plugin.GoranG3/           # Goran G3 worklog upload
-│   └── WorkTracker.Plugin.Luxafor/           # Luxafor LED status
+│   ├── WorkTracker.Plugin.Luxafor/           # Luxafor LED status
+│   └── WorkTracker.Plugin.StreamDeck/        # Stream Deck, strana WorkTrackeru
+├── streamdeck-plugin/                    # Stream Deck, strana aplikace Stream Deck (TypeScript)
 ├── tests/                                # xUnit + Moq + FluentAssertions
 └── docs/                                 # Dokumentace (tento soubor je odkazy sem)
 ```

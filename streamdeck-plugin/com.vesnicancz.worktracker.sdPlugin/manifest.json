@@ -1,0 +1,126 @@
+{
+	"$schema": "https://schemas.elgato.com/streamdeck/plugins/manifest.json",
+	"Name": "WorkTracker",
+	"Version": "1.0.0.0",
+	"Author": "WorkTracker Team",
+	"Description": "Control WorkTracker time tracking from Stream Deck +. Requires WorkTracker with its Stream Deck plugin enabled.",
+	"UUID": "com.vesnicancz.worktracker",
+	"Icon": "imgs/plugin",
+	"Category": "WorkTracker",
+	"CategoryIcon": "imgs/category",
+	"CodePath": "bin/plugin.js",
+	"Nodejs": {
+		"Version": "20"
+	},
+	"SDKVersion": 3,
+	"Software": {
+		"MinimumVersion": "7.1"
+	},
+	"OS": [
+		{
+			"Platform": "windows",
+			"MinimumVersion": "10"
+		},
+		{
+			"Platform": "mac",
+			"MinimumVersion": "13"
+		}
+	],
+	"Actions": [
+		{
+			"UUID": "com.vesnicancz.worktracker.work",
+			"Name": "Work",
+			"Tooltip": "Shows the tracked work with its running time. Press to stop or resume, rotate to adjust the start time.",
+			"Icon": "imgs/work",
+			"Controllers": [
+				"Encoder"
+			],
+			"Encoder": {
+				"layout": "layouts/work.json",
+				"TriggerDescription": {
+					"Rotate": "Adjust start time",
+					"Push": "Stop / resume work",
+					"Touch": "Stop / resume work"
+				}
+			},
+			"States": [
+				{
+					"Image": "imgs/work-state"
+				}
+			]
+		},
+		{
+			"UUID": "com.vesnicancz.worktracker.suggestions",
+			"Name": "Suggestions",
+			"Tooltip": "Shows today's work suggestions on the whole device.",
+			"Icon": "imgs/suggestions",
+			"Controllers": [
+				"Keypad"
+			],
+			"SupportedInMultiActions": false,
+			"States": [
+				{
+					"Image": "imgs/suggestions-state"
+				}
+			]
+		},
+		{
+			"UUID": "com.vesnicancz.worktracker.suggestion",
+			"Name": "Suggestion",
+			"Tooltip": "Shows one work suggestion. Press to start it.",
+			"VisibleInActionsList": false,
+			"Icon": "imgs/suggestions",
+			"Controllers": [
+				"Keypad"
+			],
+			"SupportedInMultiActions": false,
+			"UserTitleEnabled": false,
+			"States": [
+				{
+					"Image": "imgs/blank-state"
+				}
+			]
+		},
+		{
+			"UUID": "com.vesnicancz.worktracker.suggestions-next",
+			"Name": "Next suggestions",
+			"Tooltip": "Shows the next page of suggestions.",
+			"VisibleInActionsList": false,
+			"Icon": "imgs/suggestions",
+			"Controllers": [
+				"Keypad"
+			],
+			"SupportedInMultiActions": false,
+			"UserTitleEnabled": false,
+			"States": [
+				{
+					"Image": "imgs/blank-state"
+				}
+			]
+		},
+		{
+			"UUID": "com.vesnicancz.worktracker.suggestions-back",
+			"Name": "Close suggestions",
+			"Tooltip": "Goes back to the previous profile.",
+			"VisibleInActionsList": false,
+			"Icon": "imgs/suggestions",
+			"Controllers": [
+				"Keypad"
+			],
+			"SupportedInMultiActions": false,
+			"States": [
+				{
+					"Image": "imgs/suggestions-back-state"
+				}
+			]
+		}
+	],
+	"Profiles": [
+		{
+			"Name": "profiles/WorkTracker",
+			"DeviceType": 7,
+			"Readonly": true,
+			"DontAutoSwitchWhenInstalled": true
+		}
+	]
+}

@@ -1,0 +1,31 @@
+{
+	"$schema": "https://schemas.elgato.com/streamdeck/plugins/layout.json",
+	"id": "com.vesnicancz.worktracker.layout.work",
+	"items": [
+		{
+			"key": "title",
+			"type": "text",
+			"rect": [12, 14, 176, 28],
+			"alignment": "left",
+			"text-overflow": "ellipsis",
+			"font": {
+				"size": 18,
+				"weight": 500
+			},
+			"value": "WorkTracker",
+			"color": "#5C6370"
+		},
+		{
+			"key": "value",
+			"type": "text",
+			"rect": [12, 46, 176, 42],
+			"alignment": "left",
+			"font": {
+				"size": 32,
+				"weight": 600
+			},
+			"value": "Offline",
+			"color": "#5C6370"
+		}
+	]
+}
