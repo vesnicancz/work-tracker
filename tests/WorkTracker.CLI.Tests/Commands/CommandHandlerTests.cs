@@ -871,9 +871,74 @@ public sealed class CommandHandlerTests : IDisposable
 
 		var exitCode = await _handler.HandleSendCommand(isWeek: true);
 
-		exitCode.Should().Be(0);
+		exitCode.Should().Be(1);
 		_console.Output.Should().Contain("Successfully sent 1 entries");
 		_errorConsole.Output.Should().Contain("quota exceeded");
+	}
+
+	[Fact]
+	public async Task Send_PartialFailure_ReportsItAndReturnsOne()
+	{
+		_submissionService
+			.Setup(s => s.PreviewDailyWorklogAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(PreviewWith(Worklog()));
+		_submissionService
+			.Setup(s => s.SubmitDailyWorklogAsync(LocalNow.Date, It.IsAny<CancellationToken>()))
+			.ReturnsAsync(Result.Success(new SubmissionResult
+			{
+				TotalEntries = 2,
+				SuccessfulEntries = 1,
+				FailedEntries = 1,
+				Errors = [new SubmissionError { Date = LocalNow.Date, ErrorMessage = "quota exceeded" }],
+			}));
+
+		var exitCode = await _handler.HandleSendCommand(LocalNow.Date, assumeYes: true);
+
+		exitCode.Should().Be(1);
+		_console.Output.Should().Contain("Successfully sent 1 entries");
+		_errorConsole.Output.Should().Contain("1 entries failed").And.Contain("quota exceeded");
+	}
+
+	[Fact]
+	public async Task Send_EverythingFailed_DoesNotClaimSuccess()
+	{
+		_submissionService
+			.Setup(s => s.PreviewDailyWorklogAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(PreviewWith(Worklog()));
+		_submissionService
+			.Setup(s => s.SubmitDailyWorklogAsync(LocalNow.Date, It.IsAny<CancellationToken>()))
+			.ReturnsAsync(Result.Success(new SubmissionResult
+			{
+				TotalEntries = 1,
+				FailedEntries = 1,
+				Errors = [new SubmissionError { Date = LocalNow.Date, ErrorMessage = "quota exceeded" }],
+			}));
+
+		var exitCode = await _handler.HandleSendCommand(LocalNow.Date, assumeYes: true);
+
+		exitCode.Should().Be(1);
+		_console.Output.Should().NotContain("Successfully sent");
+	}
+
+	[Fact]
+	public async Task Send_ErrorWithoutAFailedEntry_ReturnsOne()
+	{
+		_submissionService
+			.Setup(s => s.PreviewDailyWorklogAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(PreviewWith(Worklog()));
+		_submissionService
+			.Setup(s => s.SubmitDailyWorklogAsync(LocalNow.Date, It.IsAny<CancellationToken>()))
+			.ReturnsAsync(Result.Success(new SubmissionResult
+			{
+				TotalEntries = 1,
+				SuccessfulEntries = 1,
+				Errors = [new SubmissionError { Date = LocalNow.Date, ErrorMessage = "Timesheet submit failed" }],
+			}));
+
+		var exitCode = await _handler.HandleSendCommand(LocalNow.Date, assumeYes: true);
+
+		exitCode.Should().Be(1);
+		_errorConsole.Output.Should().Contain("Timesheet submit failed");
 	}
 
 	#endregion Send
