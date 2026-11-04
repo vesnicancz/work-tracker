@@ -336,6 +336,17 @@ public class WorklogSubmissionOrchestratorTests
 		_orchestrator.FormatSubmissionStatus(submission, "Tempo").Should().Contain("SubmissionPartial");
 	}
 
+	[Fact]
+	public void FormatSubmissionStatus_ErrorWithoutAFailedEntry_ReturnsPartialMessage()
+	{
+		var submission = new SubmissionResult
+		{
+			SuccessfulEntries = 2,
+			Errors = [new SubmissionError { ErrorMessage = "Timesheet submit failed" }]
+		};
+		_orchestrator.FormatSubmissionStatus(submission, "Goran").Should().Contain("SubmissionPartial");
+	}
+
 	#endregion FormatSubmissionStatus
 
 	#region ResetItems

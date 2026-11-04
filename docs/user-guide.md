@@ -632,7 +632,7 @@ Interně pipeline:
 
 Po úspěšném odeslání dialog zůstane otevřený a výsledek ukáže ve stavovém řádku, takže můžeš rovnou pokračovat dalším dnem.
 
-Pokud některé záznamy selžou (typicky kvůli síti nebo dočasnému 5xx), v dialogu se zobrazí tlačítko **ODESLAT JEN NEÚSPĚŠNÉ**. Po jeho stisku aplikace znovu odešle jen záznamy, které předtím selhaly a jsou pořád zaškrtnuté. Navíc některé pluginy mohou mít **vlastní interní retry logiku** na úrovni jednoho odeslání — například `tempo.worklog` automaticky opakuje odeslání při 408, 429, 500, 502, 503 a 504 s exponenciálním backoffem (až 2 opakování, tedy 3 pokusy celkem). Chování je plně plugin‑specifické a není garantované u všech dodávaných pluginů (např. `gorang3.worklog` automatický retry nedělá kvůli chybějící server‑side idempotenci).
+Pokud některé záznamy selžou (typicky kvůli síti nebo dočasnému 5xx), v dialogu se zobrazí tlačítko **ODESLAT JEN NEÚSPĚŠNÉ**. Po jeho stisku aplikace znovu odešle jen záznamy, které předtím selhaly a jsou pořád zaškrtnuté. Navíc některé pluginy mohou mít **vlastní interní retry logiku** na úrovni jednoho odeslání — například `tempo.worklog` automaticky opakuje odeslání při 429 a 503 s exponenciálním backoffem (až 2 opakování, tedy 3 pokusy celkem). Při 408, 500, 502 a 504 záznam na serveru už může existovat, takže než ho odešleš znovu, zkontroluj to v Tempu. Chování je plně plugin‑specifické a není garantované u všech dodávaných pluginů (např. `gorang3.worklog` automatický retry nedělá kvůli chybějící server‑side idempotenci).
 
 ### Z CLI
 

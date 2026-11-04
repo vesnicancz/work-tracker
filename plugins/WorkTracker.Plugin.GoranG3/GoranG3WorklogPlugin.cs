@@ -366,6 +366,12 @@ public sealed class GoranG3WorklogPlugin(ILogger<GoranG3WorklogPlugin> logger, I
 			totalFailed += dayResult.Value!.FailedEntries;
 			allErrors.AddRange(dayResult.Value!.Errors);
 
+			// Submitting is final, so an incomplete day waits until a retry has uploaded the rest of it
+			if (dayResult.Value!.FailedEntries > 0)
+			{
+				continue;
+			}
+
 			var submitResult = await SubmitTimesheetAsync(dayGroup.Key, cancellationToken);
 			if (submitResult.IsFailure)
 			{

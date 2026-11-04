@@ -170,9 +170,9 @@ public class TempoWorklogPluginTests : IAsyncDisposable
     {
         _httpHandler.SetupGet("/rest/api/3/issue/PROJ-123?fields=id", JiraIssueJson("PROJ-123", 10001));
         _httpHandler.SetupPostSequence("/4/worklogs",
-            (HttpStatusCode.BadGateway, "Bad gateway"),
-            (HttpStatusCode.BadGateway, "Bad gateway"),
-            (HttpStatusCode.BadGateway, "Bad gateway"));
+            (HttpStatusCode.ServiceUnavailable, "Unavailable"),
+            (HttpStatusCode.ServiceUnavailable, "Unavailable"),
+            (HttpStatusCode.ServiceUnavailable, "Unavailable"));
         await InitializePluginAsync();
 
         var result = await _plugin.UploadWorklogAsync(CreateWorklog(), CancellationToken.None);
@@ -659,10 +659,9 @@ public class TempoWorklogPluginTests : IAsyncDisposable
     #region Retry status codes
 
     [Theory]
-    [InlineData(HttpStatusCode.BadGateway)]
+    [InlineData(HttpStatusCode.TooManyRequests)]
     [InlineData(HttpStatusCode.ServiceUnavailable)]
-    [InlineData(HttpStatusCode.GatewayTimeout)]
-    public async Task UploadWorklogAsync_TransientErrors_RetriesAndSucceeds(HttpStatusCode transientCode)
+    public async Task UploadWorklogAsync_RequestTurnedAway_RetriesAndSucceeds(HttpStatusCode transientCode)
     {
         _httpHandler.SetupGet("/rest/api/3/issue/PROJ-123?fields=id", JiraIssueJson("PROJ-123", 10001));
         _httpHandler.SetupPostSequence("/4/worklogs",
@@ -674,6 +673,23 @@ public class TempoWorklogPluginTests : IAsyncDisposable
 
         result.IsSuccess.Should().BeTrue();
         _httpHandler.GetPostCallCount("/4/worklogs").Should().Be(2);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.RequestTimeout)]
+    [InlineData(HttpStatusCode.InternalServerError)]
+    [InlineData(HttpStatusCode.BadGateway)]
+    [InlineData(HttpStatusCode.GatewayTimeout)]
+    public async Task UploadWorklogAsync_WorklogMayAlreadyExist_DoesNotRetry(HttpStatusCode statusCode)
+    {
+        _httpHandler.SetupGet("/rest/api/3/issue/PROJ-123?fields=id", JiraIssueJson("PROJ-123", 10001));
+        _httpHandler.SetupPost("/4/worklogs", statusCode, "Error");
+        await InitializePluginAsync();
+
+        var result = await _plugin.UploadWorklogAsync(CreateWorklog(), CancellationToken.None);
+
+        result.IsFailure.Should().BeTrue();
+        _httpHandler.GetPostCallCount("/4/worklogs").Should().Be(1);
     }
 
     #endregion
