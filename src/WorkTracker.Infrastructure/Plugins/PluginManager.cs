@@ -66,11 +66,7 @@ public sealed class PluginManager : IPluginManager
 
 	public IEnumerable<IWorklogUploadPlugin> WorklogUploadPlugins => GetPlugins<IWorklogUploadPlugin>(enabledOnly: true);
 
-	public IEnumerable<IStatusIndicatorPlugin> AllStatusIndicatorPlugins => GetPlugins<IStatusIndicatorPlugin>(enabledOnly: false);
-
 	public IEnumerable<IStatusIndicatorPlugin> StatusIndicatorPlugins => GetPlugins<IStatusIndicatorPlugin>(enabledOnly: true);
-
-	public IEnumerable<IWorkSuggestionPlugin> AllWorkSuggestionPlugins => GetPlugins<IWorkSuggestionPlugin>(enabledOnly: false);
 
 	public IEnumerable<IWorkSuggestionPlugin> WorkSuggestionPlugins => GetPlugins<IWorkSuggestionPlugin>(enabledOnly: true);
 
@@ -228,9 +224,9 @@ public sealed class PluginManager : IPluginManager
 	}
 
 	/// <summary>
-	/// Loads an embedded plugin (plugin that's part of the main application)
+	/// Registers a plugin type without loading it from a file. Tests use this for their own plugins.
 	/// </summary>
-	public bool LoadEmbeddedPlugin<T>()
+	internal bool LoadEmbeddedPlugin<T>()
 		where T : class, IPlugin
 	{
 		try

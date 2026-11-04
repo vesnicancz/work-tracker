@@ -244,7 +244,7 @@ Jeden `ServiceProvider` (`BuildServiceProvider()`) sdílejí všechny pluginy. P
 
 `PluginLoader.DiscoverPluginFiles` rekurzivně (`SearchOption.AllDirectories`) skenuje adresáře a hledá soubory vyhovující `WorkTracker.Plugin.*.dll`; `WorkTracker.Plugin.Abstractions.dll` vyřazuje přímo tato metoda. Adresáře se berou z `Plugins:Directories`, výchozí je `WorkTrackerPaths.DefaultPluginsPath` (`{WritableBaseDirectory}/plugins`).
 
-`PluginManager` interně podporuje i registraci zabudovaného pluginu přes `LoadEmbeddedPlugin<T>()`, ale aktuální bootstrap v `InitializePluginsAsync` tuto cestu nepoužívá — všechny pluginy jsou načítané dynamickým discovery z adresáře.
+Všechny pluginy jsou načítané dynamickým discovery z adresáře.
 
 ### Lifecycle
 
