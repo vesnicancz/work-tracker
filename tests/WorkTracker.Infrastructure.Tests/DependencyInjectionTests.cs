@@ -401,7 +401,6 @@ public class DependencyInjectionTests : IAsyncDisposable
 
 			// Assert
 			dbContext.Database.GetConnectionString().Should().Contain(expectedPath);
-			Directory.Exists(expectedDir).Should().BeTrue("relative database directory should be resolved and created");
 		}
 		finally
 		{
@@ -558,7 +557,7 @@ public class DependencyInjectionTests : IAsyncDisposable
 	}
 
 	[Fact]
-	public void AddInfrastructure_WhenDatabaseDirectoryCannotBeCreated_ShouldThrowDatabaseUnavailable()
+	public async Task InitializeDatabaseAsync_WhenDatabaseDirectoryCannotBeCreated_ShouldThrowDatabaseUnavailable()
 	{
 		// Arrange — a plain file where the database directory should be: creating a directory
 		// under it fails the same way an unplugged removable drive does.
@@ -571,11 +570,15 @@ public class DependencyInjectionTests : IAsyncDisposable
 
 		try
 		{
+			// Registering must not touch the disk: commands that don't use the database have to work without it
+			_services.AddInfrastructure(config);
+			_serviceProvider = _services.BuildServiceProvider();
+
 			// Act
-			var act = () => _services.AddInfrastructure(config);
+			var act = async () => await DependencyInjection.InitializeDatabaseAsync(_serviceProvider, TestContext.Current.CancellationToken);
 
 			// Assert
-			act.Should().Throw<DatabaseUnavailableException>()
+			(await act.Should().ThrowAsync<DatabaseUnavailableException>())
 				.Which.DatabasePath.Should().Be(dbPath);
 		}
 		finally
@@ -585,11 +588,10 @@ public class DependencyInjectionTests : IAsyncDisposable
 	}
 
 	[Fact]
-	public async Task InitializeDatabaseAsync_WhenDatabaseDirectoryDisappears_ShouldThrowDatabaseUnavailable()
+	public async Task InitializeDatabaseAsync_WhenDatabaseCannotBeOpened_ShouldThrowDatabaseUnavailable()
 	{
-		// Arrange — registration succeeds, then the directory goes away (drive unplugged)
-		var dbDirectory = Path.Combine(Path.GetTempPath(), $"vanishing_{Guid.NewGuid()}");
-		var dbPath = Path.Combine(dbDirectory, "worktracker.db");
+		// Arrange — the directory is there, but SQLite cannot open a directory as its file
+		var dbPath = Directory.CreateTempSubdirectory("unopenable_").FullName;
 		var config = new ConfigurationBuilder()
 			.AddInMemoryCollection(new Dictionary<string, string?>
 			{
@@ -598,16 +600,56 @@ public class DependencyInjectionTests : IAsyncDisposable
 			})
 			.Build();
 
-		_services.AddInfrastructure(config);
-		_serviceProvider = _services.BuildServiceProvider();
-		Directory.Delete(dbDirectory, recursive: true);
+		try
+		{
+			_services.AddInfrastructure(config);
+			_serviceProvider = _services.BuildServiceProvider();
 
-		// Act
-		var act = async () => await DependencyInjection.InitializeDatabaseAsync(_serviceProvider, TestContext.Current.CancellationToken);
+			// Act
+			var act = async () => await DependencyInjection.InitializeDatabaseAsync(_serviceProvider, TestContext.Current.CancellationToken);
 
-		// Assert
-		(await act.Should().ThrowAsync<DatabaseUnavailableException>())
-			.Which.DatabasePath.Should().Be(dbPath);
+			// Assert
+			(await act.Should().ThrowAsync<DatabaseUnavailableException>())
+				.Which.DatabasePath.Should().Be(dbPath);
+		}
+		finally
+		{
+			Directory.Delete(dbPath, recursive: true);
+		}
+	}
+
+	[Fact]
+	public async Task InitializeDatabaseAsync_WhenDatabaseDirectoryIsMissing_ShouldCreateIt()
+	{
+		// Arrange
+		var dbDirectory = Path.Combine(Path.GetTempPath(), $"missing_{Guid.NewGuid()}");
+		var config = new ConfigurationBuilder()
+			.AddInMemoryCollection(new Dictionary<string, string?>
+			{
+				["Database:Path"] = Path.Combine(dbDirectory, "worktracker.db"),
+				["Database:Pooling"] = "false"
+			})
+			.Build();
+
+		try
+		{
+			_services.AddInfrastructure(config);
+			_serviceProvider = _services.BuildServiceProvider();
+			Directory.Exists(dbDirectory).Should().BeFalse("registering services must not touch the disk");
+
+			// Act
+			await DependencyInjection.InitializeDatabaseAsync(_serviceProvider, TestContext.Current.CancellationToken);
+
+			// Assert
+			File.Exists(Path.Combine(dbDirectory, "worktracker.db")).Should().BeTrue();
+		}
+		finally
+		{
+			if (Directory.Exists(dbDirectory))
+			{
+				Directory.Delete(dbDirectory, recursive: true);
+			}
+		}
 	}
 
 	#endregion InitializeDatabaseAsync Tests

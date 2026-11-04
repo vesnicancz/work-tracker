@@ -22,13 +22,48 @@ if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT"
 }
 #endif
 
+var commandLineArgs = args;
+
+args = CliArgumentParser.TakeSwitch(args, out var jsonOutput, "--json");
+args = CliArgumentParser.TakeSwitch(args, out var plainOutput, "--plain");
+args = CliArgumentParser.TakeSwitch(args, out var assumeYes, "--yes", "-y");
+args = CliArgumentParser.TakeOption(args, out var providerId, "--provider");
+
+// A pipe or a file gets one record per line instead of a table that wraps at 80 columns.
+var outputFormat = jsonOutput ? OutputFormat.Json
+	: plainOutput || Console.IsOutputRedirected ? OutputFormat.Plain
+	: OutputFormat.Table;
+
+// Parse command line arguments
+if (args.Length == 0)
+{
+	ShowHelp();
+	return 0;
+}
+
+var command = args[0].ToLower();
+
+switch (command)
+{
+	case "version" or "--version" or "-v":
+		return ShowVersion();
+	case "help" or "--help" or "-h":
+		return ShowHelp();
+}
+
+var requirements = CliCommandRequirements.Of(command);
+if (requirements == null)
+{
+	return ShowUnknownCommand(command);
+}
+
 // Not the current directory, which is wherever the user happened to run the command from: the
 // CLI is meant to be on PATH (typically as a symlink), and its appsettings.json ships next to
 // the binary. The content root is what the default appsettings.json, appsettings.{Environment}
 // .json, environment variable and command line sources resolve against.
 var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
 {
-	Args = args,
+	Args = commandLineArgs,
 	ContentRootPath = WorkTrackerPaths.AppContentDirectory,
 });
 
@@ -58,54 +93,39 @@ try
 
 	host = builder.Build();
 
-	// Initialize database
-	await WorkTracker.Infrastructure.DependencyInjection.InitializeDatabaseAsync(host.Services);
+	if (requirements.Value.Database)
+	{
+		await WorkTracker.Infrastructure.DependencyInjection.InitializeDatabaseAsync(host.Services);
+	}
 
-	// Initialize plugins. Enabled state and configuration live in the user settings file the GUI
-	// writes — without them every plugin stays disabled and "send" can never resolve a provider.
-	var pluginSettings = await host.Services
-		.GetRequiredService<IPluginSettingsReader>()
-		.ReadAsync();
+	// Enabled state and configuration live in the user settings file the GUI writes — without them
+	// every plugin stays disabled and "send" can never resolve a provider.
+	if (requirements.Value.Plugins)
+	{
+		var pluginSettings = await host.Services
+			.GetRequiredService<IPluginSettingsReader>()
+			.ReadAsync();
 
-	await WorkTracker.Infrastructure.DependencyInjection.InitializePluginsAsync(
-		host.Services,
-		builder.Configuration,
-		pluginSettings.EnabledPlugins,
-		pluginSettings.PluginConfigurations);
+		await WorkTracker.Infrastructure.DependencyInjection.InitializePluginsAsync(
+			host.Services,
+			builder.Configuration,
+			pluginSettings.EnabledPlugins,
+			pluginSettings.PluginConfigurations);
+	}
 }
 catch (DatabaseUnavailableException ex)
 {
-	// Nothing is logged here — this can fail before the host (and Serilog) exists. Unlike the
-	// GUI there is nothing to retry: a one-shot command cannot wait for the drive to appear.
+	// Unlike the GUI there is nothing to retry: a one-shot command cannot wait for the drive to appear.
 	CliConsole.Error.MarkupLine($"[red]Error:[/] Database is not available: {Markup.Escape(ex.DatabasePath)}");
 	CliConsole.Error.MarkupLine("If it is on a removable drive, connect the drive and run the command again.");
 	return 1;
 }
 
-args = CliArgumentParser.TakeSwitch(args, out var jsonOutput, "--json");
-args = CliArgumentParser.TakeSwitch(args, out var plainOutput, "--plain");
-args = CliArgumentParser.TakeSwitch(args, out var assumeYes, "--yes", "-y");
-args = CliArgumentParser.TakeOption(args, out var providerId, "--provider");
-
-// A pipe or a file gets one record per line instead of a table that wraps at 80 columns.
-var outputFormat = jsonOutput ? OutputFormat.Json
-	: plainOutput || Console.IsOutputRedirected ? OutputFormat.Plain
-	: OutputFormat.Table;
-
-// Parse command line arguments
-if (args.Length == 0)
-{
-	ShowHelp();
-	return 0;
-}
-
-using var scope = host.Services.CreateScope();
-var commandHandler = scope.ServiceProvider.GetRequiredService<CommandHandler>();
-
-var command = args[0].ToLower();
-
 try
 {
+	using var scope = host.Services.CreateScope();
+	var commandHandler = scope.ServiceProvider.GetRequiredService<CommandHandler>();
+
 	return command switch
 	{
 		"start" => await HandleStartCommand(commandHandler, args),
@@ -116,8 +136,6 @@ try
 		"delete" => await HandleDeleteCommand(commandHandler, args),
 		"send" => await HandleSendCommand(commandHandler, args, assumeYes, providerId),
 		"providers" => commandHandler.HandleProvidersCommand(outputFormat),
-		"version" or "--version" or "-v" => ShowVersion(),
-		"help" or "--help" or "-h" => ShowHelp(),
 		_ => ShowUnknownCommand(command)
 	};
 }
@@ -125,6 +143,24 @@ catch (Exception ex)
 {
 	CliConsole.Error.WriteException(ex);
 	return 1;
+}
+finally
+{
+	await ShutDownAsync(host);
+}
+
+// Disposing the host shuts the plugins down and flushes the log. It is bounded because a stuck plugin
+// must not keep a finished command from exiting, and its result would change nothing by then.
+static async Task ShutDownAsync(IHost host)
+{
+	try
+	{
+		await Task.Run(host.Dispose).WaitAsync(TimeSpan.FromSeconds(5));
+	}
+	catch (Exception ex) when (ex is TimeoutException or ObjectDisposedException or InvalidOperationException)
+	{
+		CliConsole.Error.MarkupLine($"[yellow]Warning:[/] Shutting down did not finish cleanly: {Markup.Escape(ex.Message)}");
+	}
 }
 
 static async Task<int> HandleStartCommand(CommandHandler handler, string[] args)
