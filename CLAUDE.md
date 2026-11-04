@@ -84,4 +84,4 @@ Existing plugins: `Plugin.Atlassian` (Tempo + Jira), `Plugin.Office365Calendar`,
 
 ## CI/CD
 
-GitHub Actions: `dotnet.yml` (build + test on push/PR to master, including `streamdeck-plugin/`), `release.yml` (multi-platform publish on `v*` tag push). Build and test run on ubuntu-latest; the release publishes Avalonia on Windows, Linux and macOS.
+GitHub Actions: `dotnet.yml` (build + test on push/PR to master, including `streamdeck-plugin/`), `release.yml` (multi-platform publish on `v*` tag push). Build and test run on Linux, Windows and macOS for every push and PR; the release job tests on ubuntu-latest and publishes Avalonia on Windows, Linux and macOS.

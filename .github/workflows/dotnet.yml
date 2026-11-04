@@ -10,9 +10,13 @@ on:
     branches: [ "master" ]
 
 jobs:
-  build:
+  test:
 
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
     # Without this the job inherits the six-hour default. A run that hung in Actions sat there for
     # eleven minutes looking like a test failure while the log stayed unavailable, and it would have
     # kept the slot for the rest of the day before failing. The whole job takes about a minute, so
@@ -31,6 +35,20 @@ jobs:
       run: dotnet build --no-restore
     - name: Test
       run: dotnet test --no-build --verbosity normal
+
+  # The repository's ruleset requires a check named "build", and a matrix job reports one check per
+  # platform under other names. always() and the explicit result matter: a job skipped because the
+  # one it needs failed counts as passed for a required check, so failing tests wouldn't block a merge.
+  build:
+
+    if: ${{ always() }}
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+    - name: Require all platforms to pass
+      run: test "${{ needs.test.result }}" = "success"
 
   streamdeck-plugin:
 
