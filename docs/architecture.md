@@ -49,7 +49,7 @@ Pokud tě zajímá **jak napsat vlastní plugin**, jdi rovnou na [plugin-develop
 ┌─────────────────────────────▼───────────────────────────────────────┐
 │  Domain                                                             │
 │  - WorkEntry (entity)                                               │
-│  - IWorkEntryRepository (interface)                                 │
+│  - IWorkEntryReader, IWorkEntryRepository (interface)               │
 │  - Business pravidla (validace časů, plán řešení překryvů)          │
 │  - Žádné závislosti navenek                                         │
 └─────────────────────────────┬───────────────────────────────────────┘
@@ -57,7 +57,7 @@ Pokud tě zajímá **jak napsat vlastní plugin**, jdi rovnou na [plugin-develop
 ┌─────────────────────────────▼───────────────────────────────────────┐
 │  Infrastructure                                                     │
 │  - WorkTrackerDbContext (EF Core + SQLite)                          │
-│  - WorkEntryRepository, UnitOfWork, UnitOfWorkFactory               │
+│  - WorkEntryReader, WorkEntryRepository, UnitOfWork(Factory)        │
 │  - CredentialStoreSecureStorage (GitCredentialManager)              │
 │  - PluginManager, PluginLoader, PluginLoadContext (ALC)             │
 │  - MsalTokenProvider, MsalTokenProviderFactory                      │
@@ -91,7 +91,7 @@ Stejně na Abstractions závisí i Plugin.StreamDeck.
 Čistý business model bez jakýchkoli externích závislostí. Obsahuje:
 
 - **`WorkEntry`** — agregát (`TicketId`, `StartTime`/`EndTime`, `Description`, `IsActive`). Settery jsou privátní, záznam vzniká přes `WorkEntry.Create(...)` a mění se přes metody (`Stop`, …).
-- **`IWorkEntryRepository`** — interface pro persistenci, implementace je v Infrastructure.
+- **`IWorkEntryReader`, `IWorkEntryRepository`** — interface pro čtení a pro zápisy v rámci Unit of Work, implementace jsou v Infrastructure.
 - **Business pravidla** — `WorkEntry.IsValid()` (ticket nebo popis je povinný, konec nesmí být před začátkem) a `OverlapResolver`, který spočítá plán úprav kolidujících záznamů (`OverlapResolutionPlan`). Samotnou kontrolu překryvů proti databázi dělá `WorkEntryService` přes repository.
 
 Domain layer **nezná** EF Core, plugins, DI, UI, nic. Je možné ji izolovaně unit‑testovat bez mockování.
@@ -120,7 +120,7 @@ Registrace služeb: `DependencyInjection.AddApplication(IServiceCollection)`. Vo
 Implementace externích závislostí:
 
 - **EF Core + SQLite** — `WorkTrackerDbContext`, `WorkEntryRepository`, `UnitOfWork`, `UnitOfWorkFactory`. Cesta k databázi se řídí `WorkTrackerPaths.DefaultDatabasePath` s možností přepsání přes `Database:Path` v configu (relativní cesty se vyhodnocují vůči `WorkTrackerPaths.WritableBaseDirectory` — adresáři aplikace, uvnitř macOS `.app` bundlu vůči `~/Library/Application Support/WorkTracker/`). `Database:Pooling` (default `true`) vypíná connection pooling pro databáze na removable médiích — bez poolingu se soubor zavírá po každé operaci a disk jde bezpečně vysunout. Při startu se vynucuje `PRAGMA journal_mode=DELETE` (WAL je na removable exFAT rizikový kvůli `-wal`/`-shm` souborům). Když databáze není dosažitelná (nepřipojený disk, IO chyba, read-only médium), `AddInfrastructure` i `InitializeDatabaseAsync` vyhodí `DatabaseUnavailableException` — Avalonia `App` na ni reaguje dialogem s tlačítkem *Zkusit znovu*, které zopakuje celý bootstrap; ostatní výjimky při startu jsou brány jako neopravitelné. Před čekající migrací se databáze zkopíruje vedle sebe (`DatabaseMigrationBackup`), a když se to nepovede, migrace neběží (`DatabaseBackupFailedException`).
-- **`IDbContextFactory<WorkTrackerDbContext>`** — `WorkEntryRepository` ho používá místo scoped `DbContext`. Důvod: dlouho běžící služby (GUI) nemají HTTP request scope, takže scoped DbContext by vedl k leakům a concurrent‑use chybám.
+- **`IDbContextFactory<WorkTrackerDbContext>`** — `WorkEntryReader` a `UnitOfWorkFactory` ho používají místo scoped `DbContext`. Důvod: dlouho běžící služby (GUI) nemají HTTP request scope, takže scoped DbContext by vedl k leakům a concurrent‑use chybám.
 - **`CredentialStoreSecureStorage`** — implementace `ISecureStorage` nad `GitCredentialManager` (multiplatformní: Windows Credential Manager, macOS Keychain, Linux libsecret).
 - **`PluginManager`, `PluginLoader`, `PluginLoadContext`** — načítání pluginů do vlastního `AssemblyLoadContext` (collectible) pro každou plugin assembly; všechny pluginy sdílejí jeden plugin `ServiceProvider`.
 - **`MsalTokenProviderFactory`, `MsalTokenProvider`** — MSAL Public Client s cross‑platform token cache (`Microsoft.Identity.Client.Extensions.Msal`) a dvěma způsoby interaktivní autentizace podle `InteractiveAuthFlow`, který plugin zvolí: **device code flow** a **authorization code flow s PKCE** v systémovém prohlížeči (redirect na vlastní loopback listener `SystemBrowserWebUi`).
@@ -173,7 +173,7 @@ Presentation   ──> Infrastructure (bootstrap: AddInfrastructure, InitializeD
 
 Praktické důsledky:
 
-- **Application nezná EF Core.** `WorkEntryService` používá `IWorkEntryRepository`, ne `DbContext`.
+- **Application nezná EF Core.** `WorkEntryService` používá `IWorkEntryReader` a `IWorkEntryRepository`, ne `DbContext`.
 - **Presentation nezná implementace pluginů.** Komunikuje přes `IWorklogSubmissionService`, `IPluginManager` (Application interfaces) a pracuje jen s typy z Plugin.Abstractions (`WorklogSubmissionMode`, `PluginConfigurationField`, …).
 - **Plugin.Abstractions je samostatný nuget‑like projekt**, aby externí pluginy nemusely referencovat celé Application.
 
@@ -322,12 +322,7 @@ await uow.WorkEntries.UpdateAsync(trimmedOldEntry, ct);
 await uow.SaveChangesAsync(ct); // commit
 ```
 
-Pokud `SaveChangesAsync` není zavoláno a `uow` se dispose‑ne, transakce se rollbackne. `WorkEntryRepository` má dva režimy:
-
-- **Factory režim** (standalone) — každá operace si sama otevře `DbContext` z factory a rovnou commituje.
-- **Shared‑context režim** (v rámci UoW) — operace přispívají do `DbContext` drženého UoW, SaveChanges je odložen na UoW.
-
-`WorkEntryService` používá transient repository přímo jen pro čtení.
+Pokud `SaveChangesAsync` není zavoláno a `uow` se dispose‑ne, transakce se rollbackne. `WorkEntryRepository` pracuje na `DbContext` drženém UoW a SaveChanges nechává na něm. Mimo UoW se jen čte, přes `WorkEntryReader`, kde si každá operace sama otevře `DbContext` z factory.
 
 ### Factory místo scoped DbContext
 

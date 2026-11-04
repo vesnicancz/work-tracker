@@ -295,7 +295,7 @@ if (result.IsFailure) return result;
 ### Async
 
 - I/O metody jsou async (`Task<T>` nebo `ValueTask<T>`). Výjimkou jsou například `ISecureStorage`, synchronní varianty v `SettingsService`, `AutostartManager` a rané čtení `settings.json` v `App`.
-- `CancellationToken` jako **poslední parametr**. V novém kódu bez default value (`= default`), pokud nemá volající opravdu co předat. Starší API (`IWorkEntryRepository`, `IWorkEntryService`, část Plugin.Abstractions) ho zatím mají.
+- `CancellationToken` jako **poslední parametr**. V novém kódu bez default value (`= default`), pokud nemá volající opravdu co předat. Starší API (`IWorkEntryService`, část Plugin.Abstractions) ho zatím mají.
 - Pojmenování: metoda končí `Async`.
 
 ### Error handling
@@ -357,7 +357,7 @@ Pokud UoW dispose‑uješ bez `SaveChangesAsync`, transakce se **rollbackne**.
 
 ### Single‑operation: bez UoW
 
-Pro jednoduché CRUD operace se UoW nepoužívá. `WorkEntryService` dostane injekovanou transient `IWorkEntryRepository` (factory režim, auto‑save po každé operaci) a rovnou ji volá.
+Pro čtení se UoW nepoužívá: `WorkEntryService` dostane injekovaný transient `IWorkEntryReader`, kde si každé čtení otevře vlastní `DbContext`. `IWorkEntryRepository` je jen v UoW a jeho zápisy se projeví až po `SaveChangesAsync`.
 
 ---
 

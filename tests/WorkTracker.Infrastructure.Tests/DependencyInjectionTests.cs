@@ -95,16 +95,16 @@ public class DependencyInjectionTests : IAsyncDisposable
 	}
 
 	[Fact]
-	public void AddInfrastructure_ShouldRegisterWorkEntryRepository()
+	public void AddInfrastructure_ShouldRegisterWorkEntryReader()
 	{
 		// Act
 		_services.AddInfrastructure(_configuration);
 		_serviceProvider = _services.BuildServiceProvider();
 
 		// Assert
-		var repository = _serviceProvider.GetService<IWorkEntryRepository>();
+		var repository = _serviceProvider.GetService<IWorkEntryReader>();
 		repository.Should().NotBeNull();
-		repository.Should().BeOfType<WorkEntryRepository>();
+		repository.Should().BeOfType<WorkEntryReader>();
 	}
 
 	[Fact]
@@ -216,8 +216,8 @@ public class DependencyInjectionTests : IAsyncDisposable
 		_serviceProvider = _services.BuildServiceProvider();
 
 		// Act
-		var repo1 = _serviceProvider.GetRequiredService<IWorkEntryRepository>();
-		var repo2 = _serviceProvider.GetRequiredService<IWorkEntryRepository>();
+		var repo1 = _serviceProvider.GetRequiredService<IWorkEntryReader>();
+		var repo2 = _serviceProvider.GetRequiredService<IWorkEntryReader>();
 
 		// Assert - Transient should return different instances
 		repo1.Should().NotBeSameAs(repo2);
@@ -455,7 +455,7 @@ public class DependencyInjectionTests : IAsyncDisposable
 
 		// Act & Assert - All services should resolve without errors
 		_serviceProvider.GetRequiredService<IDbContextFactory<WorkTrackerDbContext>>().Should().NotBeNull();
-		_serviceProvider.GetRequiredService<IWorkEntryRepository>().Should().NotBeNull();
+		_serviceProvider.GetRequiredService<IWorkEntryReader>().Should().NotBeNull();
 		_serviceProvider.GetRequiredService<IDateRangeService>().Should().NotBeNull();
 		_serviceProvider.GetRequiredService<IWorklogValidator>().Should().NotBeNull();
 		_serviceProvider.GetRequiredService<PluginManager>().Should().NotBeNull();
@@ -480,18 +480,18 @@ public class DependencyInjectionTests : IAsyncDisposable
 	}
 
 	[Fact]
-	public void Repository_ShouldHaveDbContextFactory()
+	public void Reader_ShouldHaveDbContextFactory()
 	{
 		// Arrange
 		_services.AddInfrastructure(_configuration);
 		_serviceProvider = _services.BuildServiceProvider();
 
 		// Act
-		var repository = _serviceProvider.GetRequiredService<IWorkEntryRepository>();
+		var repository = _serviceProvider.GetRequiredService<IWorkEntryReader>();
 
 		// Assert
 		repository.Should().NotBeNull();
-		repository.Should().BeOfType<WorkEntryRepository>();
+		repository.Should().BeOfType<WorkEntryReader>();
 	}
 
 	#endregion Service Resolution Tests
@@ -811,7 +811,7 @@ public class DependencyInjectionTests : IAsyncDisposable
 		_serviceProvider = _services.BuildServiceProvider();
 		await DependencyInjection.InitializeDatabaseAsync(_serviceProvider, TestContext.Current.CancellationToken);
 
-		var repository = _serviceProvider.GetRequiredService<IWorkEntryRepository>();
+		var repository = _serviceProvider.GetRequiredService<IWorkEntryReader>();
 
 		// Act - Multiple operations should each use a new DbContext
 		var entry1 = await repository.GetActiveWorkEntryAsync(TestContext.Current.CancellationToken);

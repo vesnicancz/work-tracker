@@ -3,14 +3,13 @@ using Microsoft.EntityFrameworkCore;
 using WorkTracker.Domain.Entities;
 using WorkTracker.Infrastructure.Data;
 using WorkTracker.Infrastructure.Repositories;
-using WorkTracker.Infrastructure.Tests.Helpers;
 
 namespace WorkTracker.Infrastructure.Tests.Repositories;
 
 public class WorkEntryRepositoryTests : IDisposable
 {
 	private readonly DbContextOptions<WorkTrackerDbContext> _options;
-	private readonly TestDbContextFactory _contextFactory;
+	private readonly WorkTrackerDbContext _repositoryContext;
 	private readonly WorkEntryRepository _repository;
 	private readonly WorkTrackerDbContext _testContext;
 
@@ -20,8 +19,8 @@ public class WorkEntryRepositoryTests : IDisposable
 			.UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
 			.Options;
 
-		_contextFactory = new TestDbContextFactory(_options);
-		_repository = new WorkEntryRepository(_contextFactory);
+		_repositoryContext = new WorkTrackerDbContext(_options);
+		_repository = new WorkEntryRepository(_repositoryContext);
 
 		// Keep a context for test data setup
 		_testContext = new WorkTrackerDbContext(_options);
@@ -31,6 +30,7 @@ public class WorkEntryRepositoryTests : IDisposable
 	{
 		_testContext.Database.EnsureDeleted();
 		_testContext.Dispose();
+		_repositoryContext.Dispose();
 	}
 
 	#region GetByIdAsync Tests
@@ -419,6 +419,7 @@ public class WorkEntryRepositoryTests : IDisposable
 
 		// Act
 		var result = await _repository.AddAsync(entry, TestContext.Current.CancellationToken);
+		await _repositoryContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
 		// Assert
 		result.Should().NotBeNull();
@@ -437,6 +438,7 @@ public class WorkEntryRepositoryTests : IDisposable
 
 		// Act
 		await _repository.AddAsync(entry, TestContext.Current.CancellationToken);
+		await _repositoryContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
 		// Assert
 		var saved = await _testContext.WorkEntries.FindAsync([entry.Id], TestContext.Current.CancellationToken);
@@ -462,6 +464,7 @@ public class WorkEntryRepositoryTests : IDisposable
 
 		// Act
 		await _repository.UpdateAsync(entry, TestContext.Current.CancellationToken);
+		await _repositoryContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
 		// Assert
 		var updated = await _testContext.WorkEntries.FindAsync([entry.Id], TestContext.Current.CancellationToken);
@@ -484,6 +487,7 @@ public class WorkEntryRepositoryTests : IDisposable
 
 		// Act
 		await _repository.UpdateAsync(entry, TestContext.Current.CancellationToken);
+		await _repositoryContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
 		// Assert
 		var updated = await _testContext.WorkEntries.FindAsync([entry.Id], TestContext.Current.CancellationToken);
@@ -507,8 +511,9 @@ public class WorkEntryRepositoryTests : IDisposable
 
 		// Act
 		await _repository.DeleteAsync(entryId, TestContext.Current.CancellationToken);
+		await _repositoryContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-		// Assert - Use repository to verify deletion (repository uses factory)
+		// Assert
 		var deleted = await _repository.GetByIdAsync(entryId, TestContext.Current.CancellationToken);
 		deleted.Should().BeNull();
 	}
