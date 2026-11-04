@@ -206,7 +206,7 @@ public sealed class Office365CalendarPlugin(
 			Logger.LogInformation("Fetched {Count} calendar suggestions for {Date}", suggestions.Count, date.ToShortDateString());
 			return PluginResult<IReadOnlyList<WorkSuggestion>>.Success(suggestions);
 		}
-		catch (OperationCanceledException)
+		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
 		{
 			throw;
 		}

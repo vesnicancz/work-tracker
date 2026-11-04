@@ -197,6 +197,21 @@ public class Office365CalendarPluginTests : IAsyncDisposable
 	#region GetSuggestionsAsync
 
 	[Fact]
+	public async Task GetSuggestionsAsync_HttpClientTimeout_ReturnsFailure()
+	{
+		using var handler = new TimingOutHttpHandler();
+		await using var plugin = new Office365CalendarPlugin(
+			new MockHttpClientFactory(handler),
+			NullLogger<Office365CalendarPlugin>.Instance,
+			new MockTokenProviderFactory("fake-token"));
+		await plugin.InitializeAsync(ValidConfig, TestContext.Current.CancellationToken);
+
+		var result = await plugin.GetSuggestionsAsync(new DateTime(2026, 4, 1), TestContext.Current.CancellationToken);
+
+		result.IsFailure.Should().BeTrue();
+	}
+
+	[Fact]
 	public async Task GetSuggestionsAsync_ReturnsCalendarEvents()
 	{
 		SetupCalendarResponse(CalendarEventsJson(
@@ -491,6 +506,12 @@ internal sealed class MockTokenProviderFactory(string? token = "fake-token") : I
 internal sealed class MockHttpClientFactory(HttpMessageHandler handler) : IHttpClientFactory
 {
 	public HttpClient CreateClient(string name) => new(handler, disposeHandler: false);
+}
+
+internal sealed class TimingOutHttpHandler : HttpMessageHandler
+{
+	protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+		throw new TaskCanceledException("The request was canceled due to the configured HttpClient.Timeout");
 }
 
 internal sealed class MockHttpHandler : HttpMessageHandler

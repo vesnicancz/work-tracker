@@ -315,6 +315,10 @@ public sealed class GoranG3WorklogPlugin(ILogger<GoranG3WorklogPlugin> logger, I
 				_projectCode, worklog.DurationMinutes, worklog.StartTime.Date.ToString("yyyy-MM-dd"));
 			return PluginResult<bool>.Success(true);
 		}
+		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+		{
+			throw;
+		}
 		catch (Exception ex)
 		{
 			Logger.LogError(ex, "Error uploading worklog to Goran via MCP");
@@ -405,6 +409,10 @@ public sealed class GoranG3WorklogPlugin(ILogger<GoranG3WorklogPlugin> logger, I
 			Logger.LogInformation("Submitted timesheet for {Date}", dateStr);
 			return PluginResult<bool>.Success(true);
 		}
+		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+		{
+			throw;
+		}
 		catch (Exception ex)
 		{
 			Logger.LogError(ex, "Error submitting timesheet for {Date}", dateStr);
@@ -441,6 +449,10 @@ public sealed class GoranG3WorklogPlugin(ILogger<GoranG3WorklogPlugin> logger, I
 			var worklogs = ParseTimesheetResponse(responseText);
 
 			return PluginResult<IEnumerable<PluginWorklogEntry>>.Success(worklogs);
+		}
+		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+		{
+			throw;
 		}
 		catch (Exception ex)
 		{

@@ -220,7 +220,7 @@ public sealed class JiraSuggestionsPlugin(IHttpClientFactory httpClientFactory, 
 			Logger.LogInformation("Fetched {Count} Jira suggestions for JQL: {Jql}", suggestions.Count, jql);
 			return PluginResult<IReadOnlyList<WorkSuggestion>>.Success(suggestions);
 		}
-		catch (OperationCanceledException)
+		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
 		{
 			throw;
 		}

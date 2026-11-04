@@ -65,6 +65,18 @@ public class TempoWorklogPluginTests : IAsyncDisposable
     #region UploadWorklogAsync
 
     [Fact]
+    public async Task UploadWorklogAsync_CallerCancels_Throws()
+    {
+        await InitializePluginAsync();
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+
+        var act = () => _plugin.UploadWorklogAsync(CreateWorklog(), cts.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [Fact]
     public async Task UploadWorklogAsync_Success_ReturnsSuccess()
     {
         _httpHandler.SetupGet("/rest/api/3/issue/PROJ-123?fields=id", JiraIssueJson("PROJ-123", 10001));
@@ -730,6 +742,8 @@ internal sealed class MockHttpHandler : HttpMessageHandler
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         var pathAndQuery = request.RequestUri!.PathAndQuery;
 
         if (request.Method == HttpMethod.Get)

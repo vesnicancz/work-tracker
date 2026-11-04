@@ -107,16 +107,36 @@ public class WorkSuggestionOrchestratorTests
 	}
 
 	[Fact]
-	public async Task GetGroupedSuggestionsAsync_PluginThrowsOperationCanceled_Rethrows()
+	public async Task GetGroupedSuggestionsAsync_CallerCancels_Rethrows()
 	{
+		using var cts = new CancellationTokenSource();
+		await cts.CancelAsync();
 		var plugin = MockPluginFactory.CreateSuggestionPlugin("jira", "Jira");
 		plugin.Setup(p => p.GetSuggestionsAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-			.ThrowsAsync(new OperationCanceledException());
+			.ThrowsAsync(new OperationCanceledException(cts.Token));
 		_mockPluginManager.Setup(m => m.WorkSuggestionPlugins).Returns([plugin.Object]);
 
-		var act = () => _orchestrator.GetGroupedSuggestionsAsync(DateTime.Today, CancellationToken.None);
+		var act = () => _orchestrator.GetGroupedSuggestionsAsync(DateTime.Today, cts.Token);
 
 		await act.Should().ThrowAsync<OperationCanceledException>();
+	}
+
+	[Fact]
+	public async Task GetGroupedSuggestionsAsync_OnePluginTimesOut_OthersStillReturnTheirGroups()
+	{
+		var good = MockPluginFactory.CreateSuggestionPlugin("calendar", "Calendar");
+		good.Setup(p => p.GetSuggestionsAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(PluginResult<IReadOnlyList<WorkSuggestion>>.Success([]));
+		var timedOut = MockPluginFactory.CreateSuggestionPlugin("jira", "Jira");
+		timedOut.Setup(p => p.GetSuggestionsAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+			.ThrowsAsync(new TaskCanceledException("The request was canceled due to the configured HttpClient.Timeout"));
+		_mockPluginManager.Setup(m => m.WorkSuggestionPlugins).Returns([good.Object, timedOut.Object]);
+
+		var result = await _orchestrator.GetGroupedSuggestionsAsync(DateTime.Today, CancellationToken.None);
+
+		result.Should().HaveCount(2);
+		result[0].Error.Should().BeNull();
+		result[1].Error.Should().NotBeNullOrEmpty();
 	}
 
 	[Fact]
