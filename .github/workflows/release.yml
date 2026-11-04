@@ -272,6 +272,33 @@ jobs:
           -p:DebugType=none
           -o publish/${{ matrix.artifact }}
 
+      # The two sides of the Stream Deck integration share a protocol, so they ship together: the
+      # package for the Stream Deck app goes into the folder of the WorkTracker plugin.
+      - name: Setup Node.js
+        if: matrix.plugin == 'StreamDeck'
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Test and build the Stream Deck app plugin
+        if: matrix.plugin == 'StreamDeck'
+        working-directory: streamdeck-plugin
+        run: |
+          npm ci --ignore-scripts
+          npm test
+          npm run build
+
+      # The Stream Deck app installs the file on a double click, so the extension has to stay.
+      # Stream Deck versions are four numbers: the tag lacks the fourth, and its prerelease suffix is
+      # not allowed, so that one stays only in the file name.
+      - name: Pack the Stream Deck app plugin
+        if: matrix.plugin == 'StreamDeck'
+        working-directory: streamdeck-plugin
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          npx streamdeck pack com.vesnicancz.worktracker.sdPlugin --version "${VERSION%%-*}.0" --output dist
+          mv dist/com.vesnicancz.worktracker.streamDeckPlugin "../publish/${{ matrix.artifact }}/WorkTracker-StreamDeck-$VERSION.streamDeckPlugin"
+
       # See the same step in publish-avalonia for the naming scheme. Plugins are platform-neutral,
       # so there is no platform suffix. Only the zip is renamed: the folder inside keeps the
       # assembly name, which is what ends up under plugins/.
@@ -290,49 +317,9 @@ jobs:
           name: ${{ matrix.artifact }}
           path: publish/out/*
 
-  publish-streamdeck-plugin:
-    name: Publish Stream Deck plugin
-    needs: test
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    defaults:
-      run:
-        working-directory: streamdeck-plugin
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: 24
-
-      - name: Install dependencies
-        run: npm ci --ignore-scripts
-
-      - name: Test
-        run: npm test
-
-      - name: Build
-        run: npm run build
-
-      # The Stream Deck app installs the file on a double click, so the extension has to stay.
-      # Stream Deck versions have a fourth part, which the tag does not.
-      - name: Pack
-        run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          npx streamdeck pack com.vesnicancz.worktracker.sdPlugin --version "$VERSION.0" --output dist
-          mkdir -p ../publish/out
-          mv dist/com.vesnicancz.worktracker.streamDeckPlugin "../publish/out/WorkTracker-StreamDeck-$VERSION.streamDeckPlugin"
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: WorkTracker.StreamDeck
-          path: publish/out/*
-
   release:
     name: Create GitHub Release
-    needs: [publish-cli, publish-avalonia, publish-plugins, publish-streamdeck-plugin]
+    needs: [publish-cli, publish-avalonia, publish-plugins]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

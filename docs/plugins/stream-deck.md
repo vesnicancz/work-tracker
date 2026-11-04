@@ -55,7 +55,7 @@ Limit se počítá od začátku poslední práce. Po uložení v Nastavení se p
 
 1. Stáhni z releasu `WorkTracker-Plugin-StreamDeck-{verze}.zip` a rozbal ho do adresáře s pluginy (viz [README](../../README.md)).
 2. Povol **Stream Deck** v **Nastavení → Pluginy**.
-3. Stáhni `WorkTracker-StreamDeck-{verze}.streamDeckPlugin` a otevři ho dvojklikem, tím se nainstaluje do aplikace Stream Deck.
+3. V rozbalené složce otevři dvojklikem `WorkTracker-StreamDeck-{verze}.streamDeckPlugin`, tím se nainstaluje do aplikace Stream Deck.
 4. V aplikaci Stream Deck přetáhni akci **WorkTracker → Work** na ovladač a **WorkTracker → Suggestions** na tlačítko.
 5. Při prvním stisku **Suggestions** potvrď instalaci profilu WorkTracker. Profil je určený pro Stream Deck + a nejde upravovat.
 
