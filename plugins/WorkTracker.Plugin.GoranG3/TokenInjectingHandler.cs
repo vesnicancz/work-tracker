@@ -6,7 +6,7 @@ namespace WorkTracker.Plugin.GoranG3;
 /// <summary>
 /// DelegatingHandler that injects a fresh Bearer token from <see cref="ITokenProvider"/> into each HTTP request.
 /// </summary>
-internal sealed class TokenInjectingHandler(ITokenProvider tokenProvider) : DelegatingHandler(new HttpClientHandler())
+internal sealed class TokenInjectingHandler(ITokenProvider tokenProvider, HttpMessageHandler innerHandler) : DelegatingHandler(innerHandler)
 {
 	protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
 	{
