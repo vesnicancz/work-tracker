@@ -26,6 +26,7 @@ public sealed class GoranG3WorklogPlugin(ILogger<GoranG3WorklogPlugin> logger, I
 	private const string NotConnectedMessage = "Not connected to MCP server. Please use Test Connection in Settings to sign in first.";
 
 	private readonly ITokenProviderFactory _tokenProviderFactory = tokenProviderFactory;
+	private readonly TimesheetDayBatch _dayBatch = new();
 
 	private ITokenProvider? _tokenProvider;
 	private string[]? _scopes;
@@ -121,6 +122,9 @@ public sealed class GoranG3WorklogPlugin(ILogger<GoranG3WorklogPlugin> logger, I
 
 	protected override async Task<bool> OnInitializeAsync(IDictionary<string, string> configuration, CancellationToken cancellationToken)
 	{
+		// The configuration may now point at another server, where those entries don't exist
+		_dayBatch.Reset();
+
 		_baseUrl = GetRequiredConfigValue(ConfigKeys.GoranBaseUrl).TrimEnd('/');
 		_projectCode = GetRequiredConfigValue(ConfigKeys.ProjectCode);
 		_projectPhaseCode = GetConfigValue(ConfigKeys.ProjectPhaseCode);
@@ -349,47 +353,10 @@ public sealed class GoranG3WorklogPlugin(ILogger<GoranG3WorklogPlugin> logger, I
 			return PluginResult<WorklogSubmissionResult>.Failure(NotConnectedMessage, PluginErrorCategory.Authentication);
 		}
 
-		var worklogsByDate = worklogs.GroupBy(w => w.StartTime.Date).OrderBy(g => g.Key);
-		var totalSuccessful = 0;
-		var totalFailed = 0;
-		var allErrors = new List<WorklogSubmissionError>();
-
-		foreach (var dayGroup in worklogsByDate)
-		{
-			var dayResult = await base.UploadWorklogsAsync(dayGroup, mode, cancellationToken);
-			if (dayResult.IsFailure)
-			{
-				return dayResult;
-			}
-
-			totalSuccessful += dayResult.Value!.SuccessfulEntries;
-			totalFailed += dayResult.Value!.FailedEntries;
-			allErrors.AddRange(dayResult.Value!.Errors);
-
-			// Submitting is final, so an incomplete day waits until a retry has uploaded the rest of it
-			if (dayResult.Value!.FailedEntries > 0)
-			{
-				continue;
-			}
-
-			var submitResult = await SubmitTimesheetAsync(dayGroup.Key, cancellationToken);
-			if (submitResult.IsFailure)
-			{
-				allErrors.Add(new WorklogSubmissionError
-				{
-					Worklog = dayGroup.First(),
-					ErrorMessage = $"Timesheet submit failed for {dayGroup.Key:yyyy-MM-dd}: {submitResult.Error}"
-				});
-			}
-		}
-
-		return PluginResult<WorklogSubmissionResult>.Success(new WorklogSubmissionResult
-		{
-			TotalEntries = totalSuccessful + totalFailed,
-			SuccessfulEntries = totalSuccessful,
-			FailedEntries = totalFailed,
-			Errors = allErrors
-		});
+		return await _dayBatch.RunAsync(
+			worklogs,
+			day => base.UploadWorklogsAsync(day, mode, cancellationToken),
+			date => SubmitTimesheetAsync(date, cancellationToken));
 	}
 
 	private async Task<PluginResult<bool>> SubmitTimesheetAsync(DateTime date, CancellationToken cancellationToken)
