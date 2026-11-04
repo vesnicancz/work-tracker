@@ -169,7 +169,7 @@ public sealed class PluginBasedWorklogSubmissionService : IWorklogSubmissionServ
 		_logger.LogInformation("Submitting {Count} custom worklogs using plugin {Plugin} (mode={Mode})",
 			worklogList.Count, plugin.Metadata.Name, mode);
 
-		return await UploadAndMapResultAsync(plugin, worklogList, mode, cancellationToken);
+		return await ValidateAndUploadAsync(plugin, worklogList, mode, cancellationToken);
 	}
 
 	private IWorklogUploadPlugin? ResolvePlugin(string? providerId)
@@ -201,27 +201,8 @@ public sealed class PluginBasedWorklogSubmissionService : IWorklogSubmissionServ
 			});
 		}
 
-		var validWorklogs = new List<WorklogDto>();
-		foreach (var entry in completedEntries)
-		{
-			var worklog = ToWorklogDto(entry);
-			var validationResult = _validator.Validate(worklog);
-			if (validationResult.IsValid)
-			{
-				validWorklogs.Add(worklog);
-			}
-			else
-			{
-				_logger.LogWarning("Skipping invalid worklog: {Errors}", string.Join(", ", validationResult.Errors));
-			}
-		}
-
-		if (validWorklogs.Count == 0)
-		{
-			return Result.Failure<SubmissionResult>("No valid worklogs to submit");
-		}
-
-		var result = await UploadAndMapResultAsync(plugin, validWorklogs, WorklogSubmissionMode.Timed, cancellationToken);
+		var worklogs = completedEntries.Select(ToWorklogDto).ToList();
+		var result = await ValidateAndUploadAsync(plugin, worklogs, WorklogSubmissionMode.Timed, cancellationToken);
 
 		if (result.IsSuccess)
 		{
@@ -229,6 +210,60 @@ public sealed class PluginBasedWorklogSubmissionService : IWorklogSubmissionServ
 		}
 
 		return result;
+	}
+
+	/// <summary>
+	/// The one way worklogs reach a plugin. Invalid ones stay out of the upload and come back as failed
+	/// entries, so the caller can show the reason instead of them silently going missing.
+	/// </summary>
+	private async Task<Result<SubmissionResult>> ValidateAndUploadAsync(
+		IWorklogUploadPlugin plugin,
+		List<WorklogDto> worklogs,
+		WorklogSubmissionMode mode,
+		CancellationToken cancellationToken)
+	{
+		var valid = new List<WorklogDto>();
+		var rejected = new List<SubmissionError>();
+
+		foreach (var worklog in worklogs)
+		{
+			var validation = _validator.Validate(worklog);
+			if (validation.IsValid)
+			{
+				valid.Add(worklog);
+			}
+			else
+			{
+				var reason = string.Join(", ", validation.Errors);
+				_logger.LogWarning("Not submitting invalid worklog: {Errors}", reason);
+				rejected.Add(ToSubmissionError(worklog.TicketId, worklog.Description, worklog.StartTime, worklog.EndTime, reason));
+			}
+		}
+
+		if (valid.Count == 0 && rejected.Count != 0)
+		{
+			return Result.Success(new SubmissionResult
+			{
+				TotalEntries = rejected.Count,
+				FailedEntries = rejected.Count,
+				Errors = rejected
+			});
+		}
+
+		var result = await UploadAndMapResultAsync(plugin, valid, mode, cancellationToken);
+		if (result.IsFailure || rejected.Count == 0)
+		{
+			return result;
+		}
+
+		var uploaded = result.Value!;
+		return Result.Success(new SubmissionResult
+		{
+			TotalEntries = uploaded.TotalEntries + rejected.Count,
+			SuccessfulEntries = uploaded.SuccessfulEntries,
+			FailedEntries = uploaded.FailedEntries + rejected.Count,
+			Errors = [.. uploaded.Errors, .. rejected]
+		});
 	}
 
 	private async Task<Result<SubmissionResult>> UploadAndMapResultAsync(
@@ -256,13 +291,17 @@ public sealed class PluginBasedWorklogSubmissionService : IWorklogSubmissionServ
 
 	private static List<SubmissionError> MapPluginErrors(IReadOnlyList<WorklogSubmissionError> pluginErrors)
 	{
-		return pluginErrors.Select(e => new SubmissionError
-		{
-			TicketId = e.Worklog.TicketId ?? string.Empty,
-			Date = e.Worklog.StartTime.Date,
-			Description = e.Worklog.Description,
-			ErrorMessage = e.ErrorMessage,
-			Details = $"{e.Worklog.StartTime:HH:mm}-{e.Worklog.EndTime:HH:mm}"
-		}).ToList();
+		return pluginErrors
+			.Select(e => ToSubmissionError(e.Worklog.TicketId, e.Worklog.Description, e.Worklog.StartTime, e.Worklog.EndTime, e.ErrorMessage))
+			.ToList();
 	}
+
+	private static SubmissionError ToSubmissionError(string? ticketId, string? description, DateTime startTime, DateTime endTime, string errorMessage) => new()
+	{
+		TicketId = ticketId ?? string.Empty,
+		Date = startTime.Date,
+		Description = description,
+		ErrorMessage = errorMessage,
+		Details = $"{startTime:HH:mm}-{endTime:HH:mm}"
+	};
 }
