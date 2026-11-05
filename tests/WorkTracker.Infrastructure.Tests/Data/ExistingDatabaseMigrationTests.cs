@@ -14,7 +14,7 @@ namespace WorkTracker.Infrastructure.Tests.Data;
 
 /// <summary>
 /// What an upgrade does to a database the previous version left behind, built by the migrations of that
-/// version and filled the way that version wrote rows. Goes through <see cref="DependencyInjection.InitializeDatabaseAsync"/>,
+/// version and filled the way that version wrote rows. Goes through <see cref="DatabaseInitializer.InitializeAsync"/>,
 /// the same way the applications start.
 /// </summary>
 public sealed class ExistingDatabaseMigrationTests : IAsyncDisposable
@@ -69,7 +69,7 @@ public sealed class ExistingDatabaseMigrationTests : IAsyncDisposable
 		}
 	}
 
-	private Task UpgradeAsync() => DependencyInjection.InitializeDatabaseAsync(_services, Ct);
+	private Task UpgradeAsync() => DatabaseInitializer.InitializeAsync(_services, Ct);
 
 	private sealed record StoredRow(long Id, string? TicketId, string StartTime, string? EndTime, string? Description, long IsActive, string CreatedAt, string? UpdatedAt);
 

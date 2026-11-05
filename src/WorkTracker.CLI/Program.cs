@@ -9,6 +9,7 @@ using WorkTracker.CLI.Commands;
 using WorkTracker.CLI.Output;
 using WorkTracker.Infrastructure;
 using WorkTracker.Infrastructure.Data;
+using WorkTracker.Infrastructure.Plugins;
 
 #if DEBUG
 // A Debug build must not share the installed application's data. Without this it writes to the
@@ -96,7 +97,7 @@ try
 
 	if (requirements.Value.Database)
 	{
-		await WorkTracker.Infrastructure.DependencyInjection.InitializeDatabaseAsync(host.Services);
+		await DatabaseInitializer.InitializeAsync(host.Services, CancellationToken.None);
 	}
 
 	// Enabled state and configuration live in the user settings file the GUI writes — without them
@@ -108,12 +109,12 @@ try
 			.ReadAsync();
 
 		var pluginManager = host.Services.GetRequiredService<IPluginManager>();
-		var failedPlugins = await WorkTracker.Infrastructure.DependencyInjection.InitializePluginsAsync(
+		var failedPlugins = await PluginStartup.StartAsync(
 			host.Services,
-			builder.Configuration,
 			pluginSettings.EnabledPlugins,
 			pluginSettings.PluginConfigurations,
-			plugin => requirements.Value.ShouldStart(plugin, providerId, pluginManager.EnabledWorklogUploadPlugins.Count()));
+			plugin => requirements.Value.ShouldStart(plugin, providerId, pluginManager.EnabledWorklogUploadPlugins.Count()),
+			CancellationToken.None);
 
 		foreach (var failed in failedPlugins)
 		{

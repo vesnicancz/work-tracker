@@ -196,4 +196,4 @@ CLI samotné Luxafor nepoužívá (nemá Pomodoro), takže aktuálně nemá smys
 }
 ```
 
-> **Pozor:** Samotná přítomnost configu v `appsettings.json` plugin **nezapne**. `IPluginManager.StatusIndicatorPlugins` vrací jen **enabled** pluginy; enabled stav čte GUI i CLI z uživatelského `settings.json` a předává ho do `Infrastructure.DependencyInjection.InitializePluginsAsync(..., enabledPlugins, ...)`. CLI tu mapu předává taky, ale Luxafor tam nemá co dělat — CLI nemá Pomodoro, takže nic nevolá `SetStateAsync`. Plugin konfiguruj v GUI.
+> **Pozor:** Samotná přítomnost configu v `appsettings.json` plugin **nezapne**. `IPluginManager.StatusIndicatorPlugins` vrací jen **enabled** pluginy; enabled stav čte GUI i CLI z uživatelského `settings.json` a předává ho do `PluginStartup.StartAsync(services, enabledPlugins, ...)`. CLI tu mapu předává taky, ale Luxafor tam nemá co dělat — CLI nemá Pomodoro, takže nic nevolá `SetStateAsync`. Plugin konfiguruj v GUI.

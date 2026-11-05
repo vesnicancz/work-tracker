@@ -1,5 +1,4 @@
 using FluentAssertions;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
 using WorkTracker.Application.Plugins;
@@ -18,7 +17,7 @@ public class SettingsOrchestratorTests
 	private readonly Mock<ISettingsService> _mockSettingsService;
 	private readonly Mock<IPluginManager> _mockPluginManager;
 	private readonly Mock<ISecureStorage> _mockSecureStorage;
-	private readonly Mock<IConfiguration> _mockConfiguration;
+	private readonly Mock<IPluginConfigurationSource> _mockConfigurationSource = new();
 	private readonly Mock<IAutostartManager> _mockAutostartManager;
 	private readonly Mock<ITrayIconService> _mockTrayIconService;
 	private readonly Mock<IRemoteControlCoordinator> _mockRemoteControlCoordinator = new();
@@ -32,11 +31,13 @@ public class SettingsOrchestratorTests
 		_mockSettingsService = new Mock<ISettingsService>();
 		_mockPluginManager = new Mock<IPluginManager>();
 		_mockSecureStorage = new Mock<ISecureStorage>();
-		_mockConfiguration = new Mock<IConfiguration>();
 		_mockAutostartManager = new Mock<IAutostartManager>();
 		_mockTrayIconService = new Mock<ITrayIconService>();
 
 		_mockSettingsService.Setup(s => s.Settings).Returns(new ApplicationSettings());
+		_mockConfigurationSource
+			.Setup(s => s.Resolve(It.IsAny<IReadOnlyDictionary<string, Dictionary<string, string>>>()))
+			.Returns((IReadOnlyDictionary<string, Dictionary<string, string>> user) => user.ToDictionary());
 		_mockSecureStorage.Setup(s => s.Protect(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>())).Returns((string v, string _, string _) => v);
 		_mockSecureStorage.Setup(s => s.Unprotect(It.IsAny<string>())).Returns((string v) => v);
 		_mockPluginManager.Setup(m => m.CreateDetachedInstance(It.IsAny<IPlugin>())).Returns((IPlugin p) => p);
@@ -51,7 +52,7 @@ public class SettingsOrchestratorTests
 			_mockSettingsService.Object,
 			_mockPluginManager.Object,
 			_mockSecureStorage.Object,
-			_mockConfiguration.Object,
+			_mockConfigurationSource.Object,
 			_mockAutostartManager.Object,
 			_mockTrayIconService.Object,
 			_mockRemoteControlCoordinator.Object,
@@ -128,16 +129,16 @@ public class SettingsOrchestratorTests
 	}
 
 	[Fact]
-	public void LoadPlugins_FallsBackToAppSettings()
+	public void LoadPlugins_ShowsWhatTheConfigurationSourceResolved()
 	{
 		var worklogPlugin = MockPluginFactory.CreateWorklogPlugin("tempo", "Tempo",
 			new PluginConfigurationField { Key = "ApiUrl", Label = "API URL", IsRequired = true });
 		_mockPluginManager.Setup(p => p.LoadedPlugins)
 			.Returns(new Dictionary<string, IPluginDescriptor> { ["tempo"] = worklogPlugin.Object });
 
-		var configSection = new Mock<IConfigurationSection>();
-		configSection.Setup(s => s[It.IsAny<string>()]).Returns((string key) => key == "ApiUrl" ? "https://fallback.io" : null);
-		_mockConfiguration.Setup(c => c.GetSection("Plugins:tempo")).Returns(configSection.Object);
+		_mockConfigurationSource
+			.Setup(s => s.Resolve(It.IsAny<IReadOnlyDictionary<string, Dictionary<string, string>>>()))
+			.Returns(new Dictionary<string, Dictionary<string, string>> { ["tempo"] = new() { ["ApiUrl"] = "https://fallback.io" } });
 
 		var result = _orchestrator.LoadPlugins();
 

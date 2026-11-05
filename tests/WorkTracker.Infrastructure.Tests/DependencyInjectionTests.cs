@@ -126,7 +126,7 @@ public class DependencyInjectionTests : IAsyncDisposable
 		// Arrange
 		_services.AddInfrastructure(_configuration);
 		_serviceProvider = _services.BuildServiceProvider();
-		await DependencyInjection.InitializeDatabaseAsync(_serviceProvider, TestContext.Current.CancellationToken);
+		await DatabaseInitializer.InitializeAsync(_serviceProvider, TestContext.Current.CancellationToken);
 
 		// Act
 		var factory = _serviceProvider.GetRequiredService<IUnitOfWorkFactory>();
@@ -496,31 +496,31 @@ public class DependencyInjectionTests : IAsyncDisposable
 
 	#endregion Service Resolution Tests
 
-	#region InitializeDatabaseAsync Tests
+	#region Database Initialization Tests
 
 	[Fact]
-	public async Task InitializeDatabaseAsync_ShouldNotThrow()
+	public async Task InitializeDatabase_ShouldNotThrow()
 	{
 		// Arrange
 		_services.AddInfrastructure(_configuration);
 		_serviceProvider = _services.BuildServiceProvider();
 
 		// Act
-		var act = async () => await DependencyInjection.InitializeDatabaseAsync(_serviceProvider, TestContext.Current.CancellationToken);
+		var act = async () => await DatabaseInitializer.InitializeAsync(_serviceProvider, TestContext.Current.CancellationToken);
 
 		// Assert
 		await act.Should().NotThrowAsync();
 	}
 
 	[Fact]
-	public async Task InitializeDatabaseAsync_ShouldCreateDatabase()
+	public async Task InitializeDatabase_ShouldCreateDatabase()
 	{
 		// Arrange
 		_services.AddInfrastructure(_configuration);
 		_serviceProvider = _services.BuildServiceProvider();
 
 		// Act
-		await DependencyInjection.InitializeDatabaseAsync(_serviceProvider, TestContext.Current.CancellationToken);
+		await DatabaseInitializer.InitializeAsync(_serviceProvider, TestContext.Current.CancellationToken);
 
 		// Assert
 		var dbContextFactory = _serviceProvider.GetRequiredService<IDbContextFactory<WorkTrackerDbContext>>();
@@ -530,7 +530,7 @@ public class DependencyInjectionTests : IAsyncDisposable
 	}
 
 	[Fact]
-	public async Task InitializeDatabaseAsync_WithWalDatabase_ShouldSwitchToDeleteJournalMode()
+	public async Task InitializeDatabase_WithWalDatabase_ShouldSwitchToDeleteJournalMode()
 	{
 		// Arrange — create the database file with persistent WAL journal mode
 		await using (var walConnection = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={_testDbPath};Pooling=False"))
@@ -545,7 +545,7 @@ public class DependencyInjectionTests : IAsyncDisposable
 		_serviceProvider = _services.BuildServiceProvider();
 
 		// Act
-		await DependencyInjection.InitializeDatabaseAsync(_serviceProvider, TestContext.Current.CancellationToken);
+		await DatabaseInitializer.InitializeAsync(_serviceProvider, TestContext.Current.CancellationToken);
 
 		// Assert — journal mode is persisted in the file, so a fresh connection reflects it
 		await using var connection = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={_testDbPath};Pooling=False");
@@ -557,7 +557,7 @@ public class DependencyInjectionTests : IAsyncDisposable
 	}
 
 	[Fact]
-	public async Task InitializeDatabaseAsync_WhenDatabaseDirectoryCannotBeCreated_ShouldThrowDatabaseUnavailable()
+	public async Task InitializeDatabase_WhenDatabaseDirectoryCannotBeCreated_ShouldThrowDatabaseUnavailable()
 	{
 		// Arrange — a plain file where the database directory should be: creating a directory
 		// under it fails the same way an unplugged removable drive does.
@@ -575,7 +575,7 @@ public class DependencyInjectionTests : IAsyncDisposable
 			_serviceProvider = _services.BuildServiceProvider();
 
 			// Act
-			var act = async () => await DependencyInjection.InitializeDatabaseAsync(_serviceProvider, TestContext.Current.CancellationToken);
+			var act = async () => await DatabaseInitializer.InitializeAsync(_serviceProvider, TestContext.Current.CancellationToken);
 
 			// Assert
 			(await act.Should().ThrowAsync<DatabaseUnavailableException>())
@@ -588,7 +588,7 @@ public class DependencyInjectionTests : IAsyncDisposable
 	}
 
 	[Fact]
-	public async Task InitializeDatabaseAsync_WhenDatabaseCannotBeOpened_ShouldThrowDatabaseUnavailable()
+	public async Task InitializeDatabase_WhenDatabaseCannotBeOpened_ShouldThrowDatabaseUnavailable()
 	{
 		// Arrange — the directory is there, but SQLite cannot open a directory as its file
 		var dbPath = Directory.CreateTempSubdirectory("unopenable_").FullName;
@@ -606,7 +606,7 @@ public class DependencyInjectionTests : IAsyncDisposable
 			_serviceProvider = _services.BuildServiceProvider();
 
 			// Act
-			var act = async () => await DependencyInjection.InitializeDatabaseAsync(_serviceProvider, TestContext.Current.CancellationToken);
+			var act = async () => await DatabaseInitializer.InitializeAsync(_serviceProvider, TestContext.Current.CancellationToken);
 
 			// Assert
 			(await act.Should().ThrowAsync<DatabaseUnavailableException>())
@@ -619,7 +619,7 @@ public class DependencyInjectionTests : IAsyncDisposable
 	}
 
 	[Fact]
-	public async Task InitializeDatabaseAsync_WhenDatabaseDirectoryIsMissing_ShouldCreateIt()
+	public async Task InitializeDatabase_WhenDatabaseDirectoryIsMissing_ShouldCreateIt()
 	{
 		// Arrange
 		var dbDirectory = Path.Combine(Path.GetTempPath(), $"missing_{Guid.NewGuid()}");
@@ -638,7 +638,7 @@ public class DependencyInjectionTests : IAsyncDisposable
 			Directory.Exists(dbDirectory).Should().BeFalse("registering services must not touch the disk");
 
 			// Act
-			await DependencyInjection.InitializeDatabaseAsync(_serviceProvider, TestContext.Current.CancellationToken);
+			await DatabaseInitializer.InitializeAsync(_serviceProvider, TestContext.Current.CancellationToken);
 
 			// Assert
 			File.Exists(Path.Combine(dbDirectory, "worktracker.db")).Should().BeTrue();
@@ -652,7 +652,7 @@ public class DependencyInjectionTests : IAsyncDisposable
 		}
 	}
 
-	#endregion InitializeDatabaseAsync Tests
+	#endregion Database Initialization Tests
 
 	#region Plugin Directory Configuration Tests
 
@@ -751,55 +751,71 @@ public class DependencyInjectionTests : IAsyncDisposable
 
 	#endregion Plugin Directory Configuration Tests
 
-	#region InitializePluginsAsync Tests
+	#region Plugin Startup Tests
 
-	[Fact]
-	public async Task InitializePluginsAsync_WithNoPlugins_ShouldNotThrow()
-	{
-		// Arrange
-		var configData = new Dictionary<string, string?>
-		{
-			["Database:Path"] = ":memory:"
-		};
-		var config = new ConfigurationBuilder()
-			.AddInMemoryCollection(configData)
+	private static IConfiguration ConfigurationOf(params (string Key, string Value)[] values) =>
+		new ConfigurationBuilder()
+			.AddInMemoryCollection(values.Select(v => new KeyValuePair<string, string?>(v.Key, v.Value)))
 			.Build();
 
-		_services.AddInfrastructure(config);
+	private IPluginConfigurationSource SourceFor(IConfiguration configuration)
+	{
+		_services.AddInfrastructure(configuration);
+		_serviceProvider = _services.BuildServiceProvider();
+		return _serviceProvider.GetRequiredService<IPluginConfigurationSource>();
+	}
+
+	[Fact]
+	public async Task StartPlugins_WithNoPlugins_ShouldNotThrow()
+	{
+		// Arrange
+		_services.AddInfrastructure(ConfigurationOf(("Database:Path", ":memory:")));
 		_serviceProvider = _services.BuildServiceProvider();
 
 		// Act
-		var act = async () => await DependencyInjection.InitializePluginsAsync(_serviceProvider, config, cancellationToken: TestContext.Current.CancellationToken);
+		var act = async () => await PluginStartup.StartAsync(_serviceProvider, new Dictionary<string, bool>(), new Dictionary<string, Dictionary<string, string>>(), _ => true, TestContext.Current.CancellationToken);
 
 		// Assert
 		await act.Should().NotThrowAsync();
 	}
 
 	[Fact]
-	public async Task InitializePluginsAsync_WithPluginConfiguration_ShouldInitialize()
+	public void PluginConfiguration_FromApplicationConfiguration_IsTheInitialValue()
 	{
-		// Arrange
-		var configData = new Dictionary<string, string?>
-		{
-			["Database:Path"] = ":memory:",
-			["Plugins:test.plugin:ApiKey"] = "test-key",
-			["Plugins:test.plugin:BaseUrl"] = "https://test.com"
-		};
-		var config = new ConfigurationBuilder()
-			.AddInMemoryCollection(configData)
-			.Build();
+		var source = SourceFor(ConfigurationOf(("Database:Path", ":memory:"), ("Plugins:test.plugin:ApiKey", "from-file")));
 
-		_services.AddInfrastructure(config);
-		_serviceProvider = _services.BuildServiceProvider();
+		var result = source.Resolve(new Dictionary<string, Dictionary<string, string>>());
 
-		// Act
-		var act = async () => await DependencyInjection.InitializePluginsAsync(_serviceProvider, config, cancellationToken: TestContext.Current.CancellationToken);
-
-		// Assert
-		await act.Should().NotThrowAsync();
+		result["test.plugin"].Should().Equal(new Dictionary<string, string> { ["ApiKey"] = "from-file" });
 	}
 
-	#endregion InitializePluginsAsync Tests
+	[Fact]
+	public void PluginConfiguration_SavedByTheUser_ReplacesApplicationConfigurationAsAWhole()
+	{
+		var source = SourceFor(ConfigurationOf(
+			("Database:Path", ":memory:"),
+			("Plugins:test.plugin:ApiKey", "from-file"),
+			("Plugins:test.plugin:Other", "from-file")));
+
+		var result = source.Resolve(new Dictionary<string, Dictionary<string, string>>
+		{
+			["test.plugin"] = new() { ["ApiKey"] = "from-user" }
+		});
+
+		result["test.plugin"].Should().Equal(new Dictionary<string, string> { ["ApiKey"] = "from-user" });
+	}
+
+	[Fact]
+	public void PluginConfiguration_PluginDirectories_AreNotAPlugin()
+	{
+		var source = SourceFor(ConfigurationOf(("Database:Path", ":memory:"), ("Plugins:Directories:0", "plugins")));
+
+		var result = source.Resolve(new Dictionary<string, Dictionary<string, string>>());
+
+		result.Should().BeEmpty();
+	}
+
+	#endregion Plugin Startup Tests
 
 	#region Factory Pattern Tests
 
@@ -809,7 +825,7 @@ public class DependencyInjectionTests : IAsyncDisposable
 		// Arrange
 		_services.AddInfrastructure(_configuration);
 		_serviceProvider = _services.BuildServiceProvider();
-		await DependencyInjection.InitializeDatabaseAsync(_serviceProvider, TestContext.Current.CancellationToken);
+		await DatabaseInitializer.InitializeAsync(_serviceProvider, TestContext.Current.CancellationToken);
 
 		var repository = _serviceProvider.GetRequiredService<IWorkEntryReader>();
 
@@ -828,7 +844,7 @@ public class DependencyInjectionTests : IAsyncDisposable
 		// Arrange
 		_services.AddInfrastructure(_configuration);
 		_serviceProvider = _services.BuildServiceProvider();
-		await DependencyInjection.InitializeDatabaseAsync(_serviceProvider, TestContext.Current.CancellationToken);
+		await DatabaseInitializer.InitializeAsync(_serviceProvider, TestContext.Current.CancellationToken);
 
 		// Act - Each service instance is transient
 		var service1 = _serviceProvider.GetRequiredService<IWorkEntryService>();

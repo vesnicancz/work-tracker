@@ -230,9 +230,9 @@ dotnet ef migrations script \
   --startup-project src/WorkTracker.Avalonia
 ```
 
-**Runtime migrace** — aplikace při startu volá `DependencyInjection.InitializeDatabaseAsync`, která nejdřív databázi zkopíruje vedle ní (`worktracker.db.before-<migrace>.bak`) a pak spustí `DbContext.Database.MigrateAsync()`. Když se kopie nepovede, migrace neběží a start skončí chybou (`DatabaseBackupFailedException`). Žádný ruční `dotnet ef database update` na produkci.
+**Runtime migrace** — aplikace při startu volá `DatabaseInitializer.InitializeAsync`, která nejdřív databázi zkopíruje vedle ní (`worktracker.db.before-<migrace>.bak`) a pak spustí `DbContext.Database.MigrateAsync()`. Když se kopie nepovede, migrace neběží a start skončí chybou (`DatabaseBackupFailedException`). Žádný ruční `dotnet ef database update` na produkci.
 
-**Migrace a existující data** — uživatelé mají v databázi i to, co dnešní pravidla nepustí (překrývající se záznamy, záznam bez ticketu a popisu), a `MaxLength` SQLite nevynucuje. Migrace nesmí předpokládat, že jsou data platná, a nesmí mazat řádky. Každou migraci, která sahá na data, pokryj v `ExistingDatabaseMigrationTests`: staví databázi migracemi předchozí verze a jde přes `InitializeDatabaseAsync` jako aplikace.
+**Migrace a existující data** — uživatelé mají v databázi i to, co dnešní pravidla nepustí (překrývající se záznamy, záznam bez ticketu a popisu), a `MaxLength` SQLite nevynucuje. Migrace nesmí předpokládat, že jsou data platná, a nesmí mazat řádky. Každou migraci, která sahá na data, pokryj v `ExistingDatabaseMigrationTests`: staví databázi migracemi předchozí verze a jde přes `DatabaseInitializer.InitializeAsync` jako aplikace.
 
 **Migration file naming** — EF Core sám přidává timestamp prefix. Název migrace je v PascalCase, dostatečně popisný (`AddIsActiveIndex`, ne `Fix1`).
 
