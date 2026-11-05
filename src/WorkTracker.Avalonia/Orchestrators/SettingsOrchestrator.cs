@@ -4,7 +4,6 @@ using WorkTracker.Application.Services;
 using WorkTracker.Plugin.Abstractions;
 using WorkTracker.Avalonia.Models;
 using WorkTracker.Avalonia.Services;
-using WorkTracker.Avalonia.ViewModels;
 
 namespace WorkTracker.Avalonia.Orchestrators;
 
@@ -48,42 +47,22 @@ public class SettingsOrchestrator : ISettingsOrchestrator
 		_logger = logger;
 	}
 
-	public List<PluginViewModel> LoadPlugins()
+	public List<PluginSettingsEntry> LoadPlugins()
 	{
-		var plugins = new List<PluginViewModel>();
-		var configurations = _configurationSource.Resolve(_settingsService.Settings.PluginConfigurations);
+		var settings = _settingsService.Settings;
+		var configurations = _configurationSource.Resolve(settings.PluginConfigurations);
 
-		foreach (var plugin in _pluginManager.LoadedPlugins.Values.OrderBy(p => p.Metadata.Name))
-		{
-			var pluginViewModel = new PluginViewModel(plugin);
-
-			// Disabled by default — user must explicitly enable in Settings
-			if (_settingsService.Settings.EnabledPlugins.TryGetValue(plugin.Metadata.Id, out var isEnabled))
-			{
-				pluginViewModel.IsEnabled = isEnabled;
-			}
-
-			if (configurations.TryGetValue(plugin.Metadata.Id, out var configuration))
-			{
-				foreach (var kvp in configuration)
-				{
-					pluginViewModel.Configuration[kvp.Key] = kvp.Value;
-				}
-			}
-
-			// Notify ConfigurationFieldViewModels about loaded values
-			foreach (var fieldVm in pluginViewModel.ConfigurationFields)
-			{
-				fieldVm.RefreshValue();
-			}
-
-			plugins.Add(pluginViewModel);
-		}
-
-		return plugins;
+		return _pluginManager.LoadedPlugins.Values
+			.OrderBy(p => p.Metadata.Name)
+			.Select(plugin => new PluginSettingsEntry(
+				plugin,
+				// Disabled by default — user must explicitly enable in Settings
+				settings.EnabledPlugins.GetValueOrDefault(plugin.Metadata.Id),
+				configurations.GetValueOrDefault(plugin.Metadata.Id) ?? []))
+			.ToList();
 	}
 
-	public async Task<IReadOnlyList<string>> ValidatePluginConfigurationsAsync(IEnumerable<PluginViewModel> plugins, CancellationToken cancellationToken)
+	public async Task<IReadOnlyList<string>> ValidatePluginConfigurationsAsync(IEnumerable<PluginSettingsEntry> plugins, CancellationToken cancellationToken)
 	{
 		// Only enabled plugins: a disabled one is never initialized, so a half-filled configuration
 		// left on it must not block saving everything else.
@@ -93,7 +72,7 @@ public class SettingsOrchestrator : ISettingsOrchestrator
 			var result = await plugin.Plugin.ValidateConfigurationAsync(new Dictionary<string, string>(plugin.Configuration), cancellationToken);
 			if (!result.IsValid)
 			{
-				errors.AddRange(result.Errors.Select(error => $"{plugin.Name}: {error}"));
+				errors.AddRange(result.Errors.Select(error => $"{plugin.Plugin.Metadata.Name}: {error}"));
 			}
 		}
 
@@ -128,12 +107,12 @@ public class SettingsOrchestrator : ISettingsOrchestrator
 		settings.Pomodoro = request.Pomodoro;
 
 		// Save plugin configurations and enabled state, encrypting sensitive values
-		foreach (var pluginVm in request.Plugins)
+		foreach (var plugin in request.Plugins)
 		{
-			var config = new Dictionary<string, string>(pluginVm.Configuration);
-			ProtectSensitiveFields(pluginVm.Plugin, config);
-			settings.PluginConfigurations[pluginVm.Plugin.Metadata.Id] = config;
-			settings.EnabledPlugins[pluginVm.Plugin.Metadata.Id] = pluginVm.IsEnabled;
+			var config = new Dictionary<string, string>(plugin.Configuration);
+			ProtectSensitiveFields(plugin.Plugin, config);
+			settings.PluginConfigurations[plugin.Plugin.Metadata.Id] = config;
+			settings.EnabledPlugins[plugin.Plugin.Metadata.Id] = plugin.IsEnabled;
 		}
 
 		await _settingsService.SaveSettingsAsync(settings, cancellationToken);
@@ -161,7 +140,7 @@ public class SettingsOrchestrator : ISettingsOrchestrator
 		_logger.LogInformation("Settings saved successfully");
 	}
 
-	public async Task<string> TestConnectionAsync(PluginViewModel plugin, IProgress<string>? progress, CancellationToken cancellationToken)
+	public async Task<string> TestConnectionAsync(PluginSettingsEntry plugin, IProgress<string>? progress, CancellationToken cancellationToken)
 	{
 		if (plugin.Plugin is not ITestablePlugin)
 		{

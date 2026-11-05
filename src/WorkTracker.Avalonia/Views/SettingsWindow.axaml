@@ -116,7 +116,7 @@
 
                                 <Separator Margin="0,16" />
 
-                                <StackPanel IsVisible="{Binding HasEnabledRemoteControlPlugin}">
+                                <StackPanel IsVisible="{Binding Plugins.HasEnabledRemoteControlPlugin}">
                                     <TextBlock Text="{markup:Localize Notifications}" FontSize="13" Foreground="{DynamicResource TextMuted}"
                                                Margin="0,0,0,8" />
 
@@ -147,7 +147,7 @@
                                 <TextBlock Text="{markup:Localize Appearance}" FontSize="13" Foreground="{DynamicResource TextMuted}"
                                            Margin="0,0,0,8" />
 
-                                <CheckBox IsChecked="{Binding FollowSystemTheme}" Margin="0,0,0,6">
+                                <CheckBox IsChecked="{Binding Appearance.FollowSystemTheme}" Margin="0,0,0,6">
                                     <StackPanel>
                                         <TextBlock Text="{markup:Localize FollowSystemTheme}" FontWeight="Medium" />
                                         <TextBlock Text="{markup:Localize FollowSystemThemeDesc}"
@@ -156,26 +156,26 @@
                                 </CheckBox>
 
                                 <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center"
-                                            IsVisible="{Binding IsSingleThemeMode}">
+                                            IsVisible="{Binding Appearance.IsSingleThemeMode}">
                                     <TextBlock Text="{markup:Localize Theme}" FontWeight="Medium" VerticalAlignment="Center" />
-                                    <ComboBox SelectedItem="{Binding SelectedTheme}"
-                                              ItemsSource="{Binding AvailableThemes}"
+                                    <ComboBox SelectedItem="{Binding Appearance.SelectedTheme}"
+                                              ItemsSource="{Binding Appearance.AvailableThemes}"
                                               MinWidth="150" />
                                 </StackPanel>
 
-                                <StackPanel Spacing="8" IsVisible="{Binding FollowSystemTheme}">
+                                <StackPanel Spacing="8" IsVisible="{Binding Appearance.FollowSystemTheme}">
                                     <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
                                         <TextBlock Text="{markup:Localize DayTheme}" FontWeight="Medium" VerticalAlignment="Center"
                                                    Width="80" />
-                                        <ComboBox SelectedItem="{Binding SelectedLightTheme}"
-                                                  ItemsSource="{Binding AvailableLightThemes}"
+                                        <ComboBox SelectedItem="{Binding Appearance.SelectedLightTheme}"
+                                                  ItemsSource="{Binding Appearance.AvailableLightThemes}"
                                                   MinWidth="150" />
                                     </StackPanel>
                                     <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
                                         <TextBlock Text="{markup:Localize NightTheme}" FontWeight="Medium" VerticalAlignment="Center"
                                                    Width="80" />
-                                        <ComboBox SelectedItem="{Binding SelectedDarkTheme}"
-                                                  ItemsSource="{Binding AvailableDarkThemes}"
+                                        <ComboBox SelectedItem="{Binding Appearance.SelectedDarkTheme}"
+                                                  ItemsSource="{Binding Appearance.AvailableDarkThemes}"
                                                   MinWidth="150" />
                                     </StackPanel>
                                 </StackPanel>
@@ -183,8 +183,8 @@
                                 <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center"
                                             Margin="0,12,0,0">
                                     <TextBlock Text="{markup:Localize Language}" FontWeight="Medium" VerticalAlignment="Center" />
-                                    <ComboBox SelectedItem="{Binding SelectedLanguage}"
-                                              ItemsSource="{Binding AvailableLanguages}"
+                                    <ComboBox SelectedItem="{Binding Appearance.SelectedLanguage}"
+                                              ItemsSource="{Binding Appearance.AvailableLanguages}"
                                               DisplayMemberBinding="{ReflectionBinding DisplayName}"
                                               MinWidth="150" />
                                     <TextBlock Text="{markup:Localize LanguageDesc}" VerticalAlignment="Center"
@@ -209,8 +209,8 @@
                                         BorderThickness="1" CornerRadius="4">
                                     <Grid RowDefinitions="*,Auto">
                                         <ListBox Grid.Row="0"
-                                                 ItemsSource="{Binding FavoriteWorkItems}"
-                                                 SelectedItem="{Binding SelectedFavorite}"
+                                                 ItemsSource="{Binding Favorites.Items}"
+                                                 SelectedItem="{Binding Favorites.SelectedItem}"
                                                  Background="Transparent">
                                             <ListBox.ItemTemplate>
                                                 <DataTemplate>
@@ -240,21 +240,21 @@
                                         <!-- List toolbar: Remove + Move Up/Down -->
                                         <StackPanel Grid.Row="1" Orientation="Horizontal"
                                                     HorizontalAlignment="Right" Margin="6" Spacing="2">
-                                            <Button Command="{Binding RemoveFavoriteCommand}"
+                                            <Button Command="{Binding Favorites.RemoveCommand}"
                                                     Width="28" Height="28" Padding="0"
                                                     Background="Transparent" BorderThickness="0"
                                                     ToolTip.Tip="{markup:Localize RemoveFavorite}">
                                                 <material:MaterialIcon Kind="Delete" Width="16" Height="16"
                                                                       Foreground="{DynamicResource DangerRed}" />
                                             </Button>
-                                            <Button Command="{Binding MoveFavoriteUpCommand}"
+                                            <Button Command="{Binding Favorites.MoveUpCommand}"
                                                     Width="28" Height="28" Padding="0"
                                                     Background="Transparent" BorderThickness="0"
                                                     ToolTip.Tip="{markup:Localize MoveUp}">
                                                 <material:MaterialIcon Kind="ArrowUp" Width="16" Height="16"
                                                                       Foreground="{DynamicResource TextMuted}" />
                                             </Button>
-                                            <Button Command="{Binding MoveFavoriteDownCommand}"
+                                            <Button Command="{Binding Favorites.MoveDownCommand}"
                                                     Width="28" Height="28" Padding="0"
                                                     Background="Transparent" BorderThickness="0"
                                                     ToolTip.Tip="{markup:Localize MoveDown}">
@@ -274,7 +274,7 @@
                                            TextWrapping="Wrap"
                                            TextAlignment="Center"
                                            FontSize="12"
-                                           IsVisible="{Binding !IsEditFormVisible}" />
+                                           IsVisible="{Binding !Favorites.IsEditFormVisible}" />
 
                                 <!-- Edit form -->
                                 <Border Grid.Column="2"
@@ -282,27 +282,27 @@
                                         BorderBrush="{DynamicResource CardBorder}"
                                         BorderThickness="1"
                                         CornerRadius="4" Padding="14"
-                                        IsVisible="{Binding IsEditFormVisible}">
+                                        IsVisible="{Binding Favorites.IsEditFormVisible}">
                                     <StackPanel Spacing="8">
                                         <!-- Form header indicating mode -->
                                         <TextBlock FontSize="12" Foreground="{DynamicResource TextMuted}"
                                                    Text="{markup:Localize EditFavorite}"
-                                                   IsVisible="{Binding !IsAddingFavorite}" />
+                                                   IsVisible="{Binding !Favorites.IsAdding}" />
                                         <TextBlock FontSize="12" Foreground="{DynamicResource TextMuted}"
                                                    Text="{markup:Localize NewFavorite}"
-                                                   IsVisible="{Binding IsAddingFavorite}" />
+                                                   IsVisible="{Binding Favorites.IsAdding}" />
 
-                                        <TextBox Text="{Binding EditingFavoriteName, Mode=TwoWay}"
+                                        <TextBox Text="{Binding Favorites.EditingName, Mode=TwoWay}"
                                                  PlaceholderText="{markup:Localize FavoriteName}" FontSize="12" />
-                                        <TextBox Text="{Binding EditingFavoriteTicket, Mode=TwoWay}"
+                                        <TextBox Text="{Binding Favorites.EditingTicket, Mode=TwoWay}"
                                                  PlaceholderText="{markup:Localize FavoriteTicket}" FontSize="12" />
-                                        <TextBox Text="{Binding EditingFavoriteDescription, Mode=TwoWay}"
+                                        <TextBox Text="{Binding Favorites.EditingDescription, Mode=TwoWay}"
                                                  PlaceholderText="{markup:Localize FavoriteDescription}"
                                                  FontSize="12" TextWrapping="Wrap"
                                                  AcceptsReturn="True" MinHeight="50" />
 
                                         <!-- Show as template checkbox -->
-                                        <CheckBox IsChecked="{Binding EditingFavoriteShowAsTemplate}" Margin="0,4,0,0">
+                                        <CheckBox IsChecked="{Binding Favorites.EditingShowAsTemplate}" Margin="0,4,0,0">
                                             <StackPanel Spacing="2">
                                                 <TextBlock Text="{markup:Localize FavoriteShowAsTemplate}" FontSize="12" FontWeight="Medium" />
                                                 <TextBlock Text="{markup:Localize FavoriteShowAsTemplateDesc}"
@@ -311,11 +311,11 @@
                                         </CheckBox>
 
                                         <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right">
-                                            <Button Command="{Binding CancelEditFavoriteCommand}"
+                                            <Button Command="{Binding Favorites.CancelEditCommand}"
                                                     Background="Transparent" BorderThickness="0" Padding="8,6">
                                                 <TextBlock Text="{markup:Localize Cancel}" FontSize="12" Foreground="{DynamicResource TextSecondary}" />
                                             </Button>
-                                            <Button Command="{Binding SaveFavoriteCommand}"
+                                            <Button Command="{Binding Favorites.SaveCommand}"
                                                     Padding="8,6" Classes="accent">
                                                 <StackPanel Orientation="Horizontal" Spacing="4">
                                                     <material:MaterialIcon Kind="ContentSave" Width="14" Height="14" />
@@ -330,7 +330,7 @@
 
                             <!-- Add button -->
                             <Button Grid.Row="1"
-                                    Command="{Binding AddFavoriteCommand}"
+                                    Command="{Binding Favorites.AddCommand}"
                                     Background="Transparent" BorderThickness="0"
                                     Padding="8,6" Margin="0,8,0,0"
                                     HorizontalAlignment="Left">
@@ -354,7 +354,7 @@
                                            Foreground="{DynamicResource TextBright}"
                                            Margin="0,0,0,10" />
 
-                                <CheckBox IsChecked="{Binding PomodoroEnabled}" Margin="0,0,0,6">
+                                <CheckBox IsChecked="{Binding Pomodoro.Enabled}" Margin="0,0,0,6">
                                     <StackPanel>
                                         <TextBlock Text="{markup:Localize PomodoroEnabled}" FontWeight="Medium" />
                                         <TextBlock Text="{markup:Localize PomodoroEnabledDesc}"
@@ -364,30 +364,30 @@
 
                                 <Separator Margin="0,16" />
 
-                                <StackPanel IsEnabled="{Binding PomodoroEnabled}">
+                                <StackPanel IsEnabled="{Binding Pomodoro.Enabled}">
                                     <StackPanel Margin="0,0,0,8" Spacing="3">
                                         <TextBlock Text="{markup:Localize PomodoroWorkMinutes}" FontSize="12" FontWeight="Medium" />
-                                        <TextBox Text="{Binding PomodoroWorkMinutes}" FontSize="12" />
+                                        <TextBox Text="{Binding Pomodoro.WorkMinutes}" FontSize="12" />
                                     </StackPanel>
 
                                     <StackPanel Margin="0,0,0,8" Spacing="3">
                                         <TextBlock Text="{markup:Localize PomodoroShortBreakMinutes}" FontSize="12" FontWeight="Medium" />
-                                        <TextBox Text="{Binding PomodoroShortBreakMinutes}" FontSize="12" />
+                                        <TextBox Text="{Binding Pomodoro.ShortBreakMinutes}" FontSize="12" />
                                     </StackPanel>
 
                                     <StackPanel Margin="0,0,0,8" Spacing="3">
                                         <TextBlock Text="{markup:Localize PomodoroLongBreakMinutes}" FontSize="12" FontWeight="Medium" />
-                                        <TextBox Text="{Binding PomodoroLongBreakMinutes}" FontSize="12" />
+                                        <TextBox Text="{Binding Pomodoro.LongBreakMinutes}" FontSize="12" />
                                     </StackPanel>
 
                                     <StackPanel Margin="0,0,0,8" Spacing="3">
                                         <TextBlock Text="{markup:Localize PomodorosBeforeLongBreak}" FontSize="12" FontWeight="Medium" />
-                                        <TextBox Text="{Binding PomodorosBeforeLongBreak}" FontSize="12" />
+                                        <TextBox Text="{Binding Pomodoro.PomodorosBeforeLongBreak}" FontSize="12" />
                                     </StackPanel>
 
                                     <Separator Margin="0,16" />
 
-                                    <CheckBox IsChecked="{Binding PomodoroAutoStartTracking}" Margin="0,0,0,6">
+                                    <CheckBox IsChecked="{Binding Pomodoro.AutoStartTracking}" Margin="0,0,0,6">
                                         <StackPanel>
                                             <TextBlock Text="{markup:Localize PomodoroAutoStartTracking}" FontWeight="Medium" />
                                             <TextBlock Text="{markup:Localize PomodoroAutoStartTrackingDesc}"
@@ -395,7 +395,7 @@
                                         </StackPanel>
                                     </CheckBox>
 
-                                    <CheckBox IsChecked="{Binding PomodoroAutoStopTracking}" Margin="0,0,0,6">
+                                    <CheckBox IsChecked="{Binding Pomodoro.AutoStopTracking}" Margin="0,0,0,6">
                                         <StackPanel>
                                             <TextBlock Text="{markup:Localize PomodoroAutoStopTracking}" FontWeight="Medium" />
                                             <TextBlock Text="{markup:Localize PomodoroAutoStopTrackingDesc}"
@@ -403,7 +403,7 @@
                                         </StackPanel>
                                     </CheckBox>
 
-                                    <CheckBox IsChecked="{Binding PomodoroShowSystemNotifications}">
+                                    <CheckBox IsChecked="{Binding Pomodoro.ShowSystemNotifications}">
                                         <StackPanel>
                                             <TextBlock Text="{markup:Localize PomodoroShowSystemNotifications}" FontWeight="Medium" />
                                             <TextBlock Text="{markup:Localize PomodoroShowSystemNotificationsDesc}"
@@ -425,16 +425,16 @@
                                        HorizontalAlignment="Center"
                                        VerticalAlignment="Center"
                                        FontSize="13"
-                                       IsVisible="{Binding !HasPlugins}" />
+                                       IsVisible="{Binding !Plugins.HasPlugins}" />
 
                             <!-- Plugin settings -->
                             <Grid RowDefinitions="Auto,*"
-                                  IsVisible="{Binding HasPlugins}">
+                                  IsVisible="{Binding Plugins.HasPlugins}">
 
                                 <!-- Plugin picker — fixed, does not scroll -->
                                 <ComboBox Grid.Row="0"
-                                          ItemsSource="{Binding Plugins}"
-                                          SelectedItem="{Binding SelectedPlugin}"
+                                          ItemsSource="{Binding Plugins.Items}"
+                                          SelectedItem="{Binding Plugins.SelectedItem}"
                                           DisplayMemberBinding="{ReflectionBinding Name}"
                                           HorizontalAlignment="Stretch"
                                           PlaceholderText="{markup:Localize SelectPlugin}"
@@ -452,7 +452,7 @@
                                             BorderThickness="1" CornerRadius="4" Padding="14">
                                         <StackPanel Spacing="10">
 
-                                            <CheckBox IsChecked="{Binding SelectedPlugin.IsEnabled}"
+                                            <CheckBox IsChecked="{Binding Plugins.SelectedItem.IsEnabled}"
                                                       Content="{markup:Localize EnablePlugin}" />
 
                                             <Separator />
@@ -461,11 +461,11 @@
                                             <Grid ColumnDefinitions="80,*" RowDefinitions="Auto,Auto,Auto"
                                                   Margin="0,0,0,4">
                                                 <TextBlock Grid.Row="0" Grid.Column="0" Text="{markup:Localize PluginVersion}" Foreground="{DynamicResource TextMuted}" FontSize="12" Margin="0,0,0,4" />
-                                                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding SelectedPlugin.Version}" FontSize="12" Margin="0,0,0,4" />
+                                                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Plugins.SelectedItem.Version}" FontSize="12" Margin="0,0,0,4" />
                                                 <TextBlock Grid.Row="1" Grid.Column="0" Text="{markup:Localize PluginAuthor}" Foreground="{DynamicResource TextMuted}" FontSize="12" Margin="0,0,0,4" />
-                                                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SelectedPlugin.Author}" FontSize="12" Margin="0,0,0,4" />
+                                                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Plugins.SelectedItem.Author}" FontSize="12" Margin="0,0,0,4" />
                                                 <TextBlock Grid.Row="2" Grid.Column="0" Text="{markup:Localize PluginDescription}" Foreground="{DynamicResource TextMuted}" FontSize="12" VerticalAlignment="Top" />
-                                                <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SelectedPlugin.Description}" FontSize="12" TextWrapping="Wrap" />
+                                                <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Plugins.SelectedItem.Description}" FontSize="12" TextWrapping="Wrap" />
                                             </Grid>
 
                                             <Separator />
@@ -473,7 +473,7 @@
                                             <TextBlock Text="{markup:Localize Configuration}" FontSize="12" Foreground="{DynamicResource TextMuted}" />
 
                                             <!-- Config fields -->
-                                            <ItemsControl ItemsSource="{Binding SelectedPlugin.ConfigurationFields}">
+                                            <ItemsControl ItemsSource="{Binding Plugins.SelectedItem.ConfigurationFields}">
                                                 <ItemsControl.Styles>
                                                     <!-- The field type decides how the one TextBox behaves: a secret is masked
                                                          (with Fluent's reveal button), a multi-line value gets room to wrap. -->
@@ -513,8 +513,8 @@
                                             </ItemsControl>
 
                                             <!-- Test Connection -->
-                                            <Button IsVisible="{Binding SelectedPlugin.SupportsTestConnection}"
-                                                    Command="{Binding TestConnectionCommand}"
+                                            <Button IsVisible="{Binding Plugins.SelectedItem.SupportsTestConnection}"
+                                                    Command="{Binding Plugins.TestConnectionCommand}"
                                                     Background="Transparent" Padding="10,6"
                                                     BorderBrush="{DynamicResource CardBorder}" BorderThickness="1">
                                                 <StackPanel Orientation="Horizontal" Spacing="6">
@@ -525,7 +525,7 @@
                                                 </StackPanel>
                                             </Button>
 
-                                            <TextBlock Text="{Binding TestConnectionResult}"
+                                            <TextBlock Text="{Binding Plugins.TestConnectionResult}"
                                                        FontSize="12" TextWrapping="Wrap" />
 
                                         </StackPanel>

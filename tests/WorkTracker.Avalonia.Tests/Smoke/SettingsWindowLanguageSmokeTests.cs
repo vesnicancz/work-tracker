@@ -56,20 +56,20 @@ public class SettingsWindowLanguageSmokeTests
 		{
 			window.Title.Should().Be("Settings");
 
-			viewModel.SelectedLanguage = viewModel.AvailableLanguages.First(o => o.Code == "cs");
+			viewModel.Appearance.SelectedLanguage = viewModel.Appearance.AvailableLanguages.First(o => o.Code == "cs");
 
 			window.Title.Should().Be("Nastavení", "the open window must follow a live language switch");
 			localization.CurrentLanguage.Should().Be("cs");
 
 			// The "System" entry is the one translated label in the dropdown, so it must refresh too.
-			viewModel.AvailableLanguages
+			viewModel.Appearance.AvailableLanguages
 				.First(o => o.Code == LanguageCatalog.SystemLanguage).DisplayName
 				.Should().Be("Systém");
 
 			// DisplayMemberBinding resolves against the item, not the window's DataContext - if it
 			// ever broke, the ComboBox would quietly render type names instead of language names.
 			var comboBox = window.GetVisualDescendants().OfType<ComboBox>()
-				.Single(c => ReferenceEquals(c.ItemsSource, viewModel.AvailableLanguages));
+				.Single(c => ReferenceEquals(c.ItemsSource, viewModel.Appearance.AvailableLanguages));
 			window.UpdateLayout();
 
 			comboBox.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text)

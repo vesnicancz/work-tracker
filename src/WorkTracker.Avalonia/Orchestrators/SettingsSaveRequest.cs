@@ -1,5 +1,4 @@
 using WorkTracker.Avalonia.Models;
-using WorkTracker.Avalonia.ViewModels;
 
 namespace WorkTracker.Avalonia.Orchestrators;
 
@@ -16,6 +15,6 @@ public class SettingsSaveRequest
 	public string? DarkTheme { get; set; }
 	public string? Language { get; set; }
 	public List<FavoriteWorkItem> FavoriteWorkItems { get; set; } = new();
-	public List<PluginViewModel> Plugins { get; set; } = new();
+	public List<PluginSettingsEntry> Plugins { get; set; } = new();
 	public PomodoroSettings Pomodoro { get; set; } = new();
 }

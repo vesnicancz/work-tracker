@@ -6,6 +6,7 @@ using WorkTracker.Plugin.Abstractions;
 using WorkTracker.Avalonia.Models;
 using WorkTracker.Avalonia.Orchestrators;
 using WorkTracker.Avalonia.Services;
+using WorkTracker.Tests.Common.Helpers;
 
 namespace WorkTracker.Avalonia.Tests.ViewModels;
 
@@ -24,7 +25,7 @@ public class SettingsViewModelTests
 		{
 			Settings.SetupGet(s => s.Settings).Returns(SettingsModel);
 			Orchestrator.Setup(o => o.LoadPlugins()).Returns([]);
-			Orchestrator.Setup(o => o.ValidatePluginConfigurationsAsync(It.IsAny<IEnumerable<PluginViewModel>>(), It.IsAny<CancellationToken>()))
+			Orchestrator.Setup(o => o.ValidatePluginConfigurationsAsync(It.IsAny<IEnumerable<PluginSettingsEntry>>(), It.IsAny<CancellationToken>()))
 				.ReturnsAsync([]);
 			Localization.Setup(l => l[It.IsAny<string>()]).Returns((string key) => key);
 			Localization.Setup(l => l.GetFormattedString(It.IsAny<string>(), It.IsAny<object[]>()))
@@ -45,13 +46,13 @@ public class SettingsViewModelTests
 
 	private static FavoriteWorkItem Favorite(string name) => new() { Name = name };
 
-	private static PluginViewModel Plugin<TPlugin>(bool isEnabled)
+	private static PluginSettingsEntry Plugin<TPlugin>(bool isEnabled)
 		where TPlugin : class, IPlugin
 	{
 		var plugin = new Mock<TPlugin>();
 		plugin.Setup(p => p.GetConfigurationFields()).Returns(new List<PluginConfigurationField>());
 
-		return new PluginViewModel(plugin.Object) { IsEnabled = isEnabled };
+		return new PluginSettingsEntry(plugin.Object, isEnabled, new Dictionary<string, string>());
 	}
 
 	#region Notification settings
@@ -61,7 +62,7 @@ public class SettingsViewModelTests
 	{
 		var vm = new Harness().CreateViewModel();
 
-		vm.HasEnabledRemoteControlPlugin.Should().BeFalse();
+		vm.Plugins.HasEnabledRemoteControlPlugin.Should().BeFalse();
 	}
 
 	[Fact]
@@ -72,7 +73,7 @@ public class SettingsViewModelTests
 
 		var vm = harness.CreateViewModel();
 
-		vm.HasEnabledRemoteControlPlugin.Should().BeFalse();
+		vm.Plugins.HasEnabledRemoteControlPlugin.Should().BeFalse();
 	}
 
 	[Fact]
@@ -83,21 +84,20 @@ public class SettingsViewModelTests
 
 		var vm = harness.CreateViewModel();
 
-		vm.HasEnabledRemoteControlPlugin.Should().BeTrue();
+		vm.Plugins.HasEnabledRemoteControlPlugin.Should().BeTrue();
 	}
 
 	[Fact]
 	public void HasEnabledRemoteControlPlugin_FollowsThePluginBeingSwitched()
 	{
-		var plugin = Plugin<IRemoteControlPlugin>(isEnabled: false);
 		var harness = new Harness();
-		harness.Orchestrator.Setup(o => o.LoadPlugins()).Returns([plugin]);
+		harness.Orchestrator.Setup(o => o.LoadPlugins()).Returns([Plugin<IRemoteControlPlugin>(isEnabled: false)]);
 		var vm = harness.CreateViewModel();
-		using var monitor = vm.Monitor();
+		using var monitor = vm.Plugins.Monitor();
 
-		plugin.IsEnabled = true;
+		vm.Plugins.Items[0].IsEnabled = true;
 
-		vm.HasEnabledRemoteControlPlugin.Should().BeTrue();
+		vm.Plugins.HasEnabledRemoteControlPlugin.Should().BeTrue();
 		monitor.Should().RaisePropertyChangeFor(x => x.HasEnabledRemoteControlPlugin);
 	}
 
@@ -133,7 +133,7 @@ public class SettingsViewModelTests
 
 		var vm = harness.CreateViewModel();
 
-		vm.SelectedLanguage.Code.Should().Be("cs");
+		vm.Appearance.SelectedLanguage.Code.Should().Be("cs");
 	}
 
 	[Fact]
@@ -144,7 +144,7 @@ public class SettingsViewModelTests
 
 		var vm = harness.CreateViewModel();
 
-		vm.SelectedLanguage.Code.Should().Be(LanguageCatalog.SystemLanguage);
+		vm.Appearance.SelectedLanguage.Code.Should().Be(LanguageCatalog.SystemLanguage);
 	}
 
 	[Fact]
@@ -152,9 +152,9 @@ public class SettingsViewModelTests
 	{
 		var vm = new Harness().CreateViewModel();
 
-		vm.AvailableLanguages.Select(o => o.Code)
+		vm.Appearance.AvailableLanguages.Select(o => o.Code)
 			.Should().Equal(LanguageCatalog.SystemLanguage, "cs", "en");
-		vm.AvailableLanguages.Select(o => o.DisplayName)
+		vm.Appearance.AvailableLanguages.Select(o => o.DisplayName)
 			.Should().Equal("LanguageSystem", "Čeština", "English");
 	}
 
@@ -164,7 +164,7 @@ public class SettingsViewModelTests
 		var harness = new Harness();
 		var vm = harness.CreateViewModel();
 
-		vm.SelectedLanguage = vm.AvailableLanguages.First(o => o.Code == "en");
+		vm.Appearance.SelectedLanguage = vm.Appearance.AvailableLanguages.First(o => o.Code == "en");
 
 		harness.Localization.Verify(l => l.ApplyLanguage("en"), Times.Once);
 	}
@@ -181,7 +181,7 @@ public class SettingsViewModelTests
 		var vm = harness.CreateViewModel();
 		vm.CloseAction = () => { };
 
-		vm.SelectedLanguage = vm.AvailableLanguages.First(o => o.Code == "en");
+		vm.Appearance.SelectedLanguage = vm.Appearance.AvailableLanguages.First(o => o.Code == "en");
 		await vm.SaveCommand.ExecuteAsync(null);
 
 		captured!.Language.Should().Be("en");
@@ -195,11 +195,22 @@ public class SettingsViewModelTests
 		var vm = harness.CreateViewModel();
 		vm.CloseAction = () => { };
 
-		vm.SelectedLanguage = vm.AvailableLanguages.First(o => o.Code == "en");
+		vm.Appearance.SelectedLanguage = vm.Appearance.AvailableLanguages.First(o => o.Code == "en");
 		vm.CancelCommand.Execute(null);
 
-		vm.SelectedLanguage.Code.Should().Be("cs");
+		vm.Appearance.SelectedLanguage.Code.Should().Be("cs");
 		harness.Localization.Verify(l => l.ApplyLanguage("cs"), Times.Once);
+	}
+
+	[Fact]
+	public void SelectedLanguage_Changed_RefreshesTheVersionLine()
+	{
+		var vm = new Harness().CreateViewModel();
+		using var monitor = vm.Monitor();
+
+		vm.Appearance.SelectedLanguage = vm.Appearance.AvailableLanguages.First(o => o.Code == "en");
+
+		monitor.Should().RaisePropertyChangeFor(x => x.AppVersionDisplay);
 	}
 
 	[Fact]
@@ -223,7 +234,7 @@ public class SettingsViewModelTests
 		var harness = new Harness();
 		var vm = harness.CreateViewModel();
 
-		vm.SelectedTheme = "Synthwave";
+		vm.Appearance.SelectedTheme = "Synthwave";
 
 		harness.Theme.Verify(t => t.ApplyThemeMode(false, "Synthwave", It.IsAny<string>(), It.IsAny<string>()), Times.Once);
 	}
@@ -235,12 +246,12 @@ public class SettingsViewModelTests
 		harness.SettingsModel.Theme = "One Dark";
 		var vm = harness.CreateViewModel();
 
-		vm.SelectedTheme = "Synthwave";
+		vm.Appearance.SelectedTheme = "Synthwave";
 		harness.Theme.Invocations.Clear();
 
 		vm.CancelCommand.Execute(null);
 
-		vm.SelectedTheme.Should().Be("One Dark");
+		vm.Appearance.SelectedTheme.Should().Be("One Dark");
 		harness.Theme.Verify(t => t.ApplyThemeMode(false, "One Dark", It.IsAny<string>(), It.IsAny<string>()), Times.Once);
 	}
 
@@ -254,16 +265,16 @@ public class SettingsViewModelTests
 		harness.SettingsModel.DarkTheme = "Midnight";
 		var vm = harness.CreateViewModel();
 
-		vm.FollowSystemTheme = true;
-		vm.SelectedLightTheme = "Sandstone";
-		vm.SelectedDarkTheme = "Abyss";
+		vm.Appearance.FollowSystemTheme = true;
+		vm.Appearance.SelectedLightTheme = "Sandstone";
+		vm.Appearance.SelectedDarkTheme = "Abyss";
 		harness.Theme.Invocations.Clear();
 
 		vm.CancelCommand.Execute(null);
 
-		vm.FollowSystemTheme.Should().BeFalse();
-		vm.SelectedLightTheme.Should().Be("Light");
-		vm.SelectedDarkTheme.Should().Be("Midnight");
+		vm.Appearance.FollowSystemTheme.Should().BeFalse();
+		vm.Appearance.SelectedLightTheme.Should().Be("Light");
+		vm.Appearance.SelectedDarkTheme.Should().Be("Midnight");
 
 		// One repaint on the way back, not one per restored field.
 		harness.Theme.Verify(t => t.ApplyThemeMode(false, "One Dark", "Light", "Midnight"), Times.Once);
@@ -289,7 +300,7 @@ public class SettingsViewModelTests
 		var harness = new Harness();
 		harness.SettingsModel.Theme = "One Dark";
 		var vm = harness.CreateViewModel();
-		vm.SelectedTheme = "Synthwave";
+		vm.Appearance.SelectedTheme = "Synthwave";
 		harness.Theme.Invocations.Clear();
 
 		vm.RevertPreview();
@@ -310,7 +321,7 @@ public class SettingsViewModelTests
 			.Returns(Task.CompletedTask);
 		var vm = harness.CreateViewModel();
 
-		vm.SelectedTheme = "Synthwave";
+		vm.Appearance.SelectedTheme = "Synthwave";
 		harness.Theme.Invocations.Clear();
 
 		await vm.SaveCommand.ExecuteAsync(null);
@@ -343,11 +354,11 @@ public class SettingsViewModelTests
 		vm.StartMinimized.Should().BeTrue();
 		vm.CheckForUpdates.Should().BeFalse();
 		vm.ShowRemoteControlNotifications.Should().BeFalse();
-		vm.PomodoroShowSystemNotifications.Should().BeFalse();
+		vm.Pomodoro.ShowSystemNotifications.Should().BeFalse();
 		vm.StartWithWindows.Should().BeTrue();
-		vm.SelectedTheme.Should().Be("One Dark");
-		vm.PomodoroWorkMinutes.Should().Be(50);
-		vm.FavoriteWorkItems.Should().ContainSingle(f => f.Name == "Standup");
+		vm.Appearance.SelectedTheme.Should().Be("One Dark");
+		vm.Pomodoro.WorkMinutes.Should().Be(50);
+		vm.Favorites.Items.Should().ContainSingle(f => f.Name == "Standup");
 	}
 
 	[Fact]
@@ -365,8 +376,8 @@ public class SettingsViewModelTests
 
 		vm.IsExitApplication = true;
 		vm.StartMinimized = true;
-		vm.PomodoroEnabled = true;
-		vm.PomodoroWorkMinutes = 45;
+		vm.Pomodoro.Enabled = true;
+		vm.Pomodoro.WorkMinutes = 45;
 
 		await vm.SaveCommand.ExecuteAsync(null);
 
@@ -402,17 +413,17 @@ public class SettingsViewModelTests
 		var harness = new Harness();
 		var vm = harness.CreateViewModel();
 
-		vm.AddFavoriteCommand.Execute(null);
-		vm.IsAddingFavorite.Should().BeTrue();
+		vm.Favorites.AddCommand.Execute(null);
+		vm.Favorites.IsAdding.Should().BeTrue();
 
-		vm.EditingFavoriteName = "Daily standup";
-		vm.EditingFavoriteTicket = "PROJ-1";
-		vm.SaveFavoriteCommand.Execute(null);
+		vm.Favorites.EditingName = "Daily standup";
+		vm.Favorites.EditingTicket = "PROJ-1";
+		vm.Favorites.SaveCommand.Execute(null);
 
-		vm.FavoriteWorkItems.Should().ContainSingle();
-		vm.SelectedFavorite!.Name.Should().Be("Daily standup");
-		vm.SelectedFavorite.TicketId.Should().Be("PROJ-1");
-		vm.IsAddingFavorite.Should().BeFalse();
+		vm.Favorites.Items.Should().ContainSingle();
+		vm.Favorites.SelectedItem!.Name.Should().Be("Daily standup");
+		vm.Favorites.SelectedItem.TicketId.Should().Be("PROJ-1");
+		vm.Favorites.IsAdding.Should().BeFalse();
 	}
 
 	[Fact]
@@ -421,13 +432,13 @@ public class SettingsViewModelTests
 		var harness = new Harness();
 		harness.SettingsModel.FavoriteWorkItems.Add(Favorite("Old name"));
 		var vm = harness.CreateViewModel();
-		vm.SelectedFavorite = vm.FavoriteWorkItems[0];
+		vm.Favorites.SelectedItem = vm.Favorites.Items[0];
 
-		vm.EditingFavoriteName = "New name";
-		vm.SaveFavoriteCommand.Execute(null);
+		vm.Favorites.EditingName = "New name";
+		vm.Favorites.SaveCommand.Execute(null);
 
-		vm.FavoriteWorkItems.Should().ContainSingle();
-		vm.FavoriteWorkItems[0].Name.Should().Be("New name");
+		vm.Favorites.Items.Should().ContainSingle();
+		vm.Favorites.Items[0].Name.Should().Be("New name");
 	}
 
 	[Fact]
@@ -435,12 +446,12 @@ public class SettingsViewModelTests
 	{
 		var harness = new Harness();
 		var vm = harness.CreateViewModel();
-		vm.AddFavoriteCommand.Execute(null);
+		vm.Favorites.AddCommand.Execute(null);
 
-		vm.SaveFavoriteCommand.CanExecute(null).Should().BeFalse();
+		vm.Favorites.SaveCommand.CanExecute(null).Should().BeFalse();
 
-		vm.EditingFavoriteName = "Named";
-		vm.SaveFavoriteCommand.CanExecute(null).Should().BeTrue();
+		vm.Favorites.EditingName = "Named";
+		vm.Favorites.SaveCommand.CanExecute(null).Should().BeTrue();
 	}
 
 	[Fact]
@@ -450,12 +461,12 @@ public class SettingsViewModelTests
 		harness.SettingsModel.FavoriteWorkItems.Add(Favorite("First"));
 		harness.SettingsModel.FavoriteWorkItems.Add(Favorite("Second"));
 		var vm = harness.CreateViewModel();
-		vm.SelectedFavorite = vm.FavoriteWorkItems[0];
+		vm.Favorites.SelectedItem = vm.Favorites.Items[0];
 
-		vm.RemoveFavoriteCommand.Execute(null);
+		vm.Favorites.RemoveCommand.Execute(null);
 
-		vm.FavoriteWorkItems.Should().ContainSingle(f => f.Name == "Second");
-		vm.SelectedFavorite!.Name.Should().Be("Second");
+		vm.Favorites.Items.Should().ContainSingle(f => f.Name == "Second");
+		vm.Favorites.SelectedItem!.Name.Should().Be("Second");
 	}
 
 	[Fact]
@@ -466,15 +477,15 @@ public class SettingsViewModelTests
 		harness.SettingsModel.FavoriteWorkItems.Add(Favorite("Second"));
 		var vm = harness.CreateViewModel();
 
-		vm.SelectedFavorite = vm.FavoriteWorkItems[0];
-		vm.MoveFavoriteUpCommand.CanExecute(null).Should().BeFalse("the item is already first");
-		vm.MoveFavoriteDownCommand.CanExecute(null).Should().BeTrue();
+		vm.Favorites.SelectedItem = vm.Favorites.Items[0];
+		vm.Favorites.MoveUpCommand.CanExecute(null).Should().BeFalse("the item is already first");
+		vm.Favorites.MoveDownCommand.CanExecute(null).Should().BeTrue();
 
-		vm.MoveFavoriteDownCommand.Execute(null);
+		vm.Favorites.MoveDownCommand.Execute(null);
 
-		vm.FavoriteWorkItems.Select(f => f.Name).Should().ContainInOrder("Second", "First");
-		vm.MoveFavoriteDownCommand.CanExecute(null).Should().BeFalse("the item is now last");
-		vm.MoveFavoriteUpCommand.CanExecute(null).Should().BeTrue();
+		vm.Favorites.Items.Select(f => f.Name).Should().ContainInOrder("Second", "First");
+		vm.Favorites.MoveDownCommand.CanExecute(null).Should().BeFalse("the item is now last");
+		vm.Favorites.MoveUpCommand.CanExecute(null).Should().BeTrue();
 	}
 
 	[Fact]
@@ -483,8 +494,8 @@ public class SettingsViewModelTests
 		var harness = new Harness();
 		var vm = harness.CreateViewModel();
 
-		vm.HasPlugins.Should().BeFalse();
-		vm.TestConnectionCommand.CanExecute(null).Should().BeFalse();
+		vm.Plugins.HasPlugins.Should().BeFalse();
+		vm.Plugins.TestConnectionCommand.CanExecute(null).Should().BeFalse();
 	}
 
 	[Fact]
@@ -493,12 +504,12 @@ public class SettingsViewModelTests
 		var harness = new Harness();
 		harness.SettingsModel.FavoriteWorkItems.Add(Favorite("Old name"));
 		var vm = harness.CreateViewModel();
-		vm.SelectedFavorite = vm.FavoriteWorkItems[0];
+		vm.Favorites.SelectedItem = vm.Favorites.Items[0];
 
-		vm.EditingFavoriteName = "New name";
-		vm.SaveFavoriteCommand.Execute(null);
+		vm.Favorites.EditingName = "New name";
+		vm.Favorites.SaveCommand.Execute(null);
 
-		vm.FavoriteWorkItems[0].Name.Should().Be("New name");
+		vm.Favorites.Items[0].Name.Should().Be("New name");
 		harness.SettingsModel.FavoriteWorkItems[0].Name.Should()
 			.Be("Old name", "the dialog edits a copy, so Cancel leaves the stored favorite alone");
 	}
@@ -512,9 +523,73 @@ public class SettingsViewModelTests
 
 		var vm = harness.CreateViewModel();
 
-		vm.FavoriteWorkItems[0].Should().NotBeSameAs(stored);
-		vm.FavoriteWorkItems[0].Id.Should().Be(stored.Id);
+		vm.Favorites.Items[0].Should().NotBeSameAs(stored);
+		vm.Favorites.Items[0].Id.Should().Be(stored.Id);
 	}
+
+	#region Plugins
+
+	[Fact]
+	public void LoadedPlugin_HasStoredValuesOverItsDefaultsAndKeysWithoutAField()
+	{
+		var descriptor = MockPluginFactory.CreatePlugin("tempo", "Tempo",
+			new PluginConfigurationField { Key = "Url", Label = "Url", DefaultValue = "https://default" },
+			new PluginConfigurationField { Key = "Timeout", Label = "Timeout", DefaultValue = "30" });
+		var harness = new Harness();
+		harness.Orchestrator.Setup(o => o.LoadPlugins()).Returns(
+		[
+			new PluginSettingsEntry(descriptor.Object, true, new Dictionary<string, string> { ["Url"] = "https://stored", ["Hidden"] = "kept" })
+		]);
+
+		var plugin = harness.CreateViewModel().Plugins.Items.Single();
+
+		plugin.IsEnabled.Should().BeTrue();
+		plugin.ConfigurationFields.Single(f => f.Key == "Url").Value.Should().Be("https://stored");
+		plugin.Configuration.Should().Contain("Timeout", "30").And.Contain("Hidden", "kept");
+	}
+
+	[Fact]
+	public async Task Save_SendsWhatTheUserLeftOnThePlugin()
+	{
+		var harness = new Harness();
+		harness.Orchestrator.Setup(o => o.LoadPlugins()).Returns([Plugin<IStatusIndicatorPlugin>(isEnabled: false)]);
+		SettingsSaveRequest? saved = null;
+		harness.Orchestrator
+			.Setup(o => o.SaveSettingsAsync(It.IsAny<SettingsSaveRequest>(), It.IsAny<CancellationToken>()))
+			.Callback((SettingsSaveRequest request, CancellationToken _) => saved = request)
+			.Returns(Task.CompletedTask);
+		var vm = harness.CreateViewModel();
+
+		vm.Plugins.Items[0].IsEnabled = true;
+		vm.Plugins.Items[0].Configuration["Color"] = "Red";
+		await vm.SaveCommand.ExecuteAsync(null);
+
+		var entry = saved!.Plugins.Should().ContainSingle().Subject;
+		entry.IsEnabled.Should().BeTrue();
+		entry.Configuration.Should().Contain("Color", "Red");
+	}
+
+	[Fact]
+	public async Task TestConnection_TestsWhatIsInTheFormAndShowsTheResult()
+	{
+		var harness = new Harness();
+		var descriptor = MockPluginFactory.CreatePlugin("luxafor", "Luxafor");
+		harness.Orchestrator.Setup(o => o.LoadPlugins()).Returns([new PluginSettingsEntry(descriptor.Object, false, new Dictionary<string, string>())]);
+		PluginSettingsEntry? tested = null;
+		harness.Orchestrator
+			.Setup(o => o.TestConnectionAsync(It.IsAny<PluginSettingsEntry>(), It.IsAny<IProgress<string>?>(), It.IsAny<CancellationToken>()))
+			.Callback((PluginSettingsEntry entry, IProgress<string>? _, CancellationToken _) => tested = entry)
+			.ReturnsAsync("✓ Connection successful");
+		var vm = harness.CreateViewModel();
+
+		vm.Plugins.Items[0].Configuration["Color"] = "Unsaved";
+		await vm.Plugins.TestConnectionCommand.ExecuteAsync(null);
+
+		tested!.Configuration.Should().Contain("Color", "Unsaved");
+		vm.Plugins.TestConnectionResult.Should().Be("✓ Connection successful");
+	}
+
+	#endregion
 
 	#region Saving
 
@@ -541,7 +616,7 @@ public class SettingsViewModelTests
 	{
 		var harness = new Harness();
 		harness.Orchestrator
-			.Setup(o => o.ValidatePluginConfigurationsAsync(It.IsAny<IEnumerable<PluginViewModel>>(), It.IsAny<CancellationToken>()))
+			.Setup(o => o.ValidatePluginConfigurationsAsync(It.IsAny<IEnumerable<PluginSettingsEntry>>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(["Luxafor: Bad colour"]);
 		var closed = false;
 		var vm = harness.CreateViewModel();
