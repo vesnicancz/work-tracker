@@ -251,6 +251,25 @@ public class PomodoroServiceTests : IAsyncLifetime
 	}
 
 	[Fact]
+	public async Task Dispose_DuringAPomodoro_TurnsTheIndicatorOff()
+	{
+		_sut.Start();
+		_statusIndicatorPlugin.Invocations.Clear();
+
+		await _sut.DisposeAsync();
+
+		_statusIndicatorPlugin.Verify(p => p.SetStateAsync(StatusIndicatorState.Idle, It.IsAny<CancellationToken>()), Times.Once);
+	}
+
+	[Fact]
+	public async Task Dispose_OutsideAPomodoro_LeavesTheIndicatorAlone()
+	{
+		await _sut.DisposeAsync();
+
+		_statusIndicatorPlugin.Verify(p => p.SetStateAsync(It.IsAny<StatusIndicatorState>(), It.IsAny<CancellationToken>()), Times.Never);
+	}
+
+	[Fact]
 	public void Stop_SetsStatusIndicatorToIdle()
 	{
 		_sut.Start();

@@ -391,14 +391,13 @@ public partial class App : global::Avalonia.Application
 
 			_host.Services.GetRequiredService<MainViewModel>().Dispose();
 
+			var pomodoro = _host.Services.GetRequiredService<IPomodoroService>();
 			var pluginManager = _host.Services.GetRequiredService<IPluginManager>();
 			var host = _host;
 			var pluginStartup = _pluginStartup;
 			var teardown = Task.Run(async () =>
 			{
-				// Disposing plugins that are still starting would leave them half set up
-				await pluginStartup;
-				await pluginManager.DisposeAsync();
+				await StopPomodoroAndPluginsAsync(pluginStartup, pomodoro, pluginManager);
 				await host.StopAsync();
 			});
 
@@ -419,6 +418,18 @@ public partial class App : global::Avalonia.Application
 		{
 			LogErrorSafe(ex, "Failed to shut down host");
 		}
+	}
+
+	/// <summary>
+	/// Disposing plugins that are still starting would leave them half set up. The Pomodoro goes before
+	/// the plugins: its timer must not reach an indicator that is shutting down, and once the plugins are
+	/// gone it has no indicator left to turn off.
+	/// </summary>
+	internal static async Task StopPomodoroAndPluginsAsync(Task pluginStartup, IPomodoroService pomodoro, IPluginManager pluginManager)
+	{
+		await pluginStartup;
+		await pomodoro.DisposeAsync();
+		await pluginManager.DisposeAsync();
 	}
 
 	private void LogErrorSafe(Exception ex, string message)
