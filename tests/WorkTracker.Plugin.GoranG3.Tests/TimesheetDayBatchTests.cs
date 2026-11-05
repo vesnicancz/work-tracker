@@ -163,18 +163,4 @@ public class TimesheetDayBatchTests
 
 		_uploaded.Should().ContainSingle();
 	}
-
-	[Fact]
-	public async Task Reset_ForgetsTheEntriesOfOpenDays()
-	{
-		_closeFails = true;
-		await RunAsync(Entry(Monday, "A-1"));
-		_closeFails = false;
-		_uploaded.Clear();
-
-		_batch.Reset();
-		await RunAsync(Entry(Monday, "A-1"));
-
-		_uploaded.Should().ContainSingle();
-	}
 }

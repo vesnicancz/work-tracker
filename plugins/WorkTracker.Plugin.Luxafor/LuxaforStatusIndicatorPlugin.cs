@@ -187,7 +187,7 @@ public sealed class LuxaforStatusIndicatorPlugin(ILogger<LuxaforStatusIndicatorP
 		_shortBreakColor = ParseColor(GetConfigValue(ConfigKeys.ShortBreakColor), LuxaforColor.Green);
 		_longBreakColor = ParseColor(GetConfigValue(ConfigKeys.LongBreakColor), LuxaforColor.Blue);
 
-		if (!IsInitialized && bool.TryParse(GetConfigValue(ConfigKeys.TurnOffOnStartup), out var turnOff) && turnOff)
+		if (bool.TryParse(GetConfigValue(ConfigKeys.TurnOffOnStartup), out var turnOff) && turnOff)
 		{
 			await SetStateAsync(StatusIndicatorState.Idle, cancellationToken);
 		}

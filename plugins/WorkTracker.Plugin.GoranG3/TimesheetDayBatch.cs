@@ -15,8 +15,6 @@ internal sealed class TimesheetDayBatch
 {
 	private readonly HashSet<EntryKey> _uploadedToOpenDays = [];
 
-	public void Reset() => _uploadedToOpenDays.Clear();
-
 	public async Task<PluginResult<WorklogSubmissionResult>> RunAsync(
 		IEnumerable<PluginWorklogEntry> worklogs,
 		Func<IReadOnlyList<PluginWorklogEntry>, Task<PluginResult<WorklogSubmissionResult>>> uploadDay,

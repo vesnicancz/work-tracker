@@ -8,16 +8,10 @@ namespace WorkTracker.Plugin.Abstractions;
 public interface IRemoteControlPlugin : IPlugin
 {
 	/// <summary>
-	/// Connects the plugin to the application. Called when the plugin is enabled, and again each time
-	/// the plugin configuration is saved, so it must be idempotent.
+	/// Connects the plugin to the application, until it gets shut down. Called each time the plugin
+	/// configuration is saved as well, so it must be idempotent.
 	/// </summary>
 	/// <param name="host">Access to the application state and commands.</param>
 	/// <param name="cancellationToken">Cancellation token.</param>
 	Task AttachAsync(IRemoteControlHost host, CancellationToken cancellationToken);
-
-	/// <summary>
-	/// Disconnects the plugin when the user disables it. The plugin stays loaded and can be attached
-	/// again. Must be idempotent.
-	/// </summary>
-	Task DetachAsync();
 }

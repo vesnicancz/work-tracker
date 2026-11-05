@@ -11,11 +11,11 @@ public class PluginViewModel : ObservableObject
 {
 	private bool _isEnabled;
 
-	public IPlugin Plugin { get; }
+	public IPluginDescriptor Plugin { get; }
 	public Dictionary<string, string> Configuration { get; } = new();
 	public ObservableCollection<ConfigurationFieldViewModel> ConfigurationFields { get; } = new();
 
-	public PluginViewModel(IPlugin plugin)
+	public PluginViewModel(IPluginDescriptor plugin)
 	{
 		Plugin = plugin;
 

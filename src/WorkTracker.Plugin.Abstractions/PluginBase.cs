@@ -19,7 +19,11 @@ public abstract class PluginBase(ILogger logger) : IPlugin
 
 	public virtual async Task<bool> InitializeAsync(IDictionary<string, string>? configuration = null, CancellationToken cancellationToken = default)
 	{
-		var previousConfiguration = Configuration;
+		if (IsInitialized)
+		{
+			throw new InvalidOperationException($"Plugin {Metadata.Name} is already initialized. A new configuration needs a new instance.");
+		}
+
 		Configuration = configuration ?? new Dictionary<string, string>();
 
 		var validationResult = await ValidateConfigurationAsync(Configuration, cancellationToken);
@@ -30,10 +34,6 @@ public abstract class PluginBase(ILogger logger) : IPlugin
 				Metadata.Name,
 				string.Join(", ", validationResult.Errors)
 			);
-			if (IsInitialized)
-			{
-				Configuration = previousConfiguration;
-			}
 			return false;
 		}
 
@@ -46,15 +46,7 @@ public abstract class PluginBase(ILogger logger) : IPlugin
 		}
 		else
 		{
-			if (IsInitialized)
-			{
-				Configuration = previousConfiguration;
-				Logger.LogWarning("Plugin {Name} re-initialization failed, keeping previous state", Metadata.Name);
-			}
-			else
-			{
-				Logger.LogError("Plugin {Name} initialization failed", Metadata.Name);
-			}
+			Logger.LogError("Plugin {Name} initialization failed", Metadata.Name);
 		}
 
 		return result;

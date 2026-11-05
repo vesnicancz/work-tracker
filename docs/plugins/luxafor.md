@@ -71,7 +71,7 @@ Všechna zařízení komunikují přes **HID API**. Plugin používá knihovnu [
 1. `OnInitializeAsync` načte barvy z konfigurace, zkusí je naparsovat a při neúspěchu použije defaulty. Zařízení se v tomto kroku samo o sobě **neotevírá**; otevřít se může jen v případě popsaném v bodě 4, kdy je zapnuté `turn_off_on_startup`.
 2. Teprve při prvním volání `SetStateAsync` (nebo při **Otestovat připojení**) plugin zavolá interní helper `GetOrOpenDevice()`, který přes `ILuxaforDeviceManager.Open()` otevře HID connection k aktuálně připojenému Luxaforu.
 3. Pokud zařízení v tu chvíli **není** připojené, `_device` zůstane `null` a volání je no‑op; další pokus proběhne při příštím `SetStateAsync`. Rozdíl mezi „nic není zapojené” a „zařízení je zapojené, ale nejde otevřít” plugin **loguje**: `NotFound` jako `Debug`, `AccessDenied` / `InUse` / `Failed` jako `Warning` včetně hlášky knihovny s platformním hintem (udev pravidlo na Linuxu, Input Monitoring na macOS, jiná aplikace držící zařízení). Když `Open()` vyhodí výjimku, plugin zaloguje Warning `Failed to connect to Luxafor device` a test připojení pak vrátí `Could not reach the Luxafor device.`
-4. Pokud je zapnuté `turn_off_on_startup`, plugin při **první** inicializaci okamžitě zavolá `SetStateAsync(Idle)`. Pokud je zařízení v tu chvíli připojené, otevře se a zhasne; pokud připojené není, volání je stejně jako v bodě 3 no‑op. Při re-inicializaci (změna configu za běhu) už k zhasnutí nedojde, aby plugin nerušil probíhající Pomodoro.
+4. Pokud je zapnuté `turn_off_on_startup`, plugin při inicializaci okamžitě zavolá `SetStateAsync(Idle)`. Pokud je zařízení v tu chvíli připojené, otevře se a zhasne; pokud připojené není, volání je stejně jako v bodě 3 no‑op. Změna konfigurace za běhu spustí novou instanci pluginu, takže se to stane i tehdy. Probíhající Pomodoro to nerozhodí: `PomodoroService` každé nově spuštěné instanci nastaví aktuální fázi.
 
 ### Reakce na Pomodoro
 
@@ -139,9 +139,11 @@ Při selhání operace v `SetStateAsync` plugin zařízení zavře a další vol
 
 Plugin implementuje `ITestablePlugin`, takže se v Nastavení zobrazí tlačítko **Otestovat připojení** (viditelnost řídí `PluginViewModel.SupportsTestConnection`). Test:
 
+Běžící instanci aplikace na dobu testu ukončí, protože zařízení může držet jen jedna, takže LED krátce zhasne. Test běží s neuloženými hodnotami z formuláře:
+
 1. Otevře zařízení — a když to nejde, vrátí **důvod** z `DeviceOpenResult.Description` místo obecného selhání. Kategorie chyby: `NotFound` (nic není zapojené), `Authentication` (`AccessDenied` — chybí udev pravidlo / Input Monitoring), jinak `Internal` (např. zařízení drží jiná aplikace).
 2. Rozsvítí LED barvou fáze **Work** na 1 sekundu, takže je vidět, které zařízení odpovídá. Pokud byl handle zastaralý, projde se stejným reopen jako `SetStateAsync`.
-3. Vrátí LED na aktuální Pomodoro fázi (nebo ji zhasne, pokud timer neběží) — test z Nastavení nesmí nechat běžící Pomodoro na špatné barvě.
+3. Zhasne a skončí. Aplikace pak spustí instanci s uloženou konfigurací a `PomodoroService` jí nastaví aktuální fázi, takže test z Nastavení nenechá běžící Pomodoro na špatné barvě.
 
 Kromě testu tlačítkem lze funkčnost ověřit i prakticky:
 

@@ -11,20 +11,11 @@ public sealed class RemoteControlCoordinator(
 {
 	public async Task SyncAsync(CancellationToken cancellationToken)
 	{
-		var enabled = pluginManager.RemoteControlPlugins.ToHashSet();
-
-		foreach (var plugin in pluginManager.AllRemoteControlPlugins)
+		foreach (var plugin in pluginManager.RemoteControlPlugins)
 		{
 			try
 			{
-				if (enabled.Contains(plugin))
-				{
-					await plugin.AttachAsync(host, cancellationToken);
-				}
-				else
-				{
-					await plugin.DetachAsync();
-				}
+				await plugin.AttachAsync(host, cancellationToken);
 			}
 			catch (OperationCanceledException)
 			{
@@ -33,7 +24,7 @@ public sealed class RemoteControlCoordinator(
 			catch (Exception ex)
 			{
 				// One broken plugin must not keep the others from connecting, or fail saving the settings
-				logger.LogError(ex, "Failed to update remote control plugin {Name}", plugin.Metadata.Name);
+				logger.LogError(ex, "Failed to attach remote control plugin {Name}", plugin.Metadata.Name);
 			}
 		}
 	}

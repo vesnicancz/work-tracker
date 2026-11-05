@@ -52,13 +52,14 @@ Plugins load in isolated `AssemblyLoadContext` from the `Plugins:Directories` co
 - **`IWorklogUploadPlugin`** — Upload worklogs (e.g., Tempo)
 - **`IWorkSuggestionPlugin`** — Suggest work items (e.g., Jira issues)
 - **`IStatusIndicatorPlugin`** — Physical status indicators (e.g., Luxafor LED)
-- **`IRemoteControlPlugin`** — External controllers driving the running GUI (e.g., Stream Deck). Gets its `IRemoteControlHost` from `AttachAsync`, not from DI, because the implementation lives in the Avalonia project. `IRemoteControlCoordinator` attaches and detaches by enabled state; the CLI never does, so these plugins are inert there.
+- **`IRemoteControlPlugin`** — External controllers driving the running GUI (e.g., Stream Deck). Gets its `IRemoteControlHost` from `AttachAsync`, not from DI, because the implementation lives in the Avalonia project. `IRemoteControlCoordinator` attaches the running ones; the CLI never does, so these plugins are inert there.
 
 **Plugin DI & lifecycle:**
 - Plugins are instantiated via `ActivatorUtilities.CreateInstance` from a plugin-scoped `ServiceCollection` (built in `PluginManager`).
 - Constructor injection provides: `ILogger<T>`, `IHttpClientFactory`, `ITokenProviderFactory`. No `Activator.CreateInstance`; by convention no parameterless constructors either.
 - `PluginBase(ILogger)` is the abstract base — provides configuration management, validation (regex), lifecycle hooks (`OnInitializeAsync`, `OnShutdownAsync`, `OnDisposeAsync`).
 - `ShutdownAsync()` calls `OnShutdownAsync()` → `DisposeAsync()` (→ `OnDisposeAsync()`) automatically.
+- **One instance, one configuration.** `InitializeAsync` runs at most once per instance. `PluginManager` keeps one uninitialized instance per plugin as its `IPluginDescriptor` (metadata, fields, validation) and runs another: a changed configuration starts a new instance and replaces the old one, disabling shuts it down. `WorklogUploadPlugins` and the like return only running instances, `EnabledWorklogUploadPlugins` and `LoadedPlugins` return descriptors. A status indicator holds a device, so its old instance stops first, and `PluginStarted` lets Pomodoro repaint the new one.
 - `PluginResult<T>` includes `PluginErrorCategory` enum (`Validation`, `Network`, `Authentication`, `NotFound`, `Internal`).
 - `ITestablePlugin.TestConnectionAsync(IProgress<string>?, CancellationToken)` — single method with optional progress.
 

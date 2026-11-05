@@ -77,46 +77,6 @@ public sealed class GoranG3ServerTests : IAsyncDisposable
 	}
 
 	[Fact]
-	public async Task ConfigurationChanged_CallsGoToTheNewServer()
-	{
-		await InitializeAsync("https://old.test");
-		await SendAsync(Entry(Monday, "A-1"));
-
-		await InitializeAsync("https://new.test");
-		await SendAsync(Entry(Tuesday, "B-1"));
-
-		_server.ToolCalls.Where(c => c.Host == "new.test").Should().HaveCount(2);
-		_server.ToolCalls.Where(c => c.Host == "old.test").Should().HaveCount(2, "nothing more goes to the old server");
-	}
-
-	[Fact]
-	public async Task ConfigurationChangedWhileSignedOut_NothingGoesToTheOldServer()
-	{
-		await InitializeAsync("https://old.test");
-
-		_tokenProvider.Token = null;
-		await InitializeAsync("https://new.test");
-		var result = await SendAsync(Entry(Monday, "A-1"));
-
-		result.IsFailure.Should().BeTrue();
-		_server.ToolCalls.Should().BeEmpty();
-	}
-
-	[Fact]
-	public async Task TestConnection_AfterTheUrlChanged_TalksToTheNewServer()
-	{
-		await InitializeAsync("https://old.test");
-		await InitializeAsync("https://new.test");
-		var progress = new List<string>();
-
-		var result = await _plugin.TestConnectionAsync(new SynchronousProgress(progress), Token);
-
-		result.IsSuccess.Should().BeTrue(result.Error);
-		await SendAsync(Entry(Monday, "A-1"));
-		_server.ToolCalls.Should().OnlyContain(c => c.Host == "new.test");
-	}
-
-	[Fact]
 	public async Task TestConnection_TellsWhichServerItConnectedTo()
 	{
 		_tokenProvider.Token = null;

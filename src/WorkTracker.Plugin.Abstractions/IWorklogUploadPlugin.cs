@@ -1,9 +1,9 @@
 namespace WorkTracker.Plugin.Abstractions;
 
 /// <summary>
-/// Interface for worklog upload provider plugins
+/// What can be asked of a worklog upload plugin without starting it.
 /// </summary>
-public interface IWorklogUploadPlugin : ITestablePlugin
+public interface IWorklogUploadPluginDescriptor : IPluginDescriptor
 {
 	/// <summary>
 	/// Submission modes this plugin accepts. Defaults to <see cref="WorklogSubmissionMode.Timed"/>
@@ -12,7 +12,13 @@ public interface IWorklogUploadPlugin : ITestablePlugin
 	/// in addition.
 	/// </summary>
 	WorklogSubmissionMode SupportedModes { get; }
+}
 
+/// <summary>
+/// Interface for worklog upload provider plugins
+/// </summary>
+public interface IWorklogUploadPlugin : ITestablePlugin, IWorklogUploadPluginDescriptor
+{
 	/// <summary>
 	/// Uploads a single worklog entry
 	/// </summary>

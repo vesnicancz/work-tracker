@@ -130,17 +130,11 @@ public sealed class GoranG3WorklogPlugin(ILogger<GoranG3WorklogPlugin> logger, I
 		var scopes = GetRequiredConfigValue(ConfigKeys.EntraScopes)
 			.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-		// Before anything changes, so that a rejected configuration leaves the plugin as it was
 		if (scopes.Length == 0)
 		{
 			Logger.LogError("EntraScopes configuration is empty or contains only whitespace/commas");
 			return false;
 		}
-
-		// The configuration may now point at another server, where neither this connection nor the
-		// remembered entries belong
-		await DisconnectAsync();
-		_dayBatch.Reset();
 
 		_scopes = scopes;
 		_baseUrl = GetRequiredConfigValue(ConfigKeys.GoranBaseUrl).TrimEnd('/');

@@ -76,18 +76,6 @@ public sealed class RemoteControlPipeServerTests : IAsyncLifetime
 	}
 
 	[Fact]
-	public async Task RefreshState_PushesState()
-	{
-		await ReadMessageAsync();
-		SetState(new RemoteControlState(null, Work, Pomodoro));
-
-		_server.RefreshState();
-
-		var state = await ReadMessageAsync();
-		state.GetProperty("lastWork").GetProperty("ticketId").GetString().Should().Be("PROJ-1");
-	}
-
-	[Fact]
 	public async Task ToggleWork_WhileTracking_StopsWork()
 	{
 		_host.Setup(h => h.StopWorkAsync(It.IsAny<CancellationToken>())).ReturnsAsync(PluginResult.Success());

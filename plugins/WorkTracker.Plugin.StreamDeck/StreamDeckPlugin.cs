@@ -21,7 +21,7 @@ public sealed class StreamDeckPlugin : RemoteControlPluginBase
 	private readonly string _pipeName;
 	private readonly SemaphoreSlim _serverLock = new(1, 1);
 	private RemoteControlPipeServer? _server;
-	private volatile int _resumeWindowDays = DefaultResumeWindowDays;
+	private int _resumeWindowDays = DefaultResumeWindowDays;
 
 	public StreamDeckPlugin(ILogger<StreamDeckPlugin> logger)
 		: this(logger, PipeEndpoint.Name)
@@ -62,24 +62,13 @@ public sealed class StreamDeckPlugin : RemoteControlPluginBase
 		];
 	}
 
-	protected override async Task<bool> OnInitializeAsync(IDictionary<string, string> configuration, CancellationToken cancellationToken)
+	protected override Task<bool> OnInitializeAsync(IDictionary<string, string> configuration, CancellationToken cancellationToken)
 	{
 		_resumeWindowDays = int.TryParse(GetConfigValue(ConfigKeys.ResumeWindowDays), NumberStyles.None, CultureInfo.InvariantCulture, out var days)
 			? days
 			: DefaultResumeWindowDays;
 
-		// The connected client may be showing work that no longer falls within the window, or the reverse
-		await _serverLock.WaitAsync(cancellationToken);
-		try
-		{
-			_server?.RefreshState();
-		}
-		finally
-		{
-			_serverLock.Release();
-		}
-
-		return true;
+		return Task.FromResult(true);
 	}
 
 	public override async Task AttachAsync(IRemoteControlHost host, CancellationToken cancellationToken)
@@ -101,7 +90,7 @@ public sealed class StreamDeckPlugin : RemoteControlPluginBase
 		}
 	}
 
-	public override async Task DetachAsync()
+	private async Task DetachAsync()
 	{
 		await _serverLock.WaitAsync();
 		try

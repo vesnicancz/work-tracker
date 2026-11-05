@@ -20,13 +20,13 @@ public sealed class PluginManager : IPluginManager
 	private readonly PluginLoader _loader;
 	private readonly Lock _lock = new();
 
-	private readonly Dictionary<string, IPlugin> _loadedPlugins = new();
-	private readonly Dictionary<string, AssemblyLoadContext> _pluginContexts = new();
+	// Starting and stopping take time and could overlap otherwise: the settings dialog can be saved while
+	// the plugins are still starting up, and two instances of one plugin would end up running.
+	private readonly SemaphoreSlim _lifecycleLock = new(1, 1);
+
+	private readonly Dictionary<string, LoadedPlugin> _plugins = new();
 	private readonly List<string> _pluginDirectories = new();
 	private readonly HashSet<string> _enabledPluginIds = new();
-
-	// What each plugin last initialized successfully with
-	private readonly Dictionary<string, Dictionary<string, string>> _appliedConfigurations = new();
 
 	public PluginManager(ILoggerFactory loggerFactory, IHttpClientFactory httpClientFactory)
 	{
@@ -45,45 +45,55 @@ public sealed class PluginManager : IPluginManager
 		return services.BuildServiceProvider();
 	}
 
+	public event EventHandler<IPlugin>? PluginStarted;
+
 	/// <summary>
 	/// Gets all loaded plugins
 	/// </summary>
-	public IReadOnlyDictionary<string, IPlugin> LoadedPlugins
+	public IReadOnlyDictionary<string, IPluginDescriptor> LoadedPlugins
 	{
 		get
 		{
 			lock (_lock)
 			{
-				return new ReadOnlyDictionary<string, IPlugin>(new Dictionary<string, IPlugin>(_loadedPlugins));
+				return new ReadOnlyDictionary<string, IPluginDescriptor>(_plugins.ToDictionary(p => p.Key, p => (IPluginDescriptor)p.Value.Descriptor));
 			}
 		}
 	}
 
-	/// <summary>
-	/// Gets all loaded worklog upload plugins (unfiltered - includes disabled plugins)
-	/// </summary>
-	public IEnumerable<IWorklogUploadPlugin> AllWorklogUploadPlugins => GetPlugins<IWorklogUploadPlugin>(enabledOnly: false);
+	public IEnumerable<IWorklogUploadPluginDescriptor> AllWorklogUploadPlugins => GetUploadDescriptors(enabledOnly: false);
 
-	public IEnumerable<IWorklogUploadPlugin> WorklogUploadPlugins => GetPlugins<IWorklogUploadPlugin>(enabledOnly: true);
+	public IEnumerable<IWorklogUploadPluginDescriptor> EnabledWorklogUploadPlugins => GetUploadDescriptors(enabledOnly: true);
 
-	public IEnumerable<IStatusIndicatorPlugin> StatusIndicatorPlugins => GetPlugins<IStatusIndicatorPlugin>(enabledOnly: true);
+	public IEnumerable<IWorklogUploadPlugin> WorklogUploadPlugins => GetRunning<IWorklogUploadPlugin>();
 
-	public IEnumerable<IWorkSuggestionPlugin> WorkSuggestionPlugins => GetPlugins<IWorkSuggestionPlugin>(enabledOnly: true);
+	public IEnumerable<IStatusIndicatorPlugin> StatusIndicatorPlugins => GetRunning<IStatusIndicatorPlugin>();
 
-	public IEnumerable<IRemoteControlPlugin> AllRemoteControlPlugins => GetPlugins<IRemoteControlPlugin>(enabledOnly: false);
+	public IEnumerable<IWorkSuggestionPlugin> WorkSuggestionPlugins => GetRunning<IWorkSuggestionPlugin>();
 
-	public IEnumerable<IRemoteControlPlugin> RemoteControlPlugins => GetPlugins<IRemoteControlPlugin>(enabledOnly: true);
+	public IEnumerable<IRemoteControlPlugin> RemoteControlPlugins => GetRunning<IRemoteControlPlugin>();
 
-	private List<T> GetPlugins<T>(bool enabledOnly) where T : IPlugin
+	private List<IWorklogUploadPluginDescriptor> GetUploadDescriptors(bool enabledOnly)
 	{
 		lock (_lock)
 		{
-			var plugins = _loadedPlugins.Values.OfType<T>();
-			if (enabledOnly)
-			{
-				plugins = plugins.Where(p => _enabledPluginIds.Contains(p.Metadata.Id));
-			}
-			return plugins.ToList();
+			return _plugins
+				.Where(p => !enabledOnly || _enabledPluginIds.Contains(p.Key))
+				.Select(p => p.Value.Descriptor)
+				.OfType<IWorklogUploadPluginDescriptor>()
+				.ToList();
+		}
+	}
+
+	private List<T> GetRunning<T>() where T : IPlugin
+	{
+		lock (_lock)
+		{
+			return _plugins
+				.Where(p => _enabledPluginIds.Contains(p.Key))
+				.Select(p => p.Value.Running)
+				.OfType<T>()
+				.ToList();
 		}
 	}
 
@@ -187,15 +197,14 @@ public sealed class PluginManager : IPluginManager
 
 				lock (_lock)
 				{
-					if (_loadedPlugins.ContainsKey(pluginId))
+					if (_plugins.ContainsKey(pluginId))
 					{
 						_logger.LogWarning("Plugin {Id} is already loaded, skipping", pluginId);
 						skippedPlugins.Add(plugin);
 						continue;
 					}
 
-					_loadedPlugins[pluginId] = plugin;
-					_pluginContexts[pluginId] = context;
+					_plugins[pluginId] = new LoadedPlugin(plugin, context);
 				}
 
 				anyRegistered = true;
@@ -236,13 +245,13 @@ public sealed class PluginManager : IPluginManager
 
 			lock (_lock)
 			{
-				if (_loadedPlugins.ContainsKey(pluginId))
+				if (_plugins.ContainsKey(pluginId))
 				{
 					_logger.LogWarning("Plugin {Id} is already loaded, skipping", pluginId);
 					return false;
 				}
 
-				_loadedPlugins[pluginId] = plugin;
+				_plugins[pluginId] = new LoadedPlugin(plugin, null);
 			}
 
 			_logger.LogInformation("Loaded embedded plugin: {Name} v{Version} by {Author}", plugin.Metadata.Name, plugin.Metadata.Version, plugin.Metadata.Author);
@@ -256,116 +265,251 @@ public sealed class PluginManager : IPluginManager
 		}
 	}
 
-	/// <summary>
-	/// Initializes the enabled plugins with their configurations. A plugin already running on the same
-	/// configuration is left alone: reinitializing drops its connections, and saving an unrelated setting
-	/// is no reason for that.
-	/// </summary>
 	public Task<IReadOnlyList<PluginMetadata>> InitializePluginsAsync(Dictionary<string, Dictionary<string, string>>? configurations, CancellationToken cancellationToken)
 	{
 		return InitializePluginsAsync(configurations, _ => true, cancellationToken);
 	}
 
 	/// <summary>
-	/// Initializes only those enabled plugins that <paramref name="shouldStart"/> picks. The others stay
+	/// Starts only those enabled plugins that <paramref name="shouldStart"/> picks. The others stay
 	/// listed with their metadata, without connecting to anything.
 	/// </summary>
-	public async Task<IReadOnlyList<PluginMetadata>> InitializePluginsAsync(Dictionary<string, Dictionary<string, string>>? configurations, Func<IPlugin, bool> shouldStart, CancellationToken cancellationToken)
+	public async Task<IReadOnlyList<PluginMetadata>> InitializePluginsAsync(Dictionary<string, Dictionary<string, string>>? configurations, Func<IPluginDescriptor, bool> shouldStart, CancellationToken cancellationToken)
 	{
-		List<KeyValuePair<string, IPlugin>> pluginsSnapshot;
-		HashSet<string> enabledSnapshot;
-		Dictionary<string, Dictionary<string, string>> appliedSnapshot;
-		lock (_lock)
-		{
-			pluginsSnapshot = new List<KeyValuePair<string, IPlugin>>(_loadedPlugins);
-			enabledSnapshot = new HashSet<string>(_enabledPluginIds);
-			appliedSnapshot = new Dictionary<string, Dictionary<string, string>>(_appliedConfigurations);
-		}
-
 		var failed = new List<PluginMetadata>();
 
-		foreach (var kvp in pluginsSnapshot)
+		await _lifecycleLock.WaitAsync(cancellationToken);
+		try
 		{
-			var pluginId = kvp.Key;
-			var plugin = kvp.Value;
-
-			if (!enabledSnapshot.Contains(pluginId))
+			List<KeyValuePair<string, LoadedPlugin>> pluginsSnapshot;
+			HashSet<string> enabledSnapshot;
+			lock (_lock)
 			{
-				_logger.LogDebug("Skipping initialization of disabled plugin: {Name}", plugin.Metadata.Name);
-				continue;
+				pluginsSnapshot = _plugins.ToList();
+				enabledSnapshot = new HashSet<string>(_enabledPluginIds);
 			}
 
-			if (!shouldStart(plugin))
+			foreach (var (pluginId, plugin) in pluginsSnapshot)
 			{
-				_logger.LogDebug("Skipping initialization of plugin not needed now: {Name}", plugin.Metadata.Name);
-				continue;
-			}
-
-			var config = configurations?.GetValueOrDefault(pluginId);
-
-			if (appliedSnapshot.TryGetValue(pluginId, out var applied) && IsSameConfiguration(applied, config))
-			{
-				_logger.LogDebug("Plugin {Name} already runs on this configuration", plugin.Metadata.Name);
-				continue;
-			}
-
-			try
-			{
-				var success = await plugin.InitializeAsync(config, cancellationToken);
-
-				if (success)
+				if (!enabledSnapshot.Contains(pluginId))
 				{
-					_logger.LogInformation("Initialized plugin: {Name}", plugin.Metadata.Name);
-					lock (_lock)
-					{
-						_appliedConfigurations[pluginId] = config == null ? [] : new Dictionary<string, string>(config);
-					}
+					await StopRunningAsync(plugin);
+					continue;
 				}
-				else
+
+				if (!shouldStart(plugin.Descriptor))
 				{
-					_logger.LogWarning("Plugin initialization returned false: {Name}", plugin.Metadata.Name);
-					failed.Add(plugin.Metadata);
+					_logger.LogDebug("Skipping plugin not needed now: {Name}", plugin.Descriptor.Metadata.Name);
+					continue;
+				}
+
+				var configuration = configurations?.GetValueOrDefault(pluginId);
+
+				if (plugin.Running != null && IsSameConfiguration(plugin.RunningConfiguration, configuration))
+				{
+					_logger.LogDebug("Plugin {Name} already runs on this configuration", plugin.Descriptor.Metadata.Name);
+					continue;
+				}
+
+				// A status indicator drives a device, and the new instance couldn't get to it while the old
+				// one holds it. Anything else keeps running on the old configuration if the new one fails.
+				if (plugin.Descriptor is IStatusIndicatorPlugin)
+				{
+					await StopRunningAsync(plugin);
+				}
+
+				if (!await StartAsync(plugin, configuration, cancellationToken))
+				{
+					failed.Add(plugin.Descriptor.Metadata);
 				}
 			}
-			catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-			{
-				throw;
-			}
-			catch (Exception ex)
-			{
-				_logger.LogError(ex, "Failed to initialize plugin: {Name}", plugin.Metadata.Name);
-				failed.Add(plugin.Metadata);
-			}
+		}
+		finally
+		{
+			_lifecycleLock.Release();
 		}
 
 		return failed;
 	}
 
-	private static bool IsSameConfiguration(Dictionary<string, string> applied, Dictionary<string, string>? requested)
+	private static bool IsSameConfiguration(Dictionary<string, string>? running, Dictionary<string, string>? requested)
 	{
+		var current = running ?? [];
 		var other = requested ?? [];
-		return applied.Count == other.Count
-			&& applied.All(pair => other.TryGetValue(pair.Key, out var value) && value == pair.Value);
+		return current.Count == other.Count
+			&& current.All(pair => other.TryGetValue(pair.Key, out var value) && value == pair.Value);
 	}
 
-	public IPlugin CreateDetachedInstance(IPlugin plugin)
+	/// <summary>
+	/// Starts a new instance and puts it in place of the running one, if it starts.
+	/// </summary>
+	private async Task<bool> StartAsync(LoadedPlugin plugin, Dictionary<string, string>? configuration, CancellationToken cancellationToken)
+	{
+		var name = plugin.Descriptor.Metadata.Name;
+		IPlugin? instance = null;
+
+		try
+		{
+			instance = _loader.CreateInstance(plugin.Descriptor.GetType());
+
+			var started = await instance.InitializeAsync(configuration == null ? [] : new Dictionary<string, string>(configuration), cancellationToken);
+			if (!started)
+			{
+				_logger.LogWarning("Plugin initialization returned false: {Name}", name);
+				await ShutDownAsync(instance, name);
+				return false;
+			}
+		}
+		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+		{
+			if (instance != null)
+			{
+				await ShutDownAsync(instance, name);
+			}
+
+			throw;
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Failed to initialize plugin: {Name}", name);
+			if (instance != null)
+			{
+				await ShutDownAsync(instance, name);
+			}
+
+			return false;
+		}
+
+		IPlugin? previous;
+		lock (_lock)
+		{
+			previous = plugin.Running;
+			plugin.Running = instance;
+			plugin.RunningConfiguration = configuration;
+		}
+
+		if (previous != null)
+		{
+			await ShutDownAsync(previous, name);
+		}
+
+		_logger.LogInformation("Initialized plugin: {Name}", name);
+		RaisePluginStarted(instance);
+
+		return true;
+	}
+
+	private void RaisePluginStarted(IPlugin instance)
+	{
+		try
+		{
+			PluginStarted?.Invoke(this, instance);
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "A subscriber failed while handling the start of plugin {Name}", instance.Metadata.Name);
+		}
+	}
+
+	private async Task StopRunningAsync(LoadedPlugin plugin)
+	{
+		IPlugin? running;
+		lock (_lock)
+		{
+			running = plugin.Running;
+			plugin.Running = null;
+			plugin.RunningConfiguration = null;
+		}
+
+		if (running != null)
+		{
+			await ShutDownAsync(running, plugin.Descriptor.Metadata.Name);
+		}
+	}
+
+	/// <summary>
+	/// A plugin that fails to shut down must not get in the way of the others or of what comes next.
+	/// </summary>
+	private async Task ShutDownAsync(IPlugin instance, string name)
+	{
+		try
+		{
+			await instance.ShutdownAsync();
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Failed to shut down plugin: {Name}", name);
+		}
+	}
+
+	public IPlugin CreateDetachedInstance(IPluginDescriptor plugin)
 	{
 		return _loader.CreateInstance(plugin.GetType());
 	}
 
+	public async Task<IAsyncDisposable> SuspendPluginAsync(string pluginId, CancellationToken cancellationToken)
+	{
+		await _lifecycleLock.WaitAsync(cancellationToken);
+		try
+		{
+			LoadedPlugin? plugin;
+			Dictionary<string, string>? configuration;
+			lock (_lock)
+			{
+				if (!_plugins.TryGetValue(pluginId, out plugin) || plugin.Running == null)
+				{
+					return new Suspension(null);
+				}
+
+				configuration = plugin.RunningConfiguration;
+			}
+
+			await StopRunningAsync(plugin);
+
+			return new Suspension(() => ResumeAsync(plugin, pluginId, configuration));
+		}
+		finally
+		{
+			_lifecycleLock.Release();
+		}
+	}
+
+	private async Task ResumeAsync(LoadedPlugin plugin, string pluginId, Dictionary<string, string>? configuration)
+	{
+		await _lifecycleLock.WaitAsync(CancellationToken.None);
+		try
+		{
+			bool isWanted;
+			lock (_lock)
+			{
+				// Settings saved in the meantime have already decided what should run
+				isWanted = plugin.Running == null && _enabledPluginIds.Contains(pluginId) && _plugins.ContainsKey(pluginId);
+			}
+
+			if (isWanted)
+			{
+				await StartAsync(plugin, configuration, CancellationToken.None);
+			}
+		}
+		finally
+		{
+			_lifecycleLock.Release();
+		}
+	}
+
 	/// <summary>
-	/// Gets a plugin by its ID
+	/// Gets a running plugin by its ID
 	/// </summary>
 	public IPlugin? GetPlugin(string pluginId)
 	{
 		lock (_lock)
 		{
-			return _loadedPlugins.GetValueOrDefault(pluginId);
+			return _enabledPluginIds.Contains(pluginId) ? _plugins.GetValueOrDefault(pluginId)?.Running : null;
 		}
 	}
 
 	/// <summary>
-	/// Gets a plugin of a specific type
+	/// Gets a running plugin of a specific type
 	/// </summary>
 	public T? GetPlugin<T>(string pluginId)
 		where T : class, IPlugin
@@ -378,43 +522,38 @@ public sealed class PluginManager : IPluginManager
 	/// </summary>
 	public async Task<bool> UnloadPluginAsync(string pluginId)
 	{
-		IPlugin? plugin;
-		AssemblyLoadContext? context;
-
-		lock (_lock)
-		{
-			if (!_loadedPlugins.TryGetValue(pluginId, out plugin))
-			{
-				return false;
-			}
-
-			_pluginContexts.TryGetValue(pluginId, out context);
-		}
-
+		await _lifecycleLock.WaitAsync();
 		try
 		{
-			await plugin.ShutdownAsync();
-
+			LoadedPlugin? plugin;
 			lock (_lock)
 			{
-				_loadedPlugins.Remove(pluginId);
-				_pluginContexts.Remove(pluginId);
-				_appliedConfigurations.Remove(pluginId);
-
-				// Only unload the context if no other plugin shares it
-				if (context != null && !_pluginContexts.ContainsValue(context))
+				if (!_plugins.TryGetValue(pluginId, out plugin))
 				{
-					context.Unload();
+					return false;
 				}
 			}
 
-			_logger.LogInformation("Unloaded plugin: {Name}", plugin.Metadata.Name);
+			await StopRunningAsync(plugin);
+			await ShutDownAsync(plugin.Descriptor, plugin.Descriptor.Metadata.Name);
+
+			lock (_lock)
+			{
+				_plugins.Remove(pluginId);
+
+				// Only unload the context if no other plugin shares it
+				if (plugin.Context != null && _plugins.Values.All(p => p.Context != plugin.Context))
+				{
+					plugin.Context.Unload();
+				}
+			}
+
+			_logger.LogInformation("Unloaded plugin: {Name}", plugin.Descriptor.Metadata.Name);
 			return true;
 		}
-		catch (Exception ex)
+		finally
 		{
-			_logger.LogError(ex, "Failed to unload plugin: {PluginId}", pluginId);
-			return false;
+			_lifecycleLock.Release();
 		}
 	}
 
@@ -426,7 +565,7 @@ public sealed class PluginManager : IPluginManager
 		List<string> pluginIds;
 		lock (_lock)
 		{
-			pluginIds = _loadedPlugins.Keys.ToList();
+			pluginIds = _plugins.Keys.ToList();
 		}
 
 		foreach (var pluginId in pluginIds)
@@ -439,6 +578,33 @@ public sealed class PluginManager : IPluginManager
 	{
 		await UnloadAllPluginsAsync();
 		await _pluginServiceProvider.DisposeAsync();
+	}
+
+	/// <param name="descriptor">An instance that never gets initialized, for what can be asked without starting the plugin.</param>
+	/// <param name="context">Where the plugin was loaded into. Null for one that wasn't loaded from a file.</param>
+	private sealed class LoadedPlugin(IPlugin descriptor, AssemblyLoadContext? context)
+	{
+		public IPlugin Descriptor { get; } = descriptor;
+
+		public AssemblyLoadContext? Context { get; } = context;
+
+		public IPlugin? Running { get; set; }
+
+		public Dictionary<string, string>? RunningConfiguration { get; set; }
+	}
+
+	private sealed class Suspension(Func<Task>? resume) : IAsyncDisposable
+	{
+		private Func<Task>? _resume = resume;
+
+		public async ValueTask DisposeAsync()
+		{
+			var resume = Interlocked.Exchange(ref _resume, null);
+			if (resume != null)
+			{
+				await resume();
+			}
+		}
 	}
 
 	private sealed class NonDisposingLoggerFactory(ILoggerFactory inner) : ILoggerFactory

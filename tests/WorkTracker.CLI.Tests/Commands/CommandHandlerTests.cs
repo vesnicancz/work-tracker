@@ -473,7 +473,7 @@ public sealed class CommandHandlerTests : IDisposable
 	private void SetupPlugins(IReadOnlyList<IWorklogUploadPlugin> all, IReadOnlyList<IWorklogUploadPlugin> enabled)
 	{
 		_pluginManager.SetupGet(m => m.AllWorklogUploadPlugins).Returns(all);
-		_pluginManager.SetupGet(m => m.WorklogUploadPlugins).Returns(enabled);
+		_pluginManager.SetupGet(m => m.EnabledWorklogUploadPlugins).Returns(enabled);
 	}
 
 	[Fact]

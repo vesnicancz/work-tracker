@@ -57,7 +57,7 @@ public sealed class PluginBasedWorklogSubmissionService : IWorklogSubmissionServ
 		var plugin = _pluginManager.GetPlugin<IWorklogUploadPlugin>(providerId);
 		if (plugin == null)
 		{
-			return Result.Failure<SubmissionResult>($"Plugin '{providerId}' not found");
+			return Result.Failure<SubmissionResult>($"Plugin '{providerId}' not found or not running");
 		}
 
 		_logger.LogInformation("Submitting daily worklog for {Date} using plugin {Plugin}", date.ToShortDateString(), plugin.Metadata.Name);
@@ -97,7 +97,7 @@ public sealed class PluginBasedWorklogSubmissionService : IWorklogSubmissionServ
 		var plugin = _pluginManager.GetPlugin<IWorklogUploadPlugin>(providerId);
 		if (plugin == null)
 		{
-			return Result.Failure<SubmissionResult>($"Plugin '{providerId}' not found");
+			return Result.Failure<SubmissionResult>($"Plugin '{providerId}' not found or not running");
 		}
 
 		_logger.LogInformation("Submitting weekly worklog for week of {Date} using plugin {Plugin}", date.ToShortDateString(), plugin.Metadata.Name);
@@ -134,7 +134,7 @@ public sealed class PluginBasedWorklogSubmissionService : IWorklogSubmissionServ
 
 	public IEnumerable<ProviderInfo> GetAvailableProviders()
 	{
-		return _pluginManager.WorklogUploadPlugins.Select(p => new ProviderInfo
+		return _pluginManager.EnabledWorklogUploadPlugins.Select(p => new ProviderInfo
 		{
 			Id = p.Metadata.Id,
 			Name = p.Metadata.Name,
@@ -156,7 +156,7 @@ public sealed class PluginBasedWorklogSubmissionService : IWorklogSubmissionServ
 		var plugin = _pluginManager.GetPlugin<IWorklogUploadPlugin>(providerId);
 		if (plugin == null)
 		{
-			return Result.Failure<SubmissionResult>($"Plugin '{providerId}' not found");
+			return Result.Failure<SubmissionResult>($"Plugin '{providerId}' not found or not running");
 		}
 
 		if (!plugin.SupportedModes.HasFlag(mode))
@@ -176,15 +176,15 @@ public sealed class PluginBasedWorklogSubmissionService : IWorklogSubmissionServ
 	/// The plugin to use when the caller named none. With several enabled there is no telling which one
 	/// was meant, and worklogs in the wrong system can't be taken back, so this doesn't pick one.
 	/// </summary>
-	private Result<IWorklogUploadPlugin> ResolveOnlyPlugin()
+	private Result<IWorklogUploadPluginDescriptor> ResolveOnlyPlugin()
 	{
-		var plugins = _pluginManager.WorklogUploadPlugins.ToList();
+		var plugins = _pluginManager.EnabledWorklogUploadPlugins.ToList();
 
 		return plugins.Count switch
 		{
-			0 => Result.Failure<IWorklogUploadPlugin>("No worklog upload plugin available"),
+			0 => Result.Failure<IWorklogUploadPluginDescriptor>("No worklog upload plugin available"),
 			1 => Result.Success(plugins[0]),
-			_ => Result.Failure<IWorklogUploadPlugin>($"Several worklog upload plugins are enabled, choose one: {string.Join(", ", plugins.Select(p => p.Metadata.Id))}")
+			_ => Result.Failure<IWorklogUploadPluginDescriptor>($"Several worklog upload plugins are enabled, choose one: {string.Join(", ", plugins.Select(p => p.Metadata.Id))}")
 		};
 	}
 

@@ -194,23 +194,14 @@ public class SettingsOrchestrator : ISettingsOrchestrator
 
 		var tempConfig = new Dictionary<string, string>(plugin.Configuration);
 
-		// A status indicator drives a device and knows which state to put it back to, so a second
-		// instance would leave a running Pomodoro showing the wrong color.
-		if (plugin.Plugin is IStatusIndicatorPlugin)
-		{
-			try
-			{
-				return await InitializeAndTestAsync(plugin.Plugin, tempConfig, progress, cancellationToken);
-			}
-			finally
-			{
-				// Not the caller's token: a cancelled test still has to put the plugin back.
-				await RestoreSavedConfigurationAsync(plugin.Plugin, CancellationToken.None);
-			}
-		}
+		// A status indicator drives a device that only one instance can hold. It goes dark for the test
+		// and comes back on its saved configuration, in the phase of a running Pomodoro.
+		await using var suspended = plugin.Plugin is IStatusIndicatorPlugin
+			? await _pluginManager.SuspendPluginAsync(plugin.Plugin.Metadata.Id, cancellationToken)
+			: null;
 
-		// Everything else is tested on its own instance. The unsaved values never reach the running
-		// plugin, and an upload that is under way can't end up on an account that was only being tried.
+		// The test runs on its own instance. The unsaved values never reach the running plugin, and an
+		// upload that is under way can't end up on an account that was only being tried.
 		IPlugin detached;
 		try
 		{
@@ -282,29 +273,7 @@ public class SettingsOrchestrator : ISettingsOrchestrator
 		}
 	}
 
-	/// <summary>
-	/// Puts a plugin back on its persisted configuration after a connection test. A plugin with no
-	/// stored configuration yet is left alone - there is nothing to restore it to. Failures are
-	/// logged and swallowed: this runs in a finally block and must not replace the test's result.
-	/// </summary>
-	private async Task RestoreSavedConfigurationAsync(IPlugin plugin, CancellationToken cancellationToken)
-	{
-		if (!_settingsService.Settings.PluginConfigurations.TryGetValue(plugin.Metadata.Id, out var savedConfig))
-		{
-			return;
-		}
-
-		try
-		{
-			await plugin.InitializeAsync(new Dictionary<string, string>(savedConfig), cancellationToken);
-		}
-		catch (Exception ex)
-		{
-			_logger.LogWarning(ex, "Failed to restore saved configuration for plugin {PluginId} after a connection test", plugin.Metadata.Id);
-		}
-	}
-
-	private void ProtectSensitiveFields(IPlugin plugin, Dictionary<string, string> config)
+	private void ProtectSensitiveFields(IPluginDescriptor plugin, Dictionary<string, string> config)
 	{
 		var pluginId = plugin.Metadata.Id;
 		var passwordKeys = plugin.GetConfigurationFields()

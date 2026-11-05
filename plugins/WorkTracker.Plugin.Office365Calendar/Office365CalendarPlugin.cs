@@ -92,7 +92,6 @@ public sealed class Office365CalendarPlugin(
 
 		_tokenProvider = await _tokenProviderFactory.CreateAsync(tenantId, clientId, GraphScopes, InteractiveAuthFlow.SystemBrowser);
 
-		_httpClient?.Dispose();
 		_httpClient = _httpClientFactory.CreateClient();
 		_httpClient.Timeout = HttpTimeout;
 

@@ -19,6 +19,18 @@ public class PluginBaseValidationTests
 		public override IReadOnlyList<PluginConfigurationField> GetConfigurationFields() => fields;
 	}
 
+	[Fact]
+	public async Task InitializeAsync_Twice_IsAMistake()
+	{
+		// A new configuration means a new instance, so nothing here has to cope with being replaced
+		var plugin = new TestPlugin();
+		await plugin.InitializeAsync(null, TestContext.Current.CancellationToken);
+
+		var act = () => plugin.InitializeAsync(null, TestContext.Current.CancellationToken);
+
+		await act.Should().ThrowAsync<InvalidOperationException>();
+	}
+
 	private static PluginConfigurationField Field(
 		PluginConfigurationFieldType type = PluginConfigurationFieldType.Text,
 		bool isRequired = false,

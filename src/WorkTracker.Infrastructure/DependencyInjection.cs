@@ -218,7 +218,7 @@ public static class DependencyInjection
 		IConfiguration configuration,
 		Dictionary<string, bool>? enabledPlugins = null,
 		Dictionary<string, Dictionary<string, string>>? userPluginConfigurations = null,
-		Func<IPlugin, bool>? pluginsToStart = null,
+		Func<IPluginDescriptor, bool>? pluginsToStart = null,
 		CancellationToken cancellationToken = default)
 	{
 		var pluginManager = serviceProvider.GetRequiredService<PluginManager>();
