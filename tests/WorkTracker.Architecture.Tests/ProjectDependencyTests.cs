@@ -126,6 +126,41 @@ public class ProjectDependencyTests
 
 	public static TheoryData<string> FrameworkFreeFolderNames => new(FrameworkFreeFolders);
 
+	/// <summary>
+	/// A view model holds what one view shows. Handing it out from an orchestrator lets a cache or a
+	/// plugin host end up sharing it, so orchestrators take and return plain data.
+	/// </summary>
+	[Fact]
+	public void Orchestrators_DoNotUseViewModels()
+	{
+		var viewModel = new Regex(@"\b\w+ViewModel\b");
+
+		var violations = Directory.EnumerateFiles(Path.Combine(RepositoryRoot, "src", "WorkTracker.Avalonia", "Orchestrators"), "*.cs", SearchOption.AllDirectories)
+			.Where(file => viewModel.IsMatch(File.ReadAllText(file)))
+			.Select(Path.GetFileName)
+			.ToList();
+
+		violations.Should().BeEmpty();
+	}
+
+	/// <summary>
+	/// The application assigns the main window and <c>MainWindowAccessor</c> is the way to it for everyone else.
+	/// </summary>
+	[Fact]
+	public void ApplicationLifetime_IsUsedOnlyByTheApplicationAndTheAccessor()
+	{
+		string[] allowed = ["App.axaml.cs", "MainWindowAccessor.cs"];
+
+		var violations = Directory.EnumerateFiles(Path.Combine(RepositoryRoot, "src", "WorkTracker.Avalonia"), "*.cs", SearchOption.AllDirectories)
+			.Where(file => !file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}") && !file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}"))
+			.Where(file => !allowed.Contains(Path.GetFileName(file)))
+			.Where(file => File.ReadAllText(file).Contains("ApplicationLifetime", StringComparison.Ordinal))
+			.Select(Path.GetFileName)
+			.ToList();
+
+		violations.Should().BeEmpty();
+	}
+
 	[Fact]
 	public void CoreProjects_DoNotDependOnPresentationOrPersistencePackages()
 	{

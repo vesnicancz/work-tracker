@@ -336,10 +336,10 @@ public class WorklogStateServiceTests : IDisposable
 
 	#endregion
 
-	#region RefreshFromDatabaseAsync
+	#region Refreshing after an external change
 
 	[Fact]
-	public async Task RefreshFromDatabaseAsync_UpdatesFromDatabase()
+	public async Task NotifyWorkEntriesModifiedAsync_UpdatesFromDatabase()
 	{
 		await InitializeSut(null);
 
@@ -351,7 +351,7 @@ public class WorklogStateServiceTests : IDisposable
 		WorkEntry? receivedActiveWork = null;
 		_sut.ActiveWorkChanged += (_, work) => receivedActiveWork = work;
 
-		await _sut.RefreshFromDatabaseAsync(TestContext.Current.CancellationToken);
+		await _sut.NotifyWorkEntriesModifiedAsync(TestContext.Current.CancellationToken);
 
 		_sut.IsTracking.Should().BeTrue();
 		_sut.ActiveWork!.Id.Should().Be(2);
@@ -359,7 +359,7 @@ public class WorklogStateServiceTests : IDisposable
 	}
 
 	[Fact]
-	public async Task RefreshFromDatabaseAsync_NoChange_NoEvents()
+	public async Task NotifyWorkEntriesModifiedAsync_SameActiveWork_DoesNotReportAChangeOfIt()
 	{
 		await InitializeSut(null);
 
@@ -370,7 +370,7 @@ public class WorklogStateServiceTests : IDisposable
 		var activeWorkChanged = false;
 		_sut.ActiveWorkChanged += (_, _) => activeWorkChanged = true;
 
-		await _sut.RefreshFromDatabaseAsync(TestContext.Current.CancellationToken);
+		await _sut.NotifyWorkEntriesModifiedAsync(TestContext.Current.CancellationToken);
 
 		activeWorkChanged.Should().BeFalse();
 	}

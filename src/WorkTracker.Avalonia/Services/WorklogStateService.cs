@@ -179,33 +179,6 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 		return result;
 	}
 
-	public async Task RefreshFromDatabaseAsync(CancellationToken cancellationToken)
-	{
-		ThrowIfNotInitialized();
-
-		WorkEntry? oldActiveWork = null;
-
-		await _stateLock.WaitAsync(cancellationToken);
-		try
-		{
-			oldActiveWork = _activeWork;
-
-			await RefreshFromDatabaseCoreAsync(cancellationToken);
-		}
-		catch (OperationCanceledException) { throw; }
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Failed to refresh state from database");
-			throw;
-		}
-		finally
-		{
-			_stateLock.Release();
-		}
-
-		await RaiseEventsAsync(oldActiveWork, workEntriesModified: false);
-	}
-
 	public Task<Result<WorkEntry>> CreateWorkEntryAsync(
 		string? ticketId,
 		DateTime startTime,

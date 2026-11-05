@@ -7,7 +7,5 @@ namespace WorkTracker.Plugin.Abstractions;
 /// </summary>
 public abstract class StatusIndicatorPluginBase(ILogger logger) : PluginBase(logger), IStatusIndicatorPlugin
 {
-	public abstract bool IsDeviceAvailable { get; }
-
 	public abstract Task SetStateAsync(StatusIndicatorState state, CancellationToken cancellationToken);
 }

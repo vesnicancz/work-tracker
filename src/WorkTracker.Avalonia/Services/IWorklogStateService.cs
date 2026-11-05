@@ -80,11 +80,6 @@ public interface IWorklogStateService
 	Task<Result> DeleteWorkEntryAsync(int id, CancellationToken cancellationToken);
 
 	/// <summary>
-	/// Refreshes the state from the database.
-	/// </summary>
-	Task RefreshFromDatabaseAsync(CancellationToken cancellationToken);
-
-	/// <summary>
 	/// Event raised when the active work entry changes
 	/// </summary>
 	event EventHandler<WorkEntry?>? ActiveWorkChanged;

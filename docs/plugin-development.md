@@ -284,7 +284,6 @@ V `WorkSuggestion` jsou povinné `Title`, `Source` a `SourceId`. `SourceId` je i
 
 Pro fyzické indikátory:
 
-- `abstract bool IsDeviceAvailable { get; }` — kontrola přítomnosti hardware
 - `abstract SetStateAsync(StatusIndicatorState state, CancellationToken)` — nastav LED/displej podle fáze
 
 `StatusIndicatorState` je enum: `Idle`, `Work`, `ShortBreak`, `LongBreak`.
@@ -304,7 +303,6 @@ public override PluginMetadata Metadata => new()
     Author = "Tvé jméno nebo tým",
     Description = "Krátký popis v češtině.",
     Website = "https://github.com/user/repo",
-    MinimumAppVersion = new Version(1, 0, 0),  // informativní, aplikace ji zatím nekontroluje
     IconName = "FileDocument",             // název z Material Icons; zatím jen u suggestion pluginů
     Tags = ["tag1", "tag2"],
 };

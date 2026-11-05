@@ -42,15 +42,6 @@ public sealed class LuxaforStatusIndicatorPlugin(ILogger<LuxaforStatusIndicatorP
 		Tags = ["luxafor", "led", "status-indicator"]
 	};
 
-	public override bool IsDeviceAvailable
-	{
-		get
-		{
-			var device = _device;
-			return device is { IsConnected: true };
-		}
-	}
-
 	public override IReadOnlyList<PluginConfigurationField> GetConfigurationFields()
 	{
 		return

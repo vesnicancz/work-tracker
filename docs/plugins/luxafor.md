@@ -94,7 +94,7 @@ private async Task SetStatusIndicatorsForPhaseAsync(PomodoroPhase phase)
 }
 ```
 
-`SetPluginStateSafe` zavolá `SetStateAsync` a případnou výjimku zaloguje jako Warning. Volá se na **všechny** povolené indikátory bez ohledu na `IsDeviceAvailable` — jen tak může plugin zařízení při prvním volání lazy otevřít. Zastavení a reset posílají `Idle`, takže LED zhasne.
+`SetPluginStateSafe` zavolá `SetStateAsync` a případnou výjimku zaloguje jako Warning. Volá se na **všechny** povolené indikátory, i když zařízení ještě není otevřené — jen tak ho plugin může při prvním volání lazy otevřít. Zastavení a reset posílají `Idle`, takže LED zhasne.
 
 `LuxaforStatusIndicatorPlugin.SetStateAsync`:
 
@@ -127,9 +127,7 @@ Ačkoli WorkTracker v běžném provozu nevolá `SetStateAsync` z více vláken,
 
 ---
 
-## `IsDeviceAvailable`
-
-Property `IsDeviceAvailable` vrací `true`, když má plugin otevřený handle (`_device` je non-null a `IsConnected`). Vzhledem k tomu, co `IsConnected` doopravdy znamená (viz výše), je to **„handle držíme"**, ne „zařízení je fyzicky připojené" — po odpojení zůstane `true`, dokud se nepokusíme o příkaz. Přesnou odpověď by dalo `IsPresent(descriptor)`, ale property by pak při každém čtení enumerovala USB zařízení; plugin proto zůstává u levné varianty.
+## Znovupřipojení
 
 Při selhání operace v `SetStateAsync` plugin zařízení zavře a další volání se pokusí o znovupřipojení přes `GetOrOpenDevice()`. V aktuální implementaci **není počítaný limit** reconnect pokusů — plugin bude při každém dalším volání zkoušet reconnect znovu bez omezení.
 
@@ -154,7 +152,7 @@ Kromě testu tlačítkem lze funkčnost ověřit i prakticky:
 
 Tímhle postupem ověříš obě důležité věci v jednom kroku:
 
-- Že zařízení je připojené a plugin s ním umí komunikovat (jinak by `IsDeviceAvailable` zůstal `false`).
+- Že zařízení je připojené a plugin s ním umí komunikovat (jinak se LED nerozsvítí a důvod je v logu).
 - Že barvy v konfiguraci vypadají tak, jak očekáváš při reálném přechodu fází.
 
 ---
