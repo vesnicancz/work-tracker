@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
+using WorkTracker.Application.Common;
 using WorkTracker.Application.DTOs;
 using WorkTracker.Avalonia.ViewModels;
 using WorkTracker.Plugin.Abstractions;
@@ -16,14 +17,35 @@ public class SubmitWorklogViewModelTests
 	private static readonly ProviderInfo TimedOnlyProvider = SubmitWorklogViewModelHarness.TimedOnlyProvider;
 	private static readonly ProviderInfo BothModesProvider = SubmitWorklogViewModelHarness.BothModesProvider;
 
-	private static WorklogPreviewItem Item(int duration = 3600, bool selected = true) =>
-		new()
-		{
-			Date = LocalNow.Date,
-			TicketId = "PROJ-1",
-			Duration = duration,
-			IsSelected = selected,
-		};
+	private static WorklogDto Worklog(string ticketId = "PROJ-1", int minutes = 60) =>
+		new() { TicketId = ticketId, DurationMinutes = minutes };
+
+	private static SubmissionOutcome Delivered(params SubmissionError[] errors) => new(true, "sent", errors);
+
+	private static SubmissionError FailureAt(int index, string message = "Conflict") =>
+		new() { ErrorMessage = message, WorklogIndex = index };
+
+	/// <summary>
+	/// Answers with the given outcomes one after another and collects what each call was asked to send.
+	/// </summary>
+	private static List<IReadOnlyList<WorklogDto>> AnswerSubmitWith(SubmitWorklogViewModelHarness harness, params SubmissionOutcome[] outcomes)
+	{
+		var sent = new List<IReadOnlyList<WorklogDto>>();
+		var answers = new Queue<SubmissionOutcome>(outcomes);
+		harness.Orchestrator
+			.Setup(o => o.SubmitAsync(It.IsAny<IReadOnlyList<WorklogDto>>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
+			.Callback((IReadOnlyList<WorklogDto> worklogs, string _, string _, WorklogSubmissionMode _, CancellationToken _) => sent.Add(worklogs))
+			.ReturnsAsync(answers.Dequeue);
+		return sent;
+	}
+
+	private static async Task<SubmitWorklogViewModel> LoadedViewModelAsync(SubmitWorklogViewModelHarness harness, params WorklogDto[] worklogs)
+	{
+		harness.Worklogs.AddRange(worklogs);
+		var vm = harness.CreateViewModel();
+		await vm.InitializeAsync(LocalNow.Date, isWeek: false);
+		return vm;
+	}
 
 	[Fact]
 	public void Constructor_NoRememberedProvider_RestoresGlobalModeAndAProviderThatSupportsIt()
@@ -224,14 +246,10 @@ public class SubmitWorklogViewModelTests
 	public async Task Send_RemembersTheProviderAndModeItWasSentWith()
 	{
 		var harness = new SubmitWorklogViewModelHarness();
-		harness.PreviewItems.Add(Item());
 		harness.SettingsModel.LastSubmissionProviderId = "goran";
 		harness.SettingsModel.SubmissionModeByProvider["goran"] = WorklogSubmissionMode.Aggregated;
-		harness.Orchestrator
-			.Setup(o => o.SubmitAsync(It.IsAny<IReadOnlyList<WorklogPreviewItem>>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
-			.ReturnsAsync(new SubmissionOutcome(AllSucceeded: true, HasFailedItems: false, StatusMessage: "sent"));
-		using var vm = harness.CreateViewModel();
-		await vm.InitializeAsync(LocalNow.Date, isWeek: false);
+		AnswerSubmitWith(harness, Delivered());
+		using var vm = await LoadedViewModelAsync(harness, Worklog());
 
 		// Nothing in the dialog is touched, so only the submit writes the selection back.
 		await vm.SendCommand.ExecuteAsync(null);
@@ -265,14 +283,14 @@ public class SubmitWorklogViewModelTests
 	public async Task InitializeAsync_LoadsPreviewAndTotals()
 	{
 		var harness = new SubmitWorklogViewModelHarness();
-		harness.PreviewItems.Add(Item(duration: 3600));
-		harness.PreviewItems.Add(Item(duration: 1800));
+		harness.Worklogs.Add(Worklog(minutes: 60));
+		harness.Worklogs.Add(Worklog(minutes: 30));
 		using var vm = harness.CreateViewModel();
 
 		await vm.InitializeAsync(LocalNow.Date, isWeek: false);
 
 		vm.PreviewItems.Should().HaveCount(2);
-		vm.TotalTimeDisplay.Should().Be("5400s");
+		vm.TotalTimeDisplay.Should().Be("1h 30m");
 		vm.StatusMessage.Should().Be("ReadyToSubmit");
 		vm.IsLoading.Should().BeFalse();
 	}
@@ -286,7 +304,7 @@ public class SubmitWorklogViewModelTests
 		await vm.InitializeAsync(LocalNow.Date, isWeek: false);
 		vm.SendCommand.CanExecute(null).Should().BeFalse("there are no preview items");
 
-		harness.PreviewItems.Add(Item());
+		harness.Worklogs.Add(Worklog());
 		await vm.InitializeAsync(LocalNow.Date, isWeek: false);
 		vm.SendCommand.CanExecute(null).Should().BeTrue();
 
@@ -298,12 +316,10 @@ public class SubmitWorklogViewModelTests
 	public async Task Send_AllSucceeded_KeepsDialogOpenAndReportsStatus()
 	{
 		var harness = new SubmitWorklogViewModelHarness();
-		harness.PreviewItems.Add(Item());
 		harness.Orchestrator
-			.Setup(o => o.SubmitAsync(It.IsAny<IReadOnlyList<WorklogPreviewItem>>(), "tempo", "Tempo", WorklogSubmissionMode.Timed, It.IsAny<CancellationToken>()))
-			.ReturnsAsync(new SubmissionOutcome(AllSucceeded: true, HasFailedItems: false, StatusMessage: "sent"));
-		using var vm = harness.CreateViewModel();
-		await vm.InitializeAsync(LocalNow.Date, isWeek: false);
+			.Setup(o => o.SubmitAsync(It.IsAny<IReadOnlyList<WorklogDto>>(), "tempo", "Tempo", WorklogSubmissionMode.Timed, It.IsAny<CancellationToken>()))
+			.ReturnsAsync(Delivered());
+		using var vm = await LoadedViewModelAsync(harness, Worklog());
 		var closed = false;
 		vm.CloseAction = () => closed = true;
 
@@ -319,18 +335,12 @@ public class SubmitWorklogViewModelTests
 	public async Task Send_WithFailures_EnablesRetry()
 	{
 		var harness = new SubmitWorklogViewModelHarness();
-		var item = Item();
-		harness.PreviewItems.Add(item);
-		harness.Orchestrator
-			.Setup(o => o.SubmitAsync(It.IsAny<IReadOnlyList<WorklogPreviewItem>>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
-			.ReturnsAsync(new SubmissionOutcome(AllSucceeded: false, HasFailedItems: true, StatusMessage: "1 failed"));
-		using var vm = harness.CreateViewModel();
-		await vm.InitializeAsync(LocalNow.Date, isWeek: false);
+		AnswerSubmitWith(harness, new SubmissionOutcome(true, "1 failed", [FailureAt(0)]));
+		using var vm = await LoadedViewModelAsync(harness, Worklog());
 		vm.SubmitLabel.Should().Be("Submit");
 		vm.SubmitToolTip.Should().BeNull();
 
 		await vm.SendCommand.ExecuteAsync(null);
-		item.HasError = true;
 
 		vm.SubmitLabel.Should().Be("ResubmitAll", "the button sends the rows that already went through as well");
 		vm.SubmitToolTip.Should().Be("ResubmitAllToolTip");
@@ -343,15 +353,261 @@ public class SubmitWorklogViewModelTests
 	public async Task ItemDeselection_RecalculatesTotals()
 	{
 		var harness = new SubmitWorklogViewModelHarness();
-		var first = Item(duration: 3600);
-		var second = Item(duration: 1800);
-		harness.PreviewItems.Add(first);
-		harness.PreviewItems.Add(second);
-		using var vm = harness.CreateViewModel();
-		await vm.InitializeAsync(LocalNow.Date, isWeek: false);
+		using var vm = await LoadedViewModelAsync(harness, Worklog(minutes: 60), Worklog(minutes: 30));
 
-		second.IsSelected = false;
+		vm.PreviewItems[1].IsSelected = false;
 
-		vm.TotalTimeDisplay.Should().Be("3600s");
+		vm.TotalTimeDisplay.Should().Be("1h");
 	}
+
+	#region Rows of the preview
+
+	[Fact]
+	public async Task Preview_WorklogWithoutATicket_ShowsTheNoTicketLabel()
+	{
+		var harness = new SubmitWorklogViewModelHarness();
+		using var vm = await LoadedViewModelAsync(harness, new WorklogDto { TicketId = null, DurationMinutes = 60 });
+
+		var row = vm.PreviewItems.Should().ContainSingle().Subject;
+		row.TicketId.Should().BeNull();
+		row.TicketIdDisplay.Should().Be("NoTicket");
+	}
+
+	[Fact]
+	public async Task Preview_Weekly_PutsADateHeaderBeforeEachDay()
+	{
+		var monday = new DateTime(2025, 1, 13);
+		var tuesday = new DateTime(2025, 1, 14);
+		var harness = new SubmitWorklogViewModelHarness();
+		harness.Orchestrator
+			.Setup(o => o.LoadPreviewAsync(It.IsAny<DateTime>(), true, It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(
+			[
+				new WorklogSubmissionDto { SubmissionDate = monday, Worklogs = [Worklog("A-1", 60)] },
+				new WorklogSubmissionDto { SubmissionDate = tuesday, Worklogs = [Worklog("A-2", 30)] }
+			]);
+		using var vm = harness.CreateViewModel();
+
+		await vm.InitializeAsync(monday, isWeek: true);
+
+		vm.PreviewItems.Select(i => i.IsDateHeader).Should().Equal(true, false, true, false);
+		vm.PreviewItems[0].Date.Should().Be(monday);
+		vm.PreviewItems[2].Date.Should().Be(tuesday);
+		vm.TotalTimeDisplay.Should().Be("1h 30m", "the headers don't count");
+	}
+
+	[Fact]
+	public async Task Preview_Daily_HasNoDateHeader()
+	{
+		var harness = new SubmitWorklogViewModelHarness();
+		using var vm = await LoadedViewModelAsync(harness, Worklog());
+
+		vm.PreviewItems.Should().ContainSingle().Which.IsDateHeader.Should().BeFalse();
+	}
+
+	[Fact]
+	public async Task Preview_Aggregated_KeepsTheDurationOverTheTimes()
+	{
+		var day = LocalNow.Date;
+		var harness = new SubmitWorklogViewModelHarness();
+		harness.SettingsModel.LastSubmissionProviderId = "goran";
+		harness.SettingsModel.SubmissionModeByProvider["goran"] = WorklogSubmissionMode.Aggregated;
+		using var vm = await LoadedViewModelAsync(harness, new WorklogDto
+		{
+			TicketId = "PROJ-1",
+			DurationMinutes = 90,
+			StartTime = day.AddHours(9),
+			EndTime = day.AddHours(9)
+		});
+
+		var row = vm.PreviewItems.Should().ContainSingle().Subject;
+		row.IsAggregated.Should().BeTrue();
+		row.Duration.Should().Be(90 * 60);
+	}
+
+	[Fact]
+	public async Task Reset_RestoresTheValuesAndTheSelectionAndClearsErrors()
+	{
+		var harness = new SubmitWorklogViewModelHarness();
+		AnswerSubmitWith(harness, Delivered(FailureAt(0)));
+		using var vm = await LoadedViewModelAsync(harness, Worklog("PROJ-1"));
+		await vm.SendCommand.ExecuteAsync(null);
+		var row = vm.PreviewItems[0];
+		row.TicketId = "CHANGED";
+		row.IsSelected = false;
+
+		vm.ResetCommand.Execute(null);
+
+		row.TicketId.Should().Be("PROJ-1");
+		row.IsSelected.Should().BeTrue();
+		row.HasError.Should().BeFalse();
+		row.ErrorMessage.Should().BeNull();
+		vm.HasFailedItems.Should().BeFalse();
+	}
+
+	[Fact]
+	public async Task InvertSelection_TogglesTheRowsAndUpdatesTheTotal()
+	{
+		var harness = new SubmitWorklogViewModelHarness();
+		using var vm = await LoadedViewModelAsync(harness, Worklog("A-1", 60), Worklog("A-2", 30));
+		vm.PreviewItems[1].IsSelected = false;
+
+		vm.InvertSelectionCommand.Execute(null);
+
+		vm.PreviewItems[0].IsSelected.Should().BeFalse();
+		vm.PreviewItems[1].IsSelected.Should().BeTrue();
+		vm.TotalTimeDisplay.Should().Be("30m");
+	}
+
+	[Fact]
+	public async Task SelectAll_SelectsEveryRowAndUpdatesTheTotal()
+	{
+		var harness = new SubmitWorklogViewModelHarness();
+		using var vm = await LoadedViewModelAsync(harness, Worklog("A-1", 60), Worklog("A-2", 30));
+		vm.PreviewItems[0].IsSelected = false;
+		vm.PreviewItems[1].IsSelected = false;
+
+		vm.SelectAllCommand.Execute(null);
+
+		vm.PreviewItems.Should().OnlyContain(i => i.IsSelected);
+		vm.TotalTimeDisplay.Should().Be("1h 30m");
+	}
+
+	#endregion
+
+	#region Submitting rows
+
+	[Fact]
+	public async Task Send_SendsOnlyTheSelectedRowsWithWhatIsInThem()
+	{
+		var harness = new SubmitWorklogViewModelHarness();
+		var sent = AnswerSubmitWith(harness, Delivered());
+		using var vm = await LoadedViewModelAsync(harness, Worklog("A-1", 60), Worklog("A-2", 30));
+		vm.PreviewItems[0].IsSelected = false;
+		vm.PreviewItems[1].TicketId = "EDITED";
+
+		await vm.SendCommand.ExecuteAsync(null);
+
+		var worklog = sent.Should().ContainSingle().Subject.Should().ContainSingle().Subject;
+		worklog.TicketId.Should().Be("EDITED");
+		worklog.DurationMinutes.Should().Be(30);
+	}
+
+	[Fact]
+	public async Task Send_UncheckedRowBeforeTheFailure_MarksTheRowThatWasSent()
+	{
+		var harness = new SubmitWorklogViewModelHarness();
+		AnswerSubmitWith(harness, Delivered(FailureAt(0, "Conflict")));
+		using var vm = await LoadedViewModelAsync(harness, Worklog("A-1"), Worklog("A-2"));
+		vm.PreviewItems[0].IsSelected = false;
+
+		await vm.SendCommand.ExecuteAsync(null);
+
+		vm.PreviewItems[0].HasError.Should().BeFalse();
+		vm.PreviewItems[1].HasError.Should().BeTrue();
+		vm.PreviewItems[1].ErrorMessage.Should().Be("Conflict");
+	}
+
+	[Fact]
+	public async Task Send_RowsThatLookAlike_MarksTheOneThatFailed()
+	{
+		var harness = new SubmitWorklogViewModelHarness();
+		AnswerSubmitWith(harness, Delivered(FailureAt(1)));
+		using var vm = await LoadedViewModelAsync(harness, Worklog("A-1"), Worklog("A-1"));
+
+		await vm.SendCommand.ExecuteAsync(null);
+
+		vm.PreviewItems[0].HasError.Should().BeFalse();
+		vm.PreviewItems[1].HasError.Should().BeTrue();
+	}
+
+	[Fact]
+	public async Task Send_AfterAFailure_ClearsTheErrorsOfEveryRow()
+	{
+		var harness = new SubmitWorklogViewModelHarness();
+		AnswerSubmitWith(harness, Delivered(FailureAt(0)), Delivered());
+		using var vm = await LoadedViewModelAsync(harness, Worklog());
+		await vm.SendCommand.ExecuteAsync(null);
+
+		await vm.SendCommand.ExecuteAsync(null);
+
+		vm.PreviewItems[0].HasError.Should().BeFalse();
+		vm.PreviewItems[0].ErrorMessage.Should().BeNull();
+		vm.HasFailedItems.Should().BeFalse();
+	}
+
+	[Fact]
+	public async Task Send_ProviderGaveNoAnswer_KeepsWhatWasKnownAboutTheRows()
+	{
+		var harness = new SubmitWorklogViewModelHarness();
+		AnswerSubmitWith(harness, Delivered(FailureAt(0)), new SubmissionOutcome(false, "Network error", []));
+		using var vm = await LoadedViewModelAsync(harness, Worklog());
+		await vm.SendCommand.ExecuteAsync(null);
+
+		await vm.SendCommand.ExecuteAsync(null);
+
+		vm.PreviewItems[0].HasError.Should().BeTrue();
+		vm.HasFailedItems.Should().BeTrue();
+		vm.StatusMessage.Should().Be("Network error");
+	}
+
+	[Fact]
+	public async Task Send_ErrorWithoutAPosition_MarksNoRow()
+	{
+		var harness = new SubmitWorklogViewModelHarness();
+		AnswerSubmitWith(harness, new SubmissionOutcome(true, "partial", [new SubmissionError { ErrorMessage = "Conflict" }]));
+		using var vm = await LoadedViewModelAsync(harness, Worklog("A-1"), Worklog("A-2"));
+
+		await vm.SendCommand.ExecuteAsync(null);
+
+		vm.PreviewItems.Should().OnlyContain(i => !i.HasError);
+		vm.HasFailedItems.Should().BeFalse();
+		vm.StatusMessage.Should().Be("partial");
+	}
+
+	[Fact]
+	public async Task Retry_SendsOnlyTheSelectedFailedRows()
+	{
+		var harness = new SubmitWorklogViewModelHarness();
+		var sent = AnswerSubmitWith(harness, Delivered(FailureAt(1), FailureAt(2)), Delivered());
+		using var vm = await LoadedViewModelAsync(harness, Worklog("A-1"), Worklog("A-2"), Worklog("A-3"));
+		await vm.SendCommand.ExecuteAsync(null);
+		vm.PreviewItems[2].IsSelected = false;
+
+		await vm.RetryFailedCommand.ExecuteAsync(null);
+
+		sent[1].Select(w => w.TicketId).Should().Equal("A-2");
+	}
+
+	[Fact]
+	public async Task Retry_KeepsTheErrorOfARowItDidNotSend()
+	{
+		var harness = new SubmitWorklogViewModelHarness();
+		AnswerSubmitWith(harness, Delivered(FailureAt(0), FailureAt(1)), Delivered());
+		using var vm = await LoadedViewModelAsync(harness, Worklog("A-1"), Worklog("A-2"));
+		await vm.SendCommand.ExecuteAsync(null);
+		vm.PreviewItems[1].IsSelected = false;
+
+		await vm.RetryFailedCommand.ExecuteAsync(null);
+
+		vm.PreviewItems[0].HasError.Should().BeFalse();
+		vm.PreviewItems[1].HasError.Should().BeTrue();
+		vm.HasFailedItems.Should().BeTrue();
+	}
+
+	[Fact]
+	public async Task Retry_FailureOfASentRow_MarksThatRowByItsPositionAmongTheSent()
+	{
+		var harness = new SubmitWorklogViewModelHarness();
+		AnswerSubmitWith(harness, Delivered(FailureAt(1)), Delivered(FailureAt(0, "Still failing")));
+		using var vm = await LoadedViewModelAsync(harness, Worklog("A-1"), Worklog("A-2"));
+		await vm.SendCommand.ExecuteAsync(null);
+
+		await vm.RetryFailedCommand.ExecuteAsync(null);
+
+		vm.PreviewItems[0].HasError.Should().BeFalse();
+		vm.PreviewItems[1].ErrorMessage.Should().Be("Still failing");
+	}
+
+	#endregion
 }
