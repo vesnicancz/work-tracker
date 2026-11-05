@@ -1,10 +1,13 @@
 using Microsoft.Extensions.Logging;
 using WorkTracker.Application.Plugins;
 using WorkTracker.Plugin.Abstractions;
-using WorkTracker.Avalonia.Models;
 
 namespace WorkTracker.Avalonia.Services;
 
+/// <summary>
+/// Runs <see cref="PomodoroCycle"/> on a timer and acts on what happens in it: status indicators,
+/// notifications and automatic tracking.
+/// </summary>
 public sealed class PomodoroService : IPomodoroService, IAsyncDisposable
 {
 	private readonly ISettingsService _settingsService;
@@ -18,19 +21,13 @@ public sealed class PomodoroService : IPomodoroService, IAsyncDisposable
 	private readonly ILogger<PomodoroService> _logger;
 
 	private readonly Lock _lock = new();
+	private readonly PomodoroCycle _cycle = new();
 	private ITimer? _timer;
-	private PomodoroPhase _currentPhase = PomodoroPhase.Idle;
-	private TimeSpan _timeRemaining;
-	private int _completedPomodoros;
-	private bool _isRunning;
 	private bool _disposed;
 
 	// Remember what was being tracked for auto-resume after break
 	private string? _lastTicketId;
 	private string? _lastDescription;
-
-	// Cached settings for current session
-	private PomodoroSettings _activeSettings = new();
 
 	public PomodoroService(
 		ISettingsService settingsService,
@@ -56,26 +53,26 @@ public sealed class PomodoroService : IPomodoroService, IAsyncDisposable
 		_pluginManager.PluginStarted += OnPluginStarted;
 	}
 
-	public PomodoroPhase CurrentPhase => _currentPhase;
+	public PomodoroPhase CurrentPhase => _cycle.Phase;
 
-	public TimeSpan TimeRemaining => _timeRemaining;
+	public TimeSpan TimeRemaining => _cycle.TimeRemaining;
 
-	public int CompletedPomodoros => _completedPomodoros;
+	public int CompletedPomodoros => _cycle.CompletedPomodoros;
 
-	public int PomodorosBeforeLongBreak => _activeSettings.PomodorosBeforeLongBreak;
+	public int PomodorosBeforeLongBreak => _cycle.Settings.PomodorosBeforeLongBreak;
 
-	public bool IsRunning => _isRunning;
+	public bool IsRunning => _cycle.IsRunning;
 
 	public PomodoroSnapshot GetSnapshot()
 	{
 		lock (_lock)
 		{
 			return new PomodoroSnapshot(
-				_currentPhase,
-				_timeRemaining,
-				_completedPomodoros,
-				_activeSettings.PomodorosBeforeLongBreak,
-				_isRunning);
+				_cycle.Phase,
+				_cycle.TimeRemaining,
+				_cycle.CompletedPomodoros,
+				_cycle.Settings.PomodorosBeforeLongBreak,
+				_cycle.IsRunning);
 		}
 	}
 
@@ -94,24 +91,18 @@ public sealed class PomodoroService : IPomodoroService, IAsyncDisposable
 
 		lock (_lock)
 		{
-			if (_isRunning)
+			if (!_cycle.Start(_settingsService.Settings.Pomodoro))
 			{
 				return;
 			}
 
-			_activeSettings = _settingsService.Settings.Pomodoro;
-			_completedPomodoros = 0;
-
-			_isRunning = true;
-			_currentPhase = PomodoroPhase.Work;
-			_timeRemaining = TimeSpan.FromMinutes(_activeSettings.WorkMinutes);
-			newPhase = _currentPhase;
+			newPhase = _cycle.Phase;
 
 			RememberCurrentTracking();
 			StartTimer();
 		}
 
-		_logger.LogInformation("Pomodoro started: {Phase}, {Duration}min", newPhase, _activeSettings.WorkMinutes);
+		_logger.LogInformation("Pomodoro started: {Phase}, {Duration}min", newPhase, _cycle.Settings.WorkMinutes);
 
 		FireAndForget(SetStatusIndicatorsForPhaseAsync(newPhase));
 		AutoStartTracking();
@@ -127,14 +118,11 @@ public sealed class PomodoroService : IPomodoroService, IAsyncDisposable
 
 		lock (_lock)
 		{
-			if (!_isRunning)
+			if (!_cycle.Stop())
 			{
 				return;
 			}
 
-			_isRunning = false;
-			_currentPhase = PomodoroPhase.Idle;
-			_timeRemaining = TimeSpan.Zero;
 			StopTimer();
 		}
 
@@ -153,7 +141,7 @@ public sealed class PomodoroService : IPomodoroService, IAsyncDisposable
 
 		lock (_lock)
 		{
-			if (!_isRunning)
+			if (!_cycle.IsRunning)
 			{
 				return;
 			}
@@ -172,10 +160,7 @@ public sealed class PomodoroService : IPomodoroService, IAsyncDisposable
 
 		lock (_lock)
 		{
-			_isRunning = false;
-			_currentPhase = PomodoroPhase.Idle;
-			_timeRemaining = TimeSpan.Zero;
-			_completedPomodoros = 0;
+			_cycle.Reset();
 			StopTimer();
 		}
 
@@ -196,13 +181,12 @@ public sealed class PomodoroService : IPomodoroService, IAsyncDisposable
 
 		lock (_lock)
 		{
-			if (!_isRunning)
+			if (!_cycle.IsRunning)
 			{
 				return;
 			}
 
-			_timeRemaining -= TimeSpan.FromSeconds(1);
-			phaseExpired = _timeRemaining <= TimeSpan.Zero;
+			phaseExpired = _cycle.Tick(TimeSpan.FromSeconds(1));
 		}
 
 		if (phaseExpired)
@@ -217,48 +201,16 @@ public sealed class PomodoroService : IPomodoroService, IAsyncDisposable
 
 	private void TransitionToNextPhase()
 	{
-		PomodoroPhase oldPhase;
-		PomodoroPhase newPhase;
-		bool pomodoroCompleted = false;
+		PomodoroTransition? transition;
 
 		lock (_lock)
 		{
-			oldPhase = _currentPhase;
+			transition = _cycle.Advance();
+		}
 
-			switch (_currentPhase)
-			{
-				case PomodoroPhase.Work:
-					_completedPomodoros++;
-					pomodoroCompleted = true;
-
-					if (_completedPomodoros >= _activeSettings.PomodorosBeforeLongBreak)
-					{
-						_currentPhase = PomodoroPhase.LongBreak;
-						_timeRemaining = TimeSpan.FromMinutes(_activeSettings.LongBreakMinutes);
-					}
-					else
-					{
-						_currentPhase = PomodoroPhase.ShortBreak;
-						_timeRemaining = TimeSpan.FromMinutes(_activeSettings.ShortBreakMinutes);
-					}
-					break;
-
-				case PomodoroPhase.ShortBreak:
-					_currentPhase = PomodoroPhase.Work;
-					_timeRemaining = TimeSpan.FromMinutes(_activeSettings.WorkMinutes);
-					break;
-
-				case PomodoroPhase.LongBreak:
-					_completedPomodoros = 0;
-					_currentPhase = PomodoroPhase.Work;
-					_timeRemaining = TimeSpan.FromMinutes(_activeSettings.WorkMinutes);
-					break;
-
-				default:
-					return;
-			}
-
-			newPhase = _currentPhase;
+		if (transition is not { From: var oldPhase, To: var newPhase, CompletedPomodoro: var pomodoroCompleted })
+		{
+			return;
 		}
 
 		_logger.LogInformation("Pomodoro phase transition: {OldPhase} -> {NewPhase}", oldPhase, newPhase);
@@ -301,7 +253,7 @@ public sealed class PomodoroService : IPomodoroService, IAsyncDisposable
 	/// </summary>
 	private void OnPluginStarted(object? sender, IPlugin plugin)
 	{
-		var phase = _currentPhase;
+		var phase = _cycle.Phase;
 		if (_disposed || phase == PomodoroPhase.Idle || plugin is not IStatusIndicatorPlugin indicator)
 		{
 			return;
@@ -374,7 +326,7 @@ public sealed class PomodoroService : IPomodoroService, IAsyncDisposable
 
 	private void AutoStartTracking()
 	{
-		if (!_activeSettings.AutoStartWorkTracking)
+		if (!_cycle.Settings.AutoStartWorkTracking)
 		{
 			return;
 		}
@@ -399,7 +351,7 @@ public sealed class PomodoroService : IPomodoroService, IAsyncDisposable
 
 	private void AutoStopTracking()
 	{
-		if (!_activeSettings.AutoStopWorkTracking)
+		if (!_cycle.Settings.AutoStopWorkTracking)
 		{
 			return;
 		}
@@ -510,7 +462,7 @@ public sealed class PomodoroService : IPomodoroService, IAsyncDisposable
 		StopTimer();
 
 		// Outside a Pomodoro there is nothing to turn off, and asking would open a device nothing has used
-		if (_currentPhase == PomodoroPhase.Idle)
+		if (_cycle.Phase == PomodoroPhase.Idle)
 		{
 			GC.SuppressFinalize(this);
 			return;
