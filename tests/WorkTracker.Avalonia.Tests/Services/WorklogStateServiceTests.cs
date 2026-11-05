@@ -456,6 +456,70 @@ public class WorklogStateServiceTests : IDisposable
 
 	#endregion
 
+	#region Refreshing after a save
+
+	[Fact]
+	public async Task CreateWorkEntryAsync_RefreshFailsAfterTheSave_ReportsTheSavedEntry()
+	{
+		await InitializeSut(null);
+		var now = DateTime.Now;
+		var newEntry = CreateCompletedEntry(5, "PROJ-5");
+		_mockWorkEntryService
+			.Setup(s => s.StartWorkAsync("PROJ-5", now, "work", now.AddHours(1), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(Result.Success(newEntry));
+		_mockWorkEntryService
+			.Setup(s => s.GetActiveWorkAsync(It.IsAny<CancellationToken>()))
+			.ThrowsAsync(new InvalidOperationException("database is locked"));
+		var workEntriesModifiedFired = false;
+		_sut.WorkEntriesModified += (_, _) => workEntriesModifiedFired = true;
+
+		var result = await _sut.CreateWorkEntryAsync("PROJ-5", now, "work", now.AddHours(1), TestContext.Current.CancellationToken);
+
+		result.IsSuccess.Should().BeTrue("the entry is saved, and a reported failure would make the user save it again");
+		result.Value.Should().BeSameAs(newEntry);
+		workEntriesModifiedFired.Should().BeTrue();
+	}
+
+	[Fact]
+	public async Task DeleteWorkEntryAsync_RefreshFailsAfterTheSave_ReportsSuccess()
+	{
+		await InitializeSut(null);
+		_mockWorkEntryService
+			.Setup(s => s.DeleteWorkEntryAsync(1, It.IsAny<CancellationToken>()))
+			.ReturnsAsync(Result.Success());
+		_mockWorkEntryService
+			.Setup(s => s.GetActiveWorkAsync(It.IsAny<CancellationToken>()))
+			.ThrowsAsync(new InvalidOperationException("database is locked"));
+
+		var result = await _sut.DeleteWorkEntryAsync(1, TestContext.Current.CancellationToken);
+
+		result.IsSuccess.Should().BeTrue();
+	}
+
+	[Fact]
+	public async Task UpdateWorkEntryAsync_CancelledRightAfterTheSave_StillFollowsWhatWasSaved()
+	{
+		await InitializeSut(CreateActiveEntry());
+		var now = DateTime.Now;
+		using var cts = new CancellationTokenSource();
+		_mockWorkEntryService
+			.Setup(s => s.UpdateWorkEntryAsync(1, "PROJ-UPD", now, now.AddHours(1), "updated", It.IsAny<CancellationToken>()))
+			.Callback(() => cts.Cancel())
+			.ReturnsAsync(Result.Success(CreateCompletedEntry(1, "PROJ-UPD")));
+		_mockWorkEntryService
+			.Setup(s => s.GetActiveWorkAsync(It.IsAny<CancellationToken>()))
+			.Returns((CancellationToken token) => token.IsCancellationRequested
+				? Task.FromCanceled<WorkEntry?>(token)
+				: Task.FromResult<WorkEntry?>(null));
+
+		var result = await _sut.UpdateWorkEntryAsync(1, "PROJ-UPD", now, now.AddHours(1), "updated", cts.Token);
+
+		result.IsSuccess.Should().BeTrue();
+		_sut.IsTracking.Should().BeFalse();
+	}
+
+	#endregion
+
 	#region NotifyWorkEntriesModifiedAsync
 
 	[Fact]

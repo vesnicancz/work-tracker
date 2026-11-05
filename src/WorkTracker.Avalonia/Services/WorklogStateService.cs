@@ -224,7 +224,7 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 			async result =>
 			{
 				_logger.LogDebug("Work entry created with ID {Id}", result.Value.Id);
-				await RefreshFromDatabaseCoreAsync(cancellationToken);
+				await RefreshAfterSaveAsync();
 			},
 			"CreateWorkEntry",
 			cancellationToken);
@@ -249,7 +249,7 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 			async _ =>
 			{
 				_logger.LogDebug("Work entry {Id} updated successfully", id);
-				await RefreshFromDatabaseCoreAsync(cancellationToken);
+				await RefreshAfterSaveAsync();
 			},
 			"UpdateWorkEntry",
 			cancellationToken);
@@ -261,7 +261,7 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 
 		return ExecuteLockedAsync(
 			async (svc, ct) => (Result)await svc.ShiftActiveWorkStartAsync(delta, ct),
-			async _ => await RefreshFromDatabaseCoreAsync(cancellationToken),
+			_ => RefreshAfterSaveAsync(),
 			"ShiftActiveWorkStart",
 			cancellationToken);
 	}
@@ -275,7 +275,7 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 			async _ =>
 			{
 				_logger.LogDebug("Work entry {Id} deleted successfully", id);
-				await RefreshFromDatabaseCoreAsync(cancellationToken);
+				await RefreshAfterSaveAsync();
 			},
 			"DeleteWorkEntry",
 			cancellationToken);
@@ -332,7 +332,7 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 			async result =>
 			{
 				_logger.LogDebug("Work entry created with resolution, ID {Id}", result.Value.Id);
-				await RefreshFromDatabaseCoreAsync(cancellationToken);
+				await RefreshAfterSaveAsync();
 			},
 			"CreateWorkEntryWithResolution",
 			cancellationToken);
@@ -351,7 +351,7 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 			async _ =>
 			{
 				_logger.LogDebug("Work entry {Id} updated with resolution", id);
-				await RefreshFromDatabaseCoreAsync(cancellationToken);
+				await RefreshAfterSaveAsync();
 			},
 			"UpdateWorkEntryWithResolution",
 			cancellationToken);
@@ -442,6 +442,23 @@ public sealed class WorklogStateService : IWorklogStateService, IDisposable
 		_activeWork = activeWork;
 
 		_logger.LogDebug("State refreshed: IsTracking={IsTracking}", _activeWork != null);
+	}
+
+	/// <summary>
+	/// The change is already saved, so the caller has to hear that it succeeded: a reported failure would
+	/// make the user save it again. A failed refresh leaves the state as it was until the next one. It
+	/// isn't cancellable, because the state has to follow what was saved even if the caller has given up.
+	/// </summary>
+	private async Task RefreshAfterSaveAsync()
+	{
+		try
+		{
+			await RefreshFromDatabaseCoreAsync(CancellationToken.None);
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Failed to refresh state after a saved change");
+		}
 	}
 
 	/// <summary>
