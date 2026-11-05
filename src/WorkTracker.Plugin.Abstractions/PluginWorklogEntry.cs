@@ -31,16 +31,6 @@ public class PluginWorklogEntry
 	public int DurationMinutes { get; set; }
 
 	/// <summary>
-	/// Category/type of work (optional)
-	/// </summary>
-	public string? Category { get; set; }
-
-	/// <summary>
-	/// Project name (optional)
-	/// </summary>
-	public string? ProjectName { get; set; }
-
-	/// <summary>
 	/// Additional metadata (optional)
 	/// </summary>
 	public Dictionary<string, string>? Metadata { get; set; }

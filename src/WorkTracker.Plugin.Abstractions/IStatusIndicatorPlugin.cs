@@ -8,11 +8,6 @@ namespace WorkTracker.Plugin.Abstractions;
 public interface IStatusIndicatorPlugin : IPlugin
 {
 	/// <summary>
-	/// Gets whether the physical device is currently connected and ready to receive commands.
-	/// </summary>
-	bool IsDeviceAvailable { get; }
-
-	/// <summary>
 	/// Updates the device to reflect the given Pomodoro phase.
 	/// Called by the Pomodoro timer on every phase transition and on stop/reset.
 	/// </summary>

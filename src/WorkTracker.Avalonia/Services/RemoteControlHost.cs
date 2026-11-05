@@ -8,8 +8,8 @@ using WorkTracker.Avalonia.Orchestrators;
 namespace WorkTracker.Avalonia.Services;
 
 /// <summary>
-/// Gives remote control plugins access to the application. Commands run on the UI thread: the services
-/// raise their events on the caller's thread, and view models subscribed to them touch UI objects.
+/// Gives remote control plugins access to the application. Commands run on the UI thread, the same as
+/// when they start from the window, and the dialogs can't run anywhere else.
 /// </summary>
 public sealed class RemoteControlHost : IRemoteControlHost
 {

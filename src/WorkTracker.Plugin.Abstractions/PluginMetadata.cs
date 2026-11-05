@@ -36,11 +36,6 @@ public class PluginMetadata
 	public string? Website { get; init; }
 
 	/// <summary>
-	/// Minimum WorkTracker version required
-	/// </summary>
-	public Version? MinimumAppVersion { get; init; }
-
-	/// <summary>
 	/// Icon name hint for UI display (e.g., "CalendarMonth", "Jira", "LightbulbOutline").
 	/// Maps to MaterialIcon Kind in Avalonia.
 	/// </summary>

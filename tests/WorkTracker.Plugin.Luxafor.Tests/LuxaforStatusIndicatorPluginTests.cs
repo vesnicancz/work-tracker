@@ -206,30 +206,6 @@ public class LuxaforStatusIndicatorPluginTests : IAsyncDisposable
 
 	#endregion
 
-	#region Device Availability
-
-	[Fact]
-	public async Task IsDeviceAvailable_NoDevice_ReturnsFalse()
-	{
-		await InitializePluginAsync();
-
-		_plugin.IsDeviceAvailable.Should().BeFalse();
-	}
-
-	[Fact]
-	public async Task IsDeviceAvailable_ConnectedDevice_ReturnsTrue()
-	{
-		var device = new MockLuxaforDevice();
-		await using var plugin = CreatePluginWithMockDevice(device);
-		await plugin.InitializeAsync(ValidConfig, TestContext.Current.CancellationToken);
-
-		await plugin.SetStateAsync(StatusIndicatorState.Work, TestContext.Current.CancellationToken);
-
-		plugin.IsDeviceAvailable.Should().BeTrue();
-	}
-
-	#endregion
-
 	#region SetStateAsync — No Device
 
 	[Theory]
@@ -372,7 +348,6 @@ public class LuxaforStatusIndicatorPluginTests : IAsyncDisposable
 
 		goneDevice.Disposed.Should().BeTrue();
 		newDevice.LastColor.Should().Be(LuxaforColor.Red, "the phase must reach the LED now, not in 25 minutes");
-		plugin.IsDeviceAvailable.Should().BeTrue();
 		manager.TargetedPaths.Should()
 			.ContainSingle("the reopen goes for the device that went away, not for whatever is attached")
 			.Which.Should().Be("/dev/luxafor-a");
@@ -392,7 +367,9 @@ public class LuxaforStatusIndicatorPluginTests : IAsyncDisposable
 
 		await act.Should().NotThrowAsync();
 		manager.OpenCallCount.Should().Be(2, "one open and exactly one reopen - a second failure means the device really is gone");
-		plugin.IsDeviceAvailable.Should().BeFalse();
+
+		await act.Should().NotThrowAsync();
+		manager.OpenCallCount.Should().Be(4, "the handle is closed, so the next call starts from scratch");
 	}
 
 	[Fact]

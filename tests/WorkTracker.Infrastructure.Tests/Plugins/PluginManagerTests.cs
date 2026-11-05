@@ -662,8 +662,6 @@ public sealed class TestStatusIndicatorPlugin : IStatusIndicatorPlugin
 
 	public PluginMetadata Metadata => new() { Id = "test.indicator", Name = "Test Indicator", Version = new Version(1, 0, 0), Author = "Test" };
 
-	public bool IsDeviceAvailable => true;
-
 	public Task SetStateAsync(StatusIndicatorState state, CancellationToken cancellationToken) => Task.CompletedTask;
 
 	public Task<bool> InitializeAsync(IDictionary<string, string>? configuration = null, CancellationToken cancellationToken = default)
