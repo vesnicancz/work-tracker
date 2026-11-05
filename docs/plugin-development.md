@@ -251,7 +251,7 @@ Dědí `PluginBase` a implementuje `IWorklogUploadPlugin`. Definuje abstraktní 
 - `TestConnectionAsync(IProgress<string>?, CancellationToken)`
 - `UploadWorklogAsync(PluginWorklogEntry, CancellationToken)`
 
-Virtual metoda `UploadWorklogsAsync(IEnumerable<PluginWorklogEntry>, WorklogSubmissionMode, CancellationToken)` má **výchozí implementaci**, která prochází záznamy jeden po druhém, volá `UploadWorklogAsync` a sbírá chyby do `WorklogSubmissionResult`. Stačí přepsat, jen pokud chceš hromadné API nebo potřebuješ jiný payload podle módu (např. Tempo v Aggregated vynechává `startTime`).
+Virtual metoda `UploadWorklogsAsync(IEnumerable<PluginWorklogEntry>, WorklogSubmissionMode, CancellationToken)` má **výchozí implementaci**, která prochází záznamy jeden po druhém, volá `UploadWorklogAsync` a sbírá chyby do `WorklogSubmissionResult`. Stačí přepsat, jen pokud chceš hromadné API nebo potřebuješ jiný payload podle módu (např. Tempo v Aggregated vynechává `startTime`). Přepsaná metoda hlásí selhání přes `WorklogSubmissionError.WorklogIndex`, tedy pozici záznamu v předaném seznamu. Podle ní aplikace označí správný řádek, i když vypadají dva záznamy stejně.
 
 #### `SupportedModes`
 

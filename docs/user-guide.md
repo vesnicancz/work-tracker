@@ -625,7 +625,7 @@ Kliknutím na hlavičku skupinu rozbalíš nebo sbalíš (`ToggleGroupCommand`).
 Interně pipeline:
 
 - Do náhledu se dostanou jen ukončené záznamy (s `EndTime`). Odešle se všechno zaškrtnuté, co projde `IWorklogValidator` (stejná kontrola jako u `send` v CLI). Řádek, který neprojde, se označí jako chybný s důvodem. Ostatní chyby hlásí až plugin.
-- V **Agregovaném** módu orchestrátor nejprve seskupí DTO per den podle `(TicketId, Description)` a součtem spočítá `DurationMinutes`.
+- V **Agregovaném** módu náhled už přijde seskupený per den podle `(TicketId, Description)` se součtem v `DurationMinutes`.
 - Záznamy se mapují přes `WorklogMapper` na `PluginWorklogEntry`.
 - Service ověří, že zvolený plugin daný mód inzeruje (`SupportedModes.HasFlag(mode)`), jinak vrátí `Failure`.
 - Plugin provede upload (formát payloadu si může uzpůsobit podle módu) a vrátí `PluginResult<WorklogSubmissionResult>`.

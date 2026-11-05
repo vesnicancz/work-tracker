@@ -562,8 +562,8 @@ public sealed class CommandHandlerTests : IDisposable
 
 	#region Send
 
-	private static WorklogSubmissionDto PreviewWith(params WorklogDto[] worklogs) =>
-		new() { Worklogs = [.. worklogs], SubmissionDate = LocalNow.Date };
+	private static IReadOnlyList<WorklogSubmissionDto> PreviewWith(params WorklogDto[] worklogs) =>
+		[new() { Worklogs = [.. worklogs], SubmissionDate = LocalNow.Date }];
 
 	private static WorklogDto Worklog(string ticket = "PROJ-1", int minutes = 60) =>
 		new()
@@ -583,10 +583,10 @@ public sealed class CommandHandlerTests : IDisposable
 			.Setup(s => s.GetAvailableProviders())
 			.Returns([new ProviderInfo { Id = "gorang3.worklog", Name = "Goran G3 Timesheets", SupportedModes = WorklogSubmissionMode.Timed }]);
 		_submissionService
-			.Setup(s => s.PreviewDailyWorklogAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+			.Setup(s => s.PreviewAsync(It.IsAny<SubmissionPeriod>(), It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(PreviewWith(Worklog()));
 		_submissionService
-			.Setup(s => s.SubmitDailyWorklogAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+			.Setup(s => s.SubmitAsync(It.IsAny<SubmissionPeriod>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(Result.Success(new SubmissionResult { TotalEntries = 1, SuccessfulEntries = 1 }));
 
 		var exitCode = await _handler.HandleSendCommand(LocalNow.Date);
@@ -611,8 +611,8 @@ public sealed class CommandHandlerTests : IDisposable
 
 		exitCode.Should().Be(1);
 		_errorConsole.Output.Should().Contain("--provider").And.Contain("tempo.worklog").And.Contain("gorang3.worklog");
-		_submissionService.Verify(s => s.PreviewDailyWorklogAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Never);
-		_submissionService.Verify(s => s.SubmitDailyWorklogAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Never);
+		_submissionService.Verify(s => s.PreviewAsync(It.IsAny<SubmissionPeriod>(), It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()), Times.Never);
+		_submissionService.Verify(s => s.SubmitAsync(It.IsAny<SubmissionPeriod>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
 	}
 
 	[Fact]
@@ -625,10 +625,10 @@ public sealed class CommandHandlerTests : IDisposable
 				new ProviderInfo { Id = "gorang3.worklog", Name = "Goran G3 Timesheets", SupportedModes = WorklogSubmissionMode.Timed }
 			]);
 		_submissionService
-			.Setup(s => s.PreviewWeeklyWorklogAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-			.ReturnsAsync(new Dictionary<DateTime, WorklogSubmissionDto> { [LocalNow.Date] = PreviewWith(Worklog()) });
+			.Setup(s => s.PreviewAsync(It.IsAny<SubmissionPeriod>(), It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(PreviewWith(Worklog()));
 		_submissionService
-			.Setup(s => s.SubmitWeeklyWorklogAsync(It.IsAny<DateTime>(), "gorang3.worklog", It.IsAny<CancellationToken>()))
+			.Setup(s => s.SubmitAsync(It.IsAny<SubmissionPeriod>(), "gorang3.worklog", It.IsAny<CancellationToken>()))
 			.ReturnsAsync(Result.Failure<SubmissionResult>("Server down"));
 
 		var exitCode = await _handler.HandleSendCommand(LocalNow.Date, isWeek: true, assumeYes: true, providerId: "gorang3.worklog");
@@ -643,10 +643,10 @@ public sealed class CommandHandlerTests : IDisposable
 		// The console is left non-interactive on purpose: a prompt here would throw, which is
 		// exactly what "--yes" has to avoid in a script or scheduled task.
 		_submissionService
-			.Setup(s => s.PreviewDailyWorklogAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+			.Setup(s => s.PreviewAsync(It.IsAny<SubmissionPeriod>(), It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(PreviewWith(Worklog()));
 		_submissionService
-			.Setup(s => s.SubmitDailyWorklogAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+			.Setup(s => s.SubmitAsync(It.IsAny<SubmissionPeriod>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(Result.Success(new SubmissionResult { TotalEntries = 1, SuccessfulEntries = 1 }));
 
 		var exitCode = await _handler.HandleSendCommand(LocalNow.Date, assumeYes: true);
@@ -654,17 +654,17 @@ public sealed class CommandHandlerTests : IDisposable
 		exitCode.Should().Be(0);
 		_console.Output.Should().NotContain("Send these entries");
 		_submissionService.Verify(
-			s => s.SubmitDailyWorklogAsync(LocalNow.Date, It.IsAny<CancellationToken>()), Times.Once);
+			s => s.SubmitAsync(SubmissionPeriod.Day(LocalNow.Date), null, It.IsAny<CancellationToken>()), Times.Once);
 	}
 
 	[Fact]
 	public async Task SendWeek_AssumeYes_SubmitsWithoutPrompting()
 	{
 		_submissionService
-			.Setup(s => s.PreviewWeeklyWorklogAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-			.ReturnsAsync(new Dictionary<DateTime, WorklogSubmissionDto> { [LocalNow.Date] = PreviewWith(Worklog()) });
+			.Setup(s => s.PreviewAsync(It.IsAny<SubmissionPeriod>(), It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(PreviewWith(Worklog()));
 		_submissionService
-			.Setup(s => s.SubmitWeeklyWorklogAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+			.Setup(s => s.SubmitAsync(It.IsAny<SubmissionPeriod>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(Result.Success(new SubmissionResult { TotalEntries = 1, SuccessfulEntries = 1 }));
 
 		var exitCode = await _handler.HandleSendCommand(LocalNow.Date, isWeek: true, assumeYes: true);
@@ -672,53 +672,51 @@ public sealed class CommandHandlerTests : IDisposable
 		exitCode.Should().Be(0);
 		_console.Output.Should().NotContain("Send all these entries");
 		_submissionService.Verify(
-			s => s.SubmitWeeklyWorklogAsync(LocalNow.Date, It.IsAny<CancellationToken>()), Times.Once);
+			s => s.SubmitAsync(SubmissionPeriod.WeekOf(LocalNow.Date), null, It.IsAny<CancellationToken>()), Times.Once);
 	}
 
 	[Fact]
 	public async Task Send_WithProvider_SubmitsThroughThatProvider()
 	{
 		_submissionService
-			.Setup(s => s.PreviewDailyWorklogAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+			.Setup(s => s.PreviewAsync(It.IsAny<SubmissionPeriod>(), It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(PreviewWith(Worklog()));
 		_submissionService
-			.Setup(s => s.SubmitDailyWorklogAsync(It.IsAny<DateTime>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+			.Setup(s => s.SubmitAsync(It.IsAny<SubmissionPeriod>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(Result.Success(new SubmissionResult { TotalEntries = 1, SuccessfulEntries = 1 }));
 
 		var exitCode = await _handler.HandleSendCommand(LocalNow.Date, assumeYes: true, providerId: "tempo.worklog");
 
 		exitCode.Should().Be(0);
 		_submissionService.Verify(
-			s => s.SubmitDailyWorklogAsync(LocalNow.Date, "tempo.worklog", It.IsAny<CancellationToken>()), Times.Once);
-		_submissionService.Verify(
-			s => s.SubmitDailyWorklogAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Never);
+			s => s.SubmitAsync(SubmissionPeriod.Day(LocalNow.Date), "tempo.worklog", It.IsAny<CancellationToken>()), Times.Once);
 	}
 
 	[Fact]
 	public async Task SendWeek_WithProvider_SubmitsThroughThatProvider()
 	{
 		_submissionService
-			.Setup(s => s.PreviewWeeklyWorklogAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-			.ReturnsAsync(new Dictionary<DateTime, WorklogSubmissionDto> { [LocalNow.Date] = PreviewWith(Worklog()) });
+			.Setup(s => s.PreviewAsync(It.IsAny<SubmissionPeriod>(), It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(PreviewWith(Worklog()));
 		_submissionService
-			.Setup(s => s.SubmitWeeklyWorklogAsync(It.IsAny<DateTime>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+			.Setup(s => s.SubmitAsync(It.IsAny<SubmissionPeriod>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(Result.Success(new SubmissionResult { TotalEntries = 1, SuccessfulEntries = 1 }));
 
 		var exitCode = await _handler.HandleSendCommand(LocalNow.Date, isWeek: true, assumeYes: true, providerId: "tempo.worklog");
 
 		exitCode.Should().Be(0);
 		_submissionService.Verify(
-			s => s.SubmitWeeklyWorklogAsync(LocalNow.Date, "tempo.worklog", It.IsAny<CancellationToken>()), Times.Once);
+			s => s.SubmitAsync(SubmissionPeriod.WeekOf(LocalNow.Date), "tempo.worklog", It.IsAny<CancellationToken>()), Times.Once);
 	}
 
 	[Fact]
 	public async Task Send_UnknownProvider_ReportsFailureOnStderr()
 	{
 		_submissionService
-			.Setup(s => s.PreviewDailyWorklogAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+			.Setup(s => s.PreviewAsync(It.IsAny<SubmissionPeriod>(), It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(PreviewWith(Worklog()));
 		_submissionService
-			.Setup(s => s.SubmitDailyWorklogAsync(It.IsAny<DateTime>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+			.Setup(s => s.SubmitAsync(It.IsAny<SubmissionPeriod>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(Result.Failure<SubmissionResult>("Plugin 'nope' not found"));
 
 		var exitCode = await _handler.HandleSendCommand(LocalNow.Date, assumeYes: true, providerId: "nope");
@@ -731,7 +729,7 @@ public sealed class CommandHandlerTests : IDisposable
 	public async Task Send_NoWorklogs_ReturnsZeroWithoutSubmitting()
 	{
 		_submissionService
-			.Setup(s => s.PreviewDailyWorklogAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+			.Setup(s => s.PreviewAsync(It.IsAny<SubmissionPeriod>(), It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(PreviewWith());
 
 		var exitCode = await _handler.HandleSendCommand();
@@ -739,7 +737,7 @@ public sealed class CommandHandlerTests : IDisposable
 		exitCode.Should().Be(0);
 		_console.Output.Should().Contain("No completed entries to send");
 		_submissionService.Verify(
-			s => s.SubmitDailyWorklogAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Never);
+			s => s.SubmitAsync(It.IsAny<SubmissionPeriod>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
 	}
 
 	[Fact]
@@ -748,7 +746,7 @@ public sealed class CommandHandlerTests : IDisposable
 		_console.Interactive();
 		_console.Input.PushTextWithEnter("n");
 		_submissionService
-			.Setup(s => s.PreviewDailyWorklogAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+			.Setup(s => s.PreviewAsync(It.IsAny<SubmissionPeriod>(), It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(PreviewWith(Worklog()));
 
 		var exitCode = await _handler.HandleSendCommand();
@@ -756,7 +754,7 @@ public sealed class CommandHandlerTests : IDisposable
 		exitCode.Should().Be(0);
 		_console.Output.Should().Contain("Cancelled");
 		_submissionService.Verify(
-			s => s.SubmitDailyWorklogAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Never);
+			s => s.SubmitAsync(It.IsAny<SubmissionPeriod>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
 	}
 
 	[Fact]
@@ -765,10 +763,10 @@ public sealed class CommandHandlerTests : IDisposable
 		_console.Interactive();
 		_console.Input.PushTextWithEnter("y");
 		_submissionService
-			.Setup(s => s.PreviewDailyWorklogAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+			.Setup(s => s.PreviewAsync(It.IsAny<SubmissionPeriod>(), It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(PreviewWith(Worklog()));
 		_submissionService
-			.Setup(s => s.SubmitDailyWorklogAsync(LocalNow.Date, It.IsAny<CancellationToken>()))
+			.Setup(s => s.SubmitAsync(SubmissionPeriod.Day(LocalNow.Date), null, It.IsAny<CancellationToken>()))
 			.ReturnsAsync(Result.Success(new SubmissionResult { TotalEntries = 1, SuccessfulEntries = 1 }));
 
 		var exitCode = await _handler.HandleSendCommand(LocalNow.Date);
@@ -783,10 +781,10 @@ public sealed class CommandHandlerTests : IDisposable
 		_console.Interactive();
 		_console.Input.PushTextWithEnter("y");
 		_submissionService
-			.Setup(s => s.PreviewDailyWorklogAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+			.Setup(s => s.PreviewAsync(It.IsAny<SubmissionPeriod>(), It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(PreviewWith(Worklog()));
 		_submissionService
-			.Setup(s => s.SubmitDailyWorklogAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+			.Setup(s => s.SubmitAsync(It.IsAny<SubmissionPeriod>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(Result.Failure<SubmissionResult>("Tempo unavailable"));
 
 		var exitCode = await _handler.HandleSendCommand();
@@ -799,7 +797,7 @@ public sealed class CommandHandlerTests : IDisposable
 	public async Task SendWeek_NoWorklogs_ReturnsZero()
 	{
 		_submissionService
-			.Setup(s => s.PreviewWeeklyWorklogAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+			.Setup(s => s.PreviewAsync(It.IsAny<SubmissionPeriod>(), It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync([]);
 
 		var exitCode = await _handler.HandleSendCommand(isWeek: true);
@@ -811,16 +809,15 @@ public sealed class CommandHandlerTests : IDisposable
 	[Fact]
 	public async Task SendWeek_AllDaysEmpty_ReturnsZeroWithoutPrompting()
 	{
-		// The real preview holds one (possibly empty) entry per day of the week, never an
-		// empty dictionary — a week with nothing in it must not offer to send anything.
+		// The real preview holds one (possibly empty) item per day of the week, never an
+		// empty list — a week with nothing in it must not offer to send anything.
 		var weekStart = LocalNow.Date.AddDays(-3);
-		var emptyWeek = Enumerable.Range(0, 7)
-			.ToDictionary(
-				offset => weekStart.AddDays(offset),
-				offset => new WorklogSubmissionDto { SubmissionDate = weekStart.AddDays(offset), Worklogs = [] });
+		IReadOnlyList<WorklogSubmissionDto> emptyWeek = Enumerable.Range(0, 7)
+			.Select(offset => new WorklogSubmissionDto { SubmissionDate = weekStart.AddDays(offset), Worklogs = [] })
+			.ToList();
 
 		_submissionService
-			.Setup(s => s.PreviewWeeklyWorklogAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+			.Setup(s => s.PreviewAsync(It.IsAny<SubmissionPeriod>(), It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(emptyWeek);
 
 		var exitCode = await _handler.HandleSendCommand(isWeek: true);
@@ -829,7 +826,7 @@ public sealed class CommandHandlerTests : IDisposable
 		_console.Output.Should().Contain("No completed entries to send for the week");
 		_console.Output.Should().NotContain("Send all these entries");
 		_submissionService.Verify(
-			s => s.SubmitWeeklyWorklogAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),
+			s => s.SubmitAsync(It.IsAny<SubmissionPeriod>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
 			Times.Never);
 	}
 
@@ -839,13 +836,10 @@ public sealed class CommandHandlerTests : IDisposable
 		_console.Interactive();
 		_console.Input.PushTextWithEnter("y");
 		_submissionService
-			.Setup(s => s.PreviewWeeklyWorklogAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-			.ReturnsAsync(new Dictionary<DateTime, WorklogSubmissionDto>
-			{
-				[LocalNow.Date] = PreviewWith(Worklog()),
-			});
+			.Setup(s => s.PreviewAsync(It.IsAny<SubmissionPeriod>(), It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(PreviewWith(Worklog()));
 		_submissionService
-			.Setup(s => s.SubmitWeeklyWorklogAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+			.Setup(s => s.SubmitAsync(It.IsAny<SubmissionPeriod>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(Result.Success(new SubmissionResult
 			{
 				TotalEntries = 2,
@@ -865,10 +859,10 @@ public sealed class CommandHandlerTests : IDisposable
 	public async Task Send_PartialFailure_ReportsItAndReturnsOne()
 	{
 		_submissionService
-			.Setup(s => s.PreviewDailyWorklogAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+			.Setup(s => s.PreviewAsync(It.IsAny<SubmissionPeriod>(), It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(PreviewWith(Worklog()));
 		_submissionService
-			.Setup(s => s.SubmitDailyWorklogAsync(LocalNow.Date, It.IsAny<CancellationToken>()))
+			.Setup(s => s.SubmitAsync(SubmissionPeriod.Day(LocalNow.Date), null, It.IsAny<CancellationToken>()))
 			.ReturnsAsync(Result.Success(new SubmissionResult
 			{
 				TotalEntries = 2,
@@ -888,10 +882,10 @@ public sealed class CommandHandlerTests : IDisposable
 	public async Task Send_EverythingFailed_DoesNotClaimSuccess()
 	{
 		_submissionService
-			.Setup(s => s.PreviewDailyWorklogAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+			.Setup(s => s.PreviewAsync(It.IsAny<SubmissionPeriod>(), It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(PreviewWith(Worklog()));
 		_submissionService
-			.Setup(s => s.SubmitDailyWorklogAsync(LocalNow.Date, It.IsAny<CancellationToken>()))
+			.Setup(s => s.SubmitAsync(SubmissionPeriod.Day(LocalNow.Date), null, It.IsAny<CancellationToken>()))
 			.ReturnsAsync(Result.Success(new SubmissionResult
 			{
 				TotalEntries = 1,
@@ -909,10 +903,10 @@ public sealed class CommandHandlerTests : IDisposable
 	public async Task Send_ErrorWithoutAFailedEntry_ReturnsOne()
 	{
 		_submissionService
-			.Setup(s => s.PreviewDailyWorklogAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+			.Setup(s => s.PreviewAsync(It.IsAny<SubmissionPeriod>(), It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(PreviewWith(Worklog()));
 		_submissionService
-			.Setup(s => s.SubmitDailyWorklogAsync(LocalNow.Date, It.IsAny<CancellationToken>()))
+			.Setup(s => s.SubmitAsync(SubmissionPeriod.Day(LocalNow.Date), null, It.IsAny<CancellationToken>()))
 			.ReturnsAsync(Result.Success(new SubmissionResult
 			{
 				TotalEntries = 1,
@@ -924,6 +918,27 @@ public sealed class CommandHandlerTests : IDisposable
 
 		exitCode.Should().Be(1);
 		_errorConsole.Output.Should().Contain("Timesheet submit failed");
+	}
+
+	[Fact]
+	public async Task Send_ErrorOfNoKnownDay_StillShowsTheMessage()
+	{
+		_submissionService
+			.Setup(s => s.PreviewAsync(It.IsAny<SubmissionPeriod>(), It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(PreviewWith(Worklog()));
+		_submissionService
+			.Setup(s => s.SubmitAsync(It.IsAny<SubmissionPeriod>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(Result.Success(new SubmissionResult
+			{
+				TotalEntries = 1,
+				FailedEntries = 1,
+				Errors = [new SubmissionError { ErrorMessage = "quota exceeded" }],
+			}));
+
+		var exitCode = await _handler.HandleSendCommand(LocalNow.Date, assumeYes: true);
+
+		exitCode.Should().Be(1);
+		_errorConsole.Output.Should().Contain("quota exceeded").And.NotContain("0001");
 	}
 
 	#endregion Send

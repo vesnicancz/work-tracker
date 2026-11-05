@@ -5,204 +5,46 @@ namespace WorkTracker.Application.Tests.Common;
 
 public class SubmissionResultTests
 {
-	[Fact]
-	public void IsSuccess_WithAllSuccessful_ShouldReturnTrue()
-	{
-		// Arrange
-		var result = new SubmissionResult
-		{
-			TotalEntries = 5,
-			SuccessfulEntries = 5,
-			FailedEntries = 0
-		};
+	private static readonly SubmissionError Error = new() { ErrorMessage = "failed" };
 
-		// Act & Assert
-		result.IsSuccess.Should().BeTrue();
+	[Fact]
+	public void NothingFailed_HasNoFailures()
+	{
+		var result = new SubmissionResult { TotalEntries = 5, SuccessfulEntries = 5 };
+
+		result.HasFailures.Should().BeFalse();
+		result.FailureCount.Should().Be(0);
 	}
 
 	[Fact]
-	public void IsSuccess_WithSomeFailures_ShouldReturnFalse()
+	public void NothingSubmitted_HasNoFailures()
 	{
-		// Arrange
-		var result = new SubmissionResult
-		{
-			TotalEntries = 5,
-			SuccessfulEntries = 3,
-			FailedEntries = 2
-		};
-
-		// Act & Assert
-		result.IsSuccess.Should().BeFalse();
+		new SubmissionResult().HasFailures.Should().BeFalse();
 	}
 
 	[Fact]
-	public void IsSuccess_WithZeroEntries_ShouldReturnFalse()
+	public void FailedEntries_AreFailures()
 	{
-		// Arrange
-		var result = new SubmissionResult
-		{
-			TotalEntries = 0,
-			SuccessfulEntries = 0,
-			FailedEntries = 0
-		};
+		var result = new SubmissionResult { TotalEntries = 5, SuccessfulEntries = 3, FailedEntries = 2, Errors = [Error, Error] };
 
-		// Act & Assert
-		result.IsSuccess.Should().BeFalse();
+		result.HasFailures.Should().BeTrue();
+		result.FailureCount.Should().Be(2);
 	}
 
 	[Fact]
-	public void IsSuccess_WithAllFailed_ShouldReturnFalse()
+	public void ErrorWithoutAFailedEntry_IsAFailure()
 	{
-		// Arrange
-		var result = new SubmissionResult
-		{
-			TotalEntries = 5,
-			SuccessfulEntries = 0,
-			FailedEntries = 5
-		};
+		var result = new SubmissionResult { TotalEntries = 1, SuccessfulEntries = 1, Errors = [Error] };
 
-		// Act & Assert
-		result.IsSuccess.Should().BeFalse();
+		result.HasFailures.Should().BeTrue();
+		result.FailureCount.Should().Be(1);
 	}
 
 	[Fact]
-	public void HasPartialSuccess_WithSomeSuccessAndSomeFailures_ShouldReturnTrue()
+	public void FailedEntryAndAnErrorOfItsOwn_CountsBoth()
 	{
-		// Arrange
-		var result = new SubmissionResult
-		{
-			TotalEntries = 5,
-			SuccessfulEntries = 3,
-			FailedEntries = 2
-		};
+		var result = new SubmissionResult { TotalEntries = 2, SuccessfulEntries = 1, FailedEntries = 1, Errors = [Error, Error] };
 
-		// Act & Assert
-		result.HasPartialSuccess.Should().BeTrue();
-	}
-
-	[Fact]
-	public void HasPartialSuccess_WithAllSuccessful_ShouldReturnFalse()
-	{
-		// Arrange
-		var result = new SubmissionResult
-		{
-			TotalEntries = 5,
-			SuccessfulEntries = 5,
-			FailedEntries = 0
-		};
-
-		// Act & Assert
-		result.HasPartialSuccess.Should().BeFalse();
-	}
-
-	[Fact]
-	public void HasPartialSuccess_WithAllFailed_ShouldReturnFalse()
-	{
-		// Arrange
-		var result = new SubmissionResult
-		{
-			TotalEntries = 5,
-			SuccessfulEntries = 0,
-			FailedEntries = 5
-		};
-
-		// Act & Assert
-		result.HasPartialSuccess.Should().BeFalse();
-	}
-
-	[Fact]
-	public void HasPartialSuccess_WithNoSuccesses_ShouldReturnFalse()
-	{
-		// Arrange
-		var result = new SubmissionResult
-		{
-			TotalEntries = 3,
-			SuccessfulEntries = 0,
-			FailedEntries = 3
-		};
-
-		// Act & Assert
-		result.HasPartialSuccess.Should().BeFalse();
-	}
-
-	[Fact]
-	public void Errors_ShouldBeInitializedAsEmptyList()
-	{
-		// Arrange & Act
-		var result = new SubmissionResult();
-
-		// Assert
-		result.Errors.Should().NotBeNull();
-		result.Errors.Should().BeEmpty();
-	}
-
-	[Fact]
-	public void EntriesByDate_ShouldBeInitializedAsEmptyDictionary()
-	{
-		// Arrange & Act
-		var result = new SubmissionResult();
-
-		// Assert
-		result.EntriesByDate.Should().NotBeNull();
-		result.EntriesByDate.Should().BeEmpty();
-	}
-
-	[Fact]
-	public void Errors_ShouldAllowAddingErrors()
-	{
-		// Arrange
-		var result = new SubmissionResult();
-		var error = new SubmissionError
-		{
-			ErrorMessage = "Test error"
-		};
-
-		// Act
-		result.Errors.Add(error);
-
-		// Assert
-		result.Errors.Should().HaveCount(1);
-		result.Errors.First().ErrorMessage.Should().Be("Test error");
-	}
-
-	[Fact]
-	public void EntriesByDate_ShouldAllowAddingEntries()
-	{
-		// Arrange
-		var result = new SubmissionResult();
-		var date = DateTime.Today;
-
-		// Act
-		result.EntriesByDate[date] = 5;
-
-		// Assert
-		result.EntriesByDate.Should().HaveCount(1);
-		result.EntriesByDate[date].Should().Be(5);
-	}
-
-	[Theory]
-	[InlineData(10, 10, 0, true, false)]   // All successful
-	[InlineData(10, 5, 5, false, true)]    // Partial success
-	[InlineData(10, 0, 10, false, false)]  // All failed
-	[InlineData(0, 0, 0, false, false)]    // No entries
-	[InlineData(10, 1, 9, false, true)]    // Mostly failed but partial success
-	public void CombinedScenarios_ShouldCalculateCorrectly(
-		int total,
-		int successful,
-		int failed,
-		bool expectedIsSuccess,
-		bool expectedHasPartialSuccess)
-	{
-		// Arrange
-		var result = new SubmissionResult
-		{
-			TotalEntries = total,
-			SuccessfulEntries = successful,
-			FailedEntries = failed
-		};
-
-		// Act & Assert
-		result.IsSuccess.Should().Be(expectedIsSuccess);
-		result.HasPartialSuccess.Should().Be(expectedHasPartialSuccess);
+		result.FailureCount.Should().Be(2);
 	}
 }

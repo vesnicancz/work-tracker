@@ -109,7 +109,7 @@ Orchestruje use cases. Závislá pouze na Domain a Plugin.Abstractions. Klíčov
 | `ISecureStorage` | Abstrakce nad OS credential storem (implementace v Infrastructure) |
 | `IPluginManager` | Registr a lifecycle pluginů (implementace v Infrastructure) |
 | `Result<T>` | Výsledkový typ pro use cases (místo výjimek pro business chyby) |
-| DTO (`WorklogDto`, `WorklogSubmissionDto`, `ProviderInfo`, `SubmissionResult`) | Přenosové typy mezi vrstvami |
+| DTO (`WorklogDto`, `WorklogSubmissionDto`, `ProviderInfo`, `SubmissionPeriod`, `SubmissionResult`) | Přenosové typy mezi vrstvami |
 | `WorkTrackerPaths` | Centralizované cesty (`%LocalAppData%/WorkTracker`, `keys/`, `logs/`, …) |
 | `AppInfo` | Čtení verze z `AssemblyInformationalVersionAttribute` |
 
@@ -133,7 +133,7 @@ Infrastructure **závisí** na Application a Domain, **ne naopak**.
 Logika GUI, která nezávisí na Avalonii, takže jde testovat bez UI (hlídá to `WorkTracker.Architecture.Tests`):
 
 - **ViewModely** (`MainViewModel`, `SettingsViewModel`, `SuggestionsViewModel`, `PomodoroViewModel`, `PluginViewModel`, …) ve složce `ViewModels/` — `ObservableObject` z `CommunityToolkit.Mvvm`, příkazy jako `AsyncRelayCommand`/`RelayCommand` vytvořené v konstruktoru, vlastnosti typicky přes `SetProperty` (source generátory `[RelayCommand]`/`[ObservableProperty]` projekt nepoužívá).
-- **Orchestrátory** — třídy, které koordinují více služeb a skrývají workflow před ViewModely (např. `WorklogSubmissionOrchestrator` sestaví náhled včetně agregace, provede submit a retry a označí položky, které plugin odmítl). Dialogy implementuje Avalonia `DialogService`; orchestrátor je smí vyvolat jen přes `IDialogService` (viz `WorkEntryEditOrchestrator`).
+- **Orchestrátory** — třídy, které koordinují více služeb a skrývají workflow před ViewModely (např. `WorklogSubmissionOrchestrator` sestaví řádky náhledu, provede submit a retry a označí položky, které plugin odmítl). Dialogy implementuje Avalonia `DialogService`; orchestrátor je smí vyvolat jen přes `IDialogService` (viz `WorkEntryEditOrchestrator`).
 - **Služby**: `ISettingsService` (serializace `ApplicationSettings` do `settings.json`), `ILocalizationService` (resx loader s `INotifyPropertyChanged`), `IPomodoroService`.
 
 Tahle logika závisí na Application. Infrastructure používá jen bootstrap v `App.axaml.cs`.
@@ -197,7 +197,7 @@ ViewModely žijí v projektu `WorkTracker.Avalonia` ve složce `ViewModels/`, al
 ViewModely volají orchestrátory nebo přímo Application služby. Orchestrátor je užitečný, když akce:
 
 - má dialog (submit worklogu ukazuje v jednom dialogu náhled i výběr pluginu a módu),
-- kombinuje víc služeb (sestav náhled → agreguj → submit → označ chyby → retry),
+- kombinuje víc služeb (sestav náhled → submit → označ chyby → retry),
 - má retry/recovery logiku.
 
 Bez orchestrátoru by toto všechno skončilo ve ViewModelu a orchestrace by se míchala s prezentační logikou.
@@ -379,14 +379,15 @@ Jako konkrétní ilustraci vezmeme odeslání záznamů jednoho dne z Avalonia G
 1. **UI** — Uživatel v postranním panelu `MainWindow` klikne na **Odeslat záznamy práce** (`SubmitWorklogs`). Tlačítko je navázané na `SubmitWorklogCommand` v `MainViewModel`.
 2. **Root ViewModel** — `MainViewModel.SubmitWorklogAsync` zavolá `IDialogService.ShowSubmitWorklogDialogAsync(SelectedDate, false)`, tedy pro den vybraný v hlavním okně.
 3. **DialogService** — Vytvoří `SubmitWorklogViewModel`, zavolá jeho `InitializeAsync(date, isWeek)` a otevře modální `SubmitWorklogDialog`.
-4. **Dialog ViewModel** — `InitializeAsync` načte náhled přes `WorklogSubmissionOrchestrator.LoadPreviewAsync(date, isWeekly, mode, …)`, který zavolá `IWorklogSubmissionService.PreviewDailyWorklogAsync(date)` (týdenní náhled `PreviewWeeklyWorklogAsync`).
-5. **PluginBasedWorklogSubmissionService.PreviewDailyWorklogAsync**:
-   - Načte záznamy dne přes `IWorkEntryService.GetWorkEntriesByDateAsync(date)`.
+4. **Dialog ViewModel** — `InitializeAsync` načte náhled přes `WorklogSubmissionOrchestrator.LoadPreviewAsync(date, isWeekly, mode, …)`, který zavolá `IWorklogSubmissionService.PreviewAsync(period, mode, ct)`; `SubmissionPeriod` je jeden den (`Day`) nebo týden kolem data (`WeekOf`).
+5. **PluginBasedWorklogSubmissionService.PreviewAsync**:
+   - Načte záznamy období přes `IWorkEntryService.GetWorkEntriesByDateRangeAsync(start, end)`.
    - Ponechá jen dokončené (s `EndTime`), běžící záznam do náhledu nejde.
    - Převede je na `WorklogDto` (`DurationMinutes` zaokrouhleno nahoru, minimálně 1).
-   - Vrátí `WorklogSubmissionDto { SubmissionDate, Worklogs }`.
-6. **Dialog** — Uživatel vidí náhled, vybere plugin (dropdown obsahuje všechny povolené upload pluginy, `GetAvailableProviders`) a **submission mode** (Timed / Aggregated; radio button módu, který `ProviderInfo.SupportedModes` neobsahuje, je disabled přes `CanUseTimedMode` / `CanUseAggregatedMode`) a potvrdí. Volba se persistuje per plugin: `ApplicationSettings.SubmissionModeByProvider` (pluginId → mode) plus `LastSubmissionProviderId` pro plugin, na kterém se dialog otevře; `LastSubmissionMode` zůstává globálním fallbackem pro plugin, který v mapě ještě není. Výběr pluginu přehodí mode na ten jeho (`ResolveModeFor`), nepodporovaný zapamatovaný mode se ignoruje. V **Aggregated** módu orchestrátor před zobrazením preview seskupí DTO podle `(TicketId, Description)` per den a součtem nastaví `DurationMinutes`; `StartTime` skupiny = nejstarší start.
-7. **Orchestrátor** — Na tlačítko **Odeslat** zavolá `SubmitWorklogViewModel` metodu `WorklogSubmissionOrchestrator.SubmitAsync`, která zaškrtnuté položky převede zpět na `WorklogDto` a zavolá `IWorklogSubmissionService.SubmitCustomWorklogsAsync(worklogs, providerId, mode, ct)`. (`SubmitDailyWorklogAsync` / `SubmitWeeklyWorklogAsync` používá jen CLI `send` a drží Timed default. Všechny cesty procházejí `IWorklogValidator`; neplatné záznamy se vrátí jako neúspěšné.)
+   - V **Aggregated** módu je po dnech seskupí podle `(TicketId, Description)` a součtem nastaví `DurationMinutes`; `StartTime` skupiny = nejstarší start.
+   - Vrátí jeden `WorklogSubmissionDto { SubmissionDate, Worklogs }` na každý den období, i prázdný.
+6. **Dialog** — Uživatel vidí náhled, vybere plugin (dropdown obsahuje všechny povolené upload pluginy, `GetAvailableProviders`) a **submission mode** (Timed / Aggregated; radio button módu, který `ProviderInfo.SupportedModes` neobsahuje, je disabled přes `CanUseTimedMode` / `CanUseAggregatedMode`) a potvrdí. Volba se persistuje per plugin: `ApplicationSettings.SubmissionModeByProvider` (pluginId → mode) plus `LastSubmissionProviderId` pro plugin, na kterém se dialog otevře; `LastSubmissionMode` zůstává globálním fallbackem pro plugin, který v mapě ještě není. Výběr pluginu přehodí mode na ten jeho (`ResolveModeFor`), nepodporovaný zapamatovaný mode se ignoruje.
+7. **Orchestrátor** — Na tlačítko **Odeslat** zavolá `SubmitWorklogViewModel` metodu `WorklogSubmissionOrchestrator.SubmitAsync`, která zaškrtnuté položky převede zpět na `WorklogDto` a zavolá `IWorklogSubmissionService.SubmitCustomWorklogsAsync(worklogs, providerId, mode, ct)`. (`SubmitAsync(period, providerId, ct)` používá jen CLI `send`, načítá záznamy stejně jako náhled a posílá je v Timed módu. Všechny cesty procházejí `IWorklogValidator`; neplatné záznamy se vrátí jako neúspěšné.)
 8. **PluginBasedWorklogSubmissionService.SubmitCustomWorklogsAsync**:
    - Validuje, že `mode` je single value (Timed nebo Aggregated) — jinak `Failure`.
    - `ResolvePlugin(providerId)` → vrátí `IWorklogUploadPlugin`.
@@ -398,8 +399,8 @@ Jako konkrétní ilustraci vezmeme odeslání záznamů jednoho dne z Avalonia G
    - Pro každý: přeloží issue key → issue ID (s 1h cache), zavolá Tempo REST API `POST /worklogs`.
    - V **Timed** módu payload obsahuje `startDate + startTime + timeSpentSeconds`; v **Aggregated** módu plugin `startTime` z payloadu zcela vynechá (Tempo ho má jako volitelné pole).
    - Retry logika: až 2 opakování (celkem 3 pokusy, backoff 2 s a 4 s) na 429/503. Stavy, po kterých už worklog může existovat (408/500/502/504), se neopakují.
-   - Vrátí `PluginResult<WorklogSubmissionResult>` s počty a případnými chybami.
-10. **Zpět do služby** — mapuje `PluginResult<WorklogSubmissionResult>` → `Result<SubmissionResult>` (DTO layer).
+   - Vrátí `PluginResult<WorklogSubmissionResult>` s počty a případnými chybami. Chyba nese `WorklogIndex`, pozici záznamu v seznamu, který plugin dostal.
+10. **Zpět do služby** — mapuje `PluginResult<WorklogSubmissionResult>` → `Result<SubmissionResult>` (DTO layer) a přeloží pozice na seznam, který poslal volající, protože plugin neplatné řádky nedostal. „Došlo k selhání?“ říká `SubmissionResult.HasFailures`, protože chyba nemusí patřit započítanému záznamu (GoranG3 nedokáže uzavřít den). Pozici mimo seznam služba zaloguje a chyba zůstane bez řádku.
 11. **Orchestrátor a dialog** — `SubmitAsync` podle `SubmissionResult.Errors` označí chybné položky (`MarkFailedItems`) a vrátí `SubmissionOutcome`. Při úplném úspěchu dialog zůstane otevřený a výsledek ukáže ve stavovém řádku, aby šlo rovnou odeslat další den. Při částečném nebo úplném selhání taky zůstane otevřený, chybné řádky zčervenají a tlačítko **ODESLAT JEN NEÚSPĚŠNÉ** (`RetryFailedCommand` → `RetryFailedAsync`) pošle znovu zaškrtnuté chybné položky.
 
 Celý tok demonstruje:

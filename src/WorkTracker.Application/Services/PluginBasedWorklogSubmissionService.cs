@@ -41,95 +41,48 @@ public sealed class PluginBasedWorklogSubmissionService : IWorklogSubmissionServ
 		_logger = logger;
 	}
 
-	public async Task<Result<SubmissionResult>> SubmitDailyWorklogAsync(DateTime date, CancellationToken cancellationToken)
+	public async Task<IReadOnlyList<WorklogSubmissionDto>> PreviewAsync(SubmissionPeriod period, WorklogSubmissionMode mode, CancellationToken cancellationToken)
 	{
-		var plugin = ResolveOnlyPlugin();
-		if (plugin.IsFailure)
+		var days = await LoadDaysAsync(period, cancellationToken);
+
+		if (mode == WorklogSubmissionMode.Aggregated)
 		{
-			return Result.Failure<SubmissionResult>(plugin);
-		}
-
-		return await SubmitDailyWorklogAsync(date, plugin.Value.Metadata.Id, cancellationToken);
-	}
-
-	public async Task<Result<SubmissionResult>> SubmitDailyWorklogAsync(DateTime date, string providerId, CancellationToken cancellationToken)
-	{
-		var plugin = _pluginManager.GetPlugin<IWorklogUploadPlugin>(providerId);
-		if (plugin == null)
-		{
-			return Result.Failure<SubmissionResult>($"Plugin '{providerId}' not found or not running");
-		}
-
-		_logger.LogInformation("Submitting daily worklog for {Date} using plugin {Plugin}", date.ToShortDateString(), plugin.Metadata.Name);
-
-		var entries = await _workEntryService.GetWorkEntriesByDateAsync(date, cancellationToken);
-
-		return await SubmitWorklogsInternalAsync(plugin, entries, date, cancellationToken);
-	}
-
-	public async Task<WorklogSubmissionDto> PreviewDailyWorklogAsync(DateTime date, CancellationToken cancellationToken)
-	{
-		var entries = await _workEntryService.GetWorkEntriesByDateAsync(date, cancellationToken);
-		var completedEntries = entries.Where(e => e.EndTime.HasValue).ToList();
-
-		var dto = new WorklogSubmissionDto
-		{
-			SubmissionDate = date,
-			Worklogs = completedEntries.Select(ToWorklogDto).ToList()
-		};
-
-		return dto;
-	}
-
-	public async Task<Result<SubmissionResult>> SubmitWeeklyWorklogAsync(DateTime date, CancellationToken cancellationToken)
-	{
-		var plugin = ResolveOnlyPlugin();
-		if (plugin.IsFailure)
-		{
-			return Result.Failure<SubmissionResult>(plugin);
-		}
-
-		return await SubmitWeeklyWorklogAsync(date, plugin.Value.Metadata.Id, cancellationToken);
-	}
-
-	public async Task<Result<SubmissionResult>> SubmitWeeklyWorklogAsync(DateTime date, string providerId, CancellationToken cancellationToken)
-	{
-		var plugin = _pluginManager.GetPlugin<IWorklogUploadPlugin>(providerId);
-		if (plugin == null)
-		{
-			return Result.Failure<SubmissionResult>($"Plugin '{providerId}' not found or not running");
-		}
-
-		_logger.LogInformation("Submitting weekly worklog for week of {Date} using plugin {Plugin}", date.ToShortDateString(), plugin.Metadata.Name);
-
-		var (weekStart, weekEnd) = _dateRangeService.GetWeekRange(date);
-		var entries = await _workEntryService.GetWorkEntriesByDateRangeAsync(weekStart, weekEnd, cancellationToken);
-
-		return await SubmitWorklogsInternalAsync(plugin, entries, date, cancellationToken);
-	}
-
-	public async Task<Dictionary<DateTime, WorklogSubmissionDto>> PreviewWeeklyWorklogAsync(DateTime date, CancellationToken cancellationToken)
-	{
-		var (weekStart, weekEnd) = _dateRangeService.GetWeekRange(date);
-		var entries = await _workEntryService.GetWorkEntriesByDateRangeAsync(weekStart, weekEnd, cancellationToken);
-		var completedByDate = entries
-			.Where(e => e.EndTime.HasValue)
-			.GroupBy(e => e.StartTime.Date)
-			.ToDictionary(g => g.Key, g => g.ToList());
-
-		var preview = new Dictionary<DateTime, WorklogSubmissionDto>();
-
-		for (var day = weekStart; day <= weekEnd; day = day.AddDays(1))
-		{
-			completedByDate.TryGetValue(day, out var dayEntries);
-			preview[day] = new WorklogSubmissionDto
+			foreach (var day in days)
 			{
-				SubmissionDate = day,
-				Worklogs = (dayEntries?.Select(ToWorklogDto) ?? []).ToList()
-			};
+				day.Worklogs = Aggregate(day.Worklogs);
+			}
 		}
 
-		return preview;
+		return days;
+	}
+
+	public async Task<Result<SubmissionResult>> SubmitAsync(SubmissionPeriod period, string? providerId, CancellationToken cancellationToken)
+	{
+		var plugin = ResolvePlugin(providerId);
+		if (plugin.IsFailure)
+		{
+			return Result.Failure<SubmissionResult>(plugin);
+		}
+
+		_logger.LogInformation("Submitting worklogs for {Period} using plugin {Plugin}", period, plugin.Value.Metadata.Name);
+
+		var days = await LoadDaysAsync(period, cancellationToken);
+		var worklogs = days.SelectMany(day => day.Worklogs).ToList();
+
+		if (worklogs.Count == 0)
+		{
+			_logger.LogWarning("No completed entries found for {Period}", period);
+			return Result.Success(new SubmissionResult());
+		}
+
+		var result = await ValidateAndUploadAsync(plugin.Value, worklogs, WorklogSubmissionMode.Timed, cancellationToken);
+
+		if (result.IsSuccess)
+		{
+			_logger.LogInformation("Submitted {Successful}/{Total} worklogs successfully", result.Value!.SuccessfulEntries, result.Value!.TotalEntries);
+		}
+
+		return result;
 	}
 
 	public IEnumerable<ProviderInfo> GetAvailableProviders()
@@ -153,23 +106,93 @@ public sealed class PluginBasedWorklogSubmissionService : IWorklogSubmissionServ
 			return Result.Failure<SubmissionResult>($"Invalid submission mode '{mode}' — must be exactly Timed or Aggregated");
 		}
 
-		var plugin = _pluginManager.GetPlugin<IWorklogUploadPlugin>(providerId);
-		if (plugin == null)
+		var plugin = ResolvePlugin(providerId);
+		if (plugin.IsFailure)
 		{
-			return Result.Failure<SubmissionResult>($"Plugin '{providerId}' not found or not running");
+			return Result.Failure<SubmissionResult>(plugin);
 		}
 
-		if (!plugin.SupportedModes.HasFlag(mode))
+		if (!plugin.Value.SupportedModes.HasFlag(mode))
 		{
-			return Result.Failure<SubmissionResult>($"Plugin '{plugin.Metadata.Name}' does not support submission mode '{mode}'");
+			return Result.Failure<SubmissionResult>($"Plugin '{plugin.Value.Metadata.Name}' does not support submission mode '{mode}'");
 		}
 
 		var worklogList = worklogs.ToList();
 
 		_logger.LogInformation("Submitting {Count} custom worklogs using plugin {Plugin} (mode={Mode})",
-			worklogList.Count, plugin.Metadata.Name, mode);
+			worklogList.Count, plugin.Value.Metadata.Name, mode);
 
-		return await ValidateAndUploadAsync(plugin, worklogList, mode, cancellationToken);
+		return await ValidateAndUploadAsync(plugin.Value, worklogList, mode, cancellationToken);
+	}
+
+	/// <summary>
+	/// The completed entries of the period as worklogs, one item per day. A preview and a submission of
+	/// the same period both start here, so what gets sent is what was shown.
+	/// </summary>
+	private async Task<List<WorklogSubmissionDto>> LoadDaysAsync(SubmissionPeriod period, CancellationToken cancellationToken)
+	{
+		var (start, end) = period.IsWeek ? _dateRangeService.GetWeekRange(period.Date) : (period.Date, period.Date);
+		var entries = await _workEntryService.GetWorkEntriesByDateRangeAsync(start, end, cancellationToken);
+		var completedByDate = entries
+			.Where(e => e.EndTime.HasValue)
+			.GroupBy(e => e.StartTime.Date)
+			.ToDictionary(g => g.Key, g => g.Select(ToWorklogDto).ToList());
+
+		var days = new List<WorklogSubmissionDto>();
+
+		for (var day = start; day <= end; day = day.AddDays(1))
+		{
+			days.Add(new WorklogSubmissionDto
+			{
+				SubmissionDate = day,
+				Worklogs = completedByDate.GetValueOrDefault(day) ?? []
+			});
+		}
+
+		return days;
+	}
+
+	/// <summary>
+	/// One worklog per ticket and description. The earliest start of a group gives the plugin a valid
+	/// time to submit; it stands for the group, so the row has no real interval.
+	/// </summary>
+	private static List<WorklogDto> Aggregate(IEnumerable<WorklogDto> worklogs)
+	{
+		return worklogs
+			.GroupBy(w => (Ticket: w.TicketId ?? string.Empty, Description: w.Description ?? string.Empty))
+			.Select(group =>
+			{
+				var earliestStart = group.Min(w => w.StartTime);
+				return new WorklogDto
+				{
+					TicketId = group.Key.Ticket.Length == 0 ? null : group.Key.Ticket,
+					Description = group.Key.Description,
+					StartTime = earliestStart,
+					EndTime = earliestStart,
+					DurationMinutes = group.Sum(w => w.DurationMinutes)
+				};
+			})
+			.OrderBy(w => w.StartTime)
+			.ToList();
+	}
+
+	private Result<IWorklogUploadPlugin> ResolvePlugin(string? providerId)
+	{
+		if (providerId == null)
+		{
+			var only = ResolveOnlyPlugin();
+			if (only.IsFailure)
+			{
+				return Result.Failure<IWorklogUploadPlugin>(only);
+			}
+
+			providerId = only.Value.Metadata.Id;
+		}
+
+		var plugin = _pluginManager.GetPlugin<IWorklogUploadPlugin>(providerId);
+		return plugin != null
+			? Result.Success(plugin)
+			: Result.Failure<IWorklogUploadPlugin>($"Plugin '{providerId}' not found or not running");
 	}
 
 	/// <summary>
@@ -188,36 +211,6 @@ public sealed class PluginBasedWorklogSubmissionService : IWorklogSubmissionServ
 		};
 	}
 
-	private async Task<Result<SubmissionResult>> SubmitWorklogsInternalAsync(
-		IWorklogUploadPlugin plugin,
-		IEnumerable<WorkEntry> entries,
-		DateTime date,
-		CancellationToken cancellationToken)
-	{
-		var completedEntries = entries.Where(e => e.EndTime.HasValue).ToList();
-
-		if (completedEntries.Count == 0)
-		{
-			_logger.LogWarning("No completed entries found for the specified period (reference date: {Date})", date.ToShortDateString());
-			return Result.Success(new SubmissionResult
-			{
-				TotalEntries = 0,
-				SuccessfulEntries = 0,
-				FailedEntries = 0
-			});
-		}
-
-		var worklogs = completedEntries.Select(ToWorklogDto).ToList();
-		var result = await ValidateAndUploadAsync(plugin, worklogs, WorklogSubmissionMode.Timed, cancellationToken);
-
-		if (result.IsSuccess)
-		{
-			_logger.LogInformation("Submitted {Successful}/{Total} worklogs successfully", result.Value!.SuccessfulEntries, result.Value!.TotalEntries);
-		}
-
-		return result;
-	}
-
 	/// <summary>
 	/// The one way worklogs reach a plugin. Invalid ones stay out of the upload and come back as failed
 	/// entries, so the caller can show the reason instead of them silently going missing.
@@ -228,7 +221,7 @@ public sealed class PluginBasedWorklogSubmissionService : IWorklogSubmissionServ
 		WorklogSubmissionMode mode,
 		CancellationToken cancellationToken)
 	{
-		var valid = new List<(PluginWorklogEntry Worklog, int Index)>();
+		var valid = new List<int>();
 		var rejected = new List<SubmissionError>();
 
 		for (var index = 0; index < worklogs.Count; index++)
@@ -237,7 +230,7 @@ public sealed class PluginBasedWorklogSubmissionService : IWorklogSubmissionServ
 			var validation = _validator.Validate(worklog);
 			if (validation.IsValid)
 			{
-				valid.Add((worklog.ToPluginWorklog(), index));
+				valid.Add(index);
 			}
 			else
 			{
@@ -245,9 +238,7 @@ public sealed class PluginBasedWorklogSubmissionService : IWorklogSubmissionServ
 				_logger.LogWarning("Not submitting invalid worklog: {Errors}", reason);
 				rejected.Add(new SubmissionError
 				{
-					TicketId = worklog.TicketId ?? string.Empty,
 					Date = worklog.StartTime.Date,
-					Description = worklog.Description,
 					ErrorMessage = reason,
 					WorklogIndex = index
 				});
@@ -264,7 +255,7 @@ public sealed class PluginBasedWorklogSubmissionService : IWorklogSubmissionServ
 			});
 		}
 
-		var result = await UploadAndMapResultAsync(plugin, valid, mode, cancellationToken);
+		var result = await UploadAndMapResultAsync(plugin, worklogs, valid, mode, cancellationToken);
 		if (result.IsFailure || rejected.Count == 0)
 		{
 			return result;
@@ -282,11 +273,12 @@ public sealed class PluginBasedWorklogSubmissionService : IWorklogSubmissionServ
 
 	private async Task<Result<SubmissionResult>> UploadAndMapResultAsync(
 		IWorklogUploadPlugin plugin,
-		List<(PluginWorklogEntry Worklog, int Index)> worklogs,
+		List<WorklogDto> worklogs,
+		List<int> valid,
 		WorklogSubmissionMode mode,
 		CancellationToken cancellationToken)
 	{
-		var result = await plugin.UploadWorklogsAsync(worklogs.Select(w => w.Worklog).ToList(), mode, cancellationToken);
+		var result = await plugin.UploadWorklogsAsync(valid.Select(index => worklogs[index].ToPluginWorklog()).ToList(), mode, cancellationToken);
 
 		if (result.IsFailure)
 		{
@@ -299,25 +291,28 @@ public sealed class PluginBasedWorklogSubmissionService : IWorklogSubmissionServ
 			TotalEntries = pluginResult.TotalEntries,
 			SuccessfulEntries = pluginResult.SuccessfulEntries,
 			FailedEntries = pluginResult.FailedEntries,
-			Errors = MapPluginErrors(pluginResult.Errors, worklogs)
+			Errors = pluginResult.Errors.Select(e => MapPluginError(e, plugin, worklogs, valid)).ToList()
 		});
 	}
 
 	/// <summary>
-	/// Plugins report a failure with the entry they were handed, which is how it finds its way back to
-	/// the worklog. Two entries can look exactly alike, so their values couldn't tell them apart.
+	/// A plugin counts positions in what it was handed, which leaves out the rejected worklogs. The caller
+	/// knows the list it submitted, so the position is translated back to that one.
 	/// </summary>
-	private static List<SubmissionError> MapPluginErrors(IReadOnlyList<WorklogSubmissionError> pluginErrors, List<(PluginWorklogEntry Worklog, int Index)> worklogs)
+	private SubmissionError MapPluginError(WorklogSubmissionError error, IWorklogUploadPlugin plugin, List<WorklogDto> worklogs, List<int> valid)
 	{
-		var positions = worklogs.ToDictionary(w => w.Worklog, w => w.Index);
-
-		return pluginErrors.Select(e => new SubmissionError
+		if (error.WorklogIndex < 0 || error.WorklogIndex >= valid.Count)
 		{
-			TicketId = e.Worklog.TicketId ?? string.Empty,
-			Date = e.Worklog.StartTime.Date,
-			Description = e.Worklog.Description,
-			ErrorMessage = e.ErrorMessage,
-			WorklogIndex = positions.TryGetValue(e.Worklog, out var index) ? index : null
-		}).ToList();
+			_logger.LogWarning("Plugin {Plugin} reported a failure at position {Position} of {Count} worklogs", plugin.Metadata.Name, error.WorklogIndex, valid.Count);
+			return new SubmissionError { ErrorMessage = error.ErrorMessage };
+		}
+
+		var index = valid[error.WorklogIndex];
+		return new SubmissionError
+		{
+			Date = worklogs[index].StartTime.Date,
+			ErrorMessage = error.ErrorMessage,
+			WorklogIndex = index
+		};
 	}
 }

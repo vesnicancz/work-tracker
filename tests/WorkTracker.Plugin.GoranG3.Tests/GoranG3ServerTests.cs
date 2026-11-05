@@ -158,6 +158,7 @@ public sealed class GoranG3ServerTests : IAsyncDisposable
 		var first = await SendAsync(Entry(Monday, "A-1"), Entry(Monday, "A-BAD", hour: 10), Entry(Tuesday, "B-1"));
 
 		first.Value!.FailedEntries.Should().Be(1);
+		first.Value.Errors.Should().ContainSingle().Which.WorklogIndex.Should().Be(1);
 		_server.CallsOf(Submit).Select(c => c.Arguments["date"]!.GetValue<string>()).Should().Equal("2026-11-03");
 
 		var retried = await SendAsync(Entry(Monday, "A-2", hour: 10));

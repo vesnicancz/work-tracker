@@ -72,7 +72,7 @@ Při volání `UploadWorklogAsync(entry)`:
 Plugin inzeruje `SupportedModes = Timed | Aggregated`, takže ho v submission dialogu uvidíš v obou módech.
 
 - **Timed** — použitý payload odpovídá příkladu výše (`startDate` + `startTime` + `timeSpentSeconds`).
-- **Aggregated** — pole `startTime` se z payloadu **vynechá** (Tempo ho má v API v4 jako volitelné). Orchestrátor předtím sečte čas přes (Ticket + Popis) per den a Tempo tak dostává jeden worklog za kombinaci. `startDate` i `timeSpentSeconds` zůstávají povinné.
+- **Aggregated** — pole `startTime` se z payloadu **vynechá** (Tempo ho má v API v4 jako volitelné). Náhled předtím sečte čas přes (Ticket + Popis) per den a Tempo tak dostává jeden worklog za kombinaci. `startDate` i `timeSpentSeconds` zůstávají povinné.
 
   ```json
   {

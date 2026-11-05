@@ -28,15 +28,15 @@ public class TimesheetDayBatchTests
 	private Task<PluginResult<WorklogSubmissionResult>> UploadDay(IReadOnlyList<PluginWorklogEntry> day)
 	{
 		var errors = new List<WorklogSubmissionError>();
-		foreach (var worklog in day)
+		for (var index = 0; index < day.Count; index++)
 		{
-			if (_failingTickets.Contains(worklog.TicketId!))
+			if (_failingTickets.Contains(day[index].TicketId!))
 			{
-				errors.Add(new WorklogSubmissionError { Worklog = worklog, ErrorMessage = "rejected" });
+				errors.Add(new WorklogSubmissionError { WorklogIndex = index, ErrorMessage = "rejected" });
 			}
 			else
 			{
-				_uploaded.Add(worklog);
+				_uploaded.Add(day[index]);
 			}
 		}
 
@@ -83,6 +83,31 @@ public class TimesheetDayBatchTests
 	}
 
 	[Fact]
+	public async Task FailedEntry_IsReportedAtItsPositionInWhatWasHandedOver()
+	{
+		// Days run in date order, so Tuesday's entry handed over first is uploaded second
+		_failingTickets.Add("B-1");
+		_failingTickets.Add("A-2");
+
+		var result = await RunAsync(Entry(Tuesday, "B-1"), Entry(Monday, "A-1"), Entry(Monday, "A-2", hour: 10));
+
+		result.Value!.Errors.Select(e => e.WorklogIndex).Should().BeEquivalentTo([2, 0]);
+	}
+
+	[Fact]
+	public async Task FailedEntry_NextToOneAlreadyUploaded_KeepsItsOwnPosition()
+	{
+		_closeFails = true;
+		await RunAsync(Entry(Monday, "A-1"));
+		_closeFails = false;
+		_failingTickets.Add("A-2");
+
+		var result = await RunAsync(Entry(Monday, "A-1"), Entry(Monday, "A-2", hour: 10));
+
+		result.Value!.Errors.Should().ContainSingle().Which.WorklogIndex.Should().Be(1);
+	}
+
+	[Fact]
 	public async Task FixedEntry_OnRetry_ClosesItsDayAndLeavesTheOtherDaysAlone()
 	{
 		_failingTickets.Add("A-2");
@@ -120,7 +145,8 @@ public class TimesheetDayBatchTests
 		result.Value!.FailedEntries.Should().Be(0);
 		result.Value.SuccessfulEntries.Should().Be(1);
 		result.Value.Errors.Should().ContainSingle()
-			.Which.ErrorMessage.Should().Contain("Timesheet submit failed for 2026-11-02");
+			.Which.Should().Match<WorklogSubmissionError>(e =>
+				e.ErrorMessage.Contains("Timesheet submit failed for 2026-11-02") && e.WorklogIndex == 0);
 	}
 
 	[Fact]

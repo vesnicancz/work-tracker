@@ -209,11 +209,11 @@ public sealed class TempoWorklogPlugin(IHttpClientFactory httpClientFactory, ILo
 		var failed = 0;
 		var errors = new List<WorklogSubmissionError>();
 
-		foreach (var worklog in worklogList)
+		for (var index = 0; index < worklogList.Count; index++)
 		{
 			cancellationToken.ThrowIfCancellationRequested();
 
-			var result = await PostWorklogAsync(worklog, includeStartTime, cancellationToken);
+			var result = await PostWorklogAsync(worklogList[index], includeStartTime, cancellationToken);
 			if (result.IsSuccess)
 			{
 				successful++;
@@ -223,7 +223,7 @@ public sealed class TempoWorklogPlugin(IHttpClientFactory httpClientFactory, ILo
 				failed++;
 				errors.Add(new WorklogSubmissionError
 				{
-					Worklog = worklog,
+					WorklogIndex = index,
 					ErrorMessage = result.Error ?? "Unknown error"
 				});
 			}

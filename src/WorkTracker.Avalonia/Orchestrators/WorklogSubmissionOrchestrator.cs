@@ -40,89 +40,43 @@ public class WorklogSubmissionOrchestrator : IWorklogSubmissionOrchestrator
 
 	public async Task<PreviewLoadResult> LoadPreviewAsync(DateTime date, bool isWeekly, WorklogSubmissionMode mode, string noTicketLabel, CancellationToken cancellationToken)
 	{
-		if (isWeekly)
-		{
-			var weeklyPreview = await _submissionService.PreviewWeeklyWorklogAsync(date, cancellationToken);
-			var items = new List<WorklogPreviewItem>();
+		var period = isWeekly ? SubmissionPeriod.WeekOf(date) : SubmissionPeriod.Day(date);
+		var days = await _submissionService.PreviewAsync(period, mode, cancellationToken);
+		var items = new List<WorklogPreviewItem>();
+		var dataItems = new List<WorklogPreviewItem>();
 
-			foreach (var dayPreview in weeklyPreview.OrderBy(kvp => kvp.Key))
+		foreach (var day in days)
+		{
+			if (isWeekly)
 			{
 				items.Add(new WorklogPreviewItem
 				{
-					Date = dayPreview.Key,
+					Date = day.SubmissionDate,
 					IsDateHeader = true,
-					DateDisplay = dayPreview.Key.ToString("dddd, MMMM dd, yyyy")
+					DateDisplay = day.SubmissionDate.ToString("dddd, MMMM dd, yyyy")
 				});
-
-				foreach (var item in BuildDayItems(dayPreview.Key, dayPreview.Value.Worklogs, mode, noTicketLabel))
-				{
-					items.Add(item);
-				}
 			}
 
-			var totalSeconds = weeklyPreview.Sum(kvp => kvp.Value.Worklogs.Sum(w => w.DurationMinutes * 60));
-			var dataItemCount = items.Count(i => !i.IsDateHeader);
-			return new PreviewLoadResult(items, totalSeconds, dataItemCount);
-		}
-		else
-		{
-			var dailyPreview = await _submissionService.PreviewDailyWorklogAsync(date, cancellationToken);
-			var items = BuildDayItems(date, dailyPreview.Worklogs, mode, noTicketLabel).ToList();
-			var totalSeconds = dailyPreview.Worklogs.Sum(w => w.DurationMinutes * 60);
-			return new PreviewLoadResult(items, totalSeconds, items.Count);
-		}
-	}
-
-	private static IEnumerable<WorklogPreviewItem> BuildDayItems(
-		DateTime date,
-		IEnumerable<WorklogDto> worklogs,
-		WorklogSubmissionMode mode,
-		string noTicketLabel)
-	{
-		if (mode == WorklogSubmissionMode.Aggregated)
-		{
-			// Group by (TicketId, Description) per day. Earliest StartTime of group becomes the
-			// representative timestamp so the plugin has a valid start-time value to submit.
-			var groups = worklogs
-				.GroupBy(w => (Ticket: w.TicketId ?? string.Empty, Description: w.Description ?? string.Empty))
-				.OrderBy(g => g.Min(w => w.StartTime));
-
-			foreach (var group in groups)
+			foreach (var worklog in day.Worklogs)
 			{
-				var earliestStart = group.Min(w => w.StartTime);
-				var totalMinutes = group.Sum(w => w.DurationMinutes);
 				var item = new WorklogPreviewItem
 				{
-					Date = date,
-					IsAggregated = true,
-					TicketId = string.IsNullOrEmpty(group.Key.Ticket) ? null : group.Key.Ticket,
+					Date = day.SubmissionDate,
+					IsAggregated = mode == WorklogSubmissionMode.Aggregated,
+					TicketId = worklog.TicketId,
 					NoTicketLabel = noTicketLabel,
-					Description = group.Key.Description,
-					StartTime = earliestStart,
-					EndTime = earliestStart,
-					Duration = totalMinutes * 60
+					Description = worklog.Description ?? string.Empty,
+					Duration = worklog.DurationMinutes * 60,
+					StartTime = worklog.StartTime,
+					EndTime = worklog.EndTime
 				};
 				item.SaveOriginalValues();
-				yield return item;
+				items.Add(item);
+				dataItems.Add(item);
 			}
-			yield break;
 		}
 
-		foreach (var entry in worklogs)
-		{
-			var item = new WorklogPreviewItem
-			{
-				Date = date,
-				TicketId = entry.TicketId,
-				NoTicketLabel = noTicketLabel,
-				Description = entry.Description ?? string.Empty,
-				Duration = entry.DurationMinutes * 60,
-				StartTime = entry.StartTime,
-				EndTime = entry.EndTime
-			};
-			item.SaveOriginalValues();
-			yield return item;
-		}
+		return new PreviewLoadResult(items, dataItems.Sum(i => i.Duration), dataItems.Count);
 	}
 
 	public async Task<SubmissionOutcome> SubmitAsync(
@@ -138,7 +92,7 @@ public class WorklogSubmissionOrchestrator : IWorklogSubmissionOrchestrator
 			var submission = result.Value;
 			var hasFailedItems = MarkFailedItems(items, submittedItems, submission);
 			var statusMessage = FormatSubmissionStatus(submission, providerName);
-			return new SubmissionOutcome(submission.FailedEntries == 0 && submission.Errors.Count == 0, hasFailedItems, statusMessage);
+			return new SubmissionOutcome(!submission.HasFailures, hasFailedItems, statusMessage);
 		}
 
 		var hasExistingFailedItems = items.Any(i => !i.IsDateHeader && i.HasError);
@@ -165,7 +119,7 @@ public class WorklogSubmissionOrchestrator : IWorklogSubmissionOrchestrator
 			MarkFailedItems(attemptedItems, attemptedItems, submission);
 			var hasFailedItems = items.Any(i => !i.IsDateHeader && i.HasError);
 			var statusMessage = FormatSubmissionStatus(submission, providerName);
-			return new SubmissionOutcome(!hasFailedItems, hasFailedItems, statusMessage);
+			return new SubmissionOutcome(!submission.HasFailures && !hasFailedItems, hasFailedItems, statusMessage);
 		}
 
 		return new SubmissionOutcome(false, true,
@@ -196,19 +150,12 @@ public class WorklogSubmissionOrchestrator : IWorklogSubmissionOrchestrator
 
 		foreach (var error in submission.Errors)
 		{
-			// A plugin that reports a worklog it wasn't handed has no position. The failure still has
-			// to show somewhere, so it goes on the first row of that day and ticket.
-			var match = error.WorklogIndex is { } index
-				? submittedItems[index]
-				: submittedItems.FirstOrDefault(i =>
-					!i.HasError &&
-					i.Date.Date == error.Date.Date &&
-					(string.IsNullOrEmpty(error.TicketId) || i.TicketId == error.TicketId));
-
-			if (match != null)
+			// Without a position the plugin broke its contract. Guessing a row could mark one that went
+			// through; the failure still counts in the status message and the service logged it.
+			if (error.WorklogIndex is { } index)
 			{
-				match.HasError = true;
-				match.ErrorMessage = error.ErrorMessage;
+				submittedItems[index].HasError = true;
+				submittedItems[index].ErrorMessage = error.ErrorMessage;
 			}
 		}
 
@@ -245,10 +192,7 @@ public class WorklogSubmissionOrchestrator : IWorklogSubmissionOrchestrator
 
 	internal string FormatSubmissionStatus(SubmissionResult submission, string providerName)
 	{
-		// A plugin can report a failure no entry is counted for, like GoranG3 failing to submit a day
-		var failures = Math.Max(submission.FailedEntries, submission.Errors.Count);
-
-		if (failures == 0)
+		if (!submission.HasFailures)
 		{
 			return _localization.GetFormattedString("SubmissionSuccess", submission.SuccessfulEntries, providerName);
 		}
@@ -258,7 +202,7 @@ public class WorklogSubmissionOrchestrator : IWorklogSubmissionOrchestrator
 			return _localization.GetFormattedString("SubmissionAllFailed", submission.TotalEntries, providerName);
 		}
 
-		return _localization.GetFormattedString("SubmissionPartial", submission.SuccessfulEntries, providerName, failures);
+		return _localization.GetFormattedString("SubmissionPartial", submission.SuccessfulEntries, providerName, submission.FailureCount);
 	}
 
 	private static List<WorklogDto> ConvertToWorklogs(IEnumerable<WorklogPreviewItem> items)

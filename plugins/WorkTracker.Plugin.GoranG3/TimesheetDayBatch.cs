@@ -24,12 +24,14 @@ internal sealed class TimesheetDayBatch
 		var totalFailed = 0;
 		var allErrors = new List<WorklogSubmissionError>();
 
-		foreach (var day in worklogs.GroupBy(w => w.StartTime.Date).OrderBy(g => g.Key))
+		var positioned = worklogs.Select((worklog, index) => (Worklog: worklog, Index: index));
+
+		foreach (var day in positioned.GroupBy(w => w.Worklog.StartTime.Date).OrderBy(g => g.Key))
 		{
-			var toUpload = day.Where(w => !_uploadedToOpenDays.Contains(EntryKey.Of(w))).ToList();
+			var toUpload = day.Where(w => !_uploadedToOpenDays.Contains(EntryKey.Of(w.Worklog))).ToList();
 			var alreadyUploaded = day.Count() - toUpload.Count;
 
-			var dayResult = await uploadDay(toUpload);
+			var dayResult = await uploadDay(toUpload.Select(w => w.Worklog).ToList());
 			if (dayResult.IsFailure)
 			{
 				return dayResult;
@@ -38,10 +40,16 @@ internal sealed class TimesheetDayBatch
 			var upload = dayResult.Value!;
 			totalSuccessful += upload.SuccessfulEntries + alreadyUploaded;
 			totalFailed += upload.FailedEntries;
-			allErrors.AddRange(upload.Errors);
 
-			var failed = upload.Errors.Select(e => e.Worklog).ToHashSet();
-			_uploadedToOpenDays.UnionWith(toUpload.Where(w => !failed.Contains(w)).Select(EntryKey.Of));
+			// The day's upload counts positions in that day, the caller in everything it handed over
+			allErrors.AddRange(upload.Errors.Select(e => new WorklogSubmissionError
+			{
+				WorklogIndex = toUpload[e.WorklogIndex].Index,
+				ErrorMessage = e.ErrorMessage
+			}));
+
+			var failed = upload.Errors.Select(e => e.WorklogIndex).ToHashSet();
+			_uploadedToOpenDays.UnionWith(toUpload.Where((_, position) => !failed.Contains(position)).Select(w => EntryKey.Of(w.Worklog)));
 
 			// Closing is final, so an incomplete day waits until a retry has uploaded the rest of it
 			if (upload.FailedEntries > 0)
@@ -54,7 +62,7 @@ internal sealed class TimesheetDayBatch
 			{
 				allErrors.Add(new WorklogSubmissionError
 				{
-					Worklog = day.First(),
+					WorklogIndex = day.First().Index,
 					ErrorMessage = $"Timesheet submit failed for {day.Key:yyyy-MM-dd}: {closeResult.Error}"
 				});
 				continue;
