@@ -31,7 +31,7 @@ public class SettingsWindowPluginFieldsSmokeTests
 			new PluginConfigurationField { Key = "Url", Label = "Url", Type = PluginConfigurationFieldType.Url });
 
 		var orchestrator = new Mock<ISettingsOrchestrator>();
-		orchestrator.Setup(o => o.LoadPlugins()).Returns([new PluginViewModel(plugin.Object)]);
+		orchestrator.Setup(o => o.LoadPlugins()).Returns([new PluginSettingsEntry(plugin.Object, false, new Dictionary<string, string>())]);
 
 		var settings = new Mock<ISettingsService>();
 		settings.SetupGet(s => s.Settings).Returns(new ApplicationSettings());

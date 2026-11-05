@@ -8,7 +8,6 @@ using WorkTracker.Avalonia.Models;
 using WorkTracker.Avalonia.Orchestrators;
 using WorkTracker.Avalonia.Services;
 using WorkTracker.Tests.Common.Helpers;
-using WorkTracker.Avalonia.ViewModels;
 
 namespace WorkTracker.Avalonia.Tests.Orchestrators;
 
@@ -62,6 +61,11 @@ public class SettingsOrchestratorTests
 			new Mock<ILogger<SettingsOrchestrator>>().Object);
 	}
 
+	private static PluginSettingsEntry Entry(IPluginDescriptor plugin, bool isEnabled = false, params (string Key, string Value)[] configuration)
+	{
+		return new PluginSettingsEntry(plugin, isEnabled, configuration.ToDictionary(c => c.Key, c => c.Value));
+	}
+
 	#region LoadPlugins
 
 	[Fact]
@@ -75,7 +79,7 @@ public class SettingsOrchestratorTests
 	}
 
 	[Fact]
-	public void LoadPlugins_WithPlugin_ReturnsPluginViewModels()
+	public void LoadPlugins_WithPlugin_ReturnsIt()
 	{
 		var plugin = MockPluginFactory.CreatePlugin("test-plugin", "Test Plugin");
 		_mockPluginManager.Setup(p => p.LoadedPlugins)
@@ -84,7 +88,7 @@ public class SettingsOrchestratorTests
 		var result = _orchestrator.LoadPlugins();
 
 		result.Should().HaveCount(1);
-		result[0].Name.Should().Be("Test Plugin");
+		result[0].Plugin.Metadata.Name.Should().Be("Test Plugin");
 	}
 
 	[Fact]
@@ -153,9 +157,7 @@ public class SettingsOrchestratorTests
 	[Fact]
 	public async Task SaveSettingsAsync_SavesAndAppliesAllSettings()
 	{
-		var pluginVm = new PluginViewModel(MockPluginFactory.CreatePlugin("tempo", "Tempo").Object);
-		pluginVm.IsEnabled = true;
-		pluginVm.Configuration["key"] = "value";
+		var entry = Entry(MockPluginFactory.CreatePlugin("tempo", "Tempo").Object, isEnabled: true, ("key", "value"));
 
 		var request = new SettingsSaveRequest
 		{
@@ -164,7 +166,7 @@ public class SettingsOrchestratorTests
 			StartMinimized = false,
 			Theme = "Dark",
 			FavoriteWorkItems = new List<FavoriteWorkItem>(),
-			Plugins = new List<PluginViewModel> { pluginVm }
+			Plugins = [entry]
 		};
 
 		await _orchestrator.SaveSettingsAsync(request, TestContext.Current.CancellationToken);
@@ -187,7 +189,7 @@ public class SettingsOrchestratorTests
 		{
 			CloseWindowBehavior = CloseWindowBehavior.MinimizeToTray,
 			FavoriteWorkItems = new List<FavoriteWorkItem>(),
-			Plugins = new List<PluginViewModel>()
+			Plugins = []
 		}, TestContext.Current.CancellationToken);
 
 		_mockSuggestionCache.Verify(c => c.Invalidate(), Times.Once);
@@ -204,7 +206,7 @@ public class SettingsOrchestratorTests
 		{
 			CloseWindowBehavior = CloseWindowBehavior.MinimizeToTray,
 			FavoriteWorkItems = new List<FavoriteWorkItem>(),
-			Plugins = new List<PluginViewModel>()
+			Plugins = []
 		}, TestContext.Current.CancellationToken);
 
 		_mockNotificationService.Verify(n => n.ShowError(It.Is<string>(m => m.Contains("PluginInitializationFailed") && m.Contains("Tempo"))), Times.Once);
@@ -239,7 +241,7 @@ public class SettingsOrchestratorTests
 		{
 			Theme = null,
 			FavoriteWorkItems = new List<FavoriteWorkItem>(),
-			Plugins = new List<PluginViewModel>()
+			Plugins = []
 		};
 
 		await _orchestrator.SaveSettingsAsync(request, TestContext.Current.CancellationToken);
@@ -258,7 +260,7 @@ public class SettingsOrchestratorTests
 			LightTheme = "Cobalt",
 			DarkTheme = "Eclipse",
 			FavoriteWorkItems = new List<FavoriteWorkItem>(),
-			Plugins = new List<PluginViewModel>()
+			Plugins = []
 		};
 
 		await _orchestrator.SaveSettingsAsync(request, TestContext.Current.CancellationToken);
@@ -284,7 +286,7 @@ public class SettingsOrchestratorTests
 			LightTheme = null,
 			DarkTheme = null,
 			FavoriteWorkItems = new List<FavoriteWorkItem>(),
-			Plugins = new List<PluginViewModel>()
+			Plugins = []
 		};
 
 		await _orchestrator.SaveSettingsAsync(request, TestContext.Current.CancellationToken);
@@ -301,7 +303,7 @@ public class SettingsOrchestratorTests
 		{
 			Language = "cs",
 			FavoriteWorkItems = new List<FavoriteWorkItem>(),
-			Plugins = new List<PluginViewModel>()
+			Plugins = []
 		};
 
 		await _orchestrator.SaveSettingsAsync(request, TestContext.Current.CancellationToken);
@@ -323,7 +325,7 @@ public class SettingsOrchestratorTests
 		{
 			Language = null,
 			FavoriteWorkItems = new List<FavoriteWorkItem>(),
-			Plugins = new List<PluginViewModel>()
+			Plugins = []
 		};
 
 		await _orchestrator.SaveSettingsAsync(request, TestContext.Current.CancellationToken);
@@ -339,7 +341,7 @@ public class SettingsOrchestratorTests
 		{
 			Language = "klingon",
 			FavoriteWorkItems = new List<FavoriteWorkItem>(),
-			Plugins = new List<PluginViewModel>()
+			Plugins = []
 		};
 
 		await _orchestrator.SaveSettingsAsync(request, TestContext.Current.CancellationToken);
@@ -356,9 +358,7 @@ public class SettingsOrchestratorTests
 		_mockPluginManager.Setup(p => p.LoadedPlugins)
 			.Returns(new Dictionary<string, IPluginDescriptor> { ["tempo"] = plugin.Object });
 
-		var pluginVm = new PluginViewModel(plugin.Object);
-		pluginVm.IsEnabled = true;
-		pluginVm.Configuration["ApiToken"] = "secret-value";
+		var entry = Entry(plugin.Object, isEnabled: true, ("ApiToken", "secret-value"));
 
 		_mockSecureStorage
 			.Setup(s => s.Protect("secret-value", "tempo", "ApiToken"))
@@ -367,7 +367,7 @@ public class SettingsOrchestratorTests
 		var request = new SettingsSaveRequest
 		{
 			FavoriteWorkItems = new List<FavoriteWorkItem>(),
-			Plugins = new List<PluginViewModel> { pluginVm }
+			Plugins = [entry]
 		};
 
 		await _orchestrator.SaveSettingsAsync(request, TestContext.Current.CancellationToken);
@@ -386,14 +386,13 @@ public class SettingsOrchestratorTests
 		_mockPluginManager.Setup(p => p.LoadedPlugins)
 			.Returns(new Dictionary<string, IPluginDescriptor> { ["tempo"] = plugin.Object });
 
-		var pluginVm = new PluginViewModel(plugin.Object);
-		pluginVm.IsEnabled = true;
 		// ApiToken not set — simulates cleared password
+		var entry = Entry(plugin.Object, isEnabled: true);
 
 		var request = new SettingsSaveRequest
 		{
 			FavoriteWorkItems = new List<FavoriteWorkItem>(),
-			Plugins = new List<PluginViewModel> { pluginVm }
+			Plugins = [entry]
 		};
 
 		await _orchestrator.SaveSettingsAsync(request, TestContext.Current.CancellationToken);
@@ -410,7 +409,7 @@ public class SettingsOrchestratorTests
 	public async Task TestConnectionAsync_NonWorklogPlugin_ReturnsNotAvailable()
 	{
 		var plugin = MockPluginFactory.CreatePlugin("basic", "Basic");
-		var vm = new PluginViewModel(plugin.Object);
+		var vm = Entry(plugin.Object);
 
 		var result = await _orchestrator.TestConnectionAsync(vm, null, TestContext.Current.CancellationToken);
 
@@ -425,7 +424,7 @@ public class SettingsOrchestratorTests
 		worklogPlugin.Setup(p => p.TestConnectionAsync(It.IsAny<IProgress<string>?>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(PluginResult<bool>.Success(true));
 
-		var vm = new PluginViewModel(worklogPlugin.Object);
+		var vm = Entry(worklogPlugin.Object);
 
 		var result = await _orchestrator.TestConnectionAsync(vm, null, TestContext.Current.CancellationToken);
 
@@ -440,7 +439,7 @@ public class SettingsOrchestratorTests
 		worklogPlugin.Setup(p => p.TestConnectionAsync(It.IsAny<IProgress<string>?>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(PluginResult<bool>.Failure("Auth failed"));
 
-		var vm = new PluginViewModel(worklogPlugin.Object);
+		var vm = Entry(worklogPlugin.Object);
 
 		var result = await _orchestrator.TestConnectionAsync(vm, null, TestContext.Current.CancellationToken);
 
@@ -454,7 +453,7 @@ public class SettingsOrchestratorTests
 		worklogPlugin.Setup(p => p.ValidateConfigurationAsync(It.IsAny<IDictionary<string, string>>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(PluginValidationResult.Failure("Field 'API URL' must be an absolute http or https URL"));
 
-		var vm = new PluginViewModel(worklogPlugin.Object);
+		var vm = Entry(worklogPlugin.Object);
 
 		var result = await _orchestrator.TestConnectionAsync(vm, null, TestContext.Current.CancellationToken);
 
@@ -472,8 +471,7 @@ public class SettingsOrchestratorTests
 		detached.Setup(p => p.TestConnectionAsync(It.IsAny<IProgress<string>?>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(PluginResult<bool>.Success(true));
 		_mockPluginManager.Setup(m => m.CreateDetachedInstance(running.Object)).Returns(detached.Object);
-		var vm = new PluginViewModel(running.Object);
-		vm.Configuration["ApiUrl"] = "https://unsaved";
+		var vm = Entry(running.Object, isEnabled: false, ("ApiUrl", "https://unsaved"));
 
 		var result = await _orchestrator.TestConnectionAsync(vm, null, TestContext.Current.CancellationToken);
 
@@ -495,7 +493,7 @@ public class SettingsOrchestratorTests
 			.ThrowsAsync(new OperationCanceledException());
 		_mockPluginManager.Setup(m => m.CreateDetachedInstance(running.Object)).Returns(detached.Object);
 
-		var act = () => _orchestrator.TestConnectionAsync(new PluginViewModel(running.Object), null, TestContext.Current.CancellationToken);
+		var act = () => _orchestrator.TestConnectionAsync(Entry(running.Object), null, TestContext.Current.CancellationToken);
 
 		await act.Should().ThrowAsync<OperationCanceledException>();
 		detached.Verify(p => p.ShutdownAsync(), Times.Once);
@@ -507,7 +505,7 @@ public class SettingsOrchestratorTests
 		var running = MockPluginFactory.CreateWorklogPlugin("tempo", "Tempo");
 		_mockPluginManager.Setup(m => m.CreateDetachedInstance(running.Object)).Throws(new InvalidOperationException("no constructor"));
 
-		var result = await _orchestrator.TestConnectionAsync(new PluginViewModel(running.Object), null, TestContext.Current.CancellationToken);
+		var result = await _orchestrator.TestConnectionAsync(Entry(running.Object), null, TestContext.Current.CancellationToken);
 
 		result.Should().StartWith("✗").And.Contain("no constructor");
 	}
@@ -544,8 +542,7 @@ public class SettingsOrchestratorTests
 			.Callback(() => steps.Add("tested"))
 			.ReturnsAsync(PluginResult<bool>.Success(true));
 		detached.Setup(p => p.ShutdownAsync()).Callback(() => steps.Add("test instance shut down")).Returns(Task.CompletedTask);
-		var vm = new PluginViewModel(descriptor.Object);
-		vm.Configuration["WorkColor"] = "Unsaved";
+		var vm = Entry(descriptor.Object, isEnabled: false, ("WorkColor", "Unsaved"));
 
 		var result = await _orchestrator.TestConnectionAsync(vm, null, TestContext.Current.CancellationToken);
 
@@ -566,7 +563,7 @@ public class SettingsOrchestratorTests
 			.Setup(p => p.TestConnectionAsync(It.IsAny<IProgress<string>?>(), It.IsAny<CancellationToken>()))
 			.ThrowsAsync(new OperationCanceledException());
 
-		var act = () => _orchestrator.TestConnectionAsync(new PluginViewModel(descriptor.Object), null, TestContext.Current.CancellationToken);
+		var act = () => _orchestrator.TestConnectionAsync(Entry(descriptor.Object), null, TestContext.Current.CancellationToken);
 
 		await act.Should().ThrowAsync<OperationCanceledException>();
 		suspension.Verify(s => s.DisposeAsync(), Times.Once);
@@ -582,7 +579,7 @@ public class SettingsOrchestratorTests
 			.ReturnsAsync(PluginResult<bool>.Success(true));
 		_mockPluginManager.Setup(m => m.CreateDetachedInstance(running.Object)).Returns(detached.Object);
 
-		await _orchestrator.TestConnectionAsync(new PluginViewModel(running.Object), null, TestContext.Current.CancellationToken);
+		await _orchestrator.TestConnectionAsync(Entry(running.Object), null, TestContext.Current.CancellationToken);
 
 		_mockPluginManager.Verify(m => m.SuspendPluginAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
 	}
@@ -594,7 +591,7 @@ public class SettingsOrchestratorTests
 	[Fact]
 	public async Task ValidatePluginConfigurationsAsync_AllValid_ReturnsEmpty()
 	{
-		var vm = new PluginViewModel(MockPluginFactory.CreatePlugin("tempo", "Tempo").Object) { IsEnabled = true };
+		var vm = Entry(MockPluginFactory.CreatePlugin("tempo", "Tempo").Object, isEnabled: true);
 
 		var errors = await _orchestrator.ValidatePluginConfigurationsAsync([vm], TestContext.Current.CancellationToken);
 
@@ -607,7 +604,7 @@ public class SettingsOrchestratorTests
 		var plugin = MockPluginFactory.CreatePlugin("luxafor", "Luxafor");
 		plugin.Setup(p => p.ValidateConfigurationAsync(It.IsAny<IDictionary<string, string>>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(PluginValidationResult.Failure("Bad colour", "Bad timeout"));
-		var vm = new PluginViewModel(plugin.Object) { IsEnabled = true };
+		var vm = Entry(plugin.Object, isEnabled: true);
 
 		var errors = await _orchestrator.ValidatePluginConfigurationsAsync([vm], TestContext.Current.CancellationToken);
 
@@ -620,7 +617,7 @@ public class SettingsOrchestratorTests
 		var plugin = MockPluginFactory.CreatePlugin("luxafor", "Luxafor");
 		plugin.Setup(p => p.ValidateConfigurationAsync(It.IsAny<IDictionary<string, string>>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(PluginValidationResult.Failure("Bad colour"));
-		var vm = new PluginViewModel(plugin.Object) { IsEnabled = false };
+		var vm = Entry(plugin.Object, isEnabled: false);
 
 		var errors = await _orchestrator.ValidatePluginConfigurationsAsync([vm], TestContext.Current.CancellationToken);
 

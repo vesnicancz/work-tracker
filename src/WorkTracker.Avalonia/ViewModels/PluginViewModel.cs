@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using WorkTracker.Avalonia.Orchestrators;
 using WorkTracker.Plugin.Abstractions;
 
 namespace WorkTracker.Avalonia.ViewModels;
@@ -30,6 +31,25 @@ public class PluginViewModel : ObservableObject
 			ConfigurationFields.Add(new ConfigurationFieldViewModel(field, this));
 		}
 	}
+
+	/// <summary>
+	/// Puts stored values over the defaults. A key without a field stays in the configuration, so saving
+	/// doesn't drop it.
+	/// </summary>
+	public void ApplyConfiguration(IReadOnlyDictionary<string, string> configuration)
+	{
+		foreach (var (key, value) in configuration)
+		{
+			Configuration[key] = value;
+		}
+
+		foreach (var field in ConfigurationFields)
+		{
+			field.RefreshValue();
+		}
+	}
+
+	public PluginSettingsEntry ToEntry() => new(Plugin, IsEnabled, new Dictionary<string, string>(Configuration));
 
 	public string Name => Plugin.Metadata.Name;
 	public string Description => Plugin.Metadata.Description ?? string.Empty;
