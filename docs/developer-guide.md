@@ -583,7 +583,7 @@ Trigger: push tagu `v*`. Jobs:
 4. **publish-avalonia** (matrix: win-x64, win-arm64, linux-x64, osx-arm64) — Avalonia pro všechny platformy. macOS varianta navíc projde krokem *Bundle and sign .app* a místo zipu se z ní balí `.dmg` (viz níže).
 
    Obě matice mají stejnou sadu RID: co dostane GUI, dostane i CLI. Intel Macy (`osx-x64`) se nebuildí — Macy se prodávají s Apple Siliconem od roku 2020 a na těch starších rozjede .NET host z `osx-arm64` buildu Rosetta.
-5. **publish-plugins** (matrix: Atlassian, Luxafor, GoranG3, Office365Calendar, StreamDeck) — každý plugin samostatně. U StreamDecku navíc otestuje a sbalí `streamdeck-plugin/` do `.streamDeckPlugin` s verzí z tagu a přidá ho do složky pluginu, obě části tak vycházejí společně.
+5. **publish-plugins** (matrix: Atlassian, Luxafor, GoranG3, Office365Calendar, StreamDeck) — každý plugin samostatně. U StreamDecku navíc otestuje a sbalí `streamdeck-plugin/` do `.streamDeckPlugin` s verzí z tagu a přidá ho do kořene zipu vedle složky pluginu, obě části tak vycházejí společně.
 6. **release** — stáhne artifacty a vytvoří rovnou publikovaný GitHub Release s automaticky vygenerovanými poznámkami (`generate_release_notes`).
 
 Artifacty jsou framework‑dependent (bez runtime). Kdo chce self‑contained, buildí si sám.

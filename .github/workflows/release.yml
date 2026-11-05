@@ -273,7 +273,8 @@ jobs:
           -o publish/${{ matrix.artifact }}
 
       # The two sides of the Stream Deck integration share a protocol, so they ship together: the
-      # package for the Stream Deck app goes into the folder of the WorkTracker plugin.
+      # package for the Stream Deck app goes into the root of the zip, next to the folder of the
+      # WorkTracker plugin, because it has no business under plugins/.
       - name: Setup Node.js
         if: matrix.plugin == 'StreamDeck'
         uses: actions/setup-node@v7
@@ -297,7 +298,7 @@ jobs:
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           npx streamdeck pack com.vesnicancz.worktracker.sdPlugin --version "${VERSION%%-*}.0" --output dist
-          mv dist/com.vesnicancz.worktracker.streamDeckPlugin "../publish/${{ matrix.artifact }}/WorkTracker-StreamDeck-$VERSION.streamDeckPlugin"
+          mv dist/com.vesnicancz.worktracker.streamDeckPlugin "../publish/WorkTracker-StreamDeck-$VERSION.streamDeckPlugin"
 
       # See the same step in publish-avalonia for the naming scheme. Plugins are platform-neutral,
       # so there is no platform suffix. Only the zip is renamed: the folder inside keeps the
@@ -309,7 +310,7 @@ jobs:
         run: |
           mkdir -p publish/out
           cd publish
-          zip -r "out/$ASSET.zip" ${{ matrix.artifact }}
+          zip -r "out/$ASSET.zip" . -x 'out/*'
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7
