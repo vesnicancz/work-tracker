@@ -1,4 +1,4 @@
-using WorkTracker.Avalonia.ViewModels;
+using WorkTracker.Plugin.Abstractions;
 
 namespace WorkTracker.Avalonia.Orchestrators;
 
@@ -21,5 +21,5 @@ public interface IWorkSuggestionOrchestrator
 	/// Searches a specific plugin for suggestions matching a query.
 	/// When query is empty, returns default suggestions (same as initial load).
 	/// </summary>
-	Task<IReadOnlyList<WorkSuggestionViewModel>> SearchPluginAsync(string pluginId, string query, DateTime date, CancellationToken cancellationToken);
+	Task<IReadOnlyList<WorkSuggestion>> SearchPluginAsync(string pluginId, string query, DateTime date, CancellationToken cancellationToken);
 }

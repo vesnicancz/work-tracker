@@ -1,6 +1,5 @@
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
@@ -18,11 +17,15 @@ namespace WorkTracker.Avalonia.Services;
 /// </summary>
 public sealed class NotificationService : INotificationService
 {
+	private readonly IMainWindowAccessor _mainWindowAccessor;
+
+	public NotificationService(IMainWindowAccessor mainWindowAccessor)
+	{
+		_mainWindowAccessor = mainWindowAccessor;
+	}
+
 	public bool IsVisibleToUser =>
-		global::Avalonia.Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime
-		{
-			MainWindow: { IsVisible: true, IsActive: true, WindowState: not WindowState.Minimized }
-		};
+		_mainWindowAccessor.MainWindow is { IsVisible: true, IsActive: true, WindowState: not WindowState.Minimized };
 
 	public void ShowSuccess(string message) =>
 		ShowNotification(message, MaterialIconKind.CheckCircle, GetThemeBrush("SuccessBrush"));
@@ -106,13 +109,8 @@ public sealed class NotificationService : INotificationService
 		});
 	}
 
-	private static Panel? FindNotificationHost()
+	private Panel? FindNotificationHost()
 	{
-		if (global::Avalonia.Application.Current?.ApplicationLifetime
-			is IClassicDesktopStyleApplicationLifetime desktop)
-		{
-			return desktop.MainWindow?.FindControl<Panel>("NotificationHost");
-		}
-		return null;
+		return _mainWindowAccessor.MainWindow?.FindControl<Panel>("NotificationHost");
 	}
 }

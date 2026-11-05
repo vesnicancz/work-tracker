@@ -1,4 +1,4 @@
-using WorkTracker.Avalonia.ViewModels;
+using WorkTracker.Plugin.Abstractions;
 
 namespace WorkTracker.Avalonia.Orchestrators;
 
@@ -69,7 +69,7 @@ public class CachedWorkSuggestionOrchestrator : IWorkSuggestionOrchestrator, IWo
 		}
 	}
 
-	public Task<IReadOnlyList<WorkSuggestionViewModel>> SearchPluginAsync(
+	public Task<IReadOnlyList<WorkSuggestion>> SearchPluginAsync(
 		string pluginId, string query, DateTime date, CancellationToken cancellationToken)
 	{
 		return _inner.SearchPluginAsync(pluginId, query, date, cancellationToken);

@@ -2,7 +2,6 @@ using System.Collections.Concurrent;
 using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
@@ -26,6 +25,7 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 	private readonly ILogger<TrayIconService> _logger;
 	private readonly ILocalizationService _localizationService;
 	private readonly IActionFeedbackService _actionFeedback;
+	private readonly IMainWindowAccessor _mainWindowAccessor;
 	private TrayIcon? _trayIcon;
 	private NativeMenu? _menu;
 	private bool _isInitialized;
@@ -45,9 +45,11 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 		ISettingsService settingsService,
 		ILocalizationService localizationService,
 		IActionFeedbackService actionFeedback,
+		IMainWindowAccessor mainWindowAccessor,
 		ILogger<TrayIconService> logger)
 	{
 		_actionFeedback = actionFeedback;
+		_mainWindowAccessor = mainWindowAccessor;
 		_dialogService = dialogService;
 		_worklogStateService = worklogStateService;
 		_settingsService = settingsService;
@@ -67,7 +69,7 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 		// Show window
 		_showItem = new NativeMenuItem(_localizationService["TrayShow"]);
 		_showItem.Icon = RenderMenuIcon(MaterialIconKind.WindowRestore, Brushes.DarkSlateGray);
-		_showItem.Click += (_, _) => ShowMainWindow();
+		_showItem.Click += (_, _) => _mainWindowAccessor.BringForward();
 		_menu.Items.Add(_showItem);
 
 		// New work entry
@@ -95,14 +97,7 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 		// Exit
 		_exitItem = new NativeMenuItem(_localizationService["TrayExit"]);
 		_exitItem.Icon = RenderMenuIcon(MaterialIconKind.Power, Brushes.Crimson);
-		_exitItem.Click += (_, _) =>
-		{
-			if (global::Avalonia.Application.Current?.ApplicationLifetime
-				is IClassicDesktopStyleApplicationLifetime desktop)
-			{
-				desktop.Shutdown();
-			}
-		};
+		_exitItem.Click += (_, _) => _mainWindowAccessor.RequestShutdown();
 		_menu.Items.Add(_exitItem);
 
 		_trayIcon = new TrayIcon
@@ -203,30 +198,9 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 		_isInitialized = false;
 	}
 
-	private void ShowMainWindow()
-	{
-		if (global::Avalonia.Application.Current?.ApplicationLifetime
-			is IClassicDesktopStyleApplicationLifetime desktop)
-		{
-			var window = desktop.MainWindow;
-			if (window != null)
-			{
-				window.Show();
-				window.WindowState = WindowState.Normal;
-				window.Activate();
-			}
-		}
-	}
-
 	private void ToggleMainWindow()
 	{
-		if (global::Avalonia.Application.Current?.ApplicationLifetime
-			is not IClassicDesktopStyleApplicationLifetime desktop)
-		{
-			return;
-		}
-
-		var window = desktop.MainWindow;
+		var window = _mainWindowAccessor.MainWindow;
 		if (window == null)
 		{
 			return;
@@ -245,7 +219,7 @@ public sealed class TrayIconService : ITrayIconService, IDisposable
 		}
 		else
 		{
-			ShowMainWindow();
+			_mainWindowAccessor.BringForward();
 		}
 	}
 

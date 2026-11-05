@@ -1,5 +1,4 @@
 using Avalonia.Controls;
-using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input;
 using Avalonia.Threading;
 using WorkTracker.Avalonia.Services;
@@ -119,12 +118,11 @@ public partial class MainWindow : Window
 		// application — request it here. Only for user-initiated closes: ApplicationShutdown and
 		// OSShutdown mean a shutdown is already running and re-entering it would double-dispose.
 		// Posted rather than called inline: Shutdown() closes every window in the lifetime's list,
-		// including this one, and Window.CloseCore has no re-entrancy guard.
-		if (e.CloseReason == WindowCloseReason.WindowClosing
-			&& global::Avalonia.Application.Current?.ApplicationLifetime
-				is IClassicDesktopStyleApplicationLifetime desktop)
+		// including this one, and Window.CloseCore has no re-entrancy guard. The user can close the
+		// window while the application is still loading, before Initialize gets any services.
+		if (e.CloseReason == WindowCloseReason.WindowClosing)
 		{
-			Dispatcher.UIThread.Post(() => desktop.Shutdown());
+			Dispatcher.UIThread.Post(new MainWindowAccessor().RequestShutdown);
 		}
 	}
 

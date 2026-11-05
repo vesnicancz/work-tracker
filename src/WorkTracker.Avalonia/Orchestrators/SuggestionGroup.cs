@@ -1,4 +1,6 @@
-namespace WorkTracker.Avalonia.ViewModels;
+using WorkTracker.Plugin.Abstractions;
+
+namespace WorkTracker.Avalonia.Orchestrators;
 
 /// <summary>
 /// Represents a group of suggestions from a single plugin
@@ -8,7 +10,7 @@ public class SuggestionGroup
 	public required string PluginId { get; init; }
 	public required string PluginName { get; init; }
 	public bool SupportsSearch { get; init; }
-	public required IReadOnlyList<WorkSuggestionViewModel> Items { get; init; }
+	public required IReadOnlyList<WorkSuggestion> Items { get; init; }
 	public string? Error { get; init; }
 
 	/// <summary>

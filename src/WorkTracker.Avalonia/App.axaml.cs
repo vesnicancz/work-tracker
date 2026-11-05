@@ -63,7 +63,9 @@ public partial class App : global::Avalonia.Application
 				mainWindow.Show();
 			}
 
-			InstanceGuard?.Listen(() => Dispatcher.UIThread.Post(() => BringMainWindowForward(desktop)));
+			// Started minimized there is no window until the bootstrap creates it, and by then the
+			// tray icon is there to open it.
+			InstanceGuard?.Listen(() => Dispatcher.UIThread.Post(new MainWindowAccessor().BringForward));
 
 			Dispatcher.UIThread.Post(async () =>
 			{
@@ -79,20 +81,6 @@ public partial class App : global::Avalonia.Application
 		}
 
 		base.OnFrameworkInitializationCompleted();
-	}
-
-	/// <summary>
-	/// The application was started again. Started minimized there is no window until the bootstrap
-	/// creates it, and by then the tray icon is there to open it.
-	/// </summary>
-	private static void BringMainWindowForward(IClassicDesktopStyleApplicationLifetime desktop)
-	{
-		if (desktop.MainWindow is { } window)
-		{
-			window.Show();
-			window.WindowState = WindowState.Normal;
-			window.Activate();
-		}
 	}
 
 	/// <summary>
@@ -351,6 +339,7 @@ public partial class App : global::Avalonia.Application
 		services.AddSingleton<ISettingsService, SettingsService>();
 		services.AddSingleton<IWorklogStateService, WorklogStateService>();
 
+		services.AddSingleton<IMainWindowAccessor, MainWindowAccessor>();
 		services.AddSingleton<IDialogService, DialogService>();
 		services.AddSingleton<INotificationService, NotificationService>();
 		services.AddSingleton<ITrayIconService, TrayIconService>();

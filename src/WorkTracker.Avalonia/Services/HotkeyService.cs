@@ -1,6 +1,5 @@
 using System.Runtime.InteropServices;
 using Avalonia.Controls;
-using Avalonia.Controls.ApplicationLifetimes;
 using Microsoft.Extensions.Logging;
 using WorkTracker.Avalonia.Services.Linux;
 using WorkTracker.Avalonia.Services.MacOS;
@@ -29,6 +28,7 @@ public sealed class HotkeyService : IHotkeyService
 	private readonly ILogger<HotkeyService> _logger;
 	private readonly ILocalizationService _localization;
 	private readonly IDesktopIntegrationService _desktopIntegration;
+	private readonly IMainWindowAccessor _mainWindowAccessor;
 	private bool _isRegistered;
 
 	public event EventHandler? HotkeyPressed;
@@ -36,11 +36,13 @@ public sealed class HotkeyService : IHotkeyService
 	public HotkeyService(
 		ILogger<HotkeyService> logger,
 		ILocalizationService localization,
-		IDesktopIntegrationService desktopIntegration)
+		IDesktopIntegrationService desktopIntegration,
+		IMainWindowAccessor mainWindowAccessor)
 	{
 		_logger = logger;
 		_localization = localization;
 		_desktopIntegration = desktopIntegration;
+		_mainWindowAccessor = mainWindowAccessor;
 	}
 
 	public void Register()
@@ -253,7 +255,7 @@ public sealed class HotkeyService : IHotkeyService
 
 	private void RegisterWindows()
 	{
-		var mainWindow = GetMainWindow();
+		var mainWindow = _mainWindowAccessor.MainWindow;
 		var handle = mainWindow?.TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
 		if (mainWindow == null || handle == IntPtr.Zero)
 		{
@@ -283,7 +285,7 @@ public sealed class HotkeyService : IHotkeyService
 		{
 			UnregisterHotKey(_windowHandle, HotkeyId);
 
-			var mainWindow = GetMainWindow();
+			var mainWindow = _mainWindowAccessor.MainWindow;
 			if (mainWindow != null)
 			{
 				Win32Properties.RemoveWndProcHookCallback(mainWindow, WndProcHook);
@@ -305,17 +307,6 @@ public sealed class HotkeyService : IHotkeyService
 		}
 
 		return IntPtr.Zero;
-	}
-
-	private static IntPtr GetMainWindowHandle()
-	{
-		var mainWindow = GetMainWindow();
-		return mainWindow?.TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
-	}
-
-	private static Window? GetMainWindow()
-	{
-		return (global::Avalonia.Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
 	}
 
 	#endregion

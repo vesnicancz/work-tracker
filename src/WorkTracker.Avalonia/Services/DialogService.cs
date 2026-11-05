@@ -1,5 +1,4 @@
 using Avalonia.Controls;
-using Avalonia.Controls.ApplicationLifetimes;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using WorkTracker.Avalonia.ViewModels;
@@ -14,6 +13,7 @@ namespace WorkTracker.Avalonia.Services;
 public sealed class DialogService : IDialogService
 {
 	private readonly IServiceScopeFactory _scopeFactory;
+	private readonly IMainWindowAccessor _mainWindowAccessor;
 	private readonly ILogger<DialogService> _logger;
 
 	// At most one new/edit work entry dialog at a time. Only touched on the UI thread.
@@ -26,9 +26,10 @@ public sealed class DialogService : IDialogService
 
 	internal MessageBoxWindow? OpenMessageBox => _openMessageBox;
 
-	public DialogService(IServiceScopeFactory scopeFactory, ILogger<DialogService> logger)
+	public DialogService(IServiceScopeFactory scopeFactory, IMainWindowAccessor mainWindowAccessor, ILogger<DialogService> logger)
 	{
 		_scopeFactory = scopeFactory;
+		_mainWindowAccessor = mainWindowAccessor;
 		_logger = logger;
 	}
 
@@ -92,7 +93,7 @@ public sealed class DialogService : IDialogService
 		await viewModel.InitializeAsync(date, isWeek);
 
 		var dialog = new SubmitWorklogDialog { DataContext = viewModel };
-		var mainWindow = GetMainWindow();
+		var mainWindow = _mainWindowAccessor.MainWindow;
 		if (mainWindow != null)
 		{
 			await dialog.ShowDialog(mainWindow);
@@ -151,7 +152,7 @@ public sealed class DialogService : IDialogService
 		var viewModel = scope.ServiceProvider.GetRequiredService<SettingsViewModel>();
 
 		var dialog = new SettingsWindow { DataContext = viewModel };
-		var mainWindow = GetMainWindow();
+		var mainWindow = _mainWindowAccessor.MainWindow;
 		if (mainWindow != null)
 		{
 			var result = await dialog.ShowDialog<bool?>(mainWindow);
@@ -194,23 +195,8 @@ public sealed class DialogService : IDialogService
 		return dialog.SelectedSuggestion;
 	}
 
-	private static Window? GetVisibleMainWindow()
+	private Window? GetVisibleMainWindow()
 	{
-		if (global::Avalonia.Application.Current?.ApplicationLifetime
-				is IClassicDesktopStyleApplicationLifetime { MainWindow: { IsVisible: true } mainWindow })
-		{
-			return mainWindow;
-		}
-		return null;
-	}
-
-	private static Window? GetMainWindow()
-	{
-		if (global::Avalonia.Application.Current?.ApplicationLifetime
-				is IClassicDesktopStyleApplicationLifetime desktop)
-		{
-			return desktop.MainWindow;
-		}
-		return null;
+		return _mainWindowAccessor.MainWindow is { IsVisible: true } mainWindow ? mainWindow : null;
 	}
 }
