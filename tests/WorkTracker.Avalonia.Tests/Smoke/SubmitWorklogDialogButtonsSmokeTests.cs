@@ -1,6 +1,8 @@
 using Avalonia.Controls;
 using FluentAssertions;
 using Moq;
+using WorkTracker.Application.Common;
+using WorkTracker.Application.DTOs;
 using WorkTracker.Avalonia.Tests.ViewModels;
 using WorkTracker.Avalonia.ViewModels;
 using WorkTracker.Avalonia.Views;
@@ -19,16 +21,10 @@ public class SubmitWorklogDialogButtonsSmokeTests
 	private static (SubmitWorklogViewModel ViewModel, SubmitWorklogDialog Dialog, Button Send, Button Retry) CreateDialog()
 	{
 		var harness = new SubmitWorklogViewModelHarness();
-		harness.PreviewItems.Add(new WorklogPreviewItem
-		{
-			Date = SubmitWorklogViewModelHarness.LocalNow.Date,
-			TicketId = "PROJ-1",
-			Duration = 3600,
-			IsSelected = true,
-		});
+		harness.Worklogs.Add(new WorklogDto { TicketId = "PROJ-1", DurationMinutes = 60 });
 		harness.Orchestrator
-			.Setup(o => o.SubmitAsync(It.IsAny<IReadOnlyList<WorklogPreviewItem>>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
-			.ReturnsAsync(new SubmissionOutcome(AllSucceeded: false, HasFailedItems: true, StatusMessage: "1 failed"));
+			.Setup(o => o.SubmitAsync(It.IsAny<IReadOnlyList<WorklogDto>>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(new SubmissionOutcome(true, "1 failed", [new SubmissionError { ErrorMessage = "Conflict", WorklogIndex = 0 }]));
 
 		var viewModel = harness.CreateViewModel();
 		var dialog = new SubmitWorklogDialog { DataContext = viewModel };

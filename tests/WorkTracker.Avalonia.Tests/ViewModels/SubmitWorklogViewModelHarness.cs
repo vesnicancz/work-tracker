@@ -34,21 +34,16 @@ public sealed class SubmitWorklogViewModelHarness
 	public Mock<IWorklogSubmissionOrchestrator> Orchestrator { get; } = new();
 	public Mock<ISettingsService> Settings { get; } = new();
 	public ApplicationSettings SettingsModel { get; } = new();
-	public List<WorklogPreviewItem> PreviewItems { get; } = new();
+	public List<WorklogDto> Worklogs { get; } = new();
 
 	public SubmitWorklogViewModelHarness()
 	{
 		Settings.SetupGet(s => s.Settings).Returns(SettingsModel);
 		Orchestrator.Setup(o => o.LoadAvailableProviders())
 			.Returns([TimedOnlyProvider, BothModesProvider]);
-		Orchestrator.Setup(o => o.FormatDuration(It.IsAny<int>()))
-			.Returns((int seconds) => $"{seconds}s");
 		Orchestrator
-			.Setup(o => o.LoadPreviewAsync(It.IsAny<DateTime>(), It.IsAny<bool>(), It.IsAny<WorklogSubmissionMode>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-			.ReturnsAsync(() => new PreviewLoadResult(
-				PreviewItems,
-				PreviewItems.Where(i => !i.IsDateHeader).Sum(i => i.Duration),
-				PreviewItems.Count(i => !i.IsDateHeader)));
+			.Setup(o => o.LoadPreviewAsync(It.IsAny<DateTime>(), It.IsAny<bool>(), It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(() => [new WorklogSubmissionDto { SubmissionDate = LocalNow.Date, Worklogs = Worklogs }]);
 	}
 
 	public SubmitWorklogViewModel CreateViewModel()

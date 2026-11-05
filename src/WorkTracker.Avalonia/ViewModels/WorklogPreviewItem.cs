@@ -1,5 +1,6 @@
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
+using WorkTracker.Application.DTOs;
 using WorkTracker.Avalonia.Helpers;
 
 namespace WorkTracker.Avalonia.ViewModels;
@@ -36,6 +37,42 @@ public class WorklogPreviewItem : ObservableObject
 	private int _originalDuration;
 	private DateTime _originalStartTime;
 	private DateTime _originalEndTime;
+
+	/// <summary>
+	/// A row for a worklog from the preview, remembering its values for a reset.
+	/// </summary>
+	public static WorklogPreviewItem FromWorklog(WorklogDto worklog, DateTime date, bool isAggregated, string noTicketLabel)
+	{
+		var item = new WorklogPreviewItem
+		{
+			Date = date,
+			IsAggregated = isAggregated,
+			TicketId = worklog.TicketId,
+			NoTicketLabel = noTicketLabel,
+			Description = worklog.Description ?? string.Empty,
+			Duration = worklog.DurationMinutes * 60,
+			StartTime = worklog.StartTime,
+			EndTime = worklog.EndTime
+		};
+		item.SaveOriginalValues();
+		return item;
+	}
+
+	public static WorklogPreviewItem DateHeader(DateTime date) => new()
+	{
+		Date = date,
+		IsDateHeader = true,
+		DateDisplay = date.ToString("dddd, MMMM dd, yyyy")
+	};
+
+	public WorklogDto ToWorklog() => new()
+	{
+		TicketId = TicketId,
+		Description = Description,
+		StartTime = StartTime,
+		EndTime = EndTime,
+		DurationMinutes = Duration / 60
+	};
 
 	public DateTime Date { get; set; }
 
@@ -82,7 +119,6 @@ public class WorklogPreviewItem : ObservableObject
 
 	/// <summary>
 	/// Display-only ticket ID that shows a placeholder for entries without a ticket.
-	/// Set by the orchestrator during preview loading.
 	/// </summary>
 	public string? NoTicketLabel { get; set; }
 
@@ -286,6 +322,12 @@ public class WorklogPreviewItem : ObservableObject
 		StartTime = _originalStartTime;
 		EndTime = _originalEndTime;
 		IsSelected = true;
+	}
+
+	public void ClearError()
+	{
+		HasError = false;
+		ErrorMessage = null;
 	}
 
 	private void UpdateDurationFromTimes()

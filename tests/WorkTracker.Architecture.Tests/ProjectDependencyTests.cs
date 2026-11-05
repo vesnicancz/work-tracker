@@ -133,7 +133,7 @@ public class ProjectDependencyTests
 	[Fact]
 	public void Orchestrators_DoNotUseViewModels()
 	{
-		var viewModel = new Regex(@"\b\w+ViewModel\b");
+		var viewModel = new Regex(@"\b\w+ViewModel\b|WorkTracker\.Avalonia\.ViewModels");
 
 		var violations = Directory.EnumerateFiles(Path.Combine(RepositoryRoot, "src", "WorkTracker.Avalonia", "Orchestrators"), "*.cs", SearchOption.AllDirectories)
 			.Where(file => viewModel.IsMatch(File.ReadAllText(file)))

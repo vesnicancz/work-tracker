@@ -19,6 +19,12 @@ public class WorklogPreviewItemTests
 		};
 	}
 
+	[Fact]
+	public void IsSelected_DefaultsToTrue()
+	{
+		new WorklogPreviewItem().IsSelected.Should().BeTrue();
+	}
+
 	#region TicketIdDisplay
 
 	[Fact]

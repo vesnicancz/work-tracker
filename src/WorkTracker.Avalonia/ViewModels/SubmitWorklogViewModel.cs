@@ -2,8 +2,10 @@ using System.Collections.ObjectModel;
 using System.Windows.Input;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
+using WorkTracker.Application.Common;
 using WorkTracker.Application.DTOs;
 using WorkTracker.Plugin.Abstractions;
+using WorkTracker.Avalonia.Helpers;
 using WorkTracker.Avalonia.Models;
 using WorkTracker.Avalonia.Orchestrators;
 using WorkTracker.Avalonia.Services;
@@ -199,6 +201,8 @@ public class SubmitWorklogViewModel : ViewModelBase, IDisposable
 		get => _previewItems;
 		set => SetProperty(ref _previewItems, value);
 	}
+
+	private IEnumerable<WorklogPreviewItem> WorklogRows => PreviewItems.Where(i => !i.IsDateHeader);
 
 	public string TotalTimeDisplay
 	{
@@ -416,7 +420,7 @@ public class SubmitWorklogViewModel : ViewModelBase, IDisposable
 			HasFailedItems = false;
 			StatusMessage = _localization["LoadingPreview"];
 
-			var result = await _orchestrator.LoadPreviewAsync(SelectedDate, IsWeekly, _selectedMode, _localization["NoTicket"], cancellationToken);
+			var days = await _orchestrator.LoadPreviewAsync(SelectedDate, IsWeekly, _selectedMode, cancellationToken);
 
 			if (cancellationToken.IsCancellationRequested)
 			{
@@ -424,20 +428,20 @@ public class SubmitWorklogViewModel : ViewModelBase, IDisposable
 			}
 
 			// Unsubscribe from old items before replacing
-			foreach (var item in PreviewItems.Where(i => !i.IsDateHeader))
+			foreach (var item in WorklogRows)
 			{
 				item.PropertyChanged -= OnWorklogItemPropertyChanged;
 			}
 
-			PreviewItems = new ObservableCollection<WorklogPreviewItem>(result.Items);
+			PreviewItems = new ObservableCollection<WorklogPreviewItem>(ToRows(days));
 
-			foreach (var item in PreviewItems.Where(i => !i.IsDateHeader))
+			foreach (var item in WorklogRows)
 			{
 				item.PropertyChanged += OnWorklogItemPropertyChanged;
 			}
 
-			TotalTimeDisplay = _orchestrator.FormatDuration(result.TotalSeconds);
-			StatusMessage = _localization.GetFormattedString("ReadyToSubmit", result.DataItemCount);
+			TotalTimeDisplay = DurationFormatter.Format(WorklogRows.Sum(i => i.Duration));
+			StatusMessage = _localization.GetFormattedString("ReadyToSubmit", WorklogRows.Count());
 		}
 		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
 		{
@@ -458,7 +462,26 @@ public class SubmitWorklogViewModel : ViewModelBase, IDisposable
 		}
 	}
 
-	private bool CanSend() => !IsSending && !IsLoading && PreviewItems.Any(i => !i.IsDateHeader && i.IsSelected) && SelectedProvider != null;
+	private List<WorklogPreviewItem> ToRows(IReadOnlyList<WorklogSubmissionDto> days)
+	{
+		var rows = new List<WorklogPreviewItem>();
+		var isAggregated = _selectedMode == WorklogSubmissionMode.Aggregated;
+		var noTicketLabel = _localization["NoTicket"];
+
+		foreach (var day in days)
+		{
+			if (IsWeekly)
+			{
+				rows.Add(WorklogPreviewItem.DateHeader(day.SubmissionDate));
+			}
+
+			rows.AddRange(day.Worklogs.Select(worklog => WorklogPreviewItem.FromWorklog(worklog, day.SubmissionDate, isAggregated, noTicketLabel)));
+		}
+
+		return rows;
+	}
+
+	private bool CanSend() => !IsSending && !IsLoading && WorklogRows.Any(i => i.IsSelected) && SelectedProvider != null;
 
 	private async Task SendAsync()
 	{
@@ -477,9 +500,7 @@ public class SubmitWorklogViewModel : ViewModelBase, IDisposable
 			// open was never written back, and submitting confirms it is the one to remember.
 			PersistSelection(SelectedProvider.Id, _selectedMode);
 
-			var outcome = await _orchestrator.SubmitAsync(PreviewItems, SelectedProvider.Id, SelectedProvider.Name, _selectedMode, CancellationToken.None);
-			HasFailedItems = outcome.HasFailedItems;
-			StatusMessage = outcome.StatusMessage;
+			await SubmitRowsAsync(SelectedProvider, WorklogRows.Where(i => i.IsSelected).ToList(), WorklogRows.ToList());
 		}
 		catch (Exception ex)
 		{
@@ -492,7 +513,7 @@ public class SubmitWorklogViewModel : ViewModelBase, IDisposable
 		}
 	}
 
-	private bool CanRetryFailed() => !IsSending && !IsLoading && HasFailedItems && PreviewItems.Any(i => !i.IsDateHeader && i.HasError && i.IsSelected) && SelectedProvider != null;
+	private bool CanRetryFailed() => !IsSending && !IsLoading && HasFailedItems && WorklogRows.Any(i => i.HasError && i.IsSelected) && SelectedProvider != null;
 
 	private async Task RetryFailedAsync()
 	{
@@ -507,9 +528,8 @@ public class SubmitWorklogViewModel : ViewModelBase, IDisposable
 			IsSending = true;
 			StatusMessage = _localization["RetryingFailed"];
 
-			var outcome = await _orchestrator.RetryFailedAsync(PreviewItems, SelectedProvider.Id, SelectedProvider.Name, _selectedMode, CancellationToken.None);
-			HasFailedItems = outcome.HasFailedItems;
-			StatusMessage = outcome.StatusMessage;
+			var failedRows = WorklogRows.Where(i => i.HasError && i.IsSelected).ToList();
+			await SubmitRowsAsync(SelectedProvider, failedRows, failedRows);
 		}
 		catch (Exception ex)
 		{
@@ -519,6 +539,45 @@ public class SubmitWorklogViewModel : ViewModelBase, IDisposable
 		finally
 		{
 			IsSending = false;
+		}
+	}
+
+	/// <summary>
+	/// Sends <paramref name="rows"/> and shows the result on them.
+	/// </summary>
+	/// <param name="provider">Where to send them.</param>
+	/// <param name="rows">The rows to send, in order: the errors refer to them by position.</param>
+	/// <param name="rowsAnsweredFor">The rows whose previous error no longer applies once the provider answers.</param>
+	private async Task SubmitRowsAsync(ProviderInfo provider, IReadOnlyList<WorklogPreviewItem> rows, IReadOnlyList<WorklogPreviewItem> rowsAnsweredFor)
+	{
+		var worklogs = rows.Select(row => row.ToWorklog()).ToList();
+		var outcome = await _orchestrator.SubmitAsync(worklogs, provider.Id, provider.Name, _selectedMode, CancellationToken.None);
+
+		if (outcome.Delivered)
+		{
+			foreach (var row in rowsAnsweredFor)
+			{
+				row.ClearError();
+			}
+
+			MarkFailedRows(rows, outcome.Errors);
+		}
+
+		HasFailedItems = WorklogRows.Any(i => i.HasError);
+		StatusMessage = outcome.StatusMessage;
+	}
+
+	private static void MarkFailedRows(IReadOnlyList<WorklogPreviewItem> rows, IReadOnlyList<SubmissionError> errors)
+	{
+		foreach (var error in errors)
+		{
+			// Without a position the plugin broke its contract. Guessing a row could mark one that went
+			// through; the failure still counts in the status message and the service logged it.
+			if (error.WorklogIndex is { } index)
+			{
+				rows[index].HasError = true;
+				rows[index].ErrorMessage = error.ErrorMessage;
+			}
 		}
 	}
 
@@ -536,7 +595,14 @@ public class SubmitWorklogViewModel : ViewModelBase, IDisposable
 
 	private void ResetToOriginal()
 	{
-		WithSuppressedRecalculation(() => _orchestrator.ResetItems(PreviewItems));
+		WithSuppressedRecalculation(() =>
+		{
+			foreach (var row in WorklogRows)
+			{
+				row.RestoreOriginalValues();
+				row.ClearError();
+			}
+		});
 		HasFailedItems = false;
 		RecalculateTotals();
 		StatusMessage = _localization["WorklogsResetToOriginal"];
@@ -544,13 +610,25 @@ public class SubmitWorklogViewModel : ViewModelBase, IDisposable
 
 	private void InvertSelection()
 	{
-		WithSuppressedRecalculation(() => _orchestrator.InvertSelection(PreviewItems));
+		WithSuppressedRecalculation(() =>
+		{
+			foreach (var row in WorklogRows)
+			{
+				row.IsSelected = !row.IsSelected;
+			}
+		});
 		RecalculateTotals();
 	}
 
 	private void SelectAll()
 	{
-		WithSuppressedRecalculation(() => _orchestrator.SelectAll(PreviewItems));
+		WithSuppressedRecalculation(() =>
+		{
+			foreach (var row in WorklogRows)
+			{
+				row.IsSelected = true;
+			}
+		});
 		RecalculateTotals();
 	}
 
@@ -569,8 +647,8 @@ public class SubmitWorklogViewModel : ViewModelBase, IDisposable
 
 	private void RecalculateTotals()
 	{
-		var selectedItems = PreviewItems.Where(i => !i.IsDateHeader && i.IsSelected);
-		TotalTimeDisplay = _orchestrator.FormatDuration(selectedItems.Sum(i => i.Duration));
+		var selectedItems = WorklogRows.Where(i => i.IsSelected);
+		TotalTimeDisplay = DurationFormatter.Format(selectedItems.Sum(i => i.Duration));
 		StatusMessage = _localization.GetFormattedString("ReadyToSubmit", selectedItems.Count());
 		SendCommand.NotifyCanExecuteChanged();
 		RetryFailedCommand.NotifyCanExecuteChanged();

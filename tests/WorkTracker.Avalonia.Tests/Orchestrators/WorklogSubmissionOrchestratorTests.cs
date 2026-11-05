@@ -7,7 +7,6 @@ using WorkTracker.Application.Services;
 using WorkTracker.Plugin.Abstractions;
 using WorkTracker.Avalonia.Orchestrators;
 using WorkTracker.Avalonia.Services;
-using WorkTracker.Avalonia.ViewModels;
 
 namespace WorkTracker.Avalonia.Tests.Orchestrators;
 
@@ -62,275 +61,87 @@ public class WorklogSubmissionOrchestratorTests
 
 	#region LoadPreviewAsync
 
-	private void SetupPreview(params WorklogSubmissionDto[] days)
+	[Fact]
+	public async Task LoadPreviewAsync_Daily_AsksForTheDayAndPassesItsWorklogsOn()
 	{
+		var date = new DateTime(2025, 1, 15);
+		IReadOnlyList<WorklogSubmissionDto> days = [new WorklogSubmissionDto { SubmissionDate = date }];
 		_mockSubmissionService
-			.Setup(s => s.PreviewAsync(It.IsAny<SubmissionPeriod>(), It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
+			.Setup(s => s.PreviewAsync(SubmissionPeriod.Day(date), WorklogSubmissionMode.Timed, It.IsAny<CancellationToken>()))
 			.ReturnsAsync(days);
+
+		var result = await _orchestrator.LoadPreviewAsync(date, false, WorklogSubmissionMode.Timed, TestContext.Current.CancellationToken);
+
+		result.Should().BeSameAs(days);
 	}
 
 	[Fact]
-	public async Task LoadPreviewAsync_Daily_ReturnsItems()
-	{
-		var date = new DateTime(2025, 1, 15);
-		SetupPreview(new WorklogSubmissionDto
-		{
-			SubmissionDate = date,
-			Worklogs =
-			[
-				new() { TicketId = "PROJ-1", Description = "Work", DurationMinutes = 60, StartTime = date.AddHours(9), EndTime = date.AddHours(10) },
-				new() { TicketId = "PROJ-2", Description = "More", DurationMinutes = 30, StartTime = date.AddHours(10), EndTime = date.AddHours(10).AddMinutes(30) }
-			]
-		});
-
-		var result = await _orchestrator.LoadPreviewAsync(date, false, WorklogSubmissionMode.Timed, "No ticket", TestContext.Current.CancellationToken);
-
-		result.Items.Should().HaveCount(2);
-		result.DataItemCount.Should().Be(2);
-		result.TotalSeconds.Should().Be(90 * 60);
-		_mockSubmissionService.Verify(s => s.PreviewAsync(SubmissionPeriod.Day(date), WorklogSubmissionMode.Timed, It.IsAny<CancellationToken>()), Times.Once);
-	}
-
-	[Fact]
-	public async Task LoadPreviewAsync_Daily_EmptyWorklogs_ReturnsEmpty()
-	{
-		SetupPreview(new WorklogSubmissionDto { SubmissionDate = FixedDate });
-
-		var result = await _orchestrator.LoadPreviewAsync(FixedDate, false, WorklogSubmissionMode.Timed, "No ticket", TestContext.Current.CancellationToken);
-
-		result.Items.Should().BeEmpty();
-		result.DataItemCount.Should().Be(0);
-		result.TotalSeconds.Should().Be(0);
-	}
-
-	[Fact]
-	public async Task LoadPreviewAsync_Daily_NullTicket_UsesNoTicketLabel()
-	{
-		var date = new DateTime(2025, 1, 15);
-		SetupPreview(new WorklogSubmissionDto
-		{
-			SubmissionDate = date,
-			Worklogs = [new() { TicketId = null, Description = "Work", DurationMinutes = 60, StartTime = date.AddHours(9), EndTime = date.AddHours(10) }]
-		});
-
-		var result = await _orchestrator.LoadPreviewAsync(date, false, WorklogSubmissionMode.Timed, "No ticket", TestContext.Current.CancellationToken);
-
-		result.Items.Should().ContainSingle();
-		result.Items[0].TicketId.Should().BeNull();
-		result.Items[0].NoTicketLabel.Should().Be("No ticket");
-		result.Items[0].TicketIdDisplay.Should().Be("No ticket");
-	}
-
-	[Fact]
-	public async Task LoadPreviewAsync_Weekly_AddsDateHeaders()
+	public async Task LoadPreviewAsync_Weekly_AsksForTheWeekInTheGivenMode()
 	{
 		var monday = new DateTime(2025, 1, 13);
-		var tuesday = new DateTime(2025, 1, 14);
-		SetupPreview(
-			new WorklogSubmissionDto { SubmissionDate = monday, Worklogs = [new() { TicketId = "A-1", DurationMinutes = 60, StartTime = monday.AddHours(9), EndTime = monday.AddHours(10) }] },
-			new WorklogSubmissionDto { SubmissionDate = tuesday, Worklogs = [new() { TicketId = "A-2", DurationMinutes = 30, StartTime = tuesday.AddHours(9), EndTime = tuesday.AddHours(9).AddMinutes(30) }] });
+		_mockSubmissionService
+			.Setup(s => s.PreviewAsync(It.IsAny<SubmissionPeriod>(), It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync([]);
 
-		var result = await _orchestrator.LoadPreviewAsync(monday, true, WorklogSubmissionMode.Timed, "No ticket", TestContext.Current.CancellationToken);
+		await _orchestrator.LoadPreviewAsync(monday, true, WorklogSubmissionMode.Aggregated, TestContext.Current.CancellationToken);
 
-		result.Items.Should().HaveCount(4); // 2 headers + 2 data items
-		result.DataItemCount.Should().Be(2);
-		result.Items[0].IsDateHeader.Should().BeTrue();
-		result.Items[1].IsDateHeader.Should().BeFalse();
-		_mockSubmissionService.Verify(s => s.PreviewAsync(SubmissionPeriod.WeekOf(monday), WorklogSubmissionMode.Timed, It.IsAny<CancellationToken>()), Times.Once);
-	}
-
-	[Fact]
-	public async Task LoadPreviewAsync_Aggregated_MarksTheRowsAggregated()
-	{
-		var date = new DateTime(2025, 1, 15);
-		SetupPreview(new WorklogSubmissionDto
-		{
-			SubmissionDate = date,
-			Worklogs = [new() { TicketId = "PROJ-1", Description = "Work", DurationMinutes = 90, StartTime = date.AddHours(9), EndTime = date.AddHours(9) }]
-		});
-
-		var result = await _orchestrator.LoadPreviewAsync(date, false, WorklogSubmissionMode.Aggregated, "No ticket", TestContext.Current.CancellationToken);
-
-		result.Items.Should().ContainSingle().Which.IsAggregated.Should().BeTrue();
-		result.Items[0].Duration.Should().Be(90 * 60);
-		_mockSubmissionService.Verify(s => s.PreviewAsync(SubmissionPeriod.Day(date), WorklogSubmissionMode.Aggregated, It.IsAny<CancellationToken>()), Times.Once);
+		_mockSubmissionService.Verify(s => s.PreviewAsync(SubmissionPeriod.WeekOf(monday), WorklogSubmissionMode.Aggregated, It.IsAny<CancellationToken>()), Times.Once);
 	}
 
 	#endregion LoadPreviewAsync
 
 	#region SubmitAsync
 
-	[Fact]
-	public async Task SubmitAsync_AllSuccess_ReturnsAllSucceeded()
+	private static readonly IReadOnlyList<WorklogDto> Worklogs = [new WorklogDto { TicketId = "PROJ-1", DurationMinutes = 60 }];
+
+	private void SetupSubmission(Result<SubmissionResult> result)
 	{
-		var items = CreatePreviewItems("PROJ-1");
-		var submission = new SubmissionResult { TotalEntries = 1, SuccessfulEntries = 1, FailedEntries = 0 };
 		_mockSubmissionService
-			.Setup(s => s.SubmitCustomWorklogsAsync(It.IsAny<IEnumerable<WorklogDto>>(), "tempo", It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
-			.ReturnsAsync(Result.Success(submission));
+			.Setup(s => s.SubmitCustomWorklogsAsync(Worklogs, "tempo", WorklogSubmissionMode.Timed, It.IsAny<CancellationToken>()))
+			.ReturnsAsync(result);
+	}
 
-		var outcome = await _orchestrator.SubmitAsync(items, "tempo", "Tempo", WorklogSubmissionMode.Timed, TestContext.Current.CancellationToken);
+	private Task<SubmissionOutcome> SubmitAsync() =>
+		_orchestrator.SubmitAsync(Worklogs, "tempo", "Tempo", WorklogSubmissionMode.Timed, TestContext.Current.CancellationToken);
 
-		outcome.AllSucceeded.Should().BeTrue();
-		outcome.HasFailedItems.Should().BeFalse();
+	[Fact]
+	public async Task SubmitAsync_AllSuccess_IsDeliveredWithoutErrors()
+	{
+		SetupSubmission(Result.Success(new SubmissionResult { TotalEntries = 1, SuccessfulEntries = 1 }));
+
+		var outcome = await SubmitAsync();
+
+		outcome.Delivered.Should().BeTrue();
+		outcome.Errors.Should().BeEmpty();
+		outcome.StatusMessage.Should().Contain("SubmissionSuccess");
 	}
 
 	[Fact]
-	public async Task SubmitAsync_WithFailedEntries_MarksFailedItems()
+	public async Task SubmitAsync_WithFailedEntries_PassesTheErrorsOn()
 	{
-		var items = CreatePreviewItems("PROJ-1");
-		var submission = new SubmissionResult
-		{
-			TotalEntries = 1,
-			SuccessfulEntries = 0,
-			FailedEntries = 1,
-			Errors = new List<SubmissionError>
-			{
-				new() { ErrorMessage = "Conflict", WorklogIndex = 0 }
-			}
-		};
-		_mockSubmissionService
-			.Setup(s => s.SubmitCustomWorklogsAsync(It.IsAny<IEnumerable<WorklogDto>>(), "tempo", It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
-			.ReturnsAsync(Result.Success(submission));
+		var error = new SubmissionError { ErrorMessage = "Conflict", WorklogIndex = 0 };
+		SetupSubmission(Result.Success(new SubmissionResult { TotalEntries = 1, FailedEntries = 1, Errors = [error] }));
 
-		var outcome = await _orchestrator.SubmitAsync(items, "tempo", "Tempo", WorklogSubmissionMode.Timed, TestContext.Current.CancellationToken);
+		var outcome = await SubmitAsync();
 
-		outcome.AllSucceeded.Should().BeFalse();
-		outcome.HasFailedItems.Should().BeTrue();
-		items[0].HasError.Should().BeTrue();
-	}
-
-	[Fact]
-	public async Task SubmitAsync_ClearsPreviousErrorsOnSuccess()
-	{
-		var items = CreatePreviewItems("PROJ-1");
-		items[0].HasError = true;
-		items[0].ErrorMessage = "old";
-
-		var submission = new SubmissionResult { TotalEntries = 1, SuccessfulEntries = 1, FailedEntries = 0 };
-		_mockSubmissionService
-			.Setup(s => s.SubmitCustomWorklogsAsync(It.IsAny<IEnumerable<WorklogDto>>(), "tempo", It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
-			.ReturnsAsync(Result.Success(submission));
-
-		await _orchestrator.SubmitAsync(items, "tempo", "Tempo", WorklogSubmissionMode.Timed, TestContext.Current.CancellationToken);
-
-		items[0].HasError.Should().BeFalse();
-		items[0].ErrorMessage.Should().BeNull();
-	}
-
-	[Fact]
-	public async Task SubmitAsync_AllFailed_StatusContainsAllFailed()
-	{
-		var items = CreatePreviewItems("PROJ-1");
-		var submission = new SubmissionResult
-		{
-			TotalEntries = 1,
-			SuccessfulEntries = 0,
-			FailedEntries = 1,
-			Errors = new List<SubmissionError> { new() { ErrorMessage = "err", WorklogIndex = 0 } }
-		};
-		_mockSubmissionService
-			.Setup(s => s.SubmitCustomWorklogsAsync(It.IsAny<IEnumerable<WorklogDto>>(), "tempo", It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
-			.ReturnsAsync(Result.Success(submission));
-
-		var outcome = await _orchestrator.SubmitAsync(items, "tempo", "Tempo", WorklogSubmissionMode.Timed, TestContext.Current.CancellationToken);
-
+		outcome.Delivered.Should().BeTrue();
+		outcome.Errors.Should().Equal(error);
 		outcome.StatusMessage.Should().Contain("SubmissionAllFailed");
 	}
 
 	[Fact]
-	public async Task SubmitAsync_ServiceFailure_ReturnsFailure()
+	public async Task SubmitAsync_ServiceFailure_IsNotDelivered()
 	{
-		var items = CreatePreviewItems("PROJ-1");
-		_mockSubmissionService
-			.Setup(s => s.SubmitCustomWorklogsAsync(It.IsAny<IEnumerable<WorklogDto>>(), "tempo", It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
-			.ReturnsAsync(Result.Failure<SubmissionResult>("Network error"));
+		SetupSubmission(Result.Failure<SubmissionResult>("Network error"));
 
-		var outcome = await _orchestrator.SubmitAsync(items, "tempo", "Tempo", WorklogSubmissionMode.Timed, TestContext.Current.CancellationToken);
+		var outcome = await SubmitAsync();
 
-		outcome.AllSucceeded.Should().BeFalse();
+		outcome.Delivered.Should().BeFalse();
+		outcome.Errors.Should().BeEmpty();
 		outcome.StatusMessage.Should().Contain("Network error");
 	}
 
 	#endregion SubmitAsync
-
-	#region RetryFailedAsync
-
-	[Fact]
-	public async Task RetryFailedAsync_NoFailedItems_ReturnsSuccess()
-	{
-		var items = CreatePreviewItems("PROJ-1");
-
-		var outcome = await _orchestrator.RetryFailedAsync(items, "tempo", "Tempo", WorklogSubmissionMode.Timed, TestContext.Current.CancellationToken);
-
-		outcome.AllSucceeded.Should().BeTrue();
-		outcome.HasFailedItems.Should().BeFalse();
-	}
-
-	[Fact]
-	public async Task RetryFailedAsync_RetriesOnlyFailed()
-	{
-		var items = CreatePreviewItems("PROJ-1");
-		items[0].HasError = true;
-
-		var submission = new SubmissionResult { TotalEntries = 1, SuccessfulEntries = 1, FailedEntries = 0 };
-		_mockSubmissionService
-			.Setup(s => s.SubmitCustomWorklogsAsync(It.IsAny<IEnumerable<WorklogDto>>(), "tempo", It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
-			.ReturnsAsync(Result.Success(submission));
-
-		var outcome = await _orchestrator.RetryFailedAsync(items, "tempo", "Tempo", WorklogSubmissionMode.Timed, TestContext.Current.CancellationToken);
-
-		outcome.AllSucceeded.Should().BeTrue();
-		_mockSubmissionService.Verify(s => s.SubmitCustomWorklogsAsync(
-			It.Is<IEnumerable<WorklogDto>>(w => w.Count() == 1), "tempo", It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()), Times.Once);
-	}
-
-	#endregion RetryFailedAsync
-
-	#region MarkFailedItems
-
-	[Fact]
-	public void MarkFailedItems_NoErrors_ReturnsFalse()
-	{
-		var items = CreatePreviewItems("PROJ-1");
-		var submission = new SubmissionResult { Errors = new List<SubmissionError>() };
-
-		_orchestrator.MarkFailedItems(items, items, submission).Should().BeFalse();
-		items[0].HasError.Should().BeFalse();
-	}
-
-	[Fact]
-	public void MarkFailedItems_WithMatchingError_MarksItem()
-	{
-		var items = CreatePreviewItems("PROJ-1");
-		var submission = new SubmissionResult
-		{
-			Errors = new List<SubmissionError>
-			{
-				new() { ErrorMessage = "Conflict", WorklogIndex = 0 }
-			}
-		};
-
-		_orchestrator.MarkFailedItems(items, items, submission).Should().BeTrue();
-		items[0].HasError.Should().BeTrue();
-		items[0].ErrorMessage.Should().Be("Conflict");
-	}
-
-	[Fact]
-	public void MarkFailedItems_ClearsPreviousErrors()
-	{
-		var items = CreatePreviewItems("PROJ-1");
-		items[0].HasError = true;
-		items[0].ErrorMessage = "Old error";
-
-		var submission = new SubmissionResult { Errors = new List<SubmissionError>() };
-
-		_orchestrator.MarkFailedItems(items, items, submission);
-		items[0].HasError.Should().BeFalse();
-		items[0].ErrorMessage.Should().BeNull();
-	}
-
-	#endregion MarkFailedItems
 
 	#region FormatSubmissionStatus
 
@@ -367,307 +178,4 @@ public class WorklogSubmissionOrchestratorTests
 	}
 
 	#endregion FormatSubmissionStatus
-
-	#region ResetItems
-
-	[Fact]
-	public void ResetItems_RestoresOriginalValues()
-	{
-		var items = CreatePreviewItems("PROJ-1");
-		items[0].SaveOriginalValues();
-		items[0].TicketId = "CHANGED";
-		items[0].HasError = true;
-		items[0].ErrorMessage = "error";
-
-		_orchestrator.ResetItems(items);
-
-		items[0].TicketId.Should().Be("PROJ-1");
-		items[0].HasError.Should().BeFalse();
-		items[0].ErrorMessage.Should().BeNull();
-	}
-
-	[Fact]
-	public void ResetItems_SkipsDateHeaders()
-	{
-		var items = new List<WorklogPreviewItem>
-		{
-			new() { IsDateHeader = true, DateDisplay = "Monday" },
-			new() { TicketId = "PROJ-1", Date = FixedDate, StartTime = FixedDate.AddHours(9), EndTime = FixedDate.AddHours(10), Duration = 3600 }
-		};
-		items[1].SaveOriginalValues();
-		items[1].TicketId = "CHANGED";
-
-		_orchestrator.ResetItems(items);
-
-		items[0].IsDateHeader.Should().BeTrue();
-		items[1].TicketId.Should().Be("PROJ-1");
-	}
-
-	[Fact]
-	public void ResetItems_RestoresIsSelectedToTrue()
-	{
-		var items = CreatePreviewItems("PROJ-1");
-		items[0].IsSelected = false;
-
-		_orchestrator.ResetItems(items);
-
-		items[0].IsSelected.Should().BeTrue();
-	}
-
-	#endregion ResetItems
-
-	#region InvertSelection
-
-	[Fact]
-	public void InvertSelection_TogglesAllDataItems()
-	{
-		var items = new List<WorklogPreviewItem>
-		{
-			new() { IsDateHeader = true, DateDisplay = "Monday" },
-			new() { TicketId = "A-1", Date = FixedDate, StartTime = FixedDate.AddHours(9), EndTime = FixedDate.AddHours(10), Duration = 3600 },
-			new() { TicketId = "A-2", Date = FixedDate, StartTime = FixedDate.AddHours(10), EndTime = FixedDate.AddHours(11), Duration = 3600, IsSelected = false }
-		};
-
-		_orchestrator.InvertSelection(items);
-
-		items[0].IsDateHeader.Should().BeTrue();
-		items[1].IsSelected.Should().BeFalse();
-		items[2].IsSelected.Should().BeTrue();
-	}
-
-	[Fact]
-	public void InvertSelection_SkipsDateHeaders()
-	{
-		var header = new WorklogPreviewItem { IsDateHeader = true, DateDisplay = "Monday" };
-		var items = new List<WorklogPreviewItem> { header };
-
-		_orchestrator.InvertSelection(items);
-
-		header.IsDateHeader.Should().BeTrue();
-	}
-
-	#endregion InvertSelection
-
-	#region SelectAll
-
-	[Fact]
-	public void SelectAll_SetsAllDataItemsToSelected()
-	{
-		var items = new List<WorklogPreviewItem>
-		{
-			new() { IsDateHeader = true, DateDisplay = "Monday" },
-			new() { TicketId = "A-1", Date = FixedDate, StartTime = FixedDate.AddHours(9), EndTime = FixedDate.AddHours(10), Duration = 3600, IsSelected = false },
-			new() { TicketId = "A-2", Date = FixedDate, StartTime = FixedDate.AddHours(10), EndTime = FixedDate.AddHours(11), Duration = 3600, IsSelected = false }
-		};
-
-		_orchestrator.SelectAll(items);
-
-		items[1].IsSelected.Should().BeTrue();
-		items[2].IsSelected.Should().BeTrue();
-	}
-
-	[Fact]
-	public void SelectAll_SkipsDateHeaders()
-	{
-		var header = new WorklogPreviewItem { IsDateHeader = true, DateDisplay = "Monday" };
-		var items = new List<WorklogPreviewItem> { header };
-
-		_orchestrator.SelectAll(items);
-
-		header.IsDateHeader.Should().BeTrue();
-	}
-
-	#endregion SelectAll
-
-	#region IsSelected
-
-	[Fact]
-	public void WorklogPreviewItem_IsSelected_DefaultsToTrue()
-	{
-		var item = new WorklogPreviewItem();
-
-		item.IsSelected.Should().BeTrue();
-	}
-
-	[Fact]
-	public async Task SubmitAsync_OnlySubmitsSelectedItems()
-	{
-		var item1 = new WorklogPreviewItem
-		{
-			TicketId = "PROJ-1", Description = "Work 1", Date = FixedDate, Duration = 3600,
-			StartTime = FixedDate.AddHours(9), EndTime = FixedDate.AddHours(10)
-		};
-		item1.SaveOriginalValues();
-
-		var item2 = new WorklogPreviewItem
-		{
-			TicketId = "PROJ-2", Description = "Work 2", Date = FixedDate, Duration = 1800,
-			StartTime = FixedDate.AddHours(10), EndTime = FixedDate.AddHours(10).AddMinutes(30),
-			IsSelected = false
-		};
-		item2.SaveOriginalValues();
-
-		var items = new List<WorklogPreviewItem> { item1, item2 };
-
-		var submission = new SubmissionResult { TotalEntries = 1, SuccessfulEntries = 1, FailedEntries = 0 };
-		_mockSubmissionService
-			.Setup(s => s.SubmitCustomWorklogsAsync(It.IsAny<IEnumerable<WorklogDto>>(), "tempo", It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
-			.ReturnsAsync(Result.Success(submission));
-
-		await _orchestrator.SubmitAsync(items, "tempo", "Tempo", WorklogSubmissionMode.Timed, TestContext.Current.CancellationToken);
-
-		_mockSubmissionService.Verify(s => s.SubmitCustomWorklogsAsync(
-			It.Is<IEnumerable<WorklogDto>>(w => w.Count() == 1 && w.First().TicketId == "PROJ-1"),
-			"tempo", It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()), Times.Once);
-	}
-
-	[Fact]
-	public async Task RetryFailedAsync_OnlyRetriesSelectedFailedItems()
-	{
-		var item1 = new WorklogPreviewItem
-		{
-			TicketId = "PROJ-1", Description = "Work 1", Date = FixedDate, Duration = 3600,
-			StartTime = FixedDate.AddHours(9), EndTime = FixedDate.AddHours(10),
-			HasError = true
-		};
-		item1.SaveOriginalValues();
-
-		var item2 = new WorklogPreviewItem
-		{
-			TicketId = "PROJ-2", Description = "Work 2", Date = FixedDate, Duration = 1800,
-			StartTime = FixedDate.AddHours(10), EndTime = FixedDate.AddHours(10).AddMinutes(30),
-			HasError = true, IsSelected = false
-		};
-		item2.SaveOriginalValues();
-
-		var items = new List<WorklogPreviewItem> { item1, item2 };
-
-		var submission = new SubmissionResult { TotalEntries = 1, SuccessfulEntries = 1, FailedEntries = 0 };
-		_mockSubmissionService
-			.Setup(s => s.SubmitCustomWorklogsAsync(It.IsAny<IEnumerable<WorklogDto>>(), "tempo", It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
-			.ReturnsAsync(Result.Success(submission));
-
-		await _orchestrator.RetryFailedAsync(items, "tempo", "Tempo", WorklogSubmissionMode.Timed, TestContext.Current.CancellationToken);
-
-		_mockSubmissionService.Verify(s => s.SubmitCustomWorklogsAsync(
-			It.Is<IEnumerable<WorklogDto>>(w => w.Count() == 1 && w.First().TicketId == "PROJ-1"),
-			"tempo", It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()), Times.Once);
-	}
-
-	#endregion IsSelected
-
-	#region Aggregated mode
-
-	[Fact]
-	public void MarkFailedItems_Aggregated_MarksTheSubmittedRow()
-	{
-		var item = new WorklogPreviewItem
-		{
-			TicketId = "PROJ-1", Description = "Work", Date = FixedDate, Duration = 3600,
-			IsAggregated = true, StartTime = FixedDate.AddHours(9), EndTime = FixedDate.AddHours(9)
-		};
-		item.SaveOriginalValues();
-		var items = new List<WorklogPreviewItem> { item };
-
-		var submission = new SubmissionResult
-		{
-			Errors = new List<SubmissionError>
-			{
-				new() { ErrorMessage = "Conflict", WorklogIndex = 0 }
-			}
-		};
-
-		_orchestrator.MarkFailedItems(items, items, submission).Should().BeTrue();
-		item.HasError.Should().BeTrue();
-		item.ErrorMessage.Should().Be("Conflict");
-	}
-
-	[Fact]
-	public void MarkFailedItems_RowsThatLookAlike_MarksTheOneThatFailed()
-	{
-		var items = CreatePreviewItems("PROJ-1").Concat(CreatePreviewItems("PROJ-1")).ToList();
-		var submission = new SubmissionResult
-		{
-			Errors = [new SubmissionError { ErrorMessage = "Conflict", WorklogIndex = 1 }]
-		};
-
-		_orchestrator.MarkFailedItems(items, items, submission);
-
-		items[0].HasError.Should().BeFalse();
-		items[1].HasError.Should().BeTrue();
-	}
-
-	[Fact]
-	public async Task SubmitAsync_UncheckedRowBeforeTheFailure_MarksTheRowThatWasSent()
-	{
-		var items = CreatePreviewItems("PROJ-1").Concat(CreatePreviewItems("PROJ-2")).ToList();
-		items[0].IsSelected = false;
-		var submission = new SubmissionResult
-		{
-			TotalEntries = 1,
-			FailedEntries = 1,
-			Errors = [new SubmissionError { ErrorMessage = "Conflict", WorklogIndex = 0 }]
-		};
-		_mockSubmissionService
-			.Setup(s => s.SubmitCustomWorklogsAsync(It.IsAny<IEnumerable<WorklogDto>>(), "tempo", It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
-			.ReturnsAsync(Result.Success(submission));
-
-		await _orchestrator.SubmitAsync(items, "tempo", "Tempo", WorklogSubmissionMode.Timed, TestContext.Current.CancellationToken);
-
-		items[0].HasError.Should().BeFalse();
-		items[1].HasError.Should().BeTrue();
-	}
-
-	[Fact]
-	public void MarkFailedItems_ErrorWithoutAPosition_MarksNoRow()
-	{
-		var items = CreatePreviewItems("PROJ-1").Concat(CreatePreviewItems("PROJ-2")).ToList();
-		var submission = new SubmissionResult
-		{
-			Errors = [new SubmissionError { ErrorMessage = "Conflict" }]
-		};
-
-		_orchestrator.MarkFailedItems(items, items, submission).Should().BeFalse();
-
-		items.Should().OnlyContain(i => !i.HasError);
-	}
-
-	[Fact]
-	public async Task RetryFailedAsync_ErrorWithoutAPosition_IsNotASuccess()
-	{
-		var items = CreatePreviewItems("PROJ-1");
-		items[0].HasError = true;
-		var submission = new SubmissionResult
-		{
-			TotalEntries = 1,
-			SuccessfulEntries = 1,
-			Errors = [new SubmissionError { ErrorMessage = "Conflict" }]
-		};
-		_mockSubmissionService
-			.Setup(s => s.SubmitCustomWorklogsAsync(It.IsAny<IEnumerable<WorklogDto>>(), "tempo", It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
-			.ReturnsAsync(Result.Success(submission));
-
-		var outcome = await _orchestrator.RetryFailedAsync(items, "tempo", "Tempo", WorklogSubmissionMode.Timed, TestContext.Current.CancellationToken);
-
-		outcome.AllSucceeded.Should().BeFalse();
-	}
-
-	#endregion Aggregated mode
-
-	private static readonly DateTime FixedDate = new(2025, 6, 15);
-
-	private static List<WorklogPreviewItem> CreatePreviewItems(string ticketId)
-	{
-		var item = new WorklogPreviewItem
-		{
-			TicketId = ticketId,
-			Description = "Test work",
-			Date = FixedDate,
-			Duration = 3600,
-			StartTime = FixedDate.AddHours(9),
-			EndTime = FixedDate.AddHours(10)
-		};
-		item.SaveOriginalValues();
-		return [item];
-	}
 }
