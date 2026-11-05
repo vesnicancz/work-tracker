@@ -584,7 +584,7 @@ Trigger: push tagu `v*`. Jobs:
 
    Obě matice mají stejnou sadu RID: co dostane GUI, dostane i CLI. Intel Macy (`osx-x64`) se nebuildí — Macy se prodávají s Apple Siliconem od roku 2020 a na těch starších rozjede .NET host z `osx-arm64` buildu Rosetta.
 5. **publish-plugins** (matrix: Atlassian, Luxafor, GoranG3, Office365Calendar, StreamDeck) — každý plugin samostatně. U StreamDecku navíc otestuje a sbalí `streamdeck-plugin/` do `.streamDeckPlugin` s verzí z tagu a přidá ho do kořene zipu vedle složky pluginu, obě části tak vycházejí společně.
-6. **release** — stáhne artifacty a vytvoří rovnou publikovaný GitHub Release s automaticky vygenerovanými poznámkami (`generate_release_notes`). Tag s pomlčkou (`v1.2.3-beta.1`) vyjde jako prerelease, který se nestane Latest.
+6. **release** — stáhne artifacty a vytvoří rovnou publikovaný GitHub Release s automaticky vygenerovanými poznámkami (`generate_release_notes`). Tag s pomlčkou (`v1.2.3-beta.1`) vyjde jako prerelease, který se nestane Latest. Ten akce nechá jako draft a publikuje ho až další krok, protože do publikovaného immutable releasu už soubory nahrát nejdou.
 
 Artifacty jsou framework‑dependent (bez runtime). Kdo chce self‑contained, buildí si sám.
 
@@ -662,7 +662,7 @@ git push origin v1.2.3-beta.1
 - **Přechod na finální verzi** — prerelease je nižší než finální verze se stejným číslem, takže `1.2.3-beta.1` nabídne `1.2.3`.
 - **Ostrá data** — Release build prerelease používá stejnou databázi a nastavení jako běžná instalace. Migrace v něm proběhne na ostré databázi, cesta zpět vede jen přes zálohu `worktracker.db.before-<migrace>.bak`.
 - **Test notifikace o aktualizaci** — prerelease s nižším číslem, než má Latest (např. `v1.16.9-beta.1` při Latest `1.17.0`), po spuštění nabídne Latest.
-- **Úklid** — `gh release delete v1.2.3-beta.1 --cleanup-tag` smaže release i tag na GitHubu. Lokální tag smaž zvlášť (`git tag -d v1.2.3-beta.1`), jinak z něj MinVer dál počítá verzi lokálních buildů.
+- **Úklid** — `gh release delete v1.2.3-beta.1 --cleanup-tag` smaže release i tag na GitHubu. Lokální tag smaž zvlášť (`git tag -d v1.2.3-beta.1`), jinak z něj MinVer dál počítá verzi lokálních buildů. Repo má zapnuté immutable releases, u kterých GitHub podle dokumentace název smazaného tagu znovu použít nedovolí, takže další pokus počítej s dalším číslem (`-beta.2`).
 
 ---
 

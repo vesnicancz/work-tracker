@@ -335,9 +335,21 @@ jobs:
       # The action does not read the prerelease part of the tag by itself, and a plain release of
       # v1.18.0-beta.1 would become Latest: every installed copy would offer it as an update. GitHub
       # never reports a prerelease as the latest release, which is what the GUI asks for.
+      #
+      # The repository has immutable releases on, so nothing can be uploaded to a published release.
+      # The action uploads to a draft and publishes it on its own, except for a prerelease, which it
+      # publishes up front: that has to stay a draft here and be published in the next step. Keep the
+      # two conditions the same, or a prerelease is left as a draft or goes out empty.
       - name: Create Release
         uses: softprops/action-gh-release@v3
         with:
           generate_release_notes: true
           prerelease: ${{ contains(github.ref_name, '-') }}
+          draft: ${{ contains(github.ref_name, '-') }}
           files: artifacts/*
+
+      - name: Publish the prerelease
+        if: contains(github.ref_name, '-')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft=false
