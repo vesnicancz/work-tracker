@@ -135,7 +135,7 @@ Logika GUI, která nezávisí na Avalonii, takže jde testovat bez UI (hlídá t
 
 - **ViewModely** (`MainViewModel`, `SettingsViewModel`, `SuggestionsViewModel`, `PomodoroViewModel`, `PluginViewModel`, …) ve složce `ViewModels/` — `ObservableObject` z `CommunityToolkit.Mvvm`, příkazy jako `AsyncRelayCommand`/`RelayCommand` vytvořené v konstruktoru, vlastnosti typicky přes `SetProperty` (source generátory `[RelayCommand]`/`[ObservableProperty]` projekt nepoužívá). `SettingsViewModel` drží obecná nastavení a uložení celého dialogu, ostatní záložky mají vlastní ViewModel (`AppearanceSettingsViewModel`, `FavoritesSettingsViewModel`, `PomodoroSettingsViewModel`, `PluginSettingsViewModel`).
 - **Orchestrátory** — třídy, které koordinují více služeb a skrývají workflow před ViewModely (např. `WorklogSubmissionOrchestrator` sestaví řádky náhledu, provede submit a retry a označí položky, které plugin odmítl). Dialogy implementuje Avalonia `DialogService`; orchestrátor je smí vyvolat jen přes `IDialogService` (viz `WorkEntryEditOrchestrator`).
-- **Služby**: `ISettingsService` (serializace `ApplicationSettings` do `settings.json`), `ILocalizationService` (resx loader s `INotifyPropertyChanged`), `IPomodoroService`.
+- **Služby**: `ISettingsService` (serializace `ApplicationSettings` do `settings.json`), `ILocalizationService` (resx loader s `INotifyPropertyChanged`), `IPomodoroService` (pravidla fází drží `PomodoroCycle` bez závislostí, služba k nim přidává časovač, indikátory, oznámení a automatické sledování).
 
 Tahle logika závisí na Application. Infrastructure používá jen bootstrap v `App.axaml.cs`.
 
