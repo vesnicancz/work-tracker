@@ -30,6 +30,7 @@ public class WorkEntryDialogSingleInstanceSmokeTests
 
 		return new DialogService(
 			provider.GetRequiredService<IServiceScopeFactory>(),
+			Mock.Of<IMainWindowAccessor>(),
 			NullLogger<DialogService>.Instance);
 	}
 

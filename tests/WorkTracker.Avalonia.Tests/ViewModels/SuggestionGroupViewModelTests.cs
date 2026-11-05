@@ -2,6 +2,7 @@ using FluentAssertions;
 using Moq;
 using WorkTracker.Avalonia.Orchestrators;
 using WorkTracker.Avalonia.ViewModels;
+using WorkTracker.Plugin.Abstractions;
 
 namespace WorkTracker.Avalonia.Tests.ViewModels;
 
@@ -78,26 +79,23 @@ public class SuggestionGroupViewModelTests
 	}
 
 	[Fact]
-	public void Ctor_ViewingOtherDay_ClearsStaleIsPastFromCachedInstances()
+	public void Ctor_SameCachedGroupAfterMidnight_IsNoLongerMarkedAsPast()
 	{
-		// Regression: the 5-min suggestions cache returns the same VM instances
-		// across midnight. An item marked IsPast=true while the page was "today"
-		// must not remain dimmed when that same date becomes "yesterday".
-		var now = new DateTime(2026, 4, 23, 0, 2, 0);
-		var timeProvider = new FakeTimeProvider(now);
-		var yesterday = new DateTime(2026, 4, 22);
-		var staleItem = CreateEvent(yesterday.AddHours(9), yesterday.AddHours(10));
-		staleItem.IsPast = true;
+		// The 5-min suggestions cache returns the same group across midnight. An item dimmed
+		// while the date was "today" must not remain dimmed when it becomes "yesterday".
+		var day = new DateTime(2026, 4, 22);
 		var group = new SuggestionGroup
 		{
 			PluginId = "cal",
 			PluginName = "Calendar",
-			Items = [staleItem],
+			Items = [CreateEvent(day.AddHours(9), day.AddHours(10))],
 		};
 
-		var vm = new SuggestionGroupViewModel(_orchestrator.Object, group, yesterday, timeProvider);
+		var beforeMidnight = new SuggestionGroupViewModel(_orchestrator.Object, group, day, new FakeTimeProvider(day.AddHours(23)));
+		var afterMidnight = new SuggestionGroupViewModel(_orchestrator.Object, group, day, new FakeTimeProvider(day.AddDays(1).AddMinutes(2)));
 
-		vm.Items[0].IsPast.Should().BeFalse();
+		beforeMidnight.Items[0].IsPast.Should().BeTrue();
+		afterMidnight.Items[0].IsPast.Should().BeFalse();
 	}
 
 	[Fact]
@@ -117,7 +115,7 @@ public class SuggestionGroupViewModelTests
 		vm.Items[0].IsPast.Should().BeFalse();
 	}
 
-	private static WorkSuggestionViewModel CreateEvent(DateTime startTime, DateTime? endTime) => new()
+	private static WorkSuggestion CreateEvent(DateTime startTime, DateTime? endTime) => new()
 	{
 		Title = "Meeting",
 		StartTime = startTime,
@@ -126,7 +124,7 @@ public class SuggestionGroupViewModelTests
 		SourceId = startTime.ToString("O"),
 	};
 
-	private static WorkSuggestionViewModel CreateTicket(string ticketId) => new()
+	private static WorkSuggestion CreateTicket(string ticketId) => new()
 	{
 		Title = ticketId,
 		TicketId = ticketId,

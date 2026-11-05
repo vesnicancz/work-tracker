@@ -10,7 +10,6 @@ using WorkTracker.Tests.Common.Builders;
 using WorkTracker.Avalonia.Models;
 using WorkTracker.Avalonia.Orchestrators;
 using WorkTracker.Avalonia.Services;
-using WorkTracker.Avalonia.ViewModels;
 
 namespace WorkTracker.Avalonia.Tests.Services;
 
@@ -362,7 +361,7 @@ public class RemoteControlHostTests
 			.ReturnsAsync(groups);
 	}
 
-	private static SuggestionGroup Group(string name, params WorkSuggestionViewModel[] items) => new()
+	private static SuggestionGroup Group(string name, params WorkSuggestion[] items) => new()
 	{
 		PluginId = name,
 		PluginName = name,
@@ -377,7 +376,7 @@ public class RemoteControlHostTests
 		Error = error
 	};
 
-	private static WorkSuggestionViewModel Suggestion(string title, string? ticketId, string source, DateTime? start = null, DateTime? end = null) => new()
+	private static WorkSuggestion Suggestion(string title, string? ticketId, string source, DateTime? start = null, DateTime? end = null) => new()
 	{
 		Title = title,
 		TicketId = ticketId,

@@ -20,10 +20,9 @@ public class WorkSuggestionViewModel
 	/// when present, otherwise <see cref="StartTime"/> — so a point-in-time
 	/// event is considered past once its start time is reached. Only set for
 	/// items on today's date; always false for other days or for items without
-	/// a time slot. Set by <see cref="SuggestionGroupViewModel"/> when items
-	/// are populated.
+	/// a time slot.
 	/// </summary>
-	public bool IsPast { get; set; }
+	public bool IsPast { get; init; }
 
 	public bool HasTimeSlot => StartTime.HasValue;
 

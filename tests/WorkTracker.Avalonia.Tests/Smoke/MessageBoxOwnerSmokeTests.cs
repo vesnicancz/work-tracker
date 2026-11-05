@@ -1,3 +1,4 @@
+using Avalonia.Controls;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -15,7 +16,7 @@ namespace WorkTracker.Avalonia.Tests.Smoke;
 /// </summary>
 public class MessageBoxOwnerSmokeTests
 {
-	private static DialogService CreateDialogService()
+	private static DialogService CreateDialogService(Window? mainWindow = null)
 	{
 		var localization = new Mock<ILocalizationService>();
 		localization.Setup(l => l[It.IsAny<string>()]).Returns((string key) => key);
@@ -30,6 +31,7 @@ public class MessageBoxOwnerSmokeTests
 
 		return new DialogService(
 			provider.GetRequiredService<IServiceScopeFactory>(),
+			Mock.Of<IMainWindowAccessor>(a => a.MainWindow == mainWindow),
 			NullLogger<DialogService>.Instance);
 	}
 
@@ -50,6 +52,39 @@ public class MessageBoxOwnerSmokeTests
 
 		(await answer).Should().BeFalse();
 		dialogService.OpenMessageBox.Should().BeNull();
+	});
+
+	[Fact]
+	public Task Confirmation_WithHiddenMainWindow_IsShownOnItsOwn() => UiThread.Dispatch(async () =>
+	{
+		var mainWindow = new Window();
+		var dialogService = CreateDialogService(mainWindow);
+
+		var answer = dialogService.ShowConfirmationAsync("message");
+
+		var messageBox = dialogService.OpenMessageBox!;
+		messageBox.IsVisible.Should().BeTrue();
+		messageBox.Owner.Should().BeNull();
+
+		messageBox.Close();
+		await answer;
+	});
+
+	[Fact]
+	public Task Confirmation_WithVisibleMainWindow_IsOwnedByIt() => UiThread.Dispatch(async () =>
+	{
+		var mainWindow = new Window();
+		mainWindow.Show();
+		var dialogService = CreateDialogService(mainWindow);
+
+		var answer = dialogService.ShowConfirmationAsync("message");
+
+		var messageBox = dialogService.OpenMessageBox!;
+		messageBox.Owner.Should().BeSameAs(mainWindow);
+
+		messageBox.Close();
+		await answer;
+		mainWindow.Close();
 	});
 
 	[Fact]

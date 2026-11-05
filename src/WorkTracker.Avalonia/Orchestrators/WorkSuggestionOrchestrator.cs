@@ -1,7 +1,6 @@
 using Microsoft.Extensions.Logging;
 using WorkTracker.Application.Plugins;
 using WorkTracker.Plugin.Abstractions;
-using WorkTracker.Avalonia.ViewModels;
 
 namespace WorkTracker.Avalonia.Orchestrators;
 
@@ -48,18 +47,12 @@ public class WorkSuggestionOrchestrator : IWorkSuggestionOrchestrator
 					};
 				}
 
-				var items = (result.Value ?? [])
-					.Select(MapToViewModel)
-					.OrderBy(s => s.StartTime ?? DateTime.MaxValue)
-					.ThenBy(s => s.Title)
-					.ToList();
-
 				return new SuggestionGroup
 				{
 					PluginId = plugin.Metadata.Id,
 					PluginName = plugin.Metadata.Name,
 					SupportsSearch = plugin.SupportsSearch,
-					Items = items,
+					Items = Sort(result.Value),
 					IconHint = plugin.Metadata.IconName ?? "LightbulbOutline"
 				};
 			}
@@ -84,7 +77,7 @@ public class WorkSuggestionOrchestrator : IWorkSuggestionOrchestrator
 		return groups;
 	}
 
-	public async Task<IReadOnlyList<WorkSuggestionViewModel>> SearchPluginAsync(
+	public async Task<IReadOnlyList<WorkSuggestion>> SearchPluginAsync(
 		string pluginId, string query, DateTime date, CancellationToken cancellationToken)
 	{
 		var plugin = _pluginManager.GetPlugin<IWorkSuggestionPlugin>(pluginId);
@@ -105,11 +98,7 @@ public class WorkSuggestionOrchestrator : IWorkSuggestionOrchestrator
 				return [];
 			}
 
-			return (result.Value ?? [])
-				.Select(MapToViewModel)
-				.OrderBy(s => s.StartTime ?? DateTime.MaxValue)
-				.ThenBy(s => s.Title)
-				.ToList();
+			return Sort(result.Value);
 		}
 		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
 		catch (Exception ex)
@@ -119,16 +108,11 @@ public class WorkSuggestionOrchestrator : IWorkSuggestionOrchestrator
 		}
 	}
 
-	private static WorkSuggestionViewModel MapToViewModel(WorkSuggestion s) => new()
+	private static List<WorkSuggestion> Sort(IEnumerable<WorkSuggestion>? suggestions)
 	{
-		Title = s.Title,
-		TicketId = s.TicketId,
-		Description = s.Description,
-		StartTime = s.StartTime,
-		EndTime = s.EndTime,
-		Source = s.Source,
-		SourceId = s.SourceId,
-		SourceUrl = s.SourceUrl
-	};
-
+		return (suggestions ?? [])
+			.OrderBy(s => s.StartTime ?? DateTime.MaxValue)
+			.ThenBy(s => s.Title)
+			.ToList();
+	}
 }

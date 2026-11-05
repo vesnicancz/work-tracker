@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using WorkTracker.Avalonia.Orchestrators;
+using WorkTracker.Plugin.Abstractions;
 
 namespace WorkTracker.Avalonia.ViewModels;
 
@@ -35,8 +36,7 @@ public class SuggestionGroupViewModel : ObservableObject, IDisposable
 		SupportsSearch = group.SupportsSearch;
 		Count = group.Items.Count;
 		Error = group.Error;
-		MarkPastItems(group.Items);
-		Items = new ObservableCollection<WorkSuggestionViewModel>(group.Items);
+		Items = new ObservableCollection<WorkSuggestionViewModel>(ToViewModels(group.Items));
 		SelectCommand = new RelayCommand<WorkSuggestionViewModel>(OnSuggestionSelected);
 	}
 
@@ -115,13 +115,10 @@ public class SuggestionGroupViewModel : ObservableObject, IDisposable
 		}
 	}
 
-	private void ReplaceItems(IReadOnlyList<WorkSuggestionViewModel> items)
+	private void ReplaceItems(IReadOnlyList<WorkSuggestion> suggestions)
 	{
-		// Mark before adding so the UI reads the final IsPast value when the
-		// item enters the bound collection (IsPast has no INotifyPropertyChanged).
-		MarkPastItems(items);
 		Items.Clear();
-		foreach (var item in items)
+		foreach (var item in ToViewModels(suggestions))
 		{
 			Items.Add(item);
 		}
@@ -133,29 +130,25 @@ public class SuggestionGroupViewModel : ObservableObject, IDisposable
 		OnPropertyChanged(nameof(IsEmpty));
 	}
 
-	private void MarkPastItems(IEnumerable<WorkSuggestionViewModel> items)
+	private List<WorkSuggestionViewModel> ToViewModels(IEnumerable<WorkSuggestion> suggestions)
 	{
 		// Only dim past events when viewing today — for past/future days the
 		// notion of "already happened" is either universal or meaningless.
-		// Always assign (don't early-return) so stale IsPast from a previous
-		// cached view across midnight gets cleared.
 		var now = _timeProvider.GetLocalNow().DateTime;
 		var viewingToday = _date.Date == now.Date;
-		foreach (var item in items)
+
+		return suggestions.Select(s => new WorkSuggestionViewModel
 		{
-			if (!item.HasTimeSlot)
-			{
-				item.IsPast = false;
-				continue;
-			}
-			if (!viewingToday)
-			{
-				item.IsPast = false;
-				continue;
-			}
-			var cutoff = item.EndTime ?? item.StartTime!.Value;
-			item.IsPast = cutoff <= now;
-		}
+			Title = s.Title,
+			TicketId = s.TicketId,
+			Description = s.Description,
+			StartTime = s.StartTime,
+			EndTime = s.EndTime,
+			Source = s.Source,
+			SourceId = s.SourceId,
+			SourceUrl = s.SourceUrl,
+			IsPast = viewingToday && s.StartTime.HasValue && (s.EndTime ?? s.StartTime.Value) <= now
+		}).ToList();
 	}
 
 	private void OnSuggestionSelected(WorkSuggestionViewModel? suggestion)
