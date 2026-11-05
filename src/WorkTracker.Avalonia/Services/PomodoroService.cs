@@ -509,6 +509,13 @@ public sealed class PomodoroService : IPomodoroService, IAsyncDisposable
 		_pluginManager.PluginStarted -= OnPluginStarted;
 		StopTimer();
 
+		// Outside a Pomodoro there is nothing to turn off, and asking would open a device nothing has used
+		if (_currentPhase == PomodoroPhase.Idle)
+		{
+			GC.SuppressFinalize(this);
+			return;
+		}
+
 		// Best-effort: turn off indicators with a timeout to avoid blocking app shutdown
 		try
 		{
