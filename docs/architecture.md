@@ -380,7 +380,7 @@ Jako konkrétní ilustraci vezmeme odeslání záznamů jednoho dne z Avalonia G
 1. **UI** — Uživatel v postranním panelu `MainWindow` klikne na **Odeslat záznamy práce** (`SubmitWorklogs`). Tlačítko je navázané na `SubmitWorklogCommand` v `MainViewModel`.
 2. **Root ViewModel** — `MainViewModel.SubmitWorklogAsync` zavolá `IDialogService.ShowSubmitWorklogDialogAsync(SelectedDate, false)`, tedy pro den vybraný v hlavním okně.
 3. **DialogService** — Vytvoří `SubmitWorklogViewModel`, zavolá jeho `InitializeAsync(date, isWeek)` a otevře modální `SubmitWorklogDialog`.
-4. **Dialog ViewModel** — `InitializeAsync` načte náhled přes `WorklogSubmissionOrchestrator.LoadPreviewAsync(date, isWeekly, mode, …)`, který zavolá `IWorklogSubmissionService.PreviewAsync(period, mode, ct)`; `SubmissionPeriod` je jeden den (`Day`) nebo týden kolem data (`WeekOf`).
+4. **Dialog ViewModel** — `InitializeAsync` načte náhled přes `WorklogSubmissionOrchestrator.LoadPreviewAsync(date, isWeekly, mode, ct)`, který zavolá `IWorklogSubmissionService.PreviewAsync(period, mode, ct)`; `SubmissionPeriod` je jeden den (`Day`) nebo týden kolem data (`WeekOf`). Řádky dialogu (`WorklogPreviewItem`) si z vrácených dnů staví ViewModel.
 5. **PluginBasedWorklogSubmissionService.PreviewAsync**:
    - Načte záznamy období přes `IWorkEntryService.GetWorkEntriesByDateRangeAsync(start, end)`.
    - Ponechá jen dokončené (s `EndTime`), běžící záznam do náhledu nejde.
@@ -402,7 +402,7 @@ Jako konkrétní ilustraci vezmeme odeslání záznamů jednoho dne z Avalonia G
    - Retry logika: až 2 opakování (celkem 3 pokusy, backoff 2 s a 4 s) na 429/503. Stavy, po kterých už worklog může existovat (408/500/502/504), se neopakují.
    - Vrátí `PluginResult<WorklogSubmissionResult>` s počty a případnými chybami. Chyba nese `WorklogIndex`, pozici záznamu v seznamu, který plugin dostal.
 10. **Zpět do služby** — mapuje `PluginResult<WorklogSubmissionResult>` → `Result<SubmissionResult>` (DTO layer) a přeloží pozice na seznam, který poslal volající, protože plugin neplatné řádky nedostal. „Došlo k selhání?“ říká `SubmissionResult.HasFailures`, protože chyba nemusí patřit započítanému záznamu (GoranG3 nedokáže uzavřít den). Pozici mimo seznam služba zaloguje a chyba zůstane bez řádku.
-11. **Orchestrátor a dialog** — `SubmitAsync` podle `SubmissionResult.Errors` označí chybné položky (`MarkFailedItems`) a vrátí `SubmissionOutcome`. Při úplném úspěchu dialog zůstane otevřený a výsledek ukáže ve stavovém řádku, aby šlo rovnou odeslat další den. Při částečném nebo úplném selhání taky zůstane otevřený, chybné řádky zčervenají a tlačítko **ODESLAT JEN NEÚSPĚŠNÉ** (`RetryFailedCommand` → `RetryFailedAsync`) pošle znovu zaškrtnuté chybné položky.
+11. **Orchestrátor a dialog** — `SubmitAsync` vrátí `SubmissionOutcome` se stavovou zprávou a chybami podle pozice a `SubmitWorklogViewModel` podle nich označí chybné řádky. Při úplném úspěchu dialog zůstane otevřený a výsledek ukáže ve stavovém řádku, aby šlo rovnou odeslat další den. Při částečném nebo úplném selhání taky zůstane otevřený, chybné řádky zčervenají a tlačítko **ODESLAT JEN NEÚSPĚŠNÉ** (`RetryFailedCommand`) pošle stejnou cestou znovu zaškrtnuté chybné položky.
 
 Celý tok demonstruje:
 
