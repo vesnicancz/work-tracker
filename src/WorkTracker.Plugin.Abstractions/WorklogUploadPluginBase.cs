@@ -43,11 +43,11 @@ public abstract class WorklogUploadPluginBase(ILogger logger) : PluginBase(logge
 		var failed = 0;
 		var errors = new List<WorklogSubmissionError>();
 
-		foreach (var worklog in worklogList)
+		for (var index = 0; index < worklogList.Count; index++)
 		{
 			cancellationToken.ThrowIfCancellationRequested();
 
-			var result = await UploadWorklogAsync(worklog, cancellationToken);
+			var result = await UploadWorklogAsync(worklogList[index], cancellationToken);
 			if (result.IsSuccess)
 			{
 				successful++;
@@ -57,7 +57,7 @@ public abstract class WorklogUploadPluginBase(ILogger logger) : PluginBase(logge
 				failed++;
 				errors.Add(new WorklogSubmissionError
 				{
-					Worklog = worklog,
+					WorklogIndex = index,
 					ErrorMessage = result.Error ?? "Unknown error"
 				});
 			}

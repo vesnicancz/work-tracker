@@ -62,32 +62,39 @@ public class WorklogSubmissionOrchestratorTests
 
 	#region LoadPreviewAsync
 
+	private void SetupPreview(params WorklogSubmissionDto[] days)
+	{
+		_mockSubmissionService
+			.Setup(s => s.PreviewAsync(It.IsAny<SubmissionPeriod>(), It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(days);
+	}
+
 	[Fact]
 	public async Task LoadPreviewAsync_Daily_ReturnsItems()
 	{
 		var date = new DateTime(2025, 1, 15);
-		var dto = new WorklogSubmissionDto
+		SetupPreview(new WorklogSubmissionDto
 		{
-			Worklogs = new List<WorklogDto>
-			{
+			SubmissionDate = date,
+			Worklogs =
+			[
 				new() { TicketId = "PROJ-1", Description = "Work", DurationMinutes = 60, StartTime = date.AddHours(9), EndTime = date.AddHours(10) },
 				new() { TicketId = "PROJ-2", Description = "More", DurationMinutes = 30, StartTime = date.AddHours(10), EndTime = date.AddHours(10).AddMinutes(30) }
-			}
-		};
-		_mockSubmissionService.Setup(s => s.PreviewDailyWorklogAsync(date, It.IsAny<CancellationToken>())).ReturnsAsync(dto);
+			]
+		});
 
 		var result = await _orchestrator.LoadPreviewAsync(date, false, WorklogSubmissionMode.Timed, "No ticket", TestContext.Current.CancellationToken);
 
 		result.Items.Should().HaveCount(2);
 		result.DataItemCount.Should().Be(2);
 		result.TotalSeconds.Should().Be(90 * 60);
+		_mockSubmissionService.Verify(s => s.PreviewAsync(SubmissionPeriod.Day(date), WorklogSubmissionMode.Timed, It.IsAny<CancellationToken>()), Times.Once);
 	}
 
 	[Fact]
 	public async Task LoadPreviewAsync_Daily_EmptyWorklogs_ReturnsEmpty()
 	{
-		var dto = new WorklogSubmissionDto { Worklogs = new List<WorklogDto>() };
-		_mockSubmissionService.Setup(s => s.PreviewDailyWorklogAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>())).ReturnsAsync(dto);
+		SetupPreview(new WorklogSubmissionDto { SubmissionDate = FixedDate });
 
 		var result = await _orchestrator.LoadPreviewAsync(FixedDate, false, WorklogSubmissionMode.Timed, "No ticket", TestContext.Current.CancellationToken);
 
@@ -100,14 +107,11 @@ public class WorklogSubmissionOrchestratorTests
 	public async Task LoadPreviewAsync_Daily_NullTicket_UsesNoTicketLabel()
 	{
 		var date = new DateTime(2025, 1, 15);
-		var dto = new WorklogSubmissionDto
+		SetupPreview(new WorklogSubmissionDto
 		{
-			Worklogs = new List<WorklogDto>
-			{
-				new() { TicketId = null, Description = "Work", DurationMinutes = 60, StartTime = date.AddHours(9), EndTime = date.AddHours(10) }
-			}
-		};
-		_mockSubmissionService.Setup(s => s.PreviewDailyWorklogAsync(date, It.IsAny<CancellationToken>())).ReturnsAsync(dto);
+			SubmissionDate = date,
+			Worklogs = [new() { TicketId = null, Description = "Work", DurationMinutes = 60, StartTime = date.AddHours(9), EndTime = date.AddHours(10) }]
+		});
 
 		var result = await _orchestrator.LoadPreviewAsync(date, false, WorklogSubmissionMode.Timed, "No ticket", TestContext.Current.CancellationToken);
 
@@ -122,12 +126,9 @@ public class WorklogSubmissionOrchestratorTests
 	{
 		var monday = new DateTime(2025, 1, 13);
 		var tuesday = new DateTime(2025, 1, 14);
-		var weeklyPreview = new Dictionary<DateTime, WorklogSubmissionDto>
-		{
-			[monday] = new() { Worklogs = new List<WorklogDto> { new() { TicketId = "A-1", DurationMinutes = 60, StartTime = monday.AddHours(9), EndTime = monday.AddHours(10) } } },
-			[tuesday] = new() { Worklogs = new List<WorklogDto> { new() { TicketId = "A-2", DurationMinutes = 30, StartTime = tuesday.AddHours(9), EndTime = tuesday.AddHours(9).AddMinutes(30) } } }
-		};
-		_mockSubmissionService.Setup(s => s.PreviewWeeklyWorklogAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>())).ReturnsAsync(weeklyPreview);
+		SetupPreview(
+			new WorklogSubmissionDto { SubmissionDate = monday, Worklogs = [new() { TicketId = "A-1", DurationMinutes = 60, StartTime = monday.AddHours(9), EndTime = monday.AddHours(10) }] },
+			new WorklogSubmissionDto { SubmissionDate = tuesday, Worklogs = [new() { TicketId = "A-2", DurationMinutes = 30, StartTime = tuesday.AddHours(9), EndTime = tuesday.AddHours(9).AddMinutes(30) }] });
 
 		var result = await _orchestrator.LoadPreviewAsync(monday, true, WorklogSubmissionMode.Timed, "No ticket", TestContext.Current.CancellationToken);
 
@@ -135,6 +136,24 @@ public class WorklogSubmissionOrchestratorTests
 		result.DataItemCount.Should().Be(2);
 		result.Items[0].IsDateHeader.Should().BeTrue();
 		result.Items[1].IsDateHeader.Should().BeFalse();
+		_mockSubmissionService.Verify(s => s.PreviewAsync(SubmissionPeriod.WeekOf(monday), WorklogSubmissionMode.Timed, It.IsAny<CancellationToken>()), Times.Once);
+	}
+
+	[Fact]
+	public async Task LoadPreviewAsync_Aggregated_MarksTheRowsAggregated()
+	{
+		var date = new DateTime(2025, 1, 15);
+		SetupPreview(new WorklogSubmissionDto
+		{
+			SubmissionDate = date,
+			Worklogs = [new() { TicketId = "PROJ-1", Description = "Work", DurationMinutes = 90, StartTime = date.AddHours(9), EndTime = date.AddHours(9) }]
+		});
+
+		var result = await _orchestrator.LoadPreviewAsync(date, false, WorklogSubmissionMode.Aggregated, "No ticket", TestContext.Current.CancellationToken);
+
+		result.Items.Should().ContainSingle().Which.IsAggregated.Should().BeTrue();
+		result.Items[0].Duration.Should().Be(90 * 60);
+		_mockSubmissionService.Verify(s => s.PreviewAsync(SubmissionPeriod.Day(date), WorklogSubmissionMode.Aggregated, It.IsAny<CancellationToken>()), Times.Once);
 	}
 
 	#endregion LoadPreviewAsync
@@ -167,7 +186,7 @@ public class WorklogSubmissionOrchestratorTests
 			FailedEntries = 1,
 			Errors = new List<SubmissionError>
 			{
-				new() { TicketId = "PROJ-1", Date = FixedDate, ErrorMessage = "Conflict", WorklogIndex = 0 }
+				new() { ErrorMessage = "Conflict", WorklogIndex = 0 }
 			}
 		};
 		_mockSubmissionService
@@ -208,7 +227,7 @@ public class WorklogSubmissionOrchestratorTests
 			TotalEntries = 1,
 			SuccessfulEntries = 0,
 			FailedEntries = 1,
-			Errors = new List<SubmissionError> { new() { TicketId = "PROJ-1", Date = FixedDate, ErrorMessage = "err", WorklogIndex = 0 } }
+			Errors = new List<SubmissionError> { new() { ErrorMessage = "err", WorklogIndex = 0 } }
 		};
 		_mockSubmissionService
 			.Setup(s => s.SubmitCustomWorklogsAsync(It.IsAny<IEnumerable<WorklogDto>>(), "tempo", It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
@@ -288,7 +307,7 @@ public class WorklogSubmissionOrchestratorTests
 		{
 			Errors = new List<SubmissionError>
 			{
-				new() { TicketId = "PROJ-1", Date = FixedDate, ErrorMessage = "Conflict", WorklogIndex = 0 }
+				new() { ErrorMessage = "Conflict", WorklogIndex = 0 }
 			}
 		};
 
@@ -540,99 +559,6 @@ public class WorklogSubmissionOrchestratorTests
 	#region Aggregated mode
 
 	[Fact]
-	public async Task LoadPreviewAsync_Daily_Aggregated_GroupsByTicketAndDescription()
-	{
-		var date = new DateTime(2025, 1, 15);
-		var dto = new WorklogSubmissionDto
-		{
-			Worklogs = new List<WorklogDto>
-			{
-				// Two entries with same ticket + description → aggregate into one
-				new() { TicketId = "PROJ-1", Description = "Work", DurationMinutes = 60, StartTime = date.AddHours(9), EndTime = date.AddHours(10) },
-				new() { TicketId = "PROJ-1", Description = "Work", DurationMinutes = 30, StartTime = date.AddHours(14), EndTime = date.AddHours(14).AddMinutes(30) },
-				// Same ticket, different description → separate aggregated row
-				new() { TicketId = "PROJ-1", Description = "Review", DurationMinutes = 45, StartTime = date.AddHours(11), EndTime = date.AddHours(11).AddMinutes(45) },
-				// Different ticket
-				new() { TicketId = "PROJ-2", Description = "Other", DurationMinutes = 15, StartTime = date.AddHours(12), EndTime = date.AddHours(12).AddMinutes(15) }
-			}
-		};
-		_mockSubmissionService.Setup(s => s.PreviewDailyWorklogAsync(date, It.IsAny<CancellationToken>())).ReturnsAsync(dto);
-
-		var result = await _orchestrator.LoadPreviewAsync(date, false, WorklogSubmissionMode.Aggregated, "No ticket", TestContext.Current.CancellationToken);
-
-		result.Items.Should().HaveCount(3); // PROJ-1/Work, PROJ-1/Review, PROJ-2/Other
-		result.Items.Should().OnlyContain(i => i.IsAggregated);
-
-		var proj1Work = result.Items.Single(i => i.TicketId == "PROJ-1" && i.Description == "Work");
-		proj1Work.Duration.Should().Be((60 + 30) * 60); // total seconds
-		proj1Work.StartTime.Should().Be(date.AddHours(9)); // earliest start becomes representative
-
-		var proj1Review = result.Items.Single(i => i.TicketId == "PROJ-1" && i.Description == "Review");
-		proj1Review.Duration.Should().Be(45 * 60);
-	}
-
-	[Fact]
-	public async Task LoadPreviewAsync_Weekly_Aggregated_GroupsPerDay()
-	{
-		var monday = new DateTime(2025, 1, 13);
-		var tuesday = new DateTime(2025, 1, 14);
-		var weeklyPreview = new Dictionary<DateTime, WorklogSubmissionDto>
-		{
-			[monday] = new()
-			{
-				Worklogs = new List<WorklogDto>
-				{
-					new() { TicketId = "PROJ-1", Description = "Work", DurationMinutes = 60, StartTime = monday.AddHours(9), EndTime = monday.AddHours(10) },
-					new() { TicketId = "PROJ-1", Description = "Work", DurationMinutes = 30, StartTime = monday.AddHours(14), EndTime = monday.AddHours(14).AddMinutes(30) }
-				}
-			},
-			[tuesday] = new()
-			{
-				Worklogs = new List<WorklogDto>
-				{
-					new() { TicketId = "PROJ-1", Description = "Work", DurationMinutes = 45, StartTime = tuesday.AddHours(9), EndTime = tuesday.AddHours(9).AddMinutes(45) }
-				}
-			}
-		};
-		_mockSubmissionService.Setup(s => s.PreviewWeeklyWorklogAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>())).ReturnsAsync(weeklyPreview);
-
-		var result = await _orchestrator.LoadPreviewAsync(monday, true, WorklogSubmissionMode.Aggregated, "No ticket", TestContext.Current.CancellationToken);
-
-		// 2 headers + 1 aggregated item per day = 4 rows (same ticket+description in different days stay separate)
-		result.Items.Should().HaveCount(4);
-		var dataItems = result.Items.Where(i => !i.IsDateHeader).ToList();
-		dataItems.Should().HaveCount(2);
-		dataItems.All(i => i.IsAggregated).Should().BeTrue();
-
-		var mondayItem = dataItems.Single(i => i.Date.Date == monday);
-		mondayItem.Duration.Should().Be((60 + 30) * 60);
-
-		var tuesdayItem = dataItems.Single(i => i.Date.Date == tuesday);
-		tuesdayItem.Duration.Should().Be(45 * 60);
-	}
-
-	[Fact]
-	public async Task LoadPreviewAsync_Aggregated_NullTicket_GroupsIntoSingleRow()
-	{
-		var date = new DateTime(2025, 1, 15);
-		var dto = new WorklogSubmissionDto
-		{
-			Worklogs = new List<WorklogDto>
-			{
-				new() { TicketId = null, Description = "Admin", DurationMinutes = 20, StartTime = date.AddHours(9), EndTime = date.AddHours(9).AddMinutes(20) },
-				new() { TicketId = null, Description = "Admin", DurationMinutes = 10, StartTime = date.AddHours(16), EndTime = date.AddHours(16).AddMinutes(10) }
-			}
-		};
-		_mockSubmissionService.Setup(s => s.PreviewDailyWorklogAsync(date, It.IsAny<CancellationToken>())).ReturnsAsync(dto);
-
-		var result = await _orchestrator.LoadPreviewAsync(date, false, WorklogSubmissionMode.Aggregated, "No ticket", TestContext.Current.CancellationToken);
-
-		result.Items.Should().ContainSingle();
-		result.Items[0].TicketId.Should().BeNull();
-		result.Items[0].Duration.Should().Be(30 * 60);
-	}
-
-	[Fact]
 	public void MarkFailedItems_Aggregated_MarksTheSubmittedRow()
 	{
 		var item = new WorklogPreviewItem
@@ -647,7 +573,7 @@ public class WorklogSubmissionOrchestratorTests
 		{
 			Errors = new List<SubmissionError>
 			{
-				new() { TicketId = "PROJ-1", Date = FixedDate, Description = "Work", ErrorMessage = "Conflict", WorklogIndex = 0 }
+				new() { ErrorMessage = "Conflict", WorklogIndex = 0 }
 			}
 		};
 
@@ -662,7 +588,7 @@ public class WorklogSubmissionOrchestratorTests
 		var items = CreatePreviewItems("PROJ-1").Concat(CreatePreviewItems("PROJ-1")).ToList();
 		var submission = new SubmissionResult
 		{
-			Errors = [new SubmissionError { TicketId = "PROJ-1", Date = FixedDate, ErrorMessage = "Conflict", WorklogIndex = 1 }]
+			Errors = [new SubmissionError { ErrorMessage = "Conflict", WorklogIndex = 1 }]
 		};
 
 		_orchestrator.MarkFailedItems(items, items, submission);
@@ -680,7 +606,7 @@ public class WorklogSubmissionOrchestratorTests
 		{
 			TotalEntries = 1,
 			FailedEntries = 1,
-			Errors = [new SubmissionError { TicketId = "PROJ-2", Date = FixedDate, ErrorMessage = "Conflict", WorklogIndex = 0 }]
+			Errors = [new SubmissionError { ErrorMessage = "Conflict", WorklogIndex = 0 }]
 		};
 		_mockSubmissionService
 			.Setup(s => s.SubmitCustomWorklogsAsync(It.IsAny<IEnumerable<WorklogDto>>(), "tempo", It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
@@ -693,18 +619,37 @@ public class WorklogSubmissionOrchestratorTests
 	}
 
 	[Fact]
-	public void MarkFailedItems_ErrorWithoutAPosition_MarksTheFirstRowOfThatDayAndTicket()
+	public void MarkFailedItems_ErrorWithoutAPosition_MarksNoRow()
 	{
 		var items = CreatePreviewItems("PROJ-1").Concat(CreatePreviewItems("PROJ-2")).ToList();
 		var submission = new SubmissionResult
 		{
-			Errors = [new SubmissionError { TicketId = "PROJ-2", Date = FixedDate, ErrorMessage = "Conflict" }]
+			Errors = [new SubmissionError { ErrorMessage = "Conflict" }]
 		};
 
-		_orchestrator.MarkFailedItems(items, items, submission);
+		_orchestrator.MarkFailedItems(items, items, submission).Should().BeFalse();
 
-		items[0].HasError.Should().BeFalse();
-		items[1].HasError.Should().BeTrue();
+		items.Should().OnlyContain(i => !i.HasError);
+	}
+
+	[Fact]
+	public async Task RetryFailedAsync_ErrorWithoutAPosition_IsNotASuccess()
+	{
+		var items = CreatePreviewItems("PROJ-1");
+		items[0].HasError = true;
+		var submission = new SubmissionResult
+		{
+			TotalEntries = 1,
+			SuccessfulEntries = 1,
+			Errors = [new SubmissionError { ErrorMessage = "Conflict" }]
+		};
+		_mockSubmissionService
+			.Setup(s => s.SubmitCustomWorklogsAsync(It.IsAny<IEnumerable<WorklogDto>>(), "tempo", It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(Result.Success(submission));
+
+		var outcome = await _orchestrator.RetryFailedAsync(items, "tempo", "Tempo", WorklogSubmissionMode.Timed, TestContext.Current.CancellationToken);
+
+		outcome.AllSucceeded.Should().BeFalse();
 	}
 
 	#endregion Aggregated mode

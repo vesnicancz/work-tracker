@@ -266,6 +266,21 @@ public class TempoWorklogPluginTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task UploadWorklogsAsync_OneFails_ReportsItsPosition()
+    {
+        _httpHandler.SetupGet("/rest/api/3/issue/PROJ-1?fields=id", JiraIssueJson("PROJ-1", 10001));
+        _httpHandler.SetupPost("/4/worklogs", HttpStatusCode.OK, """{"tempoWorklogId": 1}""");
+        await InitializePluginAsync();
+
+        var worklogs = new[] { CreateWorklog("PROJ-1"), CreateWorklog(""), CreateWorklog("PROJ-1") };
+
+        var result = await _plugin.UploadWorklogsAsync(worklogs, WorklogSubmissionMode.Timed, CancellationToken.None);
+
+        result.Value!.SuccessfulEntries.Should().Be(2);
+        result.Value.Errors.Should().ContainSingle().Which.WorklogIndex.Should().Be(1);
+    }
+
+    [Fact]
     public async Task UploadWorklogsAsync_Timed_PostsPayloadIncludingStartTime()
     {
         _httpHandler.SetupGet("/rest/api/3/issue/PROJ-1?fields=id", JiraIssueJson("PROJ-1", 10001));

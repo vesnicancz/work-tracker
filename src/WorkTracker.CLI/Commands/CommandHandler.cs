@@ -4,6 +4,7 @@ using WorkTracker.Application.DTOs;
 using WorkTracker.Application.Plugins;
 using WorkTracker.Application.Services;
 using WorkTracker.CLI.Output;
+using WorkTracker.Plugin.Abstractions;
 
 namespace WorkTracker.CLI.Commands;
 
@@ -405,51 +406,36 @@ public sealed class CommandHandler
 				return 1;
 			}
 
-			if (isWeek)
-			{
-				return await HandleSendWeekCommand(date, assumeYes, providerId);
-			}
-
 			var targetDate = date ?? _timeProvider.GetLocalNow().Date;
+			var period = isWeek ? SubmissionPeriod.WeekOf(targetDate) : SubmissionPeriod.Day(targetDate);
 
-			var preview = await _submissionService.PreviewDailyWorklogAsync(targetDate);
+			var preview = await _submissionService.PreviewAsync(period, WorklogSubmissionMode.Timed, CancellationToken.None);
 
-			if (!preview.Worklogs.Any())
+			// The preview holds one item per day, so it isn't empty just because nothing was done
+			if (!preview.Any(day => day.Worklogs.Count != 0))
 			{
-				CliConsole.Out.MarkupLine("[yellow]No completed entries to send[/]");
+				CliConsole.Out.MarkupLine(isWeek ? "[yellow]No completed entries to send for the week[/]" : "[yellow]No completed entries to send[/]");
 				return 0;
 			}
 
-			CliConsole.Out.MarkupLine($"[bold]Preview of entries to send for {targetDate:yyyy-MM-dd}:[/]\n");
-
-			var table = new Table();
-			table.AddColumn("Ticket");
-			table.AddColumn("Start");
-			table.AddColumn("End");
-			table.AddColumn("Duration");
-
-			foreach (var worklog in preview.Worklogs)
+			if (isWeek)
 			{
-				table.AddRow(
-					string.IsNullOrWhiteSpace(worklog.TicketId) ? "[dim]N/A[/]" : Markup.Escape(worklog.TicketId),
-					worklog.StartTime.ToString("HH:mm"),
-					worklog.EndTime.ToString("HH:mm"),
-					$"{worklog.DurationMinutes / 60}h {worklog.DurationMinutes % 60}m"
-				);
+				WriteWeekPreview(preview);
+			}
+			else
+			{
+				WriteDayPreview(targetDate, preview[0]);
 			}
 
-			CliConsole.Out.Write(table);
-
 			var provider = Markup.Escape(DescribeProvider(providerId));
-			if (!assumeYes && !CliConsole.Out.Confirm($"\nSend these entries to {provider}?"))
+			var question = isWeek ? $"\nSend all these entries to {provider}?" : $"\nSend these entries to {provider}?";
+			if (!assumeYes && !CliConsole.Out.Confirm(question))
 			{
 				CliConsole.Out.MarkupLine("[yellow]Cancelled[/]");
 				return 0;
 			}
 
-			var result = providerId == null
-				? await _submissionService.SubmitDailyWorklogAsync(targetDate)
-				: await _submissionService.SubmitDailyWorklogAsync(targetDate, providerId);
+			var result = await _submissionService.SubmitAsync(period, providerId, CancellationToken.None);
 
 			if (result.IsSuccess)
 			{
@@ -470,20 +456,16 @@ public sealed class CommandHandler
 
 	/// <summary>
 	/// Reports what the provider did with the entries. A call that went through can still have failed
-	/// for some of them, and a script relying on the exit code has to learn about that. The errors are
-	/// checked as well as the count, because a plugin can report a failure that belongs to no single
-	/// entry (GoranG3 submitting the timesheet of a day).
+	/// for some of them, and a script relying on the exit code has to learn about that.
 	/// </summary>
 	private static int ReportSubmission(SubmissionResult submission, string provider)
 	{
-		var hasFailures = submission.FailedEntries > 0 || submission.Errors.Count > 0;
-
-		if (submission.SuccessfulEntries > 0 || !hasFailures)
+		if (submission.SuccessfulEntries > 0 || !submission.HasFailures)
 		{
 			CliConsole.Out.MarkupLine($"[green]✓[/] Successfully sent {submission.SuccessfulEntries} entries to {provider}");
 		}
 
-		if (!hasFailures)
+		if (!submission.HasFailures)
 		{
 			return 0;
 		}
@@ -495,7 +477,8 @@ public sealed class CommandHandler
 
 		foreach (var error in submission.Errors)
 		{
-			CliConsole.Error.MarkupLine($"  [red]-[/] {error.Date:yyyy-MM-dd}: {Markup.Escape(error.ErrorMessage)}");
+			var day = error.Date is { } date ? $"{date:yyyy-MM-dd}: " : string.Empty;
+			CliConsole.Error.MarkupLine($"  [red]-[/] {day}{Markup.Escape(error.ErrorMessage)}");
 		}
 
 		return 1;
@@ -516,88 +499,48 @@ public sealed class CommandHandler
 		return provider?.Name ?? providerId ?? "the worklog provider";
 	}
 
-	private async Task<int> HandleSendWeekCommand(DateTime? date = null, bool assumeYes = false, string? providerId = null)
+	private static void WriteDayPreview(DateTime date, WorklogSubmissionDto day)
 	{
-		try
+		CliConsole.Out.MarkupLine($"[bold]Preview of entries to send for {date:yyyy-MM-dd}:[/]\n");
+		CliConsole.Out.Write(WorklogTable(day.Worklogs));
+	}
+
+	private static void WriteWeekPreview(IReadOnlyList<WorklogSubmissionDto> days)
+	{
+		CliConsole.Out.MarkupLine($"[bold]Preview of entries to send for week {days[0].SubmissionDate:yyyy-MM-dd} to {days[^1].SubmissionDate:yyyy-MM-dd}:[/]\n");
+
+		foreach (var day in days.Where(day => day.Worklogs.Count != 0))
 		{
-			var targetDate = date ?? _timeProvider.GetLocalNow().Date;
+			CliConsole.Out.MarkupLine($"\n[bold cyan]{day.SubmissionDate:ddd yyyy-MM-dd}[/]");
 
-			var preview = await _submissionService.PreviewWeeklyWorklogAsync(targetDate);
-
-			// The preview always holds one entry per day of the week, so it is never empty —
-			// the week has nothing to send only when every one of those days is empty.
-			if (!preview.Values.Any(day => day.Worklogs.Any()))
-			{
-				CliConsole.Out.MarkupLine("[yellow]No completed entries to send for the week[/]");
-				return 0;
-			}
-
-			var weekStart = preview.Keys.Min();
-			var weekEnd = preview.Keys.Max();
-
-			CliConsole.Out.MarkupLine($"[bold]Preview of entries to send for week {weekStart:yyyy-MM-dd} to {weekEnd:yyyy-MM-dd}:[/]\n");
-
-			var totalEntries = 0;
-			var totalMinutes = 0;
-
-			foreach (var (dayDate, dayPreview) in preview.OrderBy(kvp => kvp.Key))
-			{
-				if (!dayPreview.Worklogs.Any())
-				{
-					continue;
-				}
-
-				CliConsole.Out.MarkupLine($"\n[bold cyan]{dayDate:ddd yyyy-MM-dd}[/]");
-
-				var table = new Table();
-				table.Border = TableBorder.Minimal;
-				table.AddColumn("Ticket");
-				table.AddColumn("Start");
-				table.AddColumn("End");
-				table.AddColumn("Duration");
-
-				foreach (var worklog in dayPreview.Worklogs)
-				{
-					table.AddRow(
-						string.IsNullOrWhiteSpace(worklog.TicketId) ? "[dim]N/A[/]" : Markup.Escape(worklog.TicketId),
-						worklog.StartTime.ToString("HH:mm"),
-						worklog.EndTime.ToString("HH:mm"),
-						$"{worklog.DurationMinutes / 60}h {worklog.DurationMinutes % 60}m"
-					);
-					totalMinutes += worklog.DurationMinutes;
-					totalEntries++;
-				}
-
-				CliConsole.Out.Write(table);
-			}
-
-			CliConsole.Out.MarkupLine($"\n[bold]Total:[/] {totalEntries} entries, {totalMinutes / 60}h {totalMinutes % 60}m");
-
-			var provider = Markup.Escape(DescribeProvider(providerId));
-			if (!assumeYes && !CliConsole.Out.Confirm($"\nSend all these entries to {provider}?"))
-			{
-				CliConsole.Out.MarkupLine("[yellow]Cancelled[/]");
-				return 0;
-			}
-
-			var result = providerId == null
-				? await _submissionService.SubmitWeeklyWorklogAsync(targetDate)
-				: await _submissionService.SubmitWeeklyWorklogAsync(targetDate, providerId);
-
-			if (result.IsSuccess)
-			{
-				return ReportSubmission(result.Value, provider);
-			}
-			else
-			{
-				CliConsole.Error.MarkupLine($"[red]✗ Failed to send entries to {provider}:[/] {Markup.Escape(result.Error)}");
-				return 1;
-			}
+			var table = WorklogTable(day.Worklogs);
+			table.Border = TableBorder.Minimal;
+			CliConsole.Out.Write(table);
 		}
-		catch (Exception ex)
+
+		var worklogs = days.SelectMany(day => day.Worklogs).ToList();
+		var totalMinutes = worklogs.Sum(w => w.DurationMinutes);
+		CliConsole.Out.MarkupLine($"\n[bold]Total:[/] {worklogs.Count} entries, {totalMinutes / 60}h {totalMinutes % 60}m");
+	}
+
+	private static Table WorklogTable(IEnumerable<WorklogDto> worklogs)
+	{
+		var table = new Table();
+		table.AddColumn("Ticket");
+		table.AddColumn("Start");
+		table.AddColumn("End");
+		table.AddColumn("Duration");
+
+		foreach (var worklog in worklogs)
 		{
-			CliConsole.Error.MarkupLine($"[red]✗ Error:[/] {Markup.Escape(ex.Message)}");
-			return 1;
+			table.AddRow(
+				string.IsNullOrWhiteSpace(worklog.TicketId) ? "[dim]N/A[/]" : Markup.Escape(worklog.TicketId),
+				worklog.StartTime.ToString("HH:mm"),
+				worklog.EndTime.ToString("HH:mm"),
+				$"{worklog.DurationMinutes / 60}h {worklog.DurationMinutes % 60}m"
+			);
 		}
+
+		return table;
 	}
 }

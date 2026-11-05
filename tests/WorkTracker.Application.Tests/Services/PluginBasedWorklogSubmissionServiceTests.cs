@@ -64,14 +64,14 @@ public class PluginBasedWorklogSubmissionServiceTests
 			.Returns(ValidationResult.Failure("Invalid"));
 	}
 
-	#region SubmitDailyWorklogAsync (no provider)
+	#region Submit a day without a provider
 
 	[Fact]
-	public async Task SubmitDailyWorklogAsync_NoPluginAvailable_ReturnsFailure()
+	public async Task SubmitDay_NoPluginAvailable_ReturnsFailure()
 	{
 		_mockPluginManager.Setup(p => p.EnabledWorklogUploadPlugins).Returns([]);
 
-		var result = await _sut.SubmitDailyWorklogAsync(DateTime.Today, TestContext.Current.CancellationToken);
+		var result = await _sut.SubmitAsync(SubmissionPeriod.Day(DateTime.Today), null, TestContext.Current.CancellationToken);
 
 		result.IsSuccess.Should().BeFalse();
 		result.Error.Should().Contain("No worklog upload plugin available");
@@ -84,8 +84,8 @@ public class PluginBasedWorklogSubmissionServiceTests
 		var goran = CreateMockPlugin("gorang3.worklog");
 		_mockPluginManager.Setup(p => p.EnabledWorklogUploadPlugins).Returns([tempo.Object, goran.Object]);
 
-		var daily = await _sut.SubmitDailyWorklogAsync(DateTime.Today, TestContext.Current.CancellationToken);
-		var weekly = await _sut.SubmitWeeklyWorklogAsync(DateTime.Today, TestContext.Current.CancellationToken);
+		var daily = await _sut.SubmitAsync(SubmissionPeriod.Day(DateTime.Today), null, TestContext.Current.CancellationToken);
+		var weekly = await _sut.SubmitAsync(SubmissionPeriod.WeekOf(DateTime.Today), null, TestContext.Current.CancellationToken);
 
 		daily.IsFailure.Should().BeTrue();
 		daily.Error.Should().Contain("tempo.worklog").And.Contain("gorang3.worklog");
@@ -95,7 +95,7 @@ public class PluginBasedWorklogSubmissionServiceTests
 	}
 
 	[Fact]
-	public async Task SubmitDailyWorklogAsync_WithEntries_DelegatesToPlugin()
+	public async Task SubmitDay_WithEntries_DelegatesToPlugin()
 	{
 		var date = new DateTime(2025, 1, 15);
 		var plugin = CreateMockPlugin();
@@ -107,14 +107,14 @@ public class PluginBasedWorklogSubmissionServiceTests
 			CreateCompletedEntry(1, "PROJ-1", date.AddHours(9), date.AddHours(10))
 		};
 		_mockWorkEntryService
-			.Setup(s => s.GetWorkEntriesByDateAsync(date, It.IsAny<CancellationToken>()))
+			.Setup(s => s.GetWorkEntriesByDateRangeAsync(date, date, It.IsAny<CancellationToken>()))
 			.ReturnsAsync(entries);
 
 		SetupValidatorValid();
 		plugin.Setup(p => p.UploadWorklogsAsync(It.IsAny<IEnumerable<PluginWorklogEntry>>(), It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(PluginResult<WorklogSubmissionResult>.Success(new WorklogSubmissionResult { TotalEntries = 1, SuccessfulEntries = 1 }));
 
-		var result = await _sut.SubmitDailyWorklogAsync(date, TestContext.Current.CancellationToken);
+		var result = await _sut.SubmitAsync(SubmissionPeriod.Day(date), null, TestContext.Current.CancellationToken);
 
 		result.IsSuccess.Should().BeTrue();
 		result.Value!.SuccessfulEntries.Should().Be(1);
@@ -122,7 +122,7 @@ public class PluginBasedWorklogSubmissionServiceTests
 	}
 
 	[Fact]
-	public async Task SubmitDailyWorklogAsync_NoCompletedEntries_ReturnsSuccessWithZero()
+	public async Task SubmitDay_NoCompletedEntries_ReturnsSuccessWithZero()
 	{
 		var date = new DateTime(2025, 1, 15);
 		var plugin = CreateMockPlugin();
@@ -131,10 +131,10 @@ public class PluginBasedWorklogSubmissionServiceTests
 
 		var entries = new[] { CreateActiveEntry(1, "PROJ-1", date.AddHours(9)) };
 		_mockWorkEntryService
-			.Setup(s => s.GetWorkEntriesByDateAsync(date, It.IsAny<CancellationToken>()))
+			.Setup(s => s.GetWorkEntriesByDateRangeAsync(date, date, It.IsAny<CancellationToken>()))
 			.ReturnsAsync(entries);
 
-		var result = await _sut.SubmitDailyWorklogAsync(date, TestContext.Current.CancellationToken);
+		var result = await _sut.SubmitAsync(SubmissionPeriod.Day(date), null, TestContext.Current.CancellationToken);
 
 		result.IsSuccess.Should().BeTrue();
 		result.Value!.TotalEntries.Should().Be(0);
@@ -142,21 +142,21 @@ public class PluginBasedWorklogSubmissionServiceTests
 
 	#endregion
 
-	#region SubmitDailyWorklogAsync (with provider)
+	#region Submit a day with a provider
 
 	[Fact]
-	public async Task SubmitDailyWorklogAsync_PluginNotFound_ReturnsFailure()
+	public async Task SubmitDay_PluginNotFound_ReturnsFailure()
 	{
 		_mockPluginManager.Setup(p => p.GetPlugin<IWorklogUploadPlugin>(NonExistentPluginId)).Returns((IWorklogUploadPlugin?)null);
 
-		var result = await _sut.SubmitDailyWorklogAsync(DateTime.Today, NonExistentPluginId, TestContext.Current.CancellationToken);
+		var result = await _sut.SubmitAsync(SubmissionPeriod.Day(DateTime.Today), NonExistentPluginId, TestContext.Current.CancellationToken);
 
 		result.IsSuccess.Should().BeFalse();
 		result.Error.Should().Contain("Plugin 'unknown' not found");
 	}
 
 	[Fact]
-	public async Task SubmitDailyWorklogAsync_AllEntriesValid_UploadsAll()
+	public async Task SubmitDay_AllEntriesValid_UploadsAll()
 	{
 		var date = new DateTime(2025, 1, 15);
 		var plugin = CreateMockPlugin();
@@ -168,21 +168,21 @@ public class PluginBasedWorklogSubmissionServiceTests
 			CreateCompletedEntry(2, "PROJ-2", date.AddHours(10), date.AddHours(12))
 		};
 		_mockWorkEntryService
-			.Setup(s => s.GetWorkEntriesByDateAsync(date, It.IsAny<CancellationToken>()))
+			.Setup(s => s.GetWorkEntriesByDateRangeAsync(date, date, It.IsAny<CancellationToken>()))
 			.ReturnsAsync(entries);
 
 		SetupValidatorValid();
 		plugin.Setup(p => p.UploadWorklogsAsync(It.IsAny<IEnumerable<PluginWorklogEntry>>(), It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(PluginResult<WorklogSubmissionResult>.Success(new WorklogSubmissionResult { TotalEntries = 2, SuccessfulEntries = 2 }));
 
-		var result = await _sut.SubmitDailyWorklogAsync(date, TestPluginId, TestContext.Current.CancellationToken);
+		var result = await _sut.SubmitAsync(SubmissionPeriod.Day(date), TestPluginId, TestContext.Current.CancellationToken);
 
 		result.IsSuccess.Should().BeTrue();
 		result.Value!.TotalEntries.Should().Be(2);
 	}
 
 	[Fact]
-	public async Task SubmitDailyWorklogAsync_SomeEntriesInvalid_SkipsInvalid()
+	public async Task SubmitDay_SomeEntriesInvalid_SkipsInvalid()
 	{
 		var date = new DateTime(2025, 1, 15);
 		var plugin = CreateMockPlugin();
@@ -194,7 +194,7 @@ public class PluginBasedWorklogSubmissionServiceTests
 			CreateCompletedEntry(2, "PROJ-2", date.AddHours(10), date.AddHours(12))
 		};
 		_mockWorkEntryService
-			.Setup(s => s.GetWorkEntriesByDateAsync(date, It.IsAny<CancellationToken>()))
+			.Setup(s => s.GetWorkEntriesByDateRangeAsync(date, date, It.IsAny<CancellationToken>()))
 			.ReturnsAsync(entries);
 
 		// First valid, second invalid
@@ -206,14 +206,14 @@ public class PluginBasedWorklogSubmissionServiceTests
 		plugin.Setup(p => p.UploadWorklogsAsync(It.IsAny<IEnumerable<PluginWorklogEntry>>(), It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(PluginResult<WorklogSubmissionResult>.Success(new WorklogSubmissionResult { TotalEntries = 1, SuccessfulEntries = 1 }));
 
-		var result = await _sut.SubmitDailyWorklogAsync(date, TestPluginId, TestContext.Current.CancellationToken);
+		var result = await _sut.SubmitAsync(SubmissionPeriod.Day(date), TestPluginId, TestContext.Current.CancellationToken);
 
 		result.IsSuccess.Should().BeTrue();
 		result.Value!.TotalEntries.Should().Be(2);
 		result.Value.SuccessfulEntries.Should().Be(1);
 		result.Value.FailedEntries.Should().Be(1);
 		var error = result.Value.Errors.Should().ContainSingle().Subject;
-		error.TicketId.Should().Be("PROJ-2");
+		error.Date.Should().Be(date);
 		error.ErrorMessage.Should().Be("Invalid");
 		error.WorklogIndex.Should().Be(1);
 	}
@@ -235,7 +235,7 @@ public class PluginBasedWorklogSubmissionServiceTests
 					TotalEntries = uploaded.Count,
 					SuccessfulEntries = 1,
 					FailedEntries = 1,
-					Errors = [new WorklogSubmissionError { Worklog = uploaded[1], ErrorMessage = "rejected by server" }]
+					Errors = [new WorklogSubmissionError { WorklogIndex = 1, ErrorMessage = "rejected by server" }]
 				});
 			});
 		var start = new DateTime(2025, 1, 15, 9, 0, 0);
@@ -253,7 +253,7 @@ public class PluginBasedWorklogSubmissionServiceTests
 	}
 
 	[Fact]
-	public async Task SubmitCustomWorklogsAsync_PluginReportsAWorklogItWasNotHanded_HasNoPosition()
+	public async Task SubmitCustomWorklogsAsync_PluginReportsAPositionOutsideTheList_HasNoPosition()
 	{
 		var plugin = CreateMockPlugin();
 		_mockPluginManager.Setup(p => p.GetPlugin<IWorklogUploadPlugin>(TestPluginId)).Returns(plugin.Object);
@@ -262,14 +262,17 @@ public class PluginBasedWorklogSubmissionServiceTests
 			{
 				TotalEntries = 1,
 				FailedEntries = 1,
-				Errors = [new WorklogSubmissionError { Worklog = new PluginWorklogEntry { TicketId = "OK-1" }, ErrorMessage = "failed" }]
+				Errors = [new WorklogSubmissionError { WorklogIndex = 5, ErrorMessage = "failed" }]
 			}));
 		var start = new DateTime(2025, 1, 15, 9, 0, 0);
 		WorklogDto[] worklogs = [new() { TicketId = "OK-1", StartTime = start, EndTime = start.AddHours(1), DurationMinutes = 60 }];
 
 		var result = await _sut.SubmitCustomWorklogsAsync(worklogs, TestPluginId, WorklogSubmissionMode.Timed, TestContext.Current.CancellationToken);
 
-		result.Value!.Errors.Should().ContainSingle().Which.WorklogIndex.Should().BeNull();
+		var error = result.Value!.Errors.Should().ContainSingle().Subject;
+		error.WorklogIndex.Should().BeNull();
+		error.Date.Should().BeNull();
+		error.ErrorMessage.Should().Be("failed");
 	}
 
 	[Fact]
@@ -300,7 +303,7 @@ public class PluginBasedWorklogSubmissionServiceTests
 	}
 
 	[Fact]
-	public async Task SubmitDailyWorklogAsync_AllEntriesInvalid_ReportsThemWithoutCallingThePlugin()
+	public async Task SubmitDay_AllEntriesInvalid_ReportsThemWithoutCallingThePlugin()
 	{
 		var date = new DateTime(2025, 1, 15);
 		var plugin = CreateMockPlugin();
@@ -308,12 +311,12 @@ public class PluginBasedWorklogSubmissionServiceTests
 
 		var entries = new[] { CreateCompletedEntry(1, "PROJ-1", date.AddHours(9), date.AddHours(10)) };
 		_mockWorkEntryService
-			.Setup(s => s.GetWorkEntriesByDateAsync(date, It.IsAny<CancellationToken>()))
+			.Setup(s => s.GetWorkEntriesByDateRangeAsync(date, date, It.IsAny<CancellationToken>()))
 			.ReturnsAsync(entries);
 
 		SetupValidatorInvalid();
 
-		var result = await _sut.SubmitDailyWorklogAsync(date, TestPluginId, TestContext.Current.CancellationToken);
+		var result = await _sut.SubmitAsync(SubmissionPeriod.Day(date), TestPluginId, TestContext.Current.CancellationToken);
 
 		result.IsSuccess.Should().BeTrue();
 		result.Value!.SuccessfulEntries.Should().Be(0);
@@ -323,7 +326,7 @@ public class PluginBasedWorklogSubmissionServiceTests
 	}
 
 	[Fact]
-	public async Task SubmitDailyWorklogAsync_PluginReturnsFailure_PropagatesError()
+	public async Task SubmitDay_PluginReturnsFailure_PropagatesError()
 	{
 		var date = new DateTime(2025, 1, 15);
 		var plugin = CreateMockPlugin();
@@ -331,21 +334,21 @@ public class PluginBasedWorklogSubmissionServiceTests
 
 		var entries = new[] { CreateCompletedEntry(1, "PROJ-1", date.AddHours(9), date.AddHours(10)) };
 		_mockWorkEntryService
-			.Setup(s => s.GetWorkEntriesByDateAsync(date, It.IsAny<CancellationToken>()))
+			.Setup(s => s.GetWorkEntriesByDateRangeAsync(date, date, It.IsAny<CancellationToken>()))
 			.ReturnsAsync(entries);
 
 		SetupValidatorValid();
 		plugin.Setup(p => p.UploadWorklogsAsync(It.IsAny<IEnumerable<PluginWorklogEntry>>(), It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(PluginResult<WorklogSubmissionResult>.Failure("API error"));
 
-		var result = await _sut.SubmitDailyWorklogAsync(date, TestPluginId, TestContext.Current.CancellationToken);
+		var result = await _sut.SubmitAsync(SubmissionPeriod.Day(date), TestPluginId, TestContext.Current.CancellationToken);
 
 		result.IsSuccess.Should().BeFalse();
 		result.Error.Should().Contain("API error");
 	}
 
 	[Fact]
-	public async Task SubmitDailyWorklogAsync_ActiveEntriesFilteredOut()
+	public async Task SubmitDay_ActiveEntriesFilteredOut()
 	{
 		var date = new DateTime(2025, 1, 15);
 		var plugin = CreateMockPlugin();
@@ -357,7 +360,7 @@ public class PluginBasedWorklogSubmissionServiceTests
 			CreateActiveEntry(2, "PROJ-2", date.AddHours(10))
 		};
 		_mockWorkEntryService
-			.Setup(s => s.GetWorkEntriesByDateAsync(date, It.IsAny<CancellationToken>()))
+			.Setup(s => s.GetWorkEntriesByDateRangeAsync(date, date, It.IsAny<CancellationToken>()))
 			.ReturnsAsync(entries);
 
 		SetupValidatorValid();
@@ -367,7 +370,7 @@ public class PluginBasedWorklogSubmissionServiceTests
 				It.IsAny<CancellationToken>()))
 			.ReturnsAsync(PluginResult<WorklogSubmissionResult>.Success(new WorklogSubmissionResult { TotalEntries = 1, SuccessfulEntries = 1 }));
 
-		var result = await _sut.SubmitDailyWorklogAsync(date, TestPluginId, TestContext.Current.CancellationToken);
+		var result = await _sut.SubmitAsync(SubmissionPeriod.Day(date), TestPluginId, TestContext.Current.CancellationToken);
 
 		result.IsSuccess.Should().BeTrue();
 		result.Value!.TotalEntries.Should().Be(1);
@@ -375,32 +378,32 @@ public class PluginBasedWorklogSubmissionServiceTests
 
 	#endregion
 
-	#region SubmitWeeklyWorklogAsync
+	#region Submit a week
 
 	[Fact]
-	public async Task SubmitWeeklyWorklogAsync_NoPlugin_ReturnsFailure()
+	public async Task SubmitWeek_NoPlugin_ReturnsFailure()
 	{
 		_mockPluginManager.Setup(p => p.EnabledWorklogUploadPlugins).Returns([]);
 
-		var result = await _sut.SubmitWeeklyWorklogAsync(DateTime.Today, TestContext.Current.CancellationToken);
+		var result = await _sut.SubmitAsync(SubmissionPeriod.WeekOf(DateTime.Today), null, TestContext.Current.CancellationToken);
 
 		result.IsSuccess.Should().BeFalse();
 		result.Error.Should().Contain("No worklog upload plugin available");
 	}
 
 	[Fact]
-	public async Task SubmitWeeklyWorklogAsync_PluginNotFound_ReturnsFailure()
+	public async Task SubmitWeek_PluginNotFound_ReturnsFailure()
 	{
 		_mockPluginManager.Setup(p => p.GetPlugin<IWorklogUploadPlugin>(NonExistentPluginId)).Returns((IWorklogUploadPlugin?)null);
 
-		var result = await _sut.SubmitWeeklyWorklogAsync(DateTime.Today, NonExistentPluginId, TestContext.Current.CancellationToken);
+		var result = await _sut.SubmitAsync(SubmissionPeriod.WeekOf(DateTime.Today), NonExistentPluginId, TestContext.Current.CancellationToken);
 
 		result.IsSuccess.Should().BeFalse();
 		result.Error.Should().Contain("Plugin 'unknown' not found");
 	}
 
 	[Fact]
-	public async Task SubmitWeeklyWorklogAsync_UsesDateRangeService()
+	public async Task SubmitWeek_UsesDateRangeService()
 	{
 		var date = new DateTime(2025, 1, 15); // Wednesday
 		var weekStart = new DateTime(2025, 1, 13); // Monday
@@ -415,7 +418,7 @@ public class PluginBasedWorklogSubmissionServiceTests
 			.Setup(s => s.GetWorkEntriesByDateRangeAsync(weekStart, weekEnd, It.IsAny<CancellationToken>()))
 			.ReturnsAsync(Array.Empty<WorkEntry>());
 
-		var result = await _sut.SubmitWeeklyWorklogAsync(date, TestContext.Current.CancellationToken);
+		var result = await _sut.SubmitAsync(SubmissionPeriod.WeekOf(date), null, TestContext.Current.CancellationToken);
 
 		_mockDateRangeService.Verify(s => s.GetWeekRange(date), Times.Once);
 		_mockWorkEntryService.Verify(s => s.GetWorkEntriesByDateRangeAsync(weekStart, weekEnd, It.IsAny<CancellationToken>()), Times.Once);
@@ -423,10 +426,10 @@ public class PluginBasedWorklogSubmissionServiceTests
 
 	#endregion
 
-	#region PreviewDailyWorklogAsync
+	#region Preview of a day
 
 	[Fact]
-	public async Task PreviewDailyWorklogAsync_ReturnsOnlyCompletedEntries()
+	public async Task PreviewDay_ReturnsOnlyCompletedEntries()
 	{
 		var date = new DateTime(2025, 1, 15);
 		var entries = new[]
@@ -435,63 +438,63 @@ public class PluginBasedWorklogSubmissionServiceTests
 			CreateActiveEntry(2, "PROJ-2", date.AddHours(10))
 		};
 		_mockWorkEntryService
-			.Setup(s => s.GetWorkEntriesByDateAsync(date, It.IsAny<CancellationToken>()))
+			.Setup(s => s.GetWorkEntriesByDateRangeAsync(date, date, It.IsAny<CancellationToken>()))
 			.ReturnsAsync(entries);
 
-		var result = await _sut.PreviewDailyWorklogAsync(date, TestContext.Current.CancellationToken);
+		var result = (await _sut.PreviewAsync(SubmissionPeriod.Day(date), WorklogSubmissionMode.Timed, TestContext.Current.CancellationToken)).Single();
 
 		result.Worklogs.Should().HaveCount(1);
 		result.Worklogs[0].TicketId.Should().Be("PROJ-1");
 	}
 
 	[Fact]
-	public async Task PreviewDailyWorklogAsync_EmptyDay_ReturnsEmptyList()
+	public async Task PreviewDay_EmptyDay_ReturnsEmptyList()
 	{
 		_mockWorkEntryService
-			.Setup(s => s.GetWorkEntriesByDateAsync(It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+			.Setup(s => s.GetWorkEntriesByDateRangeAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(Array.Empty<WorkEntry>());
 
-		var result = await _sut.PreviewDailyWorklogAsync(DateTime.Today, TestContext.Current.CancellationToken);
+		var result = (await _sut.PreviewAsync(SubmissionPeriod.Day(DateTime.Today), WorklogSubmissionMode.Timed, TestContext.Current.CancellationToken)).Single();
 
 		result.Worklogs.Should().BeEmpty();
 	}
 
 	[Fact]
-	public async Task PreviewDailyWorklogAsync_DurationMinutesCalculatedCorrectly()
+	public async Task PreviewDay_DurationMinutesCalculatedCorrectly()
 	{
 		var date = new DateTime(2025, 1, 15);
 		// 30 seconds → should be Math.Ceiling(0.5) = 1, Math.Max(1, 1) = 1
 		var entries = new[] { CreateCompletedEntry(1, "PROJ-1", date.AddHours(9), date.AddHours(9).AddSeconds(30)) };
 		_mockWorkEntryService
-			.Setup(s => s.GetWorkEntriesByDateAsync(date, It.IsAny<CancellationToken>()))
+			.Setup(s => s.GetWorkEntriesByDateRangeAsync(date, date, It.IsAny<CancellationToken>()))
 			.ReturnsAsync(entries);
 
-		var result = await _sut.PreviewDailyWorklogAsync(date, TestContext.Current.CancellationToken);
+		var result = (await _sut.PreviewAsync(SubmissionPeriod.Day(date), WorklogSubmissionMode.Timed, TestContext.Current.CancellationToken)).Single();
 
 		result.Worklogs[0].DurationMinutes.Should().Be(1);
 	}
 
 	[Fact]
-	public async Task PreviewDailyWorklogAsync_DurationRoundedUp()
+	public async Task PreviewDay_DurationRoundedUp()
 	{
 		var date = new DateTime(2025, 1, 15);
 		// 61 minutes → Math.Ceiling(61) = 61
 		var entries = new[] { CreateCompletedEntry(1, "PROJ-1", date.AddHours(9), date.AddHours(9).AddMinutes(61)) };
 		_mockWorkEntryService
-			.Setup(s => s.GetWorkEntriesByDateAsync(date, It.IsAny<CancellationToken>()))
+			.Setup(s => s.GetWorkEntriesByDateRangeAsync(date, date, It.IsAny<CancellationToken>()))
 			.ReturnsAsync(entries);
 
-		var result = await _sut.PreviewDailyWorklogAsync(date, TestContext.Current.CancellationToken);
+		var result = (await _sut.PreviewAsync(SubmissionPeriod.Day(date), WorklogSubmissionMode.Timed, TestContext.Current.CancellationToken)).Single();
 
 		result.Worklogs[0].DurationMinutes.Should().Be(61);
 	}
 
 	#endregion
 
-	#region PreviewWeeklyWorklogAsync
+	#region Preview of a week
 
 	[Fact]
-	public async Task PreviewWeeklyWorklogAsync_ReturnsAllDaysOfWeek()
+	public async Task PreviewWeek_ReturnsAllDaysOfWeekInOrder()
 	{
 		var date = new DateTime(2025, 1, 15);
 		var weekStart = new DateTime(2025, 1, 13);
@@ -502,15 +505,13 @@ public class PluginBasedWorklogSubmissionServiceTests
 			.Setup(s => s.GetWorkEntriesByDateRangeAsync(weekStart, weekEnd, It.IsAny<CancellationToken>()))
 			.ReturnsAsync(Array.Empty<WorkEntry>());
 
-		var result = await _sut.PreviewWeeklyWorklogAsync(date, TestContext.Current.CancellationToken);
+		var result = await _sut.PreviewAsync(SubmissionPeriod.WeekOf(date), WorklogSubmissionMode.Timed, TestContext.Current.CancellationToken);
 
-		result.Should().HaveCount(7);
-		result.Keys.Should().Contain(weekStart);
-		result.Keys.Should().Contain(weekEnd);
+		result.Select(day => day.SubmissionDate).Should().Equal(Enumerable.Range(0, 7).Select(offset => weekStart.AddDays(offset)));
 	}
 
 	[Fact]
-	public async Task PreviewWeeklyWorklogAsync_GroupsEntriesByDate()
+	public async Task PreviewWeek_GroupsEntriesByDate()
 	{
 		var weekStart = new DateTime(2025, 1, 13);
 		var weekEnd = new DateTime(2025, 1, 19);
@@ -526,11 +527,95 @@ public class PluginBasedWorklogSubmissionServiceTests
 			.Setup(s => s.GetWorkEntriesByDateRangeAsync(weekStart, weekEnd, It.IsAny<CancellationToken>()))
 			.ReturnsAsync(entries);
 
-		var result = await _sut.PreviewWeeklyWorklogAsync(weekStart, TestContext.Current.CancellationToken);
+		var result = await _sut.PreviewAsync(SubmissionPeriod.WeekOf(weekStart), WorklogSubmissionMode.Timed, TestContext.Current.CancellationToken);
 
-		result[weekStart].Worklogs.Should().HaveCount(1);
-		result[weekStart.AddDays(1)].Worklogs.Should().HaveCount(1);
-		result[weekStart.AddDays(2)].Worklogs.Should().BeEmpty();
+		result[0].Worklogs.Should().HaveCount(1);
+		result[1].Worklogs.Should().HaveCount(1);
+		result[2].Worklogs.Should().BeEmpty();
+	}
+
+	#endregion
+
+	#region Aggregated preview
+
+	private void SetupDay(DateTime date, params WorkEntry[] entries)
+	{
+		_mockWorkEntryService
+			.Setup(s => s.GetWorkEntriesByDateRangeAsync(date, date, It.IsAny<CancellationToken>()))
+			.ReturnsAsync(entries);
+	}
+
+	private static WorkEntry Entry(int id, string? ticket, string? description, DateTime start, int minutes) =>
+		WorkEntry.Reconstitute(id, ticket, start, start.AddMinutes(minutes), description, false, start);
+
+	[Fact]
+	public async Task PreviewAggregated_GroupsByTicketAndDescription()
+	{
+		var date = new DateTime(2025, 1, 15);
+		SetupDay(date,
+			// Same ticket and description become one row
+			Entry(1, "PROJ-1", "Work", date.AddHours(9), 60),
+			Entry(2, "PROJ-1", "Review", date.AddHours(11), 45),
+			Entry(3, "PROJ-2", "Other", date.AddHours(12), 15),
+			Entry(4, "PROJ-1", "Work", date.AddHours(14), 30));
+
+		var day = (await _sut.PreviewAsync(SubmissionPeriod.Day(date), WorklogSubmissionMode.Aggregated, TestContext.Current.CancellationToken)).Single();
+
+		day.Worklogs.Select(w => (w.TicketId, w.Description, w.DurationMinutes)).Should().Equal(
+			("PROJ-1", "Work", 90),
+			("PROJ-1", "Review", 45),
+			("PROJ-2", "Other", 15));
+		day.Worklogs[0].StartTime.Should().Be(date.AddHours(9));
+		day.Worklogs[0].EndTime.Should().Be(date.AddHours(9), "an aggregated row has no real interval");
+	}
+
+	[Fact]
+	public async Task PreviewAggregated_NoTicket_GroupsIntoOneRowWithoutATicket()
+	{
+		var date = new DateTime(2025, 1, 15);
+		SetupDay(date,
+			Entry(1, null, "Admin", date.AddHours(9), 20),
+			Entry(2, null, "Admin", date.AddHours(16), 10));
+
+		var day = (await _sut.PreviewAsync(SubmissionPeriod.Day(date), WorklogSubmissionMode.Aggregated, TestContext.Current.CancellationToken)).Single();
+
+		var row = day.Worklogs.Should().ContainSingle().Subject;
+		row.TicketId.Should().BeNull();
+		row.DurationMinutes.Should().Be(30);
+	}
+
+	[Fact]
+	public async Task PreviewAggregated_Week_KeepsDaysApart()
+	{
+		var monday = new DateTime(2025, 1, 13);
+		var sunday = new DateTime(2025, 1, 19);
+		_mockDateRangeService.Setup(s => s.GetWeekRange(monday)).Returns((monday, sunday));
+		_mockWorkEntryService
+			.Setup(s => s.GetWorkEntriesByDateRangeAsync(monday, sunday, It.IsAny<CancellationToken>()))
+			.ReturnsAsync(new[]
+			{
+				Entry(1, "PROJ-1", "Work", monday.AddHours(9), 60),
+				Entry(2, "PROJ-1", "Work", monday.AddHours(14), 30),
+				Entry(3, "PROJ-1", "Work", monday.AddDays(1).AddHours(9), 45)
+			});
+
+		var days = await _sut.PreviewAsync(SubmissionPeriod.WeekOf(monday), WorklogSubmissionMode.Aggregated, TestContext.Current.CancellationToken);
+
+		days[0].Worklogs.Should().ContainSingle().Which.DurationMinutes.Should().Be(90);
+		days[1].Worklogs.Should().ContainSingle().Which.DurationMinutes.Should().Be(45);
+	}
+
+	[Fact]
+	public async Task PreviewTimed_KeepsEveryEntry()
+	{
+		var date = new DateTime(2025, 1, 15);
+		SetupDay(date,
+			Entry(1, "PROJ-1", "Work", date.AddHours(9), 60),
+			Entry(2, "PROJ-1", "Work", date.AddHours(14), 30));
+
+		var day = (await _sut.PreviewAsync(SubmissionPeriod.Day(date), WorklogSubmissionMode.Timed, TestContext.Current.CancellationToken)).Single();
+
+		day.Worklogs.Should().HaveCount(2);
 	}
 
 	#endregion
@@ -652,7 +737,7 @@ public class PluginBasedWorklogSubmissionServiceTests
 	#region Error mapping
 
 	[Fact]
-	public async Task SubmitDailyWorklogAsync_PluginReturnsPartialFailure_MapsErrors()
+	public async Task SubmitDay_PluginReturnsPartialFailure_MapsErrors()
 	{
 		var date = new DateTime(2025, 1, 15);
 		var plugin = CreateMockPlugin();
@@ -664,26 +749,26 @@ public class PluginBasedWorklogSubmissionServiceTests
 			CreateCompletedEntry(2, "PROJ-2", date.AddHours(10), date.AddHours(12))
 		};
 		_mockWorkEntryService
-			.Setup(s => s.GetWorkEntriesByDateAsync(date, It.IsAny<CancellationToken>()))
+			.Setup(s => s.GetWorkEntriesByDateRangeAsync(date, date, It.IsAny<CancellationToken>()))
 			.ReturnsAsync(entries);
 
 		SetupValidatorValid();
 
-		var failedWorklog = new PluginWorklogEntry { TicketId = "PROJ-2", StartTime = date.AddHours(10), EndTime = date.AddHours(12) };
 		plugin.Setup(p => p.UploadWorklogsAsync(It.IsAny<IEnumerable<PluginWorklogEntry>>(), It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
 			.ReturnsAsync(PluginResult<WorklogSubmissionResult>.Success(new WorklogSubmissionResult
 			{
 				TotalEntries = 2,
 				SuccessfulEntries = 1,
 				FailedEntries = 1,
-				Errors = [new WorklogSubmissionError { Worklog = failedWorklog, ErrorMessage = "Ticket not found" }]
+				Errors = [new WorklogSubmissionError { WorklogIndex = 1, ErrorMessage = "Ticket not found" }]
 			}));
 
-		var result = await _sut.SubmitDailyWorklogAsync(date, TestPluginId, TestContext.Current.CancellationToken);
+		var result = await _sut.SubmitAsync(SubmissionPeriod.Day(date), TestPluginId, TestContext.Current.CancellationToken);
 
 		result.IsSuccess.Should().BeTrue();
 		result.Value!.Errors.Should().HaveCount(1);
-		result.Value.Errors[0].TicketId.Should().Be("PROJ-2");
+		result.Value.Errors[0].WorklogIndex.Should().Be(1);
+		result.Value.Errors[0].Date.Should().Be(date);
 		result.Value.Errors[0].ErrorMessage.Should().Be("Ticket not found");
 	}
 

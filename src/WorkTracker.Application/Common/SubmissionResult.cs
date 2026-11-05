@@ -3,19 +3,21 @@ namespace WorkTracker.Application.Common;
 /// <summary>
 /// Detailed result of worklog submission
 /// </summary>
-public class SubmissionResult
+public sealed class SubmissionResult
 {
-	public int TotalEntries { get; set; }
+	public int TotalEntries { get; init; }
 
-	public int SuccessfulEntries { get; set; }
+	public int SuccessfulEntries { get; init; }
 
-	public int FailedEntries { get; set; }
+	public int FailedEntries { get; init; }
 
-	public List<SubmissionError> Errors { get; set; } = new();
+	public IReadOnlyList<SubmissionError> Errors { get; init; } = [];
 
-	public Dictionary<DateTime, int> EntriesByDate { get; set; } = new();
+	/// <summary>
+	/// How many things went wrong. A plugin can report a failure no entry is counted for, like GoranG3
+	/// failing to submit the timesheet of a day after all its entries went through.
+	/// </summary>
+	public int FailureCount => Math.Max(FailedEntries, Errors.Count);
 
-	public bool IsSuccess => FailedEntries == 0 && TotalEntries > 0;
-
-	public bool HasPartialSuccess => SuccessfulEntries > 0 && FailedEntries > 0;
+	public bool HasFailures => FailureCount > 0;
 }
