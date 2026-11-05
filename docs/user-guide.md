@@ -821,7 +821,7 @@ Pokud zaškrtneš **Sledovat systémové nastavení**, aplikace si načte aktuá
 
 ## Automatické aktualizace
 
-Aplikace při každém spuštění zkontroluje GitHub Releases API, jestli není dostupná novější verze (porovnává se s `AppInfo.Version` bez přípony za `-` nebo `+`). Pokud ji najde:
+Aplikace při každém spuštění zkontroluje GitHub Releases API, jestli není dostupná novější verze (porovnává se s `AppInfo.Version`; testovací verze jako `1.2.3-beta.1` je starší než `1.2.3`, a sama se jako aktualizace nenabízí). Pokud ji najde:
 
 - Zobrazí systémovou notifikaci **Dostupná aktualizace** („Je dostupná nová verze X (aktuální: Y). Klikněte pro stažení.“). Klik na ni otevře stránku release.
 - Automatické stažení/instalace **není** implementovaná — uživatel musí balíček stáhnout a rozbalit (na macOS přetáhnout z `.dmg` do Applications) ručně. Aplikace tento krok úmyslně nedelá, aby neřešila UAC, code signing a rollback.

@@ -88,17 +88,19 @@ public sealed class UpdateCheckService : IUpdateCheckService
 				return;
 			}
 
-			if (remoteVersion <= localVersion)
+			var displayTag = tagName.TrimStart('v', 'V');
+			var displayCurrent = _currentVersion.TrimStart('v', 'V').Split('+')[0];
+
+			if (!IsNewer(remoteVersion, tagName, localVersion, _currentVersion))
 			{
-				_logger.LogDebug("App is up to date ({Local} >= {Remote})", localVersion, remoteVersion);
+				_logger.LogDebug("App is up to date ({Local} >= {Remote})", displayCurrent, displayTag);
 				return;
 			}
 
-			_logger.LogInformation("New version available: {Remote} (current: {Local})", remoteVersion, localVersion);
+			_logger.LogInformation("New version available: {Remote} (current: {Local})", displayTag, displayCurrent);
 
 			var title = _localization["UpdateAvailableTitle"];
-			var displayTag = tagName.TrimStart('v', 'V');
-			var message = _localization.GetFormattedString("UpdateAvailableMessage", displayTag, localVersion.ToString());
+			var message = _localization.GetFormattedString("UpdateAvailableMessage", displayTag, displayCurrent);
 			await _systemNotification.ShowNotificationAsync(title, message, htmlUrl);
 		}
 		catch (OperationCanceledException)
@@ -110,6 +112,19 @@ public sealed class UpdateCheckService : IUpdateCheckService
 			_logger.LogDebug(ex, "Update check failed (this is expected when offline)");
 		}
 	}
+
+	/// <summary>
+	/// A prerelease comes before the release of the same number, so 1.18.0-beta.1 is offered 1.18.0.
+	/// Two prereleases of one number are not ordered: GitHub never reports a prerelease as the latest release.
+	/// </summary>
+	private static bool IsNewer(Version remote, string remoteString, Version local, string localString)
+	{
+		var comparison = remote.CompareTo(local);
+		return comparison > 0
+			|| (comparison == 0 && IsPrerelease(localString) && !IsPrerelease(remoteString));
+	}
+
+	private static bool IsPrerelease(string versionString) => versionString.Split('+')[0].Contains('-');
 
 	internal static Version? ParseVersion(string versionString)
 	{

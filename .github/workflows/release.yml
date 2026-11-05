@@ -332,8 +332,12 @@ jobs:
           path: artifacts
           merge-multiple: true
 
+      # The action does not read the prerelease part of the tag by itself, and a plain release of
+      # v1.18.0-beta.1 would become Latest: every installed copy would offer it as an update. GitHub
+      # never reports a prerelease as the latest release, which is what the GUI asks for.
       - name: Create Release
         uses: softprops/action-gh-release@v3
         with:
           generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
           files: artifacts/*

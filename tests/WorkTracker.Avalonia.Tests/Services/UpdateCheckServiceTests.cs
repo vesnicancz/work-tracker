@@ -103,6 +103,52 @@ public class UpdateCheckServiceTests
 			Times.Never);
 	}
 
+	[Theory]
+	[InlineData("1.18.0-beta.1", "v1.18.0")]
+	[InlineData("1.18.0-beta.1+abc123", "v1.18.0")]
+	[InlineData("1.18.0-alpha.0.5+abc123", "v1.18.0+build")]
+	[InlineData("1.17.0-beta.1", "v1.18.0")]
+	public async Task CheckForUpdateAsync_WhenInstalledPrereleaseIsBehindRelease_ShowsNotification(string current, string tag)
+	{
+		var sut = CreateService(current, ReleaseHandler(tag));
+
+		await sut.CheckForUpdateAsync(CancellationToken.None);
+
+		_systemNotification.Verify(
+			n => n.ShowNotificationAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>()),
+			Times.Once);
+	}
+
+	[Theory]
+	[InlineData("1.18.0-beta.1", "v1.17.0")]
+	[InlineData("1.18.0-beta.2", "v1.18.0-beta.1")]
+	[InlineData("1.18.0", "v1.18.0-beta.1")]
+	[InlineData("1.18.0+abc123", "v1.18.0")]
+	public async Task CheckForUpdateAsync_WhenInstalledIsNotBehind_DoesNotNotify(string current, string tag)
+	{
+		var sut = CreateService(current, ReleaseHandler(tag));
+
+		await sut.CheckForUpdateAsync(CancellationToken.None);
+
+		_systemNotification.Verify(
+			n => n.ShowNotificationAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>()),
+			Times.Never);
+	}
+
+	[Fact]
+	public async Task CheckForUpdateAsync_WhenInstalledIsPrerelease_ShowsItsFullVersion()
+	{
+		var sut = CreateService("1.18.0-beta.1+abc123", ReleaseHandler("v1.18.0"));
+
+		await sut.CheckForUpdateAsync(CancellationToken.None);
+
+		_localization.Verify(
+			l => l.GetFormattedString(
+				"UpdateAvailableMessage",
+				It.Is<object[]>(args => args.SequenceEqual(new object[] { "1.18.0", "1.18.0-beta.1" }))),
+			Times.Once);
+	}
+
 	[Fact]
 	public async Task CheckForUpdateAsync_WhenNetworkFails_DoesNotThrow()
 	{
@@ -149,6 +195,15 @@ public class UpdateCheckServiceTests
 		var result = UpdateCheckService.ParseVersion(input);
 
 		result.Should().BeNull();
+	}
+
+	private static FakeHandler ReleaseHandler(string tag)
+	{
+		var json = $$"""{"tag_name": "{{tag}}", "html_url": "https://example.com"}""";
+		return new FakeHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+		{
+			Content = new StringContent(json, Encoding.UTF8, "application/json")
+		});
 	}
 
 	private sealed class FakeHandler : HttpMessageHandler
