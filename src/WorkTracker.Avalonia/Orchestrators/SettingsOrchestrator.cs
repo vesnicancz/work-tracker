@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using WorkTracker.Application.Plugins;
 using WorkTracker.Application.Services;
@@ -14,7 +13,7 @@ public class SettingsOrchestrator : ISettingsOrchestrator
 	private readonly ISettingsService _settingsService;
 	private readonly IPluginManager _pluginManager;
 	private readonly ISecureStorage _secureStorage;
-	private readonly IConfiguration _configuration;
+	private readonly IPluginConfigurationSource _configurationSource;
 	private readonly IAutostartManager _autostartManager;
 	private readonly ITrayIconService _trayIconService;
 	private readonly IRemoteControlCoordinator _remoteControlCoordinator;
@@ -27,7 +26,7 @@ public class SettingsOrchestrator : ISettingsOrchestrator
 		ISettingsService settingsService,
 		IPluginManager pluginManager,
 		ISecureStorage secureStorage,
-		IConfiguration configuration,
+		IPluginConfigurationSource configurationSource,
 		IAutostartManager autostartManager,
 		ITrayIconService trayIconService,
 		IRemoteControlCoordinator remoteControlCoordinator,
@@ -43,7 +42,7 @@ public class SettingsOrchestrator : ISettingsOrchestrator
 		_settingsService = settingsService;
 		_pluginManager = pluginManager;
 		_secureStorage = secureStorage;
-		_configuration = configuration;
+		_configurationSource = configurationSource;
 		_autostartManager = autostartManager;
 		_trayIconService = trayIconService;
 		_logger = logger;
@@ -52,6 +51,7 @@ public class SettingsOrchestrator : ISettingsOrchestrator
 	public List<PluginViewModel> LoadPlugins()
 	{
 		var plugins = new List<PluginViewModel>();
+		var configurations = _configurationSource.Resolve(_settingsService.Settings.PluginConfigurations);
 
 		foreach (var plugin in _pluginManager.LoadedPlugins.Values.OrderBy(p => p.Metadata.Name))
 		{
@@ -63,25 +63,11 @@ public class SettingsOrchestrator : ISettingsOrchestrator
 				pluginViewModel.IsEnabled = isEnabled;
 			}
 
-			// First try to load from user settings
-			if (_settingsService.Settings.PluginConfigurations.TryGetValue(plugin.Metadata.Id, out var savedConfig))
+			if (configurations.TryGetValue(plugin.Metadata.Id, out var configuration))
 			{
-				foreach (var kvp in savedConfig)
+				foreach (var kvp in configuration)
 				{
 					pluginViewModel.Configuration[kvp.Key] = kvp.Value;
-				}
-			}
-			else
-			{
-				// Fall back to appsettings.json for initial configuration
-				var configSection = _configuration.GetSection($"Plugins:{plugin.Metadata.Id}");
-				foreach (var field in pluginViewModel.ConfigurationFields)
-				{
-					var value = configSection[field.Key];
-					if (!string.IsNullOrEmpty(value))
-					{
-						pluginViewModel.Configuration[field.Key] = value;
-					}
 				}
 			}
 

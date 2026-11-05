@@ -13,18 +13,12 @@ using WorkTracker.Infrastructure.Plugins;
 using WorkTracker.Domain.Interfaces;
 using WorkTracker.Infrastructure.Data;
 using WorkTracker.Infrastructure.Repositories;
-using WorkTracker.Plugin.Abstractions;
 using WorkTracker.Infrastructure.Security;
 
 namespace WorkTracker.Infrastructure;
 
 public static class DependencyInjection
 {
-	// SQLite result codes that mean "the file is not reachable" rather than "the data is wrong".
-	private const int SqliteReadOnly = 8;
-	private const int SqliteIoError = 10;
-	private const int SqliteCantOpen = 14;
-
 	public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
 	{
 		// Application layer services
@@ -125,148 +119,8 @@ public static class DependencyInjection
 			return pluginManager;
 		});
 		services.AddSingleton<IPluginManager>(sp => sp.GetRequiredService<PluginManager>());
+		services.AddSingleton<IPluginConfigurationSource>(new PluginConfigurationSource(configuration));
 
 		return services;
-	}
-
-	public static async Task InitializeDatabaseAsync(IServiceProvider serviceProvider, CancellationToken cancellationToken = default)
-	{
-		var contextFactory = serviceProvider.GetRequiredService<IDbContextFactory<WorkTrackerDbContext>>();
-		await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
-
-		EnsureDatabaseDirectoryExists(context.Database.GetDbConnection().DataSource);
-
-		try
-		{
-			// Force rollback-journal mode. WAL is persisted in the database file and leaves
-			// -wal/-shm side files on disk, which is fragile on removable exFAT drives
-			// (no filesystem journaling, abrupt removal). DELETE mode is a no-op if already set.
-			await context.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=DELETE;", cancellationToken);
-
-			// A failure here stops the startup before anything changes: no migration runs without the copy.
-			await DatabaseMigrationBackup.CreateIfNeededAsync(context, cancellationToken);
-
-			await context.Database.MigrateAsync(cancellationToken);
-		}
-		catch (Exception ex) when (ex is not DatabaseBackupFailedException && IsDatabaseOutOfReach(ex))
-		{
-			var dataSource = context.Database.GetDbConnection().DataSource;
-			throw new DatabaseUnavailableException(dataSource,
-				$"Database '{dataSource}' could not be opened. " +
-				"If the database is on a removable drive, make sure it is connected and mounted.", ex);
-		}
-	}
-
-	private static void EnsureDatabaseDirectoryExists(string dbPath)
-	{
-		var dbDirectory = Path.GetDirectoryName(dbPath);
-		if (string.IsNullOrEmpty(dbDirectory) || Directory.Exists(dbDirectory))
-		{
-			return;
-		}
-
-		try
-		{
-			Directory.CreateDirectory(dbDirectory);
-		}
-		catch (Exception ex)
-		{
-			throw new DatabaseUnavailableException(dbPath,
-				$"Configured database directory '{dbDirectory}' is not accessible. " +
-				"If the database is on a removable drive, make sure it is connected and mounted.", ex);
-		}
-	}
-
-	/// <summary>
-	/// Distinguishes an unreachable database file (unplugged removable drive, disconnected
-	/// network share, read-only media) from a genuine schema or data error. Only the former
-	/// is worth retrying, so only the former is reported as <see cref="DatabaseUnavailableException"/>.
-	/// </summary>
-	private static bool IsDatabaseOutOfReach(Exception exception)
-	{
-		for (var ex = exception; ex != null; ex = ex.InnerException)
-		{
-			var outOfReach = ex switch
-			{
-				SqliteException sqlite => sqlite.SqliteErrorCode is SqliteCantOpen or SqliteIoError or SqliteReadOnly,
-				// Covers DirectoryNotFoundException / FileNotFoundException / DriveNotFoundException
-				IOException => true,
-				UnauthorizedAccessException => true,
-				_ => false,
-			};
-
-			if (outOfReach)
-			{
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-	/// <summary>
-	/// Loads embedded and external plugins, then initializes them with configurations from user settings or appsettings.json.
-	/// </summary>
-	/// <param name="serviceProvider">The application's services.</param>
-	/// <param name="configuration">The application's configuration.</param>
-	/// <param name="enabledPlugins">The enabled state from user settings.</param>
-	/// <param name="userPluginConfigurations">The plugin configurations from user settings.</param>
-	/// <param name="pluginsToStart">Which of the enabled plugins to initialize, all of them when left out. It runs once the plugins are loaded and enabled, so it can ask the plugin manager.</param>
-	/// <param name="cancellationToken">Cancellation token.</param>
-	public static async Task<IReadOnlyList<PluginMetadata>> InitializePluginsAsync(
-		IServiceProvider serviceProvider,
-		IConfiguration configuration,
-		Dictionary<string, bool>? enabledPlugins = null,
-		Dictionary<string, Dictionary<string, string>>? userPluginConfigurations = null,
-		Func<IPluginDescriptor, bool>? pluginsToStart = null,
-		CancellationToken cancellationToken = default)
-	{
-		var pluginManager = serviceProvider.GetRequiredService<PluginManager>();
-
-		// Discover and load plugins from plugin directory
-		await pluginManager.DiscoverAndLoadPluginsAsync();
-
-		// Enable only explicitly enabled plugins — new plugins are disabled by default
-		var enabledPluginIds = enabledPlugins?
-			.Where(kvp => kvp.Value)
-			.Select(kvp => kvp.Key)
-			?? [];
-		pluginManager.SetEnabledPlugins(enabledPluginIds);
-
-		// Load plugin configurations - prefer user settings over appsettings.json
-		var pluginConfigs = new Dictionary<string, Dictionary<string, string>>();
-
-		// First, load configurations from appsettings.json as fallback
-		var pluginsSection = configuration.GetSection("Plugins");
-		foreach (var pluginSection in pluginsSection.GetChildren())
-		{
-			var pluginId = pluginSection.Key;
-			var config = new Dictionary<string, string>();
-
-			foreach (var kvp in pluginSection.AsEnumerable(makePathsRelative: true))
-			{
-				if (!string.IsNullOrEmpty(kvp.Key) && !string.IsNullOrEmpty(kvp.Value))
-				{
-					config[kvp.Key] = kvp.Value;
-				}
-			}
-
-			if (config.Count != 0)
-			{
-				pluginConfigs[pluginId] = config;
-			}
-		}
-
-		// Override with user-configured settings if available
-		if (userPluginConfigurations != null)
-		{
-			foreach (var kvp in userPluginConfigurations)
-			{
-				pluginConfigs[kvp.Key] = kvp.Value;
-			}
-		}
-
-		// Initialize plugins with their configurations
-		return await pluginManager.InitializePluginsAsync(pluginConfigs, pluginsToStart ?? (_ => true), cancellationToken);
 	}
 }

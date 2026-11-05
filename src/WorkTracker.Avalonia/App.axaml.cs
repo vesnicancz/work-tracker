@@ -16,6 +16,7 @@ using WorkTracker.Avalonia.ViewModels;
 using WorkTracker.Avalonia.Views;
 using WorkTracker.Infrastructure;
 using WorkTracker.Infrastructure.Data;
+using WorkTracker.Infrastructure.Plugins;
 using WorkTracker.Avalonia;
 using WorkTracker.Avalonia.Models;
 
@@ -161,7 +162,7 @@ public partial class App : global::Avalonia.Application
 		await _host.StartAsync();
 
 		// DB migration + worklog state (needed before showing data)
-		await Infrastructure.DependencyInjection.InitializeDatabaseAsync(_host.Services);
+		await DatabaseInitializer.InitializeAsync(_host.Services, CancellationToken.None);
 		var worklogStateService = _host.Services.GetRequiredService<IWorklogStateService>();
 		await worklogStateService.InitializeAsync();
 		_host.Services.GetRequiredService<IExternalWorkChangeMonitor>().Start();
@@ -232,16 +233,17 @@ public partial class App : global::Avalonia.Application
 
 		// Load plugins in the background — not needed for initial UI
 		var pluginLogger = _host.Services.GetRequiredService<ILoggerFactory>().CreateLogger<App>();
-		var configuration = _host.Services.GetRequiredService<IConfiguration>();
 		var notificationService = _host.Services.GetRequiredService<INotificationService>();
 		_pluginStartup = Task.Run(async () =>
 		{
 			try
 			{
-				var failedPlugins = await Infrastructure.DependencyInjection.InitializePluginsAsync(
-					_host.Services, configuration,
+				var failedPlugins = await PluginStartup.StartAsync(
+					_host.Services,
 					settingsService.Settings.EnabledPlugins,
-					settingsService.Settings.PluginConfigurations);
+					settingsService.Settings.PluginConfigurations,
+					_ => true,
+					CancellationToken.None);
 				notificationService.ReportPluginFailures(localization, failedPlugins);
 
 				await _host.Services.GetRequiredService<IRemoteControlCoordinator>().SyncAsync(CancellationToken.None);

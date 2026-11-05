@@ -119,12 +119,13 @@ Registrace služeb: `DependencyInjection.AddApplication(IServiceCollection)`. Vo
 
 Implementace externích závislostí:
 
-- **EF Core + SQLite** — `WorkTrackerDbContext`, `WorkEntryRepository`, `UnitOfWork`, `UnitOfWorkFactory`. Cesta k databázi se řídí `WorkTrackerPaths.DefaultDatabasePath` s možností přepsání přes `Database:Path` v configu (relativní cesty se vyhodnocují vůči `WorkTrackerPaths.WritableBaseDirectory` — adresáři aplikace, uvnitř macOS `.app` bundlu vůči `~/Library/Application Support/WorkTracker/`). `Database:Pooling` (default `true`) vypíná connection pooling pro databáze na removable médiích — bez poolingu se soubor zavírá po každé operaci a disk jde bezpečně vysunout. Při startu se vynucuje `PRAGMA journal_mode=DELETE` (WAL je na removable exFAT rizikový kvůli `-wal`/`-shm` souborům). Když databáze není dosažitelná (nepřipojený disk, IO chyba, read-only médium), `AddInfrastructure` i `InitializeDatabaseAsync` vyhodí `DatabaseUnavailableException` — Avalonia `App` na ni reaguje dialogem s tlačítkem *Zkusit znovu*, které zopakuje celý bootstrap; ostatní výjimky při startu jsou brány jako neopravitelné. Před čekající migrací se databáze zkopíruje vedle sebe (`DatabaseMigrationBackup`), a když se to nepovede, migrace neběží (`DatabaseBackupFailedException`).
+- **EF Core + SQLite** — `WorkTrackerDbContext`, `WorkEntryRepository`, `UnitOfWork`, `UnitOfWorkFactory`. Cesta k databázi se řídí `WorkTrackerPaths.DefaultDatabasePath` s možností přepsání přes `Database:Path` v configu (relativní cesty se vyhodnocují vůči `WorkTrackerPaths.WritableBaseDirectory` — adresáři aplikace, uvnitř macOS `.app` bundlu vůči `~/Library/Application Support/WorkTracker/`). `Database:Pooling` (default `true`) vypíná connection pooling pro databáze na removable médiích — bez poolingu se soubor zavírá po každé operaci a disk jde bezpečně vysunout. Při startu se vynucuje `PRAGMA journal_mode=DELETE` (WAL je na removable exFAT rizikový kvůli `-wal`/`-shm` souborům). Když databáze není dosažitelná (nepřipojený disk, IO chyba, read-only médium), `AddInfrastructure` i `DatabaseInitializer.InitializeAsync` vyhodí `DatabaseUnavailableException` — Avalonia `App` na ni reaguje dialogem s tlačítkem *Zkusit znovu*, které zopakuje celý bootstrap; ostatní výjimky při startu jsou brány jako neopravitelné. Před čekající migrací se databáze zkopíruje vedle sebe (`DatabaseMigrationBackup`), a když se to nepovede, migrace neběží (`DatabaseBackupFailedException`).
 - **`IDbContextFactory<WorkTrackerDbContext>`** — `WorkEntryReader` a `UnitOfWorkFactory` ho používají místo scoped `DbContext`. Důvod: dlouho běžící služby (GUI) nemají HTTP request scope, takže scoped DbContext by vedl k leakům a concurrent‑use chybám.
 - **`CredentialStoreSecureStorage`** — implementace `ISecureStorage` nad `GitCredentialManager` (multiplatformní: Windows Credential Manager, macOS Keychain, Linux libsecret).
 - **`PluginManager`, `PluginLoader`, `PluginLoadContext`** — načítání pluginů do vlastního `AssemblyLoadContext` (collectible) pro každou plugin assembly; všechny pluginy sdílejí jeden plugin `ServiceProvider`.
 - **`MsalTokenProviderFactory`, `MsalTokenProvider`** — MSAL Public Client s cross‑platform token cache (`Microsoft.Identity.Client.Extensions.Msal`) a dvěma způsoby interaktivní autentizace podle `InteractiveAuthFlow`, který plugin zvolí: **device code flow** a **authorization code flow s PKCE** v systémovém prohlížeči (redirect na vlastní loopback listener `SystemBrowserWebUi`).
-- **`DependencyInjection.AddInfrastructure(IConfiguration)`** — jediný entry point pro registraci Application+Infrastructure služeb. Volá `AddApplication()` sám.
+- **`DependencyInjection.AddInfrastructure(IConfiguration)`** — jediný entry point pro registraci Application+Infrastructure služeb. Volá `AddApplication()` sám. Start po registraci obstarají `DatabaseInitializer` a `PluginStartup`.
+- **`PluginConfigurationSource`** (`IPluginConfigurationSource`) — jediné místo, které určuje, odkud se konfigurace pluginu bere: uložená v uživatelském nastavení platí celá, sekce `Plugins:<id>` z configu dává jen počáteční hodnoty. Používá ji start i dialog Nastavení.
 
 Infrastructure **závisí** na Application a Domain, **ne naopak**.
 
@@ -167,8 +168,8 @@ CLI ──────> Application
 ```
 Infrastructure ──> Application ──> Domain
 Infrastructure ──> Plugin.Abstractions (tranzitivně přes Application)
-Presentation   ──> Infrastructure (bootstrap: AddInfrastructure, InitializeDatabaseAsync,
-                                   InitializePluginsAsync, DatabaseUnavailableException)
+Presentation   ──> Infrastructure (bootstrap: AddInfrastructure, DatabaseInitializer,
+                                   PluginStartup, DatabaseUnavailableException)
 ```
 
 Praktické důsledky:
