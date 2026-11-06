@@ -1,6 +1,6 @@
 # Uživatelská příručka
 
-Průvodce ovládáním WorkTrackeru od prvního spuštění až po pokročilé funkce. Pokud hledáš stručný přehled, začni v [README.md](../README.md).
+Průvodce ovládáním WorkTrackeru od prvního spuštění až po pokročilé funkce. Pokud hledáš stručný přehled, začni v [README.cs.md](../README.cs.md).
 
 ---
 

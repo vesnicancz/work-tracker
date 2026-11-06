@@ -1,6 +1,8 @@
 # WorkTracker
 
-**Desktopová aplikace pro sledování pracovní doby s rozšiřitelným plugin systémem.**
+**English** | [Čeština](README.cs.md)
+
+**A desktop time-tracking application with an extensible plugin system.**
 
 [![Build](https://github.com/vesnicancz/work-tracker/actions/workflows/dotnet.yml/badge.svg)](https://github.com/vesnicancz/work-tracker/actions/workflows/dotnet.yml)
 [![Release](https://img.shields.io/github/v/release/vesnicancz/work-tracker)](https://github.com/vesnicancz/work-tracker/releases/latest)
@@ -12,41 +14,41 @@
 
 ---
 
-![WorkTracker — hlavní okno](docs/images/main-window.png)
+![WorkTracker — main window](docs/images/main-window.png)
 
-## O projektu
+## About
 
-WorkTracker je desktopová aplikace pro sledování času stráveného na pracovních úkolech. Je postavená na .NET 10 s Clean Architecture a nabízí dva způsoby ovládání:
+WorkTracker is a desktop application for tracking the time you spend on work items. It is built on .NET 10 with Clean Architecture and offers two ways to control it:
 
-- **Avalonia GUI** — moderní cross‑platform rozhraní (Windows, Linux, macOS)
-- **CLI** — terminálový klient (Spectre.Console) pro rychlé ovládání z příkazové řádky
+- **Avalonia GUI** — a modern cross‑platform interface (Windows, Linux, macOS)
+- **CLI** — a terminal client (Spectre.Console) for quick use from the command line
 
-Jádro aplikace je rozšiřitelné pomocí pluginů, které jsou načítané z izolovaných `AssemblyLoadContext`. Pluginy pro integraci s Jirou, Tempem, Office 365 kalendářem, Goran G3, Luxafor LED indikátorem a Stream Deckem jsou publikované jako samostatné `WorkTracker-Plugin-*.zip` balíčky — nejsou součástí balíčku aplikace, stáhni si je podle potřeby a rozbal do adresáře `plugins/` vedle spustitelného souboru (GUI na macOS do `~/Library/Application Support/WorkTracker/plugins/`).
+The core of the application is extended through plugins, loaded into isolated `AssemblyLoadContext`s. The plugins for Jira, Tempo, Office 365 Calendar, Goran G3, the Luxafor LED indicator and Stream Deck are published as separate `WorkTracker-Plugin-*.zip` packages. They are not part of the application package: download the ones you need and extract them into the `plugins/` directory next to the executable (for the GUI on macOS, into `~/Library/Application Support/WorkTracker/plugins/`).
 
-### Hlavní funkce
+### Main features
 
-- Start / stop / edit / delete pracovních záznamů s automatickou detekcí Jira ticket kódu
-- Denní přehled s navigací „Přejít na dnešek“, odeslání worklogů za den nebo týden
-- Odesílání worklogů do externích systémů s náhledem, volbou mezi časovým a agregovaným módem (součet per den × ticket + popis) a opakovaným pokusem u selhání
-- Návrhy práce (Work Suggestions) z Jira issues a kalendářových událostí
-- Detekce a řešení překrývajících se časových intervalů (Unit of Work transakce)
-- Pomodoro timer s OS notifikacemi a volitelnou indikací na Luxafor LED
-- Oblíbené položky jako šablony pro rychlé spuštění
-- System tray ikona s toggle okna klikem a rychlým menu
-- Automatická kontrola aktualizací
-- Lokalizace (čeština, angličtina)
+- Start / stop / edit / delete work entries, with automatic detection of the Jira ticket code
+- Daily overview with "Go to today" navigation, and worklog submission for a day or a week
+- Worklog upload to external systems with a preview, a choice between timed and aggregated mode (total per day × ticket + description), and retry on failure
+- Work Suggestions from Jira issues and calendar events
+- Detection and resolution of overlapping time intervals (Unit of Work transactions)
+- Pomodoro timer with OS notifications and an optional indication on a Luxafor LED
+- Favorites as templates for a quick start
+- System tray icon with click-to-toggle window and a quick menu
+- Automatic update check
+- Localization (Czech, English)
 
 ---
 
-## Rychlý start
+## Quick start
 
-### Prerekvizity
+### Prerequisites
 
 - [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
 - Git
-- Jedna z podporovaných platforem: Windows 10/11, Linux nebo macOS (CLI i Avalonia jsou cross‑platform)
+- One of the supported platforms: Windows 10/11, Linux or macOS (both the CLI and Avalonia are cross‑platform)
 
-### Naklonování a build
+### Clone and build
 
 ```bash
 git clone https://github.com/vesnicancz/work-tracker.git
@@ -57,7 +59,7 @@ dotnet build
 dotnet test
 ```
 
-### Spuštění z vývojového stromu
+### Run from the source tree
 
 ```bash
 # CLI (cross-platform)
@@ -67,146 +69,146 @@ dotnet run --project src/WorkTracker.CLI -- help
 dotnet run --project src/WorkTracker.Avalonia
 ```
 
-### První záznam
+### Your first entry
 
 ```bash
-dotnet run --project src/WorkTracker.CLI -- start PROJ-123 "Implementace nové funkce"
+dotnet run --project src/WorkTracker.CLI -- start PROJ-123 "Implementing a new feature"
 dotnet run --project src/WorkTracker.CLI -- status
 dotnet run --project src/WorkTracker.CLI -- stop
 dotnet run --project src/WorkTracker.CLI -- list
 ```
 
-Detailní průvodce prvním spuštěním a ovládáním najdeš v [docs/user-guide.md](docs/user-guide.md).
+A detailed guide to the first run and everyday use is in [docs/user-guide.md](docs/user-guide.md) (in Czech).
 
 ---
 
-## CLI přehled
+## CLI overview
 
-| Příkaz | Popis |
-|--------|-------|
-| `start [ticket] [popis] [čas]` | Začít sledovat práci (auto‑stop předchozího záznamu) |
-| `stop [čas]` | Ukončit aktivní záznam |
-| `status` | Zobrazit aktuálně běžící záznam |
-| `list [datum]` | Výpis záznamů pro zadaný den (výchozí: dnes) |
-| `edit <id> [--ticket=] [--start=] [--end=] [--desc=]` | Úprava existujícího záznamu |
-| `delete <id>` | Smazání záznamu |
-| `send [week] [datum]` | Odeslání worklogu do externího systému (náhled + potvrzení). `--provider=<id>` vybere konkrétní plugin, `--yes`/`-y` přeskočí potvrzení |
-| `providers` | Výpis worklog upload pluginů a jejich enabled stavu |
-| `version`, `help` | Verze a nápověda |
+| Command | Description |
+|---------|-------------|
+| `start [ticket] [description] [time]` | Start tracking work (auto‑stops the previous entry) |
+| `stop [time]` | Stop the active entry |
+| `status` | Show the currently running entry |
+| `list [date]` | List the entries for a given day (default: today) |
+| `edit <id> [--ticket=] [--start=] [--end=] [--desc=]` | Edit an existing entry |
+| `delete <id>` | Delete an entry |
+| `send [week] [date]` | Send the worklog to an external system (preview + confirmation). `--provider=<id>` selects a specific plugin, `--yes`/`-y` skips the confirmation |
+| `providers` | List the worklog upload plugins and whether they are enabled |
+| `version`, `help` | Version and help |
 
-Výstup `list`, `status` a `providers` jde i do skriptů: `--json` vypíše JSON a `--plain` jeden záznam na řádek, se sloupci oddělenými TABem a bez hlavičky. Když stdout míří do pipe nebo souboru, CLI přepne na `--plain` samo, takže funguje třeba `WorkTracker.CLI list | grep PROJ-123`. Podrobnosti jsou v [uživatelské příručce](docs/user-guide.md#výstup-pro-skripty-a-pipe).
+The output of `list`, `status` and `providers` can also feed scripts: `--json` prints JSON and `--plain` prints one entry per line, with TAB-separated columns and no header. When stdout goes to a pipe or a file, the CLI switches to `--plain` by itself, so `WorkTracker.CLI list | grep PROJ-123` just works. Details are in the [user guide](docs/user-guide.md#výstup-pro-skripty-a-pipe) (in Czech).
 
-Příklady:
+Examples:
 
 ```bash
-# Start s Jira kódem, popisem a explicitním časem
+# Start with a Jira code, a description and an explicit time
 WorkTracker.CLI start PROJ-123 "Bug fix" 09:00
 
-# Odeslání celého aktuálního týdne
+# Send the whole current week
 WorkTracker.CLI send week
 
-# Úprava záznamu č. 5
-WorkTracker.CLI edit 5 --ticket=PROJ-456 --end=17:30 --desc="Nový popis"
+# Edit entry no. 5
+WorkTracker.CLI edit 5 --ticket=PROJ-456 --end=17:30 --desc="New description"
 ```
 
-> **Jak spustit binárku:** Příklady výše ukazují jen název programu. Ve skutečnosti záleží na platformě a na tom, jestli máš složku s binárkou v `PATH`:
+> **How to run the binary:** The examples above show only the program name. In practice it depends on the platform and on whether the binary's folder is in your `PATH`:
 >
-> - **Windows**: `WorkTracker.CLI.exe start …` (z PowerShellu / CMD), nebo `.\WorkTracker.CLI.exe start …` z lokální složky
-> - **Linux / macOS**: `./WorkTracker.CLI start …` z lokální složky, nebo `WorkTracker.CLI start …` pokud je v `PATH`
+> - **Windows**: `WorkTracker.CLI.exe start …` (from PowerShell / CMD), or `.\WorkTracker.CLI.exe start …` from the local folder
+> - **Linux / macOS**: `./WorkTracker.CLI start …` from the local folder, or `WorkTracker.CLI start …` if it is in your `PATH`
 >
-> **macOS a GUI:** Avalonia se na macOS distribuuje jako `WorkTracker-{verze}-macos-arm64.dmg` — otevři ho a přetáhni `WorkTracker.app` do Applications. Do podepsaného bundlu se nezapisuje, takže pluginy tam nepatří — jdou do `~/Library/Application Support/WorkTracker/plugins/`. Build je podepsaný jen ad-hoc, takže ho Gatekeeper napoprvé nepustí. Na macOS 15 a novějším ho povol v **Nastavení systému → Soukromí a zabezpečení → Přesto otevřít** (pravý klik → Otevřít tam už nefunguje), na starších přes **pravý klik → Otevřít**, nebo kdekoli spusť `xattr -dr com.apple.quarantine /Applications/WorkTracker.app`. Podrobně viz [Instalace](docs/user-guide.md#instalace).
+> **macOS and the GUI:** On macOS, Avalonia is distributed as `WorkTracker-{version}-macos-arm64.dmg` — open it and drag `WorkTracker.app` to Applications. The signed bundle is not written to, so plugins don't belong there — they go to `~/Library/Application Support/WorkTracker/plugins/`. The build is only ad-hoc signed, so Gatekeeper blocks it on first launch. On macOS 15 and later, allow it in **System Settings → Privacy & Security → Open Anyway** (right-click → Open no longer works there), on older versions use **right-click → Open**, or on any version run `xattr -dr com.apple.quarantine /Applications/WorkTracker.app`. For details see [Installation](docs/user-guide.md#instalace) (in Czech).
 >
-> **Poznámka k nápovědě:** Vestavěný help (`WorkTracker.CLI help`) používá v usage stringách historický název `worklog` (např. `Usage: worklog start [ticket-id] ...`). Je to stará relikvie — skutečná binárka se jmenuje `WorkTracker.CLI`, takže při volání nahraď `worklog` za `WorkTracker.CLI` (s `.exe`/`./` dle platformy).
+> **A note on the help:** The built-in help (`WorkTracker.CLI help`) uses the historical name `worklog` in its usage strings (e.g. `Usage: worklog start [ticket-id] ...`). It is an old relic — the actual binary is called `WorkTracker.CLI`, so replace `worklog` with `WorkTracker.CLI` when calling it (with `.exe`/`./` depending on the platform).
 
-Jira ticket se detekuje automaticky ze začátku vstupu podle regex vzoru `^([a-zA-Z0-9]+-[0-9]+)` (bez hranice slova, takže z `PROJ-123abc` vznikne ticket `PROJ-123` a popis `abc`) (ověřeno v `JiraPatterns.TicketId()`). Prefix před pomlčkou může obsahovat písmena i číslice, povoluje velká i malá písmena (char class `[a-zA-Z]`, ne `RegexOptions.IgnoreCase`), ale **nepovoluje underscore** — např. `PROJ-123` nebo `proj-123` fungují, `WORK_TRACKER-42` ne. Časy lze zadávat ve formátech `HH:mm`, `HH:mm:ss` nebo `yyyy-MM-dd HH:mm`.
+The Jira ticket is detected automatically from the start of the input using the regex `^([a-zA-Z0-9]+-[0-9]+)` (there is no word boundary, so `PROJ-123abc` yields the ticket `PROJ-123` and the description `abc`) (verified in `JiraPatterns.TicketId()`). The prefix before the hyphen may contain letters and digits, and allows both upper and lower case (the character class `[a-zA-Z]`, not `RegexOptions.IgnoreCase`), but it **does not allow an underscore** — e.g. `PROJ-123` or `proj-123` work, `WORK_TRACKER-42` doesn't. Times can be entered as `HH:mm`, `HH:mm:ss` or `yyyy-MM-dd HH:mm`.
 
 ---
 
-## Konfigurace
+## Configuration
 
-### Umístění dat
+### Data location
 
-Aplikace ukládá všechna perzistentní data do `%LocalAppData%\WorkTracker\` (Windows), resp. `~/.local/share/WorkTracker/` (Linux) nebo `~/Library/Application Support/WorkTracker/` (macOS).
+The application stores all persistent data in `%LocalAppData%\WorkTracker\` (Windows), `~/.local/share/WorkTracker/` (Linux) or `~/Library/Application Support/WorkTracker/` (macOS).
 
-> **Environment suffix:** Pokud běží v non‑Production prostředí (proměnná `DOTNET_ENVIRONMENT` nebo `ASPNETCORE_ENVIRONMENT` != `Production`), přidá se k názvu složky suffix — `WorkTracker_Development` pro development a podobně. Debug build si `Development` nastaví sám, pokud proměnná není zadaná (platí pro `dotnet run`, spuštění z IDE i ručně spuštěnou binárku), takže settings, logy a `keys/` jdou do `%LocalAppData%\WorkTracker_Development\`. Databáze je v Developmentu `worktracker-dev.db` vedle binárky (viz `appsettings.Development.json`). V release buildu (publikovaná binárka bez přepisu env proměnné) se používá čisté `WorkTracker`.
+> **Environment suffix:** When running in a non‑Production environment (the `DOTNET_ENVIRONMENT` or `ASPNETCORE_ENVIRONMENT` variable is not `Production`), a suffix is added to the folder name — `WorkTracker_Development` for development, and so on. A Debug build sets `Development` by itself if the variable isn't given (this applies to `dotnet run`, launching from an IDE and running the binary by hand), so settings, logs and `keys/` go to `%LocalAppData%\WorkTracker_Development\`. In Development the database is `worktracker-dev.db` next to the binary (see `appsettings.Development.json`). A Release build (a published binary without the environment variable overridden) uses plain `WorkTracker`.
 
-Obsah složky:
+Folder contents:
 
 ```
 WorkTracker/
-├── worktracker.db          # SQLite databáze (automaticky migrováno)
-├── settings.json           # Uživatelské nastavení (pluginy, téma, Pomodoro…)
-├── settings.json.bak       # Předchozí verze nastavení
-├── plugins/                # Pluginy (jen GUI na macOS v `.app`, jinde vedle spustitelného souboru)
-├── logs/                   # Serilog (rolling denně, 14 souborů)
-└── keys/                   # MSAL token cache (standardně šifrovaná OS keystoreem; na některých Linux instalacích může spadnout na nešifrovanou cache — viz warning v logu)
+├── worktracker.db          # SQLite database (migrated automatically)
+├── settings.json           # User settings (plugins, theme, Pomodoro…)
+├── settings.json.bak       # Previous version of the settings
+├── plugins/                # Plugins (only for the GUI on macOS in `.app`, elsewhere next to the executable)
+├── logs/                   # Serilog (rolling daily, 14 files)
+└── keys/                   # MSAL token cache (encrypted by the OS keystore by default; on some Linux installations it may fall back to an unencrypted cache — see the warning in the log)
 ```
 
-Vlastní cestu k databázi lze přepsat v `appsettings.json`:
+A custom database path can be set in `appsettings.json`:
 
 ```json
 {
   "Database": {
-    "Path": "D:\\moje-data\\worktracker.db"
+    "Path": "D:\\my-data\\worktracker.db"
   }
 }
 ```
 
-### Nastavení pluginů
+### Plugin settings
 
-Pluginy se konfigurují přímo v GUI aplikaci (**Settings → Plugins**). Každý plugin vystavuje seznam polí (`PluginConfigurationField`), pro která UI vygeneruje odpovídající formulář a validuje vstup.
+Plugins are configured directly in the GUI application (**Settings → Plugins**). Each plugin exposes a list of fields (`PluginConfigurationField`), for which the UI generates a matching form and validates the input.
 
-Citlivé údaje (API tokeny, hesla) aplikace ukládá přes `ISecureStorage` do systémového credential storu:
+The application stores sensitive data (API tokens, passwords) through `ISecureStorage` in the system credential store:
 
 - **Windows** — Credential Manager (DPAPI)
 - **macOS** — Keychain
-- **Linux** — libsecret / GNOME Keyring (mimo desktopovou relaci je potřeba nastavit `GCM_CREDENTIAL_STORE`)
+- **Linux** — libsecret / GNOME Keyring (outside a desktop session you need to set `GCM_CREDENTIAL_STORE`)
 
-V souboru `settings.json` je na jejich místě uložený pouze placeholder `CS:{pluginId}:{fieldKey}`, nikdy plaintext. OAuth tokeny pro pluginy používající MSAL (Office 365 Calendar, Goran G3) jsou v zašifrované cache v `keys/` a při vypršení refresh tokenu je potřeba se znovu přihlásit přes **Otestovat připojení** (Office 365 Calendar v prohlížeči, Goran G3 přes device code flow).
+`settings.json` holds only a placeholder `CS:{pluginId}:{fieldKey}` in their place, never plaintext. OAuth tokens for plugins using MSAL (Office 365 Calendar, Goran G3) live in an encrypted cache in `keys/`, and when the refresh token expires you need to sign in again through **Test Connection** (Office 365 Calendar in the browser, Goran G3 through the device code flow).
 
-> **Pluginy v CLI:** `WorkTracker.CLI` čte enabled stav i konfiguraci pluginů ze stejného `settings.json` jako GUI, takže `send` funguje i z terminálu. Samotný plugin je ale potřeba rozbalit i do složky `plugins/` vedle CLI. Zapínají a konfigurují se ale pouze v GUI (Avalonia → **Nastavení → Pluginy**) — CLI je jen používá. Co je zrovna k dispozici, ukáže `WorkTracker.CLI providers`. Plugin docs v [docs/plugins/](docs/plugins/) kromě Stream Decku obsahují ukázkové `appsettings.json` schéma pluginu jako referenci pro integrátory s vlastním hostem.
+> **Plugins in the CLI:** `WorkTracker.CLI` reads the enabled state and the plugin configuration from the same `settings.json` as the GUI, so `send` works from the terminal too. The plugin itself must also be extracted into the `plugins/` folder next to the CLI. Plugins are enabled and configured only in the GUI (Avalonia → **Settings → Plugins**) — the CLI only uses them. `WorkTracker.CLI providers` shows what is currently available. Except for Stream Deck, the plugin docs in [docs/plugins/](docs/plugins/) include a sample `appsettings.json` schema of the plugin as a reference for integrators with their own host.
 
-> **Bezpečnost:** Necommituj API tokeny do Gitu.
+> **Security:** Do not commit API tokens to Git.
 
 ---
 
-## Plugin systém
+## Plugin system
 
-WorkTracker podporuje čtyři typy pluginů:
+WorkTracker supports four types of plugins:
 
-| Typ | Rozhraní | Účel |
-|-----|----------|------|
-| **Worklog Upload** | `IWorklogUploadPlugin` | Odesílání worklogů do externích systémů |
-| **Work Suggestion** | `IWorkSuggestionPlugin` | Návrhy úkolů (issues, kalendářové události) |
-| **Status Indicator** | `IStatusIndicatorPlugin` | Ovládání fyzických indikátorů stavu (LED apod.) |
-| **Remote Control** | `IRemoteControlPlugin` | Ovládání běžící aplikace z externích zařízení (Stream Deck apod.) |
+| Type | Interface | Purpose |
+|------|-----------|---------|
+| **Worklog Upload** | `IWorklogUploadPlugin` | Uploading worklogs to external systems |
+| **Work Suggestion** | `IWorkSuggestionPlugin` | Suggesting work items (issues, calendar events) |
+| **Status Indicator** | `IStatusIndicatorPlugin` | Controlling physical status indicators (LEDs etc.) |
+| **Remote Control** | `IRemoteControlPlugin` | Controlling the running application from external devices (Stream Deck etc.) |
 
-### Dodávané pluginy
+### Bundled plugins
 
-| Plugin | Popis | Dokumentace |
-|--------|-------|-------------|
-| **Atlassian** | Tempo upload worklogů + Jira suggestions (sdílený `JiraClient`) | [docs/plugins/atlassian.md](docs/plugins/atlassian.md) |
-| **Office 365 Calendar** | Work suggestions z kalendářových událostí (MSAL, přihlášení v prohlížeči) | [docs/plugins/office365-calendar.md](docs/plugins/office365-calendar.md) |
-| **Goran G3** | Upload worklogů přes MCP server s Entra ID autentizací | [docs/plugins/goran-g3.md](docs/plugins/goran-g3.md) |
-| **Luxafor** | Zobrazení Pomodoro fáze na Luxafor Bluetooth Pro LED | [docs/plugins/luxafor.md](docs/plugins/luxafor.md) |
-| **Stream Deck** | Ovládání trackingu z ovladače Stream Deck + | [docs/plugins/stream-deck.md](docs/plugins/stream-deck.md) |
+| Plugin | Description | Documentation |
+|--------|-------------|---------------|
+| **Atlassian** | Tempo worklog upload + Jira suggestions (shared `JiraClient`) | [docs/plugins/atlassian.md](docs/plugins/atlassian.md) |
+| **Office 365 Calendar** | Work suggestions from calendar events (MSAL, sign-in in the browser) | [docs/plugins/office365-calendar.md](docs/plugins/office365-calendar.md) |
+| **Goran G3** | Worklog upload through an MCP server with Entra ID authentication | [docs/plugins/goran-g3.md](docs/plugins/goran-g3.md) |
+| **Luxafor** | Shows the Pomodoro phase on a Luxafor Bluetooth Pro LED | [docs/plugins/luxafor.md](docs/plugins/luxafor.md) |
+| **Stream Deck** | Controls tracking from a Stream Deck + controller | [docs/plugins/stream-deck.md](docs/plugins/stream-deck.md) |
 
-### Vlastní plugin
+### Writing your own plugin
 
 ```csharp
 using Microsoft.Extensions.Logging;
 using WorkTracker.Plugin.Abstractions;
 
-public sealed class MujPlugin : WorklogUploadPluginBase
+public sealed class MyPlugin : WorklogUploadPluginBase
 {
-    public MujPlugin(ILogger<MujPlugin> logger) : base(logger) { }
+    public MyPlugin(ILogger<MyPlugin> logger) : base(logger) { }
 
     public override PluginMetadata Metadata => new()
     {
-        Id = "muj.worklog",
-        Name = "Můj Plugin",
+        Id = "my.worklog",
+        Name = "My Plugin",
         Version = new Version(1, 0, 0),
-        Author = "Já",
+        Author = "Me",
     };
 
     public override IReadOnlyList<PluginConfigurationField> GetConfigurationFields() => [];
@@ -218,43 +220,43 @@ public sealed class MujPlugin : WorklogUploadPluginBase
     public override Task<PluginResult<bool>> UploadWorklogAsync(
         PluginWorklogEntry worklog, CancellationToken ct)
     {
-        // …vlastní logika nahrání…
+        // …your upload logic…
         return Task.FromResult(PluginResult<bool>.Success(true));
     }
 }
 ```
 
-Kompletní návod: [docs/plugin-development.md](docs/plugin-development.md).
+The complete guide: [docs/plugin-development.md](docs/plugin-development.md) (in Czech).
 
 ---
 
-## Architektura
+## Architecture
 
-Clean Architecture s jednosměrnými závislostmi:
+Clean Architecture with one-way dependencies:
 
 ```
-Avalonia (GUI: okna, ViewModely, Orchestrátory, ISettingsService, ILocalizationService)
+Avalonia (GUI: windows, ViewModels, Orchestrators, ISettingsService, ILocalizationService)
       └─ Application (IWorkEntryService, IUnitOfWork, Result<T>, DTOs)
-            └─ Domain (WorkEntry, IWorkEntryRepository, business pravidla)
+            └─ Domain (WorkEntry, IWorkEntryRepository, business rules)
 
 CLI ─> Application
-Avalonia, CLI ─> Infrastructure (jen bootstrap: AddInfrastructure, inicializace DB a pluginů)
+Avalonia, CLI ─> Infrastructure (bootstrap only: AddInfrastructure, DB and plugin initialization)
 
-Plugin.Abstractions (IPlugin, *PluginBase) — společné API pro všechny pluginy
-      └─ referencováno z Application (Infrastructure tranzitivně) a jednotlivých plugin projektů
+Plugin.Abstractions (IPlugin, *PluginBase) — the common API for all plugins
+      └─ referenced by Application (Infrastructure transitively) and the individual plugin projects
 ```
 
-Viz [docs/architecture.md](docs/architecture.md) pro detailní diagram, popis vrstev a vzorů (Result pattern, Unit of Work, plugin DI).
+See [docs/architecture.md](docs/architecture.md) (in Czech) for the detailed diagram and a description of the layers and patterns (Result pattern, Unit of Work, plugin DI).
 
-### Projekty v repozitáři
+### Projects in the repository
 
 ```
 work-tracker/
 ├── src/
-│   ├── WorkTracker.Domain/               # Business entity a pravidla
-│   ├── WorkTracker.Application/          # Use cases, služby, interfaces
+│   ├── WorkTracker.Domain/               # Business entities and rules
+│   ├── WorkTracker.Application/          # Use cases, services, interfaces
 │   ├── WorkTracker.Infrastructure/       # EF Core, SQLite, PluginManager, MSAL
-│   ├── WorkTracker.CLI/                  # Spectre.Console klient
+│   ├── WorkTracker.CLI/                  # Spectre.Console client
 │   ├── WorkTracker.Avalonia/             # Avalonia GUI (cross-platform)
 │   └── WorkTracker.Plugin.Abstractions/  # Plugin API
 ├── plugins/
@@ -262,33 +264,35 @@ work-tracker/
 │   ├── WorkTracker.Plugin.Office365Calendar/ # O365 Calendar suggestions
 │   ├── WorkTracker.Plugin.GoranG3/           # Goran G3 worklog upload
 │   ├── WorkTracker.Plugin.Luxafor/           # Luxafor LED status
-│   └── WorkTracker.Plugin.StreamDeck/        # Stream Deck, strana WorkTrackeru
-├── streamdeck-plugin/                    # Stream Deck, strana aplikace Stream Deck (TypeScript)
+│   └── WorkTracker.Plugin.StreamDeck/        # Stream Deck, the WorkTracker side
+├── streamdeck-plugin/                    # Stream Deck, the Stream Deck app side (TypeScript)
 ├── tests/                                # xUnit + Moq + FluentAssertions
-└── docs/                                 # Dokumentace (tento soubor je odkazy sem)
+└── docs/                                 # Documentation
 ```
 
 ---
 
-## Dokumentace
+## Documentation
 
-- **[Uživatelská příručka](docs/user-guide.md)** — CLI i GUI tutoriál, první spuštění, troubleshooting
-- **[Architektura](docs/architecture.md)** — vrstvy, DI, Result pattern, Unit of Work
-- **[Vývojářská příručka](docs/developer-guide.md)** — setup, build, testy, migrace, konvence
-- **[Plugin Development](docs/plugin-development.md)** — jak napsat vlastní plugin
-- **[Pluginy](docs/plugins/)** — konfigurační reference pro dodávané pluginy
+The detailed documentation is currently available in Czech only.
+
+- **[User guide](docs/user-guide.md)** — CLI and GUI tutorial, first run, troubleshooting
+- **[Architecture](docs/architecture.md)** — layers, DI, Result pattern, Unit of Work
+- **[Developer guide](docs/developer-guide.md)** — setup, build, tests, migrations, conventions
+- **[Plugin development](docs/plugin-development.md)** — how to write your own plugin
+- **[Plugins](docs/plugins/)** — configuration reference for the bundled plugins
 
 ---
 
-## Přispívání
+## Contributing
 
-1. Forkni repozitář
-2. Vytvoř feature branch (`git checkout -b feature/nova-funkce`)
-3. Dodržuj coding standards ([docs/developer-guide.md](docs/developer-guide.md)), přidej testy
-4. Commit + push, otevři Pull Request proti `master`
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/new-feature`)
+3. Follow the coding standards ([docs/developer-guide.md](docs/developer-guide.md)) and add tests
+4. Commit + push, then open a Pull Request against `master`
 
-Při hlášení bugu uveď verzi aplikace (`WorkTracker.CLI version`), OS, .NET verzi, kroky k reprodukci a přiložené logy z `%LocalAppData%\WorkTracker\logs\`.
+When reporting a bug, include the application version (`WorkTracker.CLI version`), the OS, the .NET version, the steps to reproduce and the logs from `%LocalAppData%\WorkTracker\logs\`.
 
-## Kontakt
+## Contact
 
 - [GitHub Issues](https://github.com/vesnicancz/work-tracker/issues)
