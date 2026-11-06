@@ -10,6 +10,7 @@
     <File Path="docs/plugin-development.md" />
     <File Path="docs/user-guide.md" />
     <File Path="README.md" />
+    <File Path="README.cs.md" />
   </Folder>
   <Folder Name="/Solution Items/">
     <File Path=".editorconfig" />
