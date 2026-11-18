@@ -5,6 +5,12 @@ const TRACKING_COLOR = "#98C379";
 const SCHEDULED_COLOR = "#61AFEF";
 const IDLE_COLOR = "#ABB2BF";
 const OFFLINE_COLOR = "#5C6370";
+const EARLIER_COLOR = "#5C6370";
+
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const DAYS_SHOWN_AS_WEEKDAY = 6;
+const MILLISECONDS_PER_DAY = 86400000;
 
 const MILLISECONDS_PER_MINUTE = 60000;
 
@@ -40,7 +46,7 @@ export function getWorkDialView(state: RemoteState | null, now: Date, startShift
 	}
 
 	if (state.lastWork !== null) {
-		return { title: getWorkLabel(state.lastWork), value: "Stopped", color: IDLE_COLOR };
+		return { title: getWorkLabel(state.lastWork), ...getLastWorkValue(state.lastWork, now) };
 	}
 
 	return { title: "WorkTracker", value: "No work", color: IDLE_COLOR };
@@ -51,6 +57,37 @@ export function getWorkDialView(state: RemoteState | null, now: Date, startShift
  */
 export function getLatestStartShiftMinutes(work: WorkItem, now: Date): number {
 	return Math.max(0, Math.floor(getElapsedMilliseconds(work, now) / MILLISECONDS_PER_MINUTE));
+}
+
+/**
+ * Work from an earlier day says when it ended, dimmed, so that it isn't taken for today's: the weekday
+ * within the last week, the date before that, when the same weekday would mean two different days.
+ */
+function getLastWorkValue(work: WorkItem, now: Date): Pick<WorkDialView, "value" | "color"> {
+	if (!work.endedAt) {
+		return { value: "Stopped", color: IDLE_COLOR };
+	}
+
+	const ended = new Date(work.endedAt);
+	const daysAgo = getCalendarDaysBetween(ended, now);
+	if (daysAgo <= 0) {
+		return { value: "Stopped", color: IDLE_COLOR };
+	}
+
+	return {
+		value: daysAgo <= DAYS_SHOWN_AS_WEEKDAY
+			? `${WEEKDAYS[ended.getDay()]} ${formatTimeOfDay(work.endedAt)}`
+			: `${MONTHS[ended.getMonth()]} ${ended.getDate()}`,
+		color: EARLIER_COLOR
+	};
+}
+
+/**
+ * Rounded, because a day with a change of daylight saving time has 23 or 25 hours.
+ */
+function getCalendarDaysBetween(earlier: Date, later: Date): number {
+	const startOfDay = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+	return Math.round((startOfDay(later) - startOfDay(earlier)) / MILLISECONDS_PER_DAY);
 }
 
 function getElapsedMilliseconds(work: WorkItem, now: Date): number {

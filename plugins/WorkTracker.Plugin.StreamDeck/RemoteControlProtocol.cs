@@ -71,11 +71,14 @@ internal sealed record RemoteStateMessage(
 			state.Pomodoro.PomodorosBeforeLongBreak));
 }
 
-internal sealed record RemoteWorkMessage(string? TicketId, string? Description, DateTimeOffset StartedAt)
+/// <summary>
+/// <see cref="EndedAt"/> was added to version 1 without raising it: a client that doesn't know it ignores it.
+/// </summary>
+internal sealed record RemoteWorkMessage(string? TicketId, string? Description, DateTimeOffset StartedAt, DateTimeOffset? EndedAt)
 {
 	public static RemoteWorkMessage? From(RemoteWorkItem? item)
 	{
-		return item == null ? null : new RemoteWorkMessage(item.TicketId, item.Description, item.StartedAt);
+		return item == null ? null : new RemoteWorkMessage(item.TicketId, item.Description, item.StartedAt, item.EndedAt);
 	}
 }
 

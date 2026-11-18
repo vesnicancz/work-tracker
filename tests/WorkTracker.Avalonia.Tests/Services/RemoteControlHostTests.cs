@@ -83,8 +83,18 @@ public sealed class RemoteControlHostTests : IDisposable
 		var state = await _host.GetStateAsync(MaxAge, TestToken);
 
 		state.ActiveWork.Should().Be(new RemoteWorkItem(
-			"PROJ-1", "Coding", new DateTimeOffset(Now.AddHours(-2), TimeSpan.FromHours(1))));
+			"PROJ-1", "Coding", new DateTimeOffset(Now.AddHours(-2), TimeSpan.FromHours(1)), null));
 		state.LastWork.Should().BeNull();
+	}
+
+	[Fact]
+	public async Task GetState_WhileIdle_SaysWhenTheLastWorkEnded()
+	{
+		SetRecentEntries(Scheduled(5, Now.AddDays(-5).AddHours(2), Now.AddDays(-5).AddHours(4)));
+
+		var state = await _host.GetStateAsync(MaxAge, TestToken);
+
+		state.LastWork!.EndedAt.Should().Be(new DateTimeOffset(Now.AddDays(-5).AddHours(4), TimeSpan.FromHours(1)));
 	}
 
 	[Fact]

@@ -111,6 +111,50 @@ describe("getWorkDialView", () => {
 		});
 	});
 
+	describe("with the last work", () => {
+		// Local times, so that the expected text doesn't depend on the time zone of the machine
+		const monday = new Date(2026, 10, 9, 8, 0);
+		const lastWork = (endedAt) => ({
+			activeWork: null,
+			scheduledWork: null,
+			lastWork: { ticketId: "PROJ-2", description: null, startedAt: new Date(2026, 10, 1).toISOString(), endedAt },
+			pomodoro
+		});
+
+		it("shows it as stopped when it ended today", () => {
+			const view = getWorkDialView(lastWork(new Date(2026, 10, 9, 7, 30).toISOString()), monday);
+
+			assert.equal(view.value, "Stopped");
+		});
+
+		it("shows the weekday and time it ended within the last week, dimmed", () => {
+			const today = getWorkDialView(lastWork(new Date(2026, 10, 9, 7, 30).toISOString()), monday);
+			const friday = getWorkDialView(lastWork(new Date(2026, 10, 6, 16, 30).toISOString()), monday);
+
+			assert.equal(friday.title, "PROJ-2");
+			assert.equal(friday.value, "Fri 16:30");
+			assert.notEqual(friday.color, today.color);
+		});
+
+		it("counts calendar days, not hours", () => {
+			const view = getWorkDialView(lastWork(new Date(2026, 10, 8, 23, 50).toISOString()), new Date(2026, 10, 9, 0, 5));
+
+			assert.equal(view.value, "Sun 23:50");
+		});
+
+		it("shows the date when the weekday would be ambiguous", () => {
+			const view = getWorkDialView(lastWork(new Date(2026, 10, 2, 16, 30).toISOString()), monday);
+
+			assert.equal(view.value, "Nov 2");
+		});
+
+		it("shows it as stopped for a WorkTracker that does not say when it ended", () => {
+			const view = getWorkDialView(lastWork(undefined), monday);
+
+			assert.equal(view.value, "Stopped");
+		});
+	});
+
 	it("says so when there is no work at all", () => {
 		assert.equal(getWorkDialView({ activeWork: null, lastWork: null, pomodoro }, now).value, "No work");
 	});
