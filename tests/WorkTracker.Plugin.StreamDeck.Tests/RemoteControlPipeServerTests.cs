@@ -27,7 +27,7 @@ public sealed class RemoteControlPipeServerTests : IAsyncLifetime
 	public async ValueTask InitializeAsync()
 	{
 		_timeout.CancelAfter(TimeSpan.FromSeconds(30));
-		SetState(new RemoteControlState(Work, null, Pomodoro));
+		SetState(new RemoteControlState(Work, null, null, Pomodoro));
 
 		_server = new RemoteControlPipeServer(_pipeName, _host.Object, () => MaxAge, NullLogger.Instance);
 		_server.Start();
@@ -66,7 +66,7 @@ public sealed class RemoteControlPipeServerTests : IAsyncLifetime
 	public async Task StateChanged_PushesNewState()
 	{
 		await ReadMessageAsync();
-		SetState(new RemoteControlState(null, Work, Pomodoro));
+		SetState(new RemoteControlState(null, null, Work, Pomodoro));
 
 		_host.Raise(h => h.StateChanged += null, EventArgs.Empty);
 
@@ -89,9 +89,23 @@ public sealed class RemoteControlPipeServerTests : IAsyncLifetime
 	}
 
 	[Fact]
+	public async Task ToggleWork_DuringScheduledWork_StopsIt()
+	{
+		var meeting = new RemoteScheduledWork(null, "Standup", Work.StartedAt, Work.StartedAt.AddMinutes(30));
+		SetState(new RemoteControlState(null, meeting, Work, Pomodoro));
+		_host.Setup(h => h.StopWorkAsync(It.IsAny<CancellationToken>())).ReturnsAsync(PluginResult.Success());
+
+		var response = await SendAsync("""{"id":1,"command":"toggleWork"}""");
+
+		response.GetProperty("success").GetBoolean().Should().BeTrue();
+		_host.Verify(h => h.StopWorkAsync(It.IsAny<CancellationToken>()), Times.Once);
+		_host.Verify(h => h.ResumeLastWorkAsync(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Never);
+	}
+
+	[Fact]
 	public async Task ToggleWork_WhileIdle_ResumesLastWork()
 	{
-		SetState(new RemoteControlState(null, Work, Pomodoro));
+		SetState(new RemoteControlState(null, null, Work, Pomodoro));
 		_host.Setup(h => h.ResumeLastWorkAsync(MaxAge, It.IsAny<CancellationToken>())).ReturnsAsync(PluginResult.Success());
 
 		var response = await SendAsync("""{"id":1,"command":"toggleWork"}""");

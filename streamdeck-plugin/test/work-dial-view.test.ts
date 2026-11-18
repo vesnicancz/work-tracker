@@ -80,6 +80,37 @@ describe("getWorkDialView", () => {
 		assert.equal(view.value, "Stopped");
 	});
 
+	describe("during scheduled work", () => {
+		// Local times, so that the expected text doesn't depend on the time zone of the machine
+		const meeting = {
+			ticketId: null,
+			description: "Standup",
+			startTime: new Date(2026, 10, 4, 10, 0).toISOString(),
+			endTime: new Date(2026, 10, 4, 10, 30).toISOString()
+		};
+		const state = {
+			activeWork: null,
+			scheduledWork: meeting,
+			lastWork: { ticketId: "PROJ-2", description: null, startedAt: "2026-11-04T09:00:00+01:00" },
+			pomodoro
+		};
+
+		it("shows its name and time range instead of the last work", () => {
+			const view = getWorkDialView(state, new Date(2026, 10, 4, 10, 15));
+
+			assert.equal(view.title, "Standup");
+			assert.equal(view.value, "10:00–10:30");
+			assert.notEqual(view.color, getWorkDialView({ ...state, scheduledWork: null }, now).color);
+		});
+
+		it("goes back to the last work once it is over, before a new state arrives", () => {
+			const view = getWorkDialView(state, new Date(2026, 10, 4, 10, 30));
+
+			assert.equal(view.title, "PROJ-2");
+			assert.equal(view.value, "Stopped");
+		});
+	});
+
 	it("says so when there is no work at all", () => {
 		assert.equal(getWorkDialView({ activeWork: null, lastWork: null, pomodoro }, now).value, "No work");
 	});

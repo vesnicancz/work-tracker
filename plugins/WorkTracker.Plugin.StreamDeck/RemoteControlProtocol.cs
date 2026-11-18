@@ -48,7 +48,7 @@ internal sealed record RemoteResponse(long? Id, bool Success, string? Error, Rem
 	public string Type => "result";
 }
 
-internal sealed record RemoteStateMessage(RemoteWorkMessage? ActiveWork, RemoteWorkMessage? LastWork, RemotePomodoroMessage Pomodoro)
+internal sealed record RemoteStateMessage(RemoteWorkMessage? ActiveWork, RemoteScheduledWorkMessage? ScheduledWork, RemoteWorkMessage? LastWork, RemotePomodoroMessage Pomodoro)
 {
 	public string Type => "state";
 
@@ -56,6 +56,7 @@ internal sealed record RemoteStateMessage(RemoteWorkMessage? ActiveWork, RemoteW
 
 	public static RemoteStateMessage From(RemoteControlState state) => new(
 		RemoteWorkMessage.From(state.ActiveWork),
+		RemoteScheduledWorkMessage.From(state.ScheduledWork),
 		RemoteWorkMessage.From(state.LastWork),
 		new RemotePomodoroMessage(
 			state.Pomodoro.Phase,
@@ -69,6 +70,17 @@ internal sealed record RemoteWorkMessage(string? TicketId, string? Description, 
 	public static RemoteWorkMessage? From(RemoteWorkItem? item)
 	{
 		return item == null ? null : new RemoteWorkMessage(item.TicketId, item.Description, item.StartedAt);
+	}
+}
+
+/// <summary>
+/// Added to version 1 without raising it: a client that doesn't know it ignores it.
+/// </summary>
+internal sealed record RemoteScheduledWorkMessage(string? TicketId, string? Description, DateTimeOffset StartTime, DateTimeOffset EndTime)
+{
+	public static RemoteScheduledWorkMessage? From(RemoteScheduledWork? work)
+	{
+		return work == null ? null : new RemoteScheduledWorkMessage(work.TicketId, work.Description, work.StartTime, work.EndTime);
 	}
 }
 

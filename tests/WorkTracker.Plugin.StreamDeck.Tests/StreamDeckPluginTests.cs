@@ -17,7 +17,7 @@ public sealed class StreamDeckPluginTests : IAsyncLifetime
 	public ValueTask InitializeAsync()
 	{
 		_host.Setup(h => h.GetStateAsync(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>())).ReturnsAsync(new RemoteControlState(
-			null, null, new RemotePomodoroState(StatusIndicatorState.Idle, TimeSpan.Zero, 0, 4)));
+			null, null, null, new RemotePomodoroState(StatusIndicatorState.Idle, TimeSpan.Zero, 0, 4)));
 
 		_plugin = new StreamDeckPlugin(NullLogger<StreamDeckPlugin>.Instance, _pipeName);
 		return ValueTask.CompletedTask;

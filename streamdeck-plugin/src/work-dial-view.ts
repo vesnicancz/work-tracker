@@ -1,7 +1,8 @@
-import type { RemoteState, WorkItem } from "./protocol";
+import type { RemoteState, ScheduledWork, WorkItem } from "./protocol";
 
 // One Dark Pro, same as the application
 const TRACKING_COLOR = "#98C379";
+const SCHEDULED_COLOR = "#61AFEF";
 const IDLE_COLOR = "#ABB2BF";
 const OFFLINE_COLOR = "#5C6370";
 
@@ -29,6 +30,15 @@ export function getWorkDialView(state: RemoteState | null, now: Date, startShift
 		};
 	}
 
+	// WorkTracker sends a new state when the scheduled work ends, this only covers the moment until then
+	if (state.scheduledWork && Date.parse(state.scheduledWork.endTime) > now.getTime()) {
+		return {
+			title: getWorkLabel(state.scheduledWork),
+			value: formatTimeRange(state.scheduledWork),
+			color: SCHEDULED_COLOR
+		};
+	}
+
 	if (state.lastWork !== null) {
 		return { title: getWorkLabel(state.lastWork), value: "Stopped", color: IDLE_COLOR };
 	}
@@ -47,8 +57,17 @@ function getElapsedMilliseconds(work: WorkItem, now: Date): number {
 	return now.getTime() - Date.parse(work.startedAt);
 }
 
-function getWorkLabel(work: WorkItem): string {
+function getWorkLabel(work: Pick<WorkItem, "ticketId" | "description">): string {
 	return work.ticketId || work.description || "";
+}
+
+function formatTimeRange(work: ScheduledWork): string {
+	return `${formatTimeOfDay(work.startTime)}–${formatTimeOfDay(work.endTime)}`;
+}
+
+function formatTimeOfDay(time: string): string {
+	const date = new Date(time);
+	return [date.getHours(), date.getMinutes()].map((part) => String(part).padStart(2, "0")).join(":");
 }
 
 /**

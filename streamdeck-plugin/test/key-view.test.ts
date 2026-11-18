@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { KeyBoard } from "../src/key-board.ts";
-import { getFavoriteKeyView, getNextKeyView, getSuggestionKeyView, isActiveFavorite, isActiveSuggestion, renderKeyImage, wrapText } from "../src/key-view.ts";
+import { getCurrentWork, getFavoriteKeyView, getNextKeyView, getSuggestionKeyView, isActiveFavorite, isActiveSuggestion, renderKeyImage, wrapText } from "../src/key-view.ts";
 import { readSuggestions } from "../src/suggestion-board.ts";
 
 const ticket = { title: "Fix login", ticketId: "PROJ-1", startTime: null, endTime: null, source: "Jira" };
@@ -77,6 +77,21 @@ describe("getSuggestionKeyView", () => {
 
 	it("shortens a long ticket ID", () => {
 		assert.equal(getSuggestionKeyView({ ...ticket, ticketId: "LONGPROJECT-12345" }, false).heading.text, "LONGPROJE…");
+	});
+});
+
+describe("getCurrentWork", () => {
+	const tracked = { ticketId: "PROJ-1", description: "Fix login", startedAt: "2026-11-04T09:00:00+01:00" };
+	const meeting = { ticketId: null, description: "Standup", startTime: "2026-11-04T10:30:00+01:00", endTime: "2026-11-04T11:00:00+01:00" };
+
+	it("is the tracked work, else the scheduled work", () => {
+		assert.equal(getCurrentWork({ activeWork: tracked, scheduledWork: null, lastWork: null }), tracked);
+		assert.equal(getCurrentWork({ activeWork: null, scheduledWork: meeting, lastWork: null }), meeting);
+	});
+
+	it("is nothing when idle or offline", () => {
+		assert.equal(getCurrentWork({ activeWork: null, scheduledWork: null, lastWork: tracked }), null);
+		assert.equal(getCurrentWork(null), null);
 	});
 });
 

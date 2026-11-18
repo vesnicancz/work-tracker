@@ -19,15 +19,16 @@ Integrace má dvě části. **WorkTracker plugin** běží v GUI a na named pipe
 | Stav | Dotykový pruh | Stisk ovladače / klepnutí na pruh |
 |------|---------------|-----------------------------------|
 | Práce běží | Ticket (nebo popis) a uplynulý čas | Zastaví práci |
+| Právě probíhá záznam s pevným časem od–do, třeba schůzka | Ticket (nebo popis) a rozsah `10:00–10:30`, modře | Ukončí záznam teď, třeba když schůzka skončila dřív |
 | Nic neběží | Poslední práce a `Stopped` | Znovu spustí poslední práci |
 | Žádná práce v nastaveném limitu | `WorkTracker` a `No work` | Ukáže varování na pruhu |
 | WorkTracker neběží nebo má plugin vypnutý | `WorkTracker` a `Offline` | Ukáže varování na pruhu |
 
-Pruh se překreslí sám, jakmile se stav změní kdekoli, například v okně aplikace.
+Pruh se překreslí sám, jakmile se stav změní kdekoli, například v okně aplikace, a také ve chvíli, kdy záznam s pevným časem začne nebo skončí.
 
 WorkTracker navíc výsledek akcí ze Stream Decku oznamuje sám, jako toast v aktivním hlavním okně, jinak jako systémovou notifikaci. Potvrzení jde vypnout v **Nastavení → Obecné → Oznámení**, chyby se ukazují vždy. Viz [Notifikace](../user-guide.md#notifikace).
 
-**Otáčení ovladače** opravuje začátek běžící práce, o minutu na jeden krok. Po směru hodinových ručiček čas přidává (začátek se posouvá dřív), proti směru ubírá. Pruh ukazuje výsledek hned, do WorkTrackeru se změna uloží chvíli poté, co se ovladač zastaví. Začátek nejde posunout do budoucnosti. Pokud by se práce překryla s jiným záznamem, pruh ukáže varování a vrátí původní čas. Když žádná práce neběží, otáčení nic nedělá.
+**Otáčení ovladače** opravuje začátek běžící práce, o minutu na jeden krok. Po směru hodinových ručiček čas přidává (začátek se posouvá dřív), proti směru ubírá. Pruh ukazuje výsledek hned, do WorkTrackeru se změna uloží chvíli poté, co se ovladač zastaví. Začátek nejde posunout do budoucnosti. Pokud by se práce překryla s jiným záznamem, pruh ukáže varování a vrátí původní čas. Když žádná práce neběží, otáčení nic nedělá, ani během záznamu s pevným časem: ten se upravuje v aplikaci.
 
 ### Návrhy (tlačítka)
 
@@ -51,7 +52,7 @@ Tlačítko **Favorites** přepne celé zařízení na profil WorkTracker Favorit
 | **Next favorites** | Stránku a `Loading`, `None` nebo `Failed` | Další stránka, po poslední zase první |
 | **Close favorites** | Šipku zpět | Vrátí se na předchozí profil, nic nespustí |
 
-Na rozdíl od nabídky v tray ikoně stisk už běžící položku zastaví, stejně jako u návrhů. Za běžící se položka považuje, když se shoduje ticket i popis práce, šablona nikdy. Dialog se otevře jako z tray ikony, a pokud už je otevřený, jen se přenese dopředu a zůstanou v něm jeho hodnoty.
+Na rozdíl od nabídky v tray ikoně stisk už běžící položku zastaví, stejně jako u návrhů. Za běžící se položka považuje, když se shoduje ticket i popis práce, šablona nikdy. Za běžící práci se u návrhů i oblíbených bere i právě probíhající záznam s pevným časem, stisk ho ukončí teď. Dialog se otevře jako z tray ikony, a pokud už je otevřený, jen se přenese dopředu a zůstanou v něm jeho hodnoty.
 
 ---
 
@@ -112,9 +113,9 @@ Načítání návrhů běží mimo čtení příkazů, takže stisk ovladače na
 
 | Příkaz | Argumenty | Akce |
 |--------|-----------|------|
-| `toggleWork` | | Zastaví běžící práci, nebo znovu spustí poslední |
+| `toggleWork` | | Zastaví běžící práci nebo ukončí probíhající záznam s pevným časem, jinak znovu spustí poslední práci |
 | `startWork` | `ticketId`, `description` | Spustí novou práci |
-| `stopWork` | | Zastaví práci |
+| `stopWork` | | Zastaví práci, a když žádná neběží, ukončí teď probíhající záznam s pevným časem |
 | `resumeWork` | | Znovu spustí poslední práci |
 | `shiftStart` | `minutes` | Posune začátek běžící práce, kolize s jiným záznamem skončí chybou |
 | `addWork` | `ticketId`, `description`, `startTime`, `endTime` | Vloží záznam s daným časem (`startTime` je povinný, bez `endTime` práce běží dál), běžící práce začatá před ním skončí na jeho začátku, každá jiná kolize skončí chybou |
@@ -136,12 +137,16 @@ Neznámý příkaz vrátí chybu `Unknown command '…'`.
 ```json
 {
   "type": "state",
-  "activeWork": { "ticketId": "PROJ-1", "description": "Coding", "startedAt": "2026-11-04T09:30:00+01:00" },
-  "lastWork": null,
+  "protocol": 1,
+  "activeWork": null,
+  "scheduledWork": { "ticketId": null, "description": "Standup", "startTime": "2026-11-04T10:00:00+01:00", "endTime": "2026-11-04T10:30:00+01:00" },
+  "lastWork": { "ticketId": "PROJ-1", "description": "Coding", "startedAt": "2026-11-04T09:30:00+01:00" },
   "pomodoro": { "phase": "shortBreak", "remainingSeconds": 90, "completedPomodoros": 2, "pomodorosBeforeLongBreak": 4 }
 }
 ```
 
-Plynutí času se neposílá, klient si ho počítá sám.
+`scheduledWork` je záznam s pevným začátkem i koncem, jehož čas zahrnuje tuto chvíli. Během sledované práce je `null` a `lastWork` taky. `lastWork` nikdy není záznam naplánovaný na později. Pole `scheduledWork` přibylo bez zvýšení verze protokolu: starší klient ho ignoruje, a když ho starší WorkTracker nepošle, klient ho bere jako `null`.
+
+Plynutí času se neposílá, klient si ho počítá sám. Začátek a konec záznamu s pevným časem server ohlásí novým stavem.
 
 Ovladač Work používá `toggleWork` a `shiftStart`, tlačítka návrhů `getSuggestions`, `addWork`, `startWork` a `stopWork`, tlačítka oblíbených `getFavorites`, `showNewWorkDialog`, `startWork` a `stopWork`. Ostatní příkazy a stav Pomodora jsou připravené pro další akce.

@@ -10,6 +10,16 @@ export type WorkItem = {
 	startedAt: string;
 };
 
+/**
+ * An entry with a fixed start and end, such as a meeting, whose time covers this moment.
+ */
+export type ScheduledWork = {
+	ticketId: string | null;
+	description: string | null;
+	startTime: string;
+	endTime: string;
+};
+
 export type PomodoroPhase = "idle" | "work" | "shortBreak" | "longBreak";
 
 export type PomodoroState = {
@@ -21,6 +31,7 @@ export type PomodoroState = {
 
 export type RemoteState = {
 	activeWork: WorkItem | null;
+	scheduledWork: ScheduledWork | null;
 	lastWork: WorkItem | null;
 	pomodoro: PomodoroState;
 };
@@ -52,8 +63,9 @@ export type CommandResult = {
 	favorites?: Favorite[] | null;
 };
 
-// WorkTracker versions from before the protocol had a version don't send one
-export type StateMessage = RemoteState & { type: "state"; protocol?: number };
+// WorkTracker versions from before the protocol had a version don't send one, and those from before
+// scheduled work don't send that
+export type StateMessage = Omit<RemoteState, "scheduledWork"> & { type: "state"; protocol?: number; scheduledWork?: ScheduledWork | null };
 
 export type ResultMessage = CommandResult & { type: "result"; id: number | null };
 

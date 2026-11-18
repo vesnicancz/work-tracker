@@ -11,7 +11,7 @@ namespace WorkTracker.Avalonia.Services;
 /// Gives remote control plugins access to the application. Commands run on the UI thread, the same as
 /// when they start from the window, and the dialogs can't run anywhere else.
 /// </summary>
-public sealed class RemoteControlHost : IRemoteControlHost
+public sealed class RemoteControlHost : IRemoteControlHost, IDisposable
 {
 	private readonly IWorklogStateService _worklogStateService;
 	private readonly IPomodoroService _pomodoroService;
@@ -24,6 +24,8 @@ public sealed class RemoteControlHost : IRemoteControlHost
 	private readonly IUiDispatcher _uiDispatcher;
 	private readonly TimeProvider _timeProvider;
 	private readonly ILogger<RemoteControlHost> _logger;
+	private readonly Lock _stateChangeTimerLock = new();
+	private ITimer? _stateChangeTimer;
 
 	public RemoteControlHost(
 		IWorklogStateService worklogStateService,
@@ -59,12 +61,18 @@ public sealed class RemoteControlHost : IRemoteControlHost
 
 	public async Task<RemoteControlState> GetStateAsync(TimeSpan lastWorkMaxAge, CancellationToken cancellationToken)
 	{
+		var now = Now;
 		var activeWork = _worklogStateService.ActiveWork;
-		var lastWork = activeWork == null ? await FindLastWorkAsync(lastWorkMaxAge, cancellationToken) : null;
+		var entries = await GetEntriesSinceAsync(now - lastWorkMaxAge, now, cancellationToken);
+		var scheduledWork = activeWork == null ? FindScheduledWork(entries, now) : null;
+		var lastWork = activeWork == null ? FindLastWork(entries, now - lastWorkMaxAge, now) : null;
 		var pomodoro = _pomodoroService.GetSnapshot();
+
+		ScheduleStateChange(entries, now);
 
 		return new RemoteControlState(
 			ToRemoteWorkItem(activeWork),
+			ToRemoteScheduledWork(scheduledWork),
 			ToRemoteWorkItem(lastWork),
 			new RemotePomodoroState(
 				ToIndicatorState(pomodoro.CurrentPhase),
@@ -81,7 +89,30 @@ public sealed class RemoteControlHost : IRemoteControlHost
 			cancellationToken);
 	}
 
-	public Task<PluginResult> StopWorkAsync(CancellationToken cancellationToken)
+	public async Task<PluginResult> StopWorkAsync(CancellationToken cancellationToken)
+	{
+		if (_worklogStateService.ActiveWork == null)
+		{
+			var now = Now;
+			var scheduledWork = FindScheduledWork(await GetEntriesSinceAsync(now.AddDays(-1), now, cancellationToken), now);
+			if (scheduledWork != null)
+			{
+				return await EndScheduledWorkAsync(scheduledWork, cancellationToken);
+			}
+		}
+
+		return await StopTrackingAsync(cancellationToken);
+	}
+
+	private Task<PluginResult> EndScheduledWorkAsync(WorkEntry entry, CancellationToken cancellationToken)
+	{
+		return RunAsync(
+			async () => ToPluginResult(await _worklogStateService.UpdateWorkEntryAsync(entry.Id, entry.TicketId, entry.StartTime, Now, entry.Description, cancellationToken)),
+			() => _localization.GetFormattedString("RemoteWorkStopped", DescribeWork(entry.TicketId, entry.Description)),
+			cancellationToken);
+	}
+
+	private Task<PluginResult> StopTrackingAsync(CancellationToken cancellationToken)
 	{
 		var stoppedWork = string.Empty;
 
@@ -122,7 +153,7 @@ public sealed class RemoteControlHost : IRemoteControlHost
 				}
 
 				var newStart = activeWork.StartTime + delta;
-				if (newStart > _timeProvider.GetLocalNow().DateTime)
+				if (newStart > Now)
 				{
 					return PluginResult.Failure(_localization["RemoteStartInFuture"], PluginErrorCategory.Validation);
 				}
@@ -206,7 +237,40 @@ public sealed class RemoteControlHost : IRemoteControlHost
 		return OnUiThreadAsync(_pomodoroService.Skip, cancellationToken);
 	}
 
+	public void Dispose()
+	{
+		lock (_stateChangeTimerLock)
+		{
+			_stateChangeTimer?.Dispose();
+			_stateChangeTimer = null;
+		}
+	}
+
+	private DateTime Now => _timeProvider.GetLocalNow().DateTime;
+
 	private void RaiseStateChanged() => StateChanged?.Invoke(this, EventArgs.Empty);
+
+	/// <summary>
+	/// The state changes on its own when scheduled work begins or ends, and nothing else would say so.
+	/// Each read of the state sets the timer again, the one that follows this one included.
+	/// </summary>
+	private void ScheduleStateChange(IReadOnlyList<WorkEntry> entries, DateTime now)
+	{
+		var next = entries
+			.Where(e => e.EndTime.HasValue)
+			.SelectMany(e => new[] { e.StartTime, e.EndTime!.Value })
+			.Where(time => time > now)
+			.Select(time => (DateTime?)time)
+			.Min();
+
+		lock (_stateChangeTimerLock)
+		{
+			_stateChangeTimer?.Dispose();
+			_stateChangeTimer = next == null
+				? null
+				: _timeProvider.CreateTimer(_ => RaiseStateChanged(), null, next.Value - now, Timeout.InfiniteTimeSpan);
+		}
+	}
 
 	/// <summary>
 	/// Runs a command on the UI thread and tells the user how it turned out. The report lives here and
@@ -304,13 +368,40 @@ public sealed class RemoteControlHost : IRemoteControlHost
 
 	private async Task<WorkEntry?> FindLastWorkAsync(TimeSpan maxAge, CancellationToken cancellationToken)
 	{
-		var now = _timeProvider.GetLocalNow().DateTime;
-		var oldest = now - maxAge;
+		var now = Now;
+		return FindLastWork(await GetEntriesSinceAsync(now - maxAge, now, cancellationToken), now - maxAge, now);
+	}
 
-		var entries = await _workEntryService.GetWorkEntriesByDateRangeAsync(oldest, now, cancellationToken);
+	/// <summary>
+	/// Reaches a day ahead for scheduled work that hasn't begun yet.
+	/// </summary>
+	private async Task<IReadOnlyList<WorkEntry>> GetEntriesSinceAsync(DateTime oldest, DateTime now, CancellationToken cancellationToken)
+	{
+		return [.. await _workEntryService.GetWorkEntriesByDateRangeAsync(oldest, now.AddDays(1), cancellationToken)];
+	}
 
-		// The range covers whole days, so it can return entries from earlier on the oldest day
-		return entries.Where(e => e.StartTime >= oldest).MaxBy(e => e.StartTime);
+	/// <remarks>
+	/// The range of the query covers whole days, so it can return entries from earlier on the oldest
+	/// day. Entries planned for later are not work to resume.
+	/// </remarks>
+	private static WorkEntry? FindLastWork(IEnumerable<WorkEntry> entries, DateTime oldest, DateTime now)
+	{
+		return entries.Where(e => e.StartTime >= oldest && e.StartTime <= now).MaxBy(e => e.StartTime);
+	}
+
+	private static WorkEntry? FindScheduledWork(IEnumerable<WorkEntry> entries, DateTime now)
+	{
+		return entries.Where(e => e.EndTime > now && e.StartTime <= now).MaxBy(e => e.StartTime);
+	}
+
+	private RemoteScheduledWork? ToRemoteScheduledWork(WorkEntry? entry)
+	{
+		if (entry?.EndTime == null)
+		{
+			return null;
+		}
+
+		return new RemoteScheduledWork(entry.TicketId, entry.Description, ToLocalOffset(entry.StartTime), ToLocalOffset(entry.EndTime.Value));
 	}
 
 	private RemoteWorkItem? ToRemoteWorkItem(WorkEntry? entry)

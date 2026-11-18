@@ -268,7 +268,7 @@ internal sealed class RemoteControlPipeServer(string pipeName, IRemoteControlHos
 		var maxAge = lastWorkMaxAge();
 		var state = await host.GetStateAsync(maxAge, cancellationToken);
 
-		return state.ActiveWork != null
+		return state.ActiveWork != null || state.ScheduledWork != null
 			? await host.StopWorkAsync(cancellationToken)
 			: await host.ResumeLastWorkAsync(maxAge, cancellationToken);
 	}

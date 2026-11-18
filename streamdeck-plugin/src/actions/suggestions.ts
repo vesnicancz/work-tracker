@@ -1,6 +1,6 @@
 import { action } from "@elgato/streamdeck";
 
-import { getSuggestionKeyView, isActiveSuggestion, type KeyView } from "../key-view";
+import { getCurrentWork, getSuggestionKeyView, isActiveSuggestion, type KeyView } from "../key-view";
 import type { CommandResult, Suggestion } from "../protocol";
 import { isSuggestionOver } from "../suggestion-board";
 import { BoardItemKey, CloseBoardKey, NextBoardKey, OpenBoardKey } from "./board-keys";
@@ -22,11 +22,11 @@ export class OpenSuggestionsKey extends OpenBoardKey {
 @action({ UUID: "com.vesnicancz.worktracker.suggestion" })
 export class SuggestionKey extends BoardItemKey<Suggestion> {
 	protected override getView(suggestion: Suggestion): KeyView {
-		return getSuggestionKeyView(suggestion, isActiveSuggestion(suggestion, this.client.state?.activeWork), isSuggestionOver(suggestion, new Date()));
+		return getSuggestionKeyView(suggestion, isActiveSuggestion(suggestion, getCurrentWork(this.client.state)), isSuggestionOver(suggestion, new Date()));
 	}
 
 	protected override apply(suggestion: Suggestion): Promise<CommandResult> {
-		if (isActiveSuggestion(suggestion, this.client.state?.activeWork)) {
+		if (isActiveSuggestion(suggestion, getCurrentWork(this.client.state))) {
 			return this.client.send("stopWork");
 		}
 
