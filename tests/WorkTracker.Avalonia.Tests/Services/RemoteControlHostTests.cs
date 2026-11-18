@@ -587,7 +587,7 @@ public class RemoteControlHostTests
 	}
 
 	[Fact]
-	public async Task AddWorkEntry_ConfirmsWhatWasAdded()
+	public async Task AddWorkEntry_ConfirmsWhatWasAddedAndWhen()
 	{
 		SetOverlapPlan();
 		_worklogState
@@ -596,7 +596,20 @@ public class RemoteControlHostTests
 
 		await _host.AddWorkEntryAsync(null, "Standup", MeetingStart, MeetingEnd, TestToken);
 
-		VerifySuccessReported("RemoteEntryAdded: Standup");
+		VerifySuccessReported("RemoteEntryAdded: Standup, 10:00 – 10:30");
+	}
+
+	[Fact]
+	public async Task AddWorkEntry_WithoutEnd_ConfirmsOnlyTheStart()
+	{
+		SetOverlapPlan();
+		_worklogState
+			.Setup(s => s.CreateWorkEntryAsync(It.IsAny<string?>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(Result.Success(Entry(null, Now)));
+
+		await _host.AddWorkEntryAsync(null, "Standup", MeetingStart, null, TestToken);
+
+		VerifySuccessReported("RemoteEntryAdded: Standup, 10:00");
 	}
 
 	[Fact]

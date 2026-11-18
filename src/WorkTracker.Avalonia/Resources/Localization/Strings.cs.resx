@@ -780,7 +780,7 @@ Váš výkaz práce také ne.</value>
     <value>Práce zastavena: {0}</value>
   </data>
   <data name="RemoteEntryAdded" xml:space="preserve">
-    <value>Záznam přidán: {0}</value>
+    <value>Záznam přidán: {0} ({1})</value>
   </data>
   <data name="RemotePomodoroStarted" xml:space="preserve">
     <value>Pomodoro spuštěno</value>
