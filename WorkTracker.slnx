@@ -40,6 +40,7 @@
     <Project Path="plugins/WorkTracker.Plugin.Atlassian/WorkTracker.Plugin.Atlassian.csproj" />
     <Project Path="plugins/WorkTracker.Plugin.GoranG3/WorkTracker.Plugin.GoranG3.csproj" />
     <Project Path="plugins/WorkTracker.Plugin.Luxafor/WorkTracker.Plugin.Luxafor.csproj" />
+    <Project Path="plugins/WorkTracker.Plugin.Mcp/WorkTracker.Plugin.Mcp.csproj" />
     <Project Path="plugins/WorkTracker.Plugin.Office365Calendar/WorkTracker.Plugin.Office365Calendar.csproj" />
     <Project Path="plugins/WorkTracker.Plugin.StreamDeck/WorkTracker.Plugin.StreamDeck.csproj" />
   </Folder>

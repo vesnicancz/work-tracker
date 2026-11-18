@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\WorkTracker.Plugin.Abstractions\WorkTracker.Plugin.Abstractions.csproj" />
+    <InternalsVisibleTo Include="WorkTracker.Plugin.Mcp.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Core only: its Streamable HTTP server transport works over plain streams. The ASP.NET Core
+         package would need the Microsoft.AspNetCore.App shared framework, which the GUI doesn't load,
+         so a plugin couldn't bring it along. -->
+    <PackageReference Include="ModelContextProtocol.Core" />
+  </ItemGroup>
+
+</Project>
