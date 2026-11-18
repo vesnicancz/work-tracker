@@ -780,7 +780,7 @@ Neither is your timesheet.</value>
     <value>Work stopped: {0}</value>
   </data>
   <data name="RemoteEntryAdded" xml:space="preserve">
-    <value>Entry added: {0}</value>
+    <value>Entry added: {0} ({1})</value>
   </data>
   <data name="RemotePomodoroStarted" xml:space="preserve">
     <value>Pomodoro started</value>

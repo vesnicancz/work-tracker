@@ -151,7 +151,7 @@ public sealed class RemoteControlHost : IRemoteControlHost
 					? ToPluginResult(await _worklogStateService.CreateWorkEntryWithResolutionAsync(ticketId, start, description, end, plan, cancellationToken))
 					: ToPluginResult(await _worklogStateService.CreateWorkEntryAsync(ticketId, start, description, end, cancellationToken));
 			},
-			() => _localization.GetFormattedString("RemoteEntryAdded", DescribeWork(ticketId, description)),
+			() => _localization.GetFormattedString("RemoteEntryAdded", DescribeWork(ticketId, description), DescribeTimeRange(startTime, endTime)),
 			cancellationToken);
 	}
 
@@ -268,6 +268,12 @@ public sealed class RemoteControlHost : IRemoteControlHost
 	private static string DescribeWork(string? ticketId, string? description)
 	{
 		return string.Join(" – ", new[] { ticketId, description }.Where(part => !string.IsNullOrWhiteSpace(part)));
+	}
+
+	private string DescribeTimeRange(DateTimeOffset startTime, DateTimeOffset? endTime)
+	{
+		var start = ToLocalTime(startTime).ToString("HH:mm");
+		return endTime == null ? start : $"{start} – {ToLocalTime(endTime.Value):HH:mm}";
 	}
 
 	private Task<PluginResult> OnUiThreadAsync(Func<Task<PluginResult>> action, CancellationToken cancellationToken)
