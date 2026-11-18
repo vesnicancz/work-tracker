@@ -4,5 +4,6 @@
 	"activeWork": null,
 	"scheduledWork": { "ticketId": null, "description": "Standup", "startTime": "2026-11-04T10:00:00+01:00", "endTime": "2026-11-04T10:30:00+01:00" },
 	"lastWork": { "ticketId": "PROJ-1", "description": "Coding", "startedAt": "2026-11-04T09:30:00+01:00" },
+	"workedTime": { "todaySeconds": 20520, "weekSeconds": 116100, "running": true, "dailyTargetSeconds": 28800, "weeklyTargetSeconds": 144000 },
 	"pomodoro": { "phase": "shortBreak", "remainingSeconds": 90, "completedPomodoros": 2, "pomodorosBeforeLongBreak": 4 }
 }

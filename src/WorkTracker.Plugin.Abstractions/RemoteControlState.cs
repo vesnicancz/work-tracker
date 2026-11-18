@@ -12,8 +12,14 @@ namespace WorkTracker.Plugin.Abstractions;
 /// The most recent work, offered for resuming. <c>null</c> while work is being tracked and when there
 /// is none within the age limit the plugin asked for.
 /// </param>
+/// <param name="WorkedTime">The time worked today and this week.</param>
 /// <param name="Pomodoro">The Pomodoro timer.</param>
-public sealed record RemoteControlState(RemoteWorkItem? ActiveWork, RemoteScheduledWork? ScheduledWork, RemoteWorkItem? LastWork, RemotePomodoroState Pomodoro);
+public sealed record RemoteControlState(
+	RemoteWorkItem? ActiveWork,
+	RemoteScheduledWork? ScheduledWork,
+	RemoteWorkItem? LastWork,
+	RemoteWorkedTime WorkedTime,
+	RemotePomodoroState Pomodoro);
 
 /// <summary>
 /// A work entry. At least one of <paramref name="TicketId"/> and <paramref name="Description"/> is set.
@@ -24,6 +30,15 @@ public sealed record RemoteWorkItem(string? TicketId, string? Description, DateT
 /// A work entry with a fixed time. At least one of <paramref name="TicketId"/> and <paramref name="Description"/> is set.
 /// </summary>
 public sealed record RemoteScheduledWork(string? TicketId, string? Description, DateTimeOffset StartTime, DateTimeOffset EndTime);
+
+/// <summary>
+/// The time worked today and this week, which starts on Monday, up to the moment the state was read.
+/// An entry planned for later counts only from its start.
+/// </summary>
+/// <param name="Today">The time worked since midnight.</param>
+/// <param name="Week">The time worked since Monday midnight.</param>
+/// <param name="IsRunning">Whether the time keeps growing: work is being tracked, or scheduled work is in progress.</param>
+public sealed record RemoteWorkedTime(TimeSpan Today, TimeSpan Week, bool IsRunning);
 
 /// <param name="Items">The suggestions of all plugins that answered.</param>
 /// <param name="FailedSources">The names of the plugins that could not provide their suggestions.</param>

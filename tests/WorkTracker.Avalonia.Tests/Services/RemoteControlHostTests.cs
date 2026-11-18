@@ -54,6 +54,7 @@ public sealed class RemoteControlHostTests : IDisposable
 			_feedback.Object,
 			_localization.Object,
 			_workEntries.Object,
+			new DateRangeService(),
 			_uiDispatcher,
 			_timeProvider,
 			NullLogger<RemoteControlHost>.Instance);
@@ -186,6 +187,14 @@ public sealed class RemoteControlHostTests : IDisposable
 	}
 
 	[Fact]
+	public async Task GetState_WithoutScheduledWork_RaisesStateChangedAtMidnight()
+	{
+		await _host.GetStateAsync(MaxAge, TestToken);
+
+		_timeProvider.Timers.Should().ContainSingle().Which.DueTime.Should().Be(TimeSpan.FromHours(12));
+	}
+
+	[Fact]
 	public async Task GetState_ReplacesTheTimerOfThePreviousRead()
 	{
 		SetRecentEntries(Scheduled(5, Now.AddMinutes(30), Now.AddMinutes(60)));
@@ -194,7 +203,54 @@ public sealed class RemoteControlHostTests : IDisposable
 		SetRecentEntries();
 		await _host.GetStateAsync(MaxAge, TestToken);
 
-		_timeProvider.Timers.Should().ContainSingle().Which.IsDisposed.Should().BeTrue();
+		_timeProvider.Timers.Should().HaveCount(2);
+		_timeProvider.Timers[0].IsDisposed.Should().BeTrue();
+		_timeProvider.Timers[1].IsDisposed.Should().BeFalse();
+	}
+
+	[Fact]
+	public async Task GetState_SumsTheTimeWorkedTodayAndThisWeek()
+	{
+		// Now is Wednesday noon
+		SetRecentEntries(
+			Scheduled(1, new DateTime(2026, 11, 1, 10, 0, 0), new DateTime(2026, 11, 1, 12, 0, 0)), // Sunday, last week
+			Scheduled(2, new DateTime(2026, 11, 2, 9, 0, 0), new DateTime(2026, 11, 2, 11, 0, 0)), // Monday
+			Scheduled(3, new DateTime(2026, 11, 3, 23, 0, 0), new DateTime(2026, 11, 4, 1, 0, 0)), // over midnight
+			Scheduled(4, Now.AddHours(-4), Now.AddHours(-2)),
+			Entry("PROJ-1", Now.AddHours(-1), "Coding"),
+			Scheduled(5, Now.AddHours(3), Now.AddHours(4))); // later today
+
+		var state = await _host.GetStateAsync(MaxAge, TestToken);
+
+		state.WorkedTime.Should().Be(new RemoteWorkedTime(TimeSpan.FromHours(4), TimeSpan.FromHours(7), true));
+	}
+
+	[Fact]
+	public async Task GetState_CountsScheduledWorkInProgressUpToNow()
+	{
+		SetRecentEntries(Scheduled(5, Now.AddMinutes(-15), Now.AddMinutes(15)));
+
+		var state = await _host.GetStateAsync(MaxAge, TestToken);
+
+		state.WorkedTime.Should().Be(new RemoteWorkedTime(TimeSpan.FromMinutes(15), TimeSpan.FromMinutes(15), true));
+	}
+
+	[Fact]
+	public async Task GetState_WhileIdle_WorkedTimeIsNotRunning()
+	{
+		SetRecentEntries(Scheduled(5, Now.AddHours(-2), Now.AddHours(-1)));
+
+		var state = await _host.GetStateAsync(MaxAge, TestToken);
+
+		state.WorkedTime.IsRunning.Should().BeFalse();
+	}
+
+	[Fact]
+	public async Task GetState_WithShortMaxAge_StillQueriesTheWholeWeek()
+	{
+		await _host.GetStateAsync(TimeSpan.FromDays(1), TestToken);
+
+		_workEntries.Verify(s => s.GetWorkEntriesByDateRangeAsync(new DateTime(2026, 11, 2), Now.AddDays(1), It.IsAny<CancellationToken>()), Times.Once);
 	}
 
 	[Fact]

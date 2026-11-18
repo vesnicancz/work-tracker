@@ -4,7 +4,7 @@
 |-----------|-----------------------------|
 | Třída | `StreamDeckPlugin` |
 | Rozhraní | `IRemoteControlPlugin` |
-| Hardware | Elgato Stream Deck + (ovladač a dotykový pruh) |
+| Hardware | Elgato Stream Deck + (ovladače a dotykový pruh) |
 | Druhá strana | Plugin pro aplikaci Stream Deck v `streamdeck-plugin/` (UUID `com.vesnicancz.worktracker`) |
 | Stream Deck | 7.1 a novější |
 
@@ -29,6 +29,12 @@ Pruh se překreslí sám, jakmile se stav změní kdekoli, například v okně a
 WorkTracker navíc výsledek akcí ze Stream Decku oznamuje sám, jako toast v aktivním hlavním okně, jinak jako systémovou notifikaci. Potvrzení jde vypnout v **Nastavení → Obecné → Oznámení**, chyby se ukazují vždy. Viz [Notifikace](../user-guide.md#notifikace).
 
 **Otáčení ovladače** opravuje začátek běžící práce, o minutu na jeden krok. Po směru hodinových ručiček čas přidává (začátek se posouvá dřív), proti směru ubírá. Pruh ukazuje výsledek hned, do WorkTrackeru se změna uloží chvíli poté, co se ovladač zastaví. Začátek nejde posunout do budoucnosti. Pokud by se práce překryla s jiným záznamem, pruh ukáže varování a vrátí původní čas. Když žádná práce neběží, otáčení nic nedělá, ani během záznamu s pevným časem: ten se upravuje v aplikaci.
+
+### Worked time (ovladač)
+
+Ukazuje, kolik je dnes odpracováno, proti dennímu cíli z konfigurace pluginu, například `5:42 / 8:00`. Pod tím je ukazatel postupu, který po dosažení cíle zezelená. **Stisk ovladače** nebo klepnutí na pruh přepíná mezi `Today` a `This week`. Týden začíná pondělím a jeho cíl je pětinásobek denního. Volba zůstává v nastavení ovladače, takže přežije i restart aplikace Stream Deck. Otáčení nic nedělá.
+
+Počítá se jen čas do této chvíle: záznam naplánovaný na později se započítá až od svého začátku a probíhající schůzka jen do teď. Záznam přes půlnoc se rozdělí mezi oba dny. Proto se číslo může lišit od součtu dne v hlavním okně, které počítá celou délku každého záznamu dne, i toho naplánovaného na později. Zeleně se čas ukazuje, když přibývá, tedy když běží práce nebo probíhá schůzka. O půlnoci se dnešní čas sám vynuluje.
 
 ### Návrhy (tlačítka)
 
@@ -61,8 +67,9 @@ Na rozdíl od nabídky v tray ikoně stisk už běžící položku zastaví, ste
 | Pole | Typ | Povinné | Default | Popis |
 |------|-----|---------|---------|-------|
 | `resume_window_days` | `Number` | ❌ | `7` | Kolik dní zpět může stisk ovladače obnovit poslední práci, celé číslo 1 až 999. Starší práce se nenabízí, aby stisk nespustil dávno zapomenutý ticket. |
+| `daily_target_hours` | `Number` | ❌ | `8` | Denní cíl ovladače Worked time v hodinách, 1 až 24 s nejvýš dvěma desetinnými místy a desetinnou tečkou, třeba `7.5`. Týdenní cíl je jeho pětinásobek. |
 
-Limit se počítá od začátku poslední práce. Po uložení v Nastavení se projeví hned, i na už připojeném pruhu.
+Limit se počítá od začátku poslední práce. Obě pole se po uložení v Nastavení projeví hned, i na už připojeném pruhu.
 
 ---
 
@@ -71,7 +78,7 @@ Limit se počítá od začátku poslední práce. Po uložení v Nastavení se p
 1. Stáhni z releasu `WorkTracker-Plugin-StreamDeck-{verze}.zip` a rozbal ho. Složku `WorkTracker.Plugin.StreamDeck` přesuň do adresáře s pluginy (viz [README](../../README.cs.md)).
 2. Povol **Stream Deck** v **Nastavení → Pluginy**.
 3. Otevři dvojklikem `WorkTracker-StreamDeck-{verze}.streamDeckPlugin`, který leží v kořeni zipu vedle té složky. Tím se nainstaluje do aplikace Stream Deck.
-4. V aplikaci Stream Deck přetáhni akci **WorkTracker → Work** na ovladač a **WorkTracker → Suggestions** a **WorkTracker → Favorites** na tlačítka.
+4. V aplikaci Stream Deck přetáhni akce **WorkTracker → Work** a **WorkTracker → Worked time** na ovladače a **WorkTracker → Suggestions** a **WorkTracker → Favorites** na tlačítka.
 5. Při prvním stisku **Suggestions** a **Favorites** potvrď instalaci profilu. Profily jsou určené pro Stream Deck + a nejdou upravovat.
 
 Na macOS zatím integrace na zařízení ověřená není, vyzkoušená je jen na Windows.
@@ -93,7 +100,7 @@ WorkTracker plugin se v Debug buildu načítá z `plugins/WorkTracker.Plugin.Str
 
 Logy Stream Deck pluginu jsou v `streamdeck-plugin/com.vesnicancz.worktracker.sdPlugin/logs/`.
 
-Přibalené profily jsou v `com.vesnicancz.worktracker.sdPlugin/profiles/`. `WorkTracker.streamDeckProfile` vzniká exportem z aplikace Stream Deck. `WorkTrackerFavorites.streamDeckProfile` je jeho kopie s novými UUID profilu, stránek a akcí, ve které jsou akce návrhů nahrazené akcemi oblíbených. Změnu rozložení je tedy potřeba udělat v obou. Pomocné akce jsou v manifestu skryté přes `VisibleInActionsList`, takže pro novou úpravu rozložení je potřeba je dočasně zapnout. Export je ZIP: než ho přidáš do repa, zkontroluj v manifestu profilu klíč `AppIdentifier`. Pokud je profil navázaný na aplikaci, je v něm absolutní cesta z tvého počítače a musí se odstranit.
+Přibalené profily jsou v `com.vesnicancz.worktracker.sdPlugin/profiles/`. `WorkTracker.streamDeckProfile` vzniká exportem z aplikace Stream Deck. `WorkTrackerFavorites.streamDeckProfile` je jeho kopie s novými UUID profilu, stránek a akcí, ve které jsou akce návrhů nahrazené akcemi oblíbených. Změnu rozložení je tedy potřeba udělat v obou. Ovladač Worked time je v obou profilech doplněný na druhou pozici ovladačů přímo v JSON manifestu stránky. Pomocné akce jsou v manifestu skryté přes `VisibleInActionsList`, takže pro novou úpravu rozložení je potřeba je dočasně zapnout. Export je ZIP: než ho přidáš do repa, zkontroluj v manifestu profilu klíč `AppIdentifier`. Pokud je profil navázaný na aplikaci, je v něm absolutní cesta z tvého počítače a musí se odstranit.
 
 ---
 
@@ -141,12 +148,15 @@ Neznámý příkaz vrátí chybu `Unknown command '…'`.
   "activeWork": null,
   "scheduledWork": { "ticketId": null, "description": "Standup", "startTime": "2026-11-04T10:00:00+01:00", "endTime": "2026-11-04T10:30:00+01:00" },
   "lastWork": { "ticketId": "PROJ-1", "description": "Coding", "startedAt": "2026-11-04T09:30:00+01:00" },
+  "workedTime": { "todaySeconds": 20520, "weekSeconds": 116100, "running": true, "dailyTargetSeconds": 28800, "weeklyTargetSeconds": 144000 },
   "pomodoro": { "phase": "shortBreak", "remainingSeconds": 90, "completedPomodoros": 2, "pomodorosBeforeLongBreak": 4 }
 }
 ```
 
 `scheduledWork` je záznam s pevným začátkem i koncem, jehož čas zahrnuje tuto chvíli. Během sledované práce je `null` a `lastWork` taky. `lastWork` nikdy není záznam naplánovaný na později. Pole `scheduledWork` přibylo bez zvýšení verze protokolu: starší klient ho ignoruje, a když ho starší WorkTracker nepošle, klient ho bere jako `null`.
 
-Plynutí času se neposílá, klient si ho počítá sám. Začátek a konec záznamu s pevným časem server ohlásí novým stavem.
+`workedTime` je odpracovaný čas dnes a od pondělí v sekundách k okamžiku odeslání, `running` říká, jestli dál přibývá. Cíle pochází z konfigurace pluginu, týdenní je pětinásobek denního. Pole přibylo stejně jako `scheduledWork` bez zvýšení verze protokolu, klient ho od staršího WorkTrackeru bere jako `null` a ukáže pomlčku.
 
-Ovladač Work používá `toggleWork` a `shiftStart`, tlačítka návrhů `getSuggestions`, `addWork`, `startWork` a `stopWork`, tlačítka oblíbených `getFavorites`, `showNewWorkDialog`, `startWork` a `stopWork`. Ostatní příkazy a stav Pomodora jsou připravené pro další akce.
+Plynutí času se neposílá, klient si ho počítá sám, u `workedTime` od chvíle, kdy stav přijal. Začátek a konec záznamu s pevným časem a půlnoc server ohlásí novým stavem.
+
+Ovladač Work používá `toggleWork` a `shiftStart`, ovladač Worked time jen stav, tlačítka návrhů `getSuggestions`, `addWork`, `startWork` a `stopWork`, tlačítka oblíbených `getFavorites`, `showNewWorkDialog`, `startWork` a `stopWork`. Ostatní příkazy a stav Pomodora jsou připravené pro další akce.

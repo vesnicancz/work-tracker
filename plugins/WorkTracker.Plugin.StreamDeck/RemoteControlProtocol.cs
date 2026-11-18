@@ -48,16 +48,22 @@ internal sealed record RemoteResponse(long? Id, bool Success, string? Error, Rem
 	public string Type => "result";
 }
 
-internal sealed record RemoteStateMessage(RemoteWorkMessage? ActiveWork, RemoteScheduledWorkMessage? ScheduledWork, RemoteWorkMessage? LastWork, RemotePomodoroMessage Pomodoro)
+internal sealed record RemoteStateMessage(
+	RemoteWorkMessage? ActiveWork,
+	RemoteScheduledWorkMessage? ScheduledWork,
+	RemoteWorkMessage? LastWork,
+	RemoteWorkedTimeMessage WorkedTime,
+	RemotePomodoroMessage Pomodoro)
 {
 	public string Type => "state";
 
 	public int Protocol => RemoteControlProtocol.Version;
 
-	public static RemoteStateMessage From(RemoteControlState state) => new(
+	public static RemoteStateMessage From(RemoteControlState state, TimeSpan dailyTarget) => new(
 		RemoteWorkMessage.From(state.ActiveWork),
 		RemoteScheduledWorkMessage.From(state.ScheduledWork),
 		RemoteWorkMessage.From(state.LastWork),
+		RemoteWorkedTimeMessage.From(state.WorkedTime, dailyTarget),
 		new RemotePomodoroMessage(
 			state.Pomodoro.Phase,
 			(int)state.Pomodoro.TimeRemaining.TotalSeconds,
@@ -82,6 +88,22 @@ internal sealed record RemoteScheduledWorkMessage(string? TicketId, string? Desc
 	{
 		return work == null ? null : new RemoteScheduledWorkMessage(work.TicketId, work.Description, work.StartTime, work.EndTime);
 	}
+}
+
+/// <summary>
+/// The times as of the moment the state was sent, in whole seconds. Added to version 1 without raising
+/// it, the same as <see cref="RemoteScheduledWorkMessage"/>.
+/// </summary>
+internal sealed record RemoteWorkedTimeMessage(int TodaySeconds, int WeekSeconds, bool Running, int DailyTargetSeconds, int WeeklyTargetSeconds)
+{
+	private const int WorkDaysPerWeek = 5;
+
+	public static RemoteWorkedTimeMessage From(RemoteWorkedTime time, TimeSpan dailyTarget) => new(
+		(int)time.Today.TotalSeconds,
+		(int)time.Week.TotalSeconds,
+		time.IsRunning,
+		(int)dailyTarget.TotalSeconds,
+		(int)dailyTarget.TotalSeconds * WorkDaysPerWeek);
 }
 
 internal sealed record RemotePomodoroMessage(

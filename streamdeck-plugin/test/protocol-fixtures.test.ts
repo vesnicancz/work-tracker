@@ -81,6 +81,11 @@ describe("protocol fixtures", () => {
 		assert.equal(state.lastWork.ticketId, "PROJ-1");
 		assert.equal(state.lastWork.description, "Coding");
 		assert.equal(state.lastWork.startedAt, "2026-11-04T09:30:00+01:00");
+		assert.equal(state.workedTime.todaySeconds, 20520);
+		assert.equal(state.workedTime.weekSeconds, 116100);
+		assert.equal(state.workedTime.running, true);
+		assert.equal(state.workedTime.dailyTargetSeconds, 28800);
+		assert.equal(state.workedTime.weeklyTargetSeconds, 144000);
 		assert.equal(state.pomodoro.phase, "shortBreak");
 		assert.equal(state.pomodoro.remainingSeconds, 90);
 		assert.equal(state.pomodoro.completedPomodoros, 2);

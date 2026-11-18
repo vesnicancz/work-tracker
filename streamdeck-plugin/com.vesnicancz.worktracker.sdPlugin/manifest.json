@@ -50,6 +50,27 @@
 			]
 		},
 		{
+			"UUID": "com.vesnicancz.worktracker.worked-time",
+			"Name": "Worked time",
+			"Tooltip": "Shows the time worked today against the daily target set in WorkTracker. Press to switch between today and this week.",
+			"Icon": "imgs/worked-time",
+			"Controllers": [
+				"Encoder"
+			],
+			"Encoder": {
+				"layout": "layouts/worked-time.json",
+				"TriggerDescription": {
+					"Push": "Today / this week",
+					"Touch": "Today / this week"
+				}
+			},
+			"States": [
+				{
+					"Image": "imgs/worked-time-state"
+				}
+			]
+		},
+		{
 			"UUID": "com.vesnicancz.worktracker.suggestions",
 			"Name": "Suggestions",
 			"Tooltip": "Shows today's work suggestions on the whole device.",

@@ -57,6 +57,21 @@ describe("WorkTrackerClient", () => {
 		assert.equal((await received).lastWork.ticketId, "PROJ-1");
 	});
 
+	it("takes what an older WorkTracker doesn't send as null and notes when the state arrived", async () => {
+		const pipePath = createPipePath();
+		server = await listen(pipePath, (socket) => socket.write(`${JSON.stringify(state)}\n`));
+
+		client = new WorkTrackerClient(pipePath);
+		const received = nextState(client);
+		const before = Date.now();
+		client.start();
+		const result = await received;
+
+		assert.equal(result.scheduledWork, null);
+		assert.equal(result.workedTime, null);
+		assert.ok(result.receivedAt >= before && result.receivedAt <= Date.now());
+	});
+
 	it("matches a response to its command", async () => {
 		const pipePath = createPipePath();
 		const requests = [];

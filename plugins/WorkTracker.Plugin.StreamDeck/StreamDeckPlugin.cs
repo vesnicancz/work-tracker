@@ -12,16 +12,19 @@ namespace WorkTracker.Plugin.StreamDeck;
 public sealed class StreamDeckPlugin : RemoteControlPluginBase
 {
 	private const int DefaultResumeWindowDays = 7;
+	private const decimal DefaultDailyTargetHours = 8;
 
 	private static class ConfigKeys
 	{
 		public const string ResumeWindowDays = "resume_window_days";
+		public const string DailyTargetHours = "daily_target_hours";
 	}
 
 	private readonly string _pipeName;
 	private readonly SemaphoreSlim _serverLock = new(1, 1);
 	private RemoteControlPipeServer? _server;
 	private int _resumeWindowDays = DefaultResumeWindowDays;
+	private decimal _dailyTargetHours = DefaultDailyTargetHours;
 
 	public StreamDeckPlugin(ILogger<StreamDeckPlugin> logger)
 		: this(logger, PipeEndpoint.Name)
@@ -58,6 +61,17 @@ public sealed class StreamDeckPlugin : RemoteControlPluginBase
 				Placeholder = DefaultResumeWindowDays.ToString(CultureInfo.InvariantCulture),
 				ValidationPattern = "^[1-9][0-9]{0,2}$",
 				ValidationMessage = "Must be a whole number of days from 1 to 999"
+			},
+			new PluginConfigurationField
+			{
+				Key = ConfigKeys.DailyTargetHours,
+				Label = "Daily target (hours)",
+				Description = "How many hours of work a day the worked time dial counts towards. The week counts towards five days of it.",
+				Type = PluginConfigurationFieldType.Number,
+				DefaultValue = DefaultDailyTargetHours.ToString(CultureInfo.InvariantCulture),
+				Placeholder = DefaultDailyTargetHours.ToString(CultureInfo.InvariantCulture),
+				ValidationPattern = @"^(?:(?:[1-9]|1[0-9]|2[0-3])(?:\.[0-9]{1,2})?|24)$",
+				ValidationMessage = "Must be a number of hours from 1 to 24, such as 7.5"
 			}
 		];
 	}
@@ -67,6 +81,9 @@ public sealed class StreamDeckPlugin : RemoteControlPluginBase
 		_resumeWindowDays = int.TryParse(GetConfigValue(ConfigKeys.ResumeWindowDays), NumberStyles.None, CultureInfo.InvariantCulture, out var days)
 			? days
 			: DefaultResumeWindowDays;
+		_dailyTargetHours = decimal.TryParse(GetConfigValue(ConfigKeys.DailyTargetHours), NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var hours)
+			? hours
+			: DefaultDailyTargetHours;
 
 		return Task.FromResult(true);
 	}
@@ -81,7 +98,11 @@ public sealed class StreamDeckPlugin : RemoteControlPluginBase
 				return;
 			}
 
-			_server = new RemoteControlPipeServer(_pipeName, host, () => TimeSpan.FromDays(_resumeWindowDays), Logger);
+			_server = new RemoteControlPipeServer(
+				_pipeName,
+				host,
+				() => new StreamDeckOptions(TimeSpan.FromDays(_resumeWindowDays), TimeSpan.FromHours((double)_dailyTargetHours)),
+				Logger);
 			_server.Start();
 		}
 		finally

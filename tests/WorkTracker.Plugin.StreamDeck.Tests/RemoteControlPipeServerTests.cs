@@ -14,7 +14,11 @@ public sealed class RemoteControlPipeServerTests : IAsyncLifetime
 
 	private static readonly RemotePomodoroState Pomodoro = new(StatusIndicatorState.ShortBreak, TimeSpan.FromSeconds(90), 2, 4);
 
+	private static readonly RemoteWorkedTime WorkedTime = new(TimeSpan.FromHours(2), TimeSpan.FromHours(10), true);
+
 	private static readonly TimeSpan MaxAge = TimeSpan.FromDays(3);
+
+	private static readonly StreamDeckOptions Options = new(MaxAge, TimeSpan.FromHours(7.5));
 
 	// Short: on macOS the path of the socket behind the pipe can have at most 104 characters
 	private readonly string _pipeName = $"wt-{Guid.NewGuid():N}"[..11];
@@ -27,9 +31,9 @@ public sealed class RemoteControlPipeServerTests : IAsyncLifetime
 	public async ValueTask InitializeAsync()
 	{
 		_timeout.CancelAfter(TimeSpan.FromSeconds(30));
-		SetState(new RemoteControlState(Work, null, null, Pomodoro));
+		SetState(new RemoteControlState(Work, null, null, WorkedTime, Pomodoro));
 
-		_server = new RemoteControlPipeServer(_pipeName, _host.Object, () => MaxAge, NullLogger.Instance);
+		_server = new RemoteControlPipeServer(_pipeName, _host.Object, () => Options, NullLogger.Instance);
 		_server.Start();
 		(_client, _reader) = await ConnectAsync();
 	}
@@ -55,6 +59,13 @@ public sealed class RemoteControlPipeServerTests : IAsyncLifetime
 		activeWork.GetProperty("startedAt").GetDateTimeOffset().Should().Be(Work.StartedAt);
 		state.GetProperty("lastWork").ValueKind.Should().Be(JsonValueKind.Null);
 
+		var workedTime = state.GetProperty("workedTime");
+		workedTime.GetProperty("todaySeconds").GetInt32().Should().Be(7200);
+		workedTime.GetProperty("weekSeconds").GetInt32().Should().Be(36000);
+		workedTime.GetProperty("running").GetBoolean().Should().BeTrue();
+		workedTime.GetProperty("dailyTargetSeconds").GetInt32().Should().Be(27000);
+		workedTime.GetProperty("weeklyTargetSeconds").GetInt32().Should().Be(135000);
+
 		var pomodoro = state.GetProperty("pomodoro");
 		pomodoro.GetProperty("phase").GetString().Should().Be("shortBreak");
 		pomodoro.GetProperty("remainingSeconds").GetInt32().Should().Be(90);
@@ -66,7 +77,7 @@ public sealed class RemoteControlPipeServerTests : IAsyncLifetime
 	public async Task StateChanged_PushesNewState()
 	{
 		await ReadMessageAsync();
-		SetState(new RemoteControlState(null, null, Work, Pomodoro));
+		SetState(new RemoteControlState(null, null, Work, WorkedTime, Pomodoro));
 
 		_host.Raise(h => h.StateChanged += null, EventArgs.Empty);
 
@@ -92,7 +103,7 @@ public sealed class RemoteControlPipeServerTests : IAsyncLifetime
 	public async Task ToggleWork_DuringScheduledWork_StopsIt()
 	{
 		var meeting = new RemoteScheduledWork(null, "Standup", Work.StartedAt, Work.StartedAt.AddMinutes(30));
-		SetState(new RemoteControlState(null, meeting, Work, Pomodoro));
+		SetState(new RemoteControlState(null, meeting, Work, WorkedTime, Pomodoro));
 		_host.Setup(h => h.StopWorkAsync(It.IsAny<CancellationToken>())).ReturnsAsync(PluginResult.Success());
 
 		var response = await SendAsync("""{"id":1,"command":"toggleWork"}""");
@@ -105,7 +116,7 @@ public sealed class RemoteControlPipeServerTests : IAsyncLifetime
 	[Fact]
 	public async Task ToggleWork_WhileIdle_ResumesLastWork()
 	{
-		SetState(new RemoteControlState(null, null, Work, Pomodoro));
+		SetState(new RemoteControlState(null, null, Work, WorkedTime, Pomodoro));
 		_host.Setup(h => h.ResumeLastWorkAsync(MaxAge, It.IsAny<CancellationToken>())).ReturnsAsync(PluginResult.Success());
 
 		var response = await SendAsync("""{"id":1,"command":"toggleWork"}""");
@@ -315,7 +326,7 @@ public sealed class RemoteControlPipeServerTests : IAsyncLifetime
 		await ReadMessageAsync();
 
 		await _server.DisposeAsync();
-		_server = new RemoteControlPipeServer(_pipeName + "-unused", _host.Object, () => MaxAge, NullLogger.Instance);
+		_server = new RemoteControlPipeServer(_pipeName + "-unused", _host.Object, () => Options, NullLogger.Instance);
 
 		var line = await _reader.ReadLineAsync(_timeout.Token);
 		line.Should().BeNull();

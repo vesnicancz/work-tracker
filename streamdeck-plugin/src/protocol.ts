@@ -20,6 +20,18 @@ export type ScheduledWork = {
 	endTime: string;
 };
 
+/**
+ * The time worked as of the moment the state was sent. The week starts on Monday, and its target is
+ * five days of the daily one.
+ */
+export type WorkedTime = {
+	todaySeconds: number;
+	weekSeconds: number;
+	running: boolean;
+	dailyTargetSeconds: number;
+	weeklyTargetSeconds: number;
+};
+
 export type PomodoroPhase = "idle" | "work" | "shortBreak" | "longBreak";
 
 export type PomodoroState = {
@@ -33,7 +45,10 @@ export type RemoteState = {
 	activeWork: WorkItem | null;
 	scheduledWork: ScheduledWork | null;
 	lastWork: WorkItem | null;
+	workedTime: WorkedTime | null;
 	pomodoro: PomodoroState;
+	/** When the client received the state, in milliseconds since the epoch: running times count from it. */
+	receivedAt: number;
 };
 
 export type Suggestion = {
@@ -64,8 +79,13 @@ export type CommandResult = {
 };
 
 // WorkTracker versions from before the protocol had a version don't send one, and those from before
-// scheduled work don't send that
-export type StateMessage = Omit<RemoteState, "scheduledWork"> & { type: "state"; protocol?: number; scheduledWork?: ScheduledWork | null };
+// scheduled work and worked time don't send those
+export type StateMessage = Omit<RemoteState, "scheduledWork" | "workedTime" | "receivedAt"> & {
+	type: "state";
+	protocol?: number;
+	scheduledWork?: ScheduledWork | null;
+	workedTime?: WorkedTime | null;
+};
 
 export type ResultMessage = CommandResult & { type: "result"; id: number | null };
 
