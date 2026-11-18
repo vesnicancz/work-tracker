@@ -256,6 +256,52 @@ public sealed class RemoteControlHostTests : IDisposable
 	}
 
 	[Fact]
+	public async Task GetWorkedTime_ForAnEarlierDay_CountsThatDayOnly()
+	{
+		// Now is Wednesday noon
+		SetRecentEntries(
+			Scheduled(1, new DateTime(2026, 11, 1, 23, 0, 0), new DateTime(2026, 11, 2, 1, 0, 0)), // over midnight into Monday
+			Scheduled(2, new DateTime(2026, 11, 2, 9, 0, 0), new DateTime(2026, 11, 2, 11, 30, 0)),
+			Scheduled(3, new DateTime(2026, 11, 3, 9, 0, 0), new DateTime(2026, 11, 3, 10, 0, 0)));
+
+		var summary = await _host.GetWorkedTimeAsync(new DateOnly(2026, 11, 2), RemoteWorkedTimePeriod.Day, TestToken);
+
+		summary.Should().Be(new RemoteWorkedTimeSummary(new DateOnly(2026, 11, 2), new DateOnly(2026, 11, 2), TimeSpan.FromHours(3.5)));
+	}
+
+	[Fact]
+	public async Task GetWorkedTime_ForAWeek_CountsMondayToSunday()
+	{
+		SetRecentEntries(
+			Scheduled(1, new DateTime(2026, 10, 25, 9, 0, 0), new DateTime(2026, 10, 25, 10, 0, 0)), // the Sunday before
+			Scheduled(2, new DateTime(2026, 10, 26, 9, 0, 0), new DateTime(2026, 10, 26, 11, 0, 0)),
+			Scheduled(3, new DateTime(2026, 11, 1, 9, 0, 0), new DateTime(2026, 11, 1, 10, 0, 0)),
+			Scheduled(4, new DateTime(2026, 11, 2, 9, 0, 0), new DateTime(2026, 11, 2, 10, 0, 0))); // the Monday after
+
+		var summary = await _host.GetWorkedTimeAsync(new DateOnly(2026, 10, 28), RemoteWorkedTimePeriod.Week, TestToken);
+
+		summary.Should().Be(new RemoteWorkedTimeSummary(new DateOnly(2026, 10, 26), new DateOnly(2026, 11, 1), TimeSpan.FromHours(3)));
+	}
+
+	[Fact]
+	public async Task GetWorkedTime_ForToday_CountsUpToNow()
+	{
+		SetRecentEntries(Entry("PROJ-1", Now.AddHours(-1), "Coding"), Scheduled(5, Now.AddHours(2), Now.AddHours(3)));
+
+		var summary = await _host.GetWorkedTimeAsync(DateOnly.FromDateTime(Now), RemoteWorkedTimePeriod.Day, TestToken);
+
+		summary.Worked.Should().Be(TimeSpan.FromHours(1));
+	}
+
+	[Fact]
+	public async Task GetWorkedTime_QueriesFromTheDayBefore()
+	{
+		await _host.GetWorkedTimeAsync(new DateOnly(2026, 11, 2), RemoteWorkedTimePeriod.Week, TestToken);
+
+		_workEntries.Verify(s => s.GetWorkEntriesByDateRangeAsync(new DateTime(2026, 11, 1), new DateTime(2026, 11, 8), It.IsAny<CancellationToken>()), Times.Once);
+	}
+
+	[Fact]
 	public async Task GetState_WithShortMaxAge_StillQueriesTheWholeWeek()
 	{
 		await _host.GetStateAsync(TimeSpan.FromDays(1), TestToken);

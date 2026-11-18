@@ -127,6 +127,44 @@ public sealed class RemoteControlPipeServerTests : IAsyncLifetime
 	}
 
 	[Fact]
+	public async Task GetWorkedTime_ReturnsTheSummaryWithTheTargetOfThePeriod()
+	{
+		_host
+			.Setup(h => h.GetWorkedTimeAsync(new DateOnly(2026, 11, 4), RemoteWorkedTimePeriod.Week, It.IsAny<CancellationToken>()))
+			.ReturnsAsync(new RemoteWorkedTimeSummary(new DateOnly(2026, 11, 2), new DateOnly(2026, 11, 8), TimeSpan.FromHours(20)));
+
+		var response = await SendAsync("""{"id":1,"command":"getWorkedTime","date":"2026-11-04","period":"week"}""");
+
+		response.GetProperty("success").GetBoolean().Should().BeTrue();
+		var workedTime = response.GetProperty("workedTime");
+		workedTime.GetProperty("firstDay").GetString().Should().Be("2026-11-02");
+		workedTime.GetProperty("lastDay").GetString().Should().Be("2026-11-08");
+		workedTime.GetProperty("seconds").GetInt32().Should().Be(72000);
+		workedTime.GetProperty("targetSeconds").GetInt32().Should().Be(135000);
+	}
+
+	[Fact]
+	public async Task GetWorkedTime_ForADay_HasTheDailyTarget()
+	{
+		_host
+			.Setup(h => h.GetWorkedTimeAsync(It.IsAny<DateOnly>(), RemoteWorkedTimePeriod.Day, It.IsAny<CancellationToken>()))
+			.ReturnsAsync(new RemoteWorkedTimeSummary(new DateOnly(2026, 11, 4), new DateOnly(2026, 11, 4), TimeSpan.FromHours(6)));
+
+		var response = await SendAsync("""{"id":1,"command":"getWorkedTime","date":"2026-11-04","period":"day"}""");
+
+		response.GetProperty("workedTime").GetProperty("targetSeconds").GetInt32().Should().Be(27000);
+	}
+
+	[Fact]
+	public async Task GetWorkedTime_WithoutDate_Fails()
+	{
+		var response = await SendAsync("""{"id":1,"command":"getWorkedTime","period":"day"}""");
+
+		response.GetProperty("success").GetBoolean().Should().BeFalse();
+		_host.Verify(h => h.GetWorkedTimeAsync(It.IsAny<DateOnly>(), It.IsAny<RemoteWorkedTimePeriod>(), It.IsAny<CancellationToken>()), Times.Never);
+	}
+
+	[Fact]
 	public async Task HostFailure_IsReportedToClient()
 	{
 		_host.Setup(h => h.StopWorkAsync(It.IsAny<CancellationToken>())).ReturnsAsync(PluginResult.Failure("Nope."));

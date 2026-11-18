@@ -122,6 +122,24 @@ describe("protocol fixtures", () => {
 		assert.equal(meeting.showAsTemplate, true);
 	});
 
+	it("reads worked time", async () => {
+		await connect("worked-time-result");
+
+		const result = await client.getWorkedTime("2026-11-04", "week");
+
+		assert.equal(result.success, true);
+		assert.deepEqual(result.workedTime, { firstDay: "2026-11-02", lastDay: "2026-11-08", seconds: 138600, targetSeconds: 144000 });
+	});
+
+	it("asks for worked time in the shape of the fixture", async () => {
+		const requests = [];
+		await connect("worked-time-result", requests);
+
+		await client.getWorkedTime("2026-11-04", "week");
+
+		assert.deepEqual({ ...requests[0], id: 5 }, fixture("worked-time-request"));
+	});
+
 	it("sends a request in the shape of the fixture", async () => {
 		const requests = [];
 		await connect("favorites-result", requests);

@@ -33,7 +33,9 @@ WorkTracker navíc výsledek akcí ze Stream Decku oznamuje sám, jako toast v a
 
 ### Worked time (ovladač)
 
-Ukazuje, kolik je dnes odpracováno, proti dennímu cíli z konfigurace pluginu, například `5:42 / 8:00`. Pod tím je ukazatel postupu, který po dosažení cíle zezelená. **Stisk ovladače** nebo klepnutí na pruh přepíná mezi `Today` a `This week`. Týden začíná pondělím a jeho cíl je pětinásobek denního. Volba zůstává v nastavení ovladače, takže přežije i restart aplikace Stream Deck. Otáčení nic nedělá.
+Ukazuje, kolik je dnes odpracováno, proti dennímu cíli z konfigurace pluginu, například `5:42 / 8:00`. Pod tím je ukazatel postupu, který po dosažení cíle zezelená. **Stisk ovladače** nebo klepnutí na pruh přepíná mezi `Today` a `This week`. Týden začíná pondělím a jeho cíl je pětinásobek denního. Volba zůstává v nastavení ovladače, takže přežije i restart aplikace Stream Deck.
+
+**Otáčení ovladače** listuje historií, proti směru hodinových ručiček do minulosti, po směru zpátky k dnešku. Den po dni (`Yesterday`, `Mon Nov 16`), v režimu týdne po týdnech (`Last week`, `Week of Nov 2`). Jde se nejvýš 14 dní zpátky, u týdnů do týdne, do kterého ten den patří. Minulé období je tmavší šedou. Stisk v historii přepne na týden, do kterého den patří, nebo zpátky na ten den. Po 30 s bez otáčení a stisku se pruh sám vrátí na dnešek nebo tento týden, aby se starší číslo nepletlo s dnešním. Hodnoty z historie si ovladač pamatuje, dokud se v aplikaci nezmění nějaký záznam. Starší WorkTracker historii nezná a pruh u ní ukáže pomlčku.
 
 Počítá se jen čas do této chvíle: záznam naplánovaný na později se započítá až od svého začátku a probíhající schůzka jen do teď. Záznam přes půlnoc se rozdělí mezi oba dny. Proto se číslo může lišit od součtu dne v hlavním okně, které počítá celou délku každého záznamu dne, i toho naplánovaného na později. Zeleně se čas ukazuje, když přibývá, tedy když běží práce nebo probíhá schůzka. O půlnoci se dnešní čas sám vynuluje.
 
@@ -129,6 +131,7 @@ Načítání návrhů běží mimo čtení příkazů, takže stisk ovladače na
 | `addWork` | `ticketId`, `description`, `startTime`, `endTime` | Vloží záznam s daným časem (`startTime` je povinný, bez `endTime` práce běží dál), běžící práce začatá před ním skončí na jeho začátku, každá jiná kolize skončí chybou |
 | `getSuggestions` | | Vrátí dnešní návrhy v poli `suggestions` odpovědi |
 | `getFavorites` | | Vrátí oblíbené položky v poli `favorites` odpovědi |
+| `getWorkedTime` | `date` (`2026-11-16`), `period` (`day`, `week`) | Vrátí odpracovaný čas dne nebo týdne od pondělí, do kterého den patří, v poli `workedTime` odpovědi: `firstDay`, `lastDay`, `seconds` a `targetSeconds` s cílem období. Počítá se stejně jako `workedTime` ve stavu, u dneška a tohoto týdne do teď |
 | `showNewWorkDialog` | `ticketId`, `description` | Otevře v aplikaci dialog nového záznamu s těmito hodnotami, odpověď nečeká na jeho zavření |
 | `startPomodoro`, `stopPomodoro`, `skipPomodoro` | | Ovládá Pomodoro, start selže, když je Pomodoro v Nastavení vypnuté |
 
@@ -162,4 +165,4 @@ Neznámý příkaz vrátí chybu `Unknown command '…'`.
 
 Plynutí času se neposílá, klient si ho počítá sám, u `workedTime` od chvíle, kdy stav přijal. Začátek a konec záznamu s pevným časem a půlnoc server ohlásí novým stavem.
 
-Ovladač Work používá `toggleWork` a `shiftStart`, ovladač Worked time jen stav, tlačítka návrhů `getSuggestions`, `addWork`, `startWork` a `stopWork`, tlačítka oblíbených `getFavorites`, `showNewWorkDialog`, `startWork` a `stopWork`. Ostatní příkazy a stav Pomodora jsou připravené pro další akce.
+Ovladač Work používá `toggleWork` a `shiftStart`, ovladač Worked time stav a `getWorkedTime`, tlačítka návrhů `getSuggestions`, `addWork`, `startWork` a `stopWork`, tlačítka oblíbených `getFavorites`, `showNewWorkDialog`, `startWork` a `stopWork`. Ostatní příkazy a stav Pomodora jsou připravené pro další akce.

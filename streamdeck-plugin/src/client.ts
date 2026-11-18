@@ -67,6 +67,10 @@ export class WorkTrackerClient {
 		return this.send("getFavorites");
 	}
 
+	getWorkedTime(date: string, period: "day" | "week"): Promise<CommandResult> {
+		return this.send("getWorkedTime", { date, period });
+	}
+
 	send(command: Command, args: CommandArguments = {}, timeoutMs: number = COMMAND_TIMEOUT_MS): Promise<CommandResult> {
 		if (this.#incompatible) {
 			return Promise.resolve({ success: false, error: "WorkTracker and this plugin are different versions. Update both." });

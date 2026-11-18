@@ -52,7 +52,7 @@
 		{
 			"UUID": "com.vesnicancz.worktracker.worked-time",
 			"Name": "Worked time",
-			"Tooltip": "Shows the time worked today against the daily target set in WorkTracker. Press to switch between today and this week.",
+			"Tooltip": "Shows the time worked today against the daily target set in WorkTracker. Press to switch between the day and the week, rotate to go back up to two weeks.",
 			"Icon": "imgs/worked-time",
 			"Controllers": [
 				"Encoder"
@@ -60,8 +60,9 @@
 			"Encoder": {
 				"layout": "layouts/worked-time.json",
 				"TriggerDescription": {
-					"Push": "Today / this week",
-					"Touch": "Today / this week"
+					"Rotate": "Earlier / later",
+					"Push": "Day / week",
+					"Touch": "Day / week"
 				}
 			},
 			"States": [

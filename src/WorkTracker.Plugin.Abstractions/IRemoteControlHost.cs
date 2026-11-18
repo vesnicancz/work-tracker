@@ -56,6 +56,12 @@ public interface IRemoteControlHost
 	Task<RemoteSuggestions> GetSuggestionsAsync(CancellationToken cancellationToken);
 
 	/// <summary>
+	/// Gets the time worked on <paramref name="date"/>, or in the week it belongs to, counted the same way
+	/// as <see cref="RemoteControlState.WorkedTime"/>.
+	/// </summary>
+	Task<RemoteWorkedTimeSummary> GetWorkedTimeAsync(DateOnly date, RemoteWorkedTimePeriod period, CancellationToken cancellationToken);
+
+	/// <summary>
 	/// Gets the user's favorites, in the order from the settings.
 	/// </summary>
 	IReadOnlyList<RemoteFavorite> GetFavorites();

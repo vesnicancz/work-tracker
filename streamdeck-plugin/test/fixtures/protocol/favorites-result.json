@@ -7,5 +7,6 @@
 	"favorites": [
 		{ "name": "Support", "ticketId": "PROJ-2", "description": null, "showAsTemplate": false },
 		{ "name": "Meeting", "ticketId": null, "description": "Weekly", "showAsTemplate": true }
-	]
+	],
+	"workedTime": null
 }

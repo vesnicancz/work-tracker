@@ -41,6 +41,20 @@ public sealed record RemoteScheduledWork(string? TicketId, string? Description, 
 /// <param name="IsRunning">Whether the time keeps growing: work is being tracked, or scheduled work is in progress.</param>
 public sealed record RemoteWorkedTime(TimeSpan Today, TimeSpan Week, bool IsRunning);
 
+public enum RemoteWorkedTimePeriod
+{
+	Day,
+
+	/// <summary>Monday to Sunday.</summary>
+	Week
+}
+
+/// <summary>
+/// The time worked from the start of <paramref name="FirstDay"/> to the end of <paramref name="LastDay"/>,
+/// or to this moment when that is sooner.
+/// </summary>
+public sealed record RemoteWorkedTimeSummary(DateOnly FirstDay, DateOnly LastDay, TimeSpan Worked);
+
 /// <param name="Items">The suggestions of all plugins that answered.</param>
 /// <param name="FailedSources">The names of the plugins that could not provide their suggestions.</param>
 public sealed record RemoteSuggestions(IReadOnlyList<RemoteSuggestion> Items, IReadOnlyList<string> FailedSources);
