@@ -1,6 +1,6 @@
 import { action } from "@elgato/streamdeck";
 
-import { getFavoriteKeyView, isActiveFavorite, type KeyView } from "../key-view";
+import { getCurrentWork, getFavoriteKeyView, isActiveFavorite, type KeyView } from "../key-view";
 import type { CommandResult, Favorite } from "../protocol";
 import { BoardItemKey, CloseBoardKey, NextBoardKey, OpenBoardKey } from "./board-keys";
 
@@ -21,7 +21,7 @@ export class OpenFavoritesKey extends OpenBoardKey {
 @action({ UUID: "com.vesnicancz.worktracker.favorite" })
 export class FavoriteKey extends BoardItemKey<Favorite> {
 	protected override getView(favorite: Favorite): KeyView {
-		return getFavoriteKeyView(favorite, isActiveFavorite(favorite, this.client.state?.activeWork));
+		return getFavoriteKeyView(favorite, isActiveFavorite(favorite, getCurrentWork(this.client.state)));
 	}
 
 	protected override apply(favorite: Favorite): Promise<CommandResult> {
@@ -31,7 +31,7 @@ export class FavoriteKey extends BoardItemKey<Favorite> {
 			return this.client.send("showNewWorkDialog", work);
 		}
 
-		return isActiveFavorite(favorite, this.client.state?.activeWork)
+		return isActiveFavorite(favorite, getCurrentWork(this.client.state))
 			? this.client.send("stopWork")
 			: this.client.send("startWork", work);
 	}

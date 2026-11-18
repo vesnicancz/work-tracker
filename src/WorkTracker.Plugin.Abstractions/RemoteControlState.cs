@@ -4,17 +4,26 @@ namespace WorkTracker.Plugin.Abstractions;
 /// What an <see cref="IRemoteControlPlugin"/> can show about the application.
 /// </summary>
 /// <param name="ActiveWork">The work being tracked, or <c>null</c> when nothing is.</param>
+/// <param name="ScheduledWork">
+/// The entry with a fixed start and end, such as a meeting, whose time covers this moment. <c>null</c>
+/// while work is being tracked and when there is no such entry.
+/// </param>
 /// <param name="LastWork">
 /// The most recent work, offered for resuming. <c>null</c> while work is being tracked and when there
 /// is none within the age limit the plugin asked for.
 /// </param>
 /// <param name="Pomodoro">The Pomodoro timer.</param>
-public sealed record RemoteControlState(RemoteWorkItem? ActiveWork, RemoteWorkItem? LastWork, RemotePomodoroState Pomodoro);
+public sealed record RemoteControlState(RemoteWorkItem? ActiveWork, RemoteScheduledWork? ScheduledWork, RemoteWorkItem? LastWork, RemotePomodoroState Pomodoro);
 
 /// <summary>
 /// A work entry. At least one of <paramref name="TicketId"/> and <paramref name="Description"/> is set.
 /// </summary>
 public sealed record RemoteWorkItem(string? TicketId, string? Description, DateTimeOffset StartedAt);
+
+/// <summary>
+/// A work entry with a fixed time. At least one of <paramref name="TicketId"/> and <paramref name="Description"/> is set.
+/// </summary>
+public sealed record RemoteScheduledWork(string? TicketId, string? Description, DateTimeOffset StartTime, DateTimeOffset EndTime);
 
 /// <param name="Items">The suggestions of all plugins that answered.</param>
 /// <param name="FailedSources">The names of the plugins that could not provide their suggestions.</param>

@@ -73,10 +73,14 @@ describe("protocol fixtures", () => {
 	it("reads the state", async () => {
 		const state = await connect("favorites-result");
 
-		assert.equal(state.activeWork.ticketId, "PROJ-1");
-		assert.equal(state.activeWork.description, "Coding");
-		assert.equal(state.activeWork.startedAt, "2026-11-04T09:30:00+01:00");
-		assert.equal(state.lastWork, null);
+		assert.equal(state.activeWork, null);
+		assert.equal(state.scheduledWork.ticketId, null);
+		assert.equal(state.scheduledWork.description, "Standup");
+		assert.equal(state.scheduledWork.startTime, "2026-11-04T10:00:00+01:00");
+		assert.equal(state.scheduledWork.endTime, "2026-11-04T10:30:00+01:00");
+		assert.equal(state.lastWork.ticketId, "PROJ-1");
+		assert.equal(state.lastWork.description, "Coding");
+		assert.equal(state.lastWork.startedAt, "2026-11-04T09:30:00+01:00");
 		assert.equal(state.pomodoro.phase, "shortBreak");
 		assert.equal(state.pomodoro.remainingSeconds, 90);
 		assert.equal(state.pomodoro.completedPomodoros, 2);
@@ -158,12 +162,12 @@ describe("protocol version", () => {
 		const { protocol: _protocol, ...state } = fixture("state");
 		await connectTo([JSON.stringify(state)]);
 
-		assert.equal(client.state.activeWork.ticketId, "PROJ-1");
+		assert.equal(client.state.lastWork.ticketId, "PROJ-1");
 	});
 
 	it("survives a line that is not JSON", async () => {
 		await connectTo(["not json", JSON.stringify(fixture("state"))]);
 
-		assert.equal(client.state.activeWork.ticketId, "PROJ-1");
+		assert.equal(client.state.lastWork.ticketId, "PROJ-1");
 	});
 });

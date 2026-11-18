@@ -7,8 +7,9 @@ namespace WorkTracker.Plugin.Abstractions;
 public interface IRemoteControlHost
 {
 	/// <summary>
-	/// Raised when anything in <see cref="RemoteControlState"/> changes, except for the passing of
-	/// time: consumers count down from the values in the state themselves.
+	/// Raised when anything in <see cref="RemoteControlState"/> changes, including when
+	/// <see cref="RemoteControlState.ScheduledWork"/> begins or ends. Running times are left out:
+	/// consumers count them from the values in the state themselves.
 	/// </summary>
 	event EventHandler? StateChanged;
 
@@ -21,6 +22,10 @@ public interface IRemoteControlHost
 	/// </summary>
 	Task<PluginResult> StartWorkAsync(string? ticketId, string? description, CancellationToken cancellationToken);
 
+	/// <summary>
+	/// Stops the work being tracked. When nothing is, ends the <see cref="RemoteControlState.ScheduledWork"/>
+	/// now, for a meeting that finished early.
+	/// </summary>
 	Task<PluginResult> StopWorkAsync(CancellationToken cancellationToken);
 
 	/// <summary>

@@ -13,7 +13,7 @@ using WorkTracker.Avalonia.Services;
 
 namespace WorkTracker.Avalonia.Tests.Services;
 
-public class RemoteControlHostTests
+public sealed class RemoteControlHostTests : IDisposable
 {
 	private static readonly DateTime Now = new(2026, 11, 4, 12, 0, 0);
 	private static readonly TimeSpan MaxAge = TimeSpan.FromDays(7);
@@ -26,6 +26,7 @@ public class RemoteControlHostTests
 	private readonly Mock<IActionFeedbackService> _feedback = new();
 	private readonly Mock<ILocalizationService> _localization = new();
 	private readonly RecordingUiDispatcher _uiDispatcher = new();
+	private readonly FixedTimeProvider _timeProvider = new();
 	private readonly ApplicationSettings _settings = new();
 	private readonly RemoteControlHost _host;
 
@@ -54,12 +55,17 @@ public class RemoteControlHostTests
 			_localization.Object,
 			_workEntries.Object,
 			_uiDispatcher,
-			new FixedTimeProvider(),
+			_timeProvider,
 			NullLogger<RemoteControlHost>.Instance);
 	}
 
+	public void Dispose() => _host.Dispose();
+
 	private static WorkEntry Entry(string? ticketId, DateTime start, string? description = null) =>
 		new WorkEntryBuilder().WithTicketId(ticketId).WithStartTime(start).WithDescription(description).Active().Build();
+
+	private static WorkEntry Scheduled(int id, DateTime start, DateTime end, string? description = "Standup") =>
+		new WorkEntryBuilder().WithId(id).WithTicketId(null).WithDescription(description).WithTimes(start, end).Build();
 
 	private void SetRecentEntries(params WorkEntry[] entries)
 	{
@@ -117,7 +123,95 @@ public class RemoteControlHostTests
 	{
 		await _host.GetStateAsync(MaxAge, TestToken);
 
-		_workEntries.Verify(s => s.GetWorkEntriesByDateRangeAsync(Now - MaxAge, Now, It.IsAny<CancellationToken>()), Times.Once);
+		_workEntries.Verify(s => s.GetWorkEntriesByDateRangeAsync(Now - MaxAge, Now.AddDays(1), It.IsAny<CancellationToken>()), Times.Once);
+	}
+
+	[Fact]
+	public async Task GetState_DuringScheduledWork_ReturnsItWithLocalOffset()
+	{
+		SetRecentEntries(Entry("PROJ-1", Now.AddHours(-2), "Coding"), Scheduled(5, Now.AddMinutes(-15), Now.AddMinutes(15)));
+
+		var state = await _host.GetStateAsync(MaxAge, TestToken);
+
+		state.ScheduledWork.Should().Be(new RemoteScheduledWork(
+			null,
+			"Standup",
+			new DateTimeOffset(Now.AddMinutes(-15), TimeSpan.FromHours(1)),
+			new DateTimeOffset(Now.AddMinutes(15), TimeSpan.FromHours(1))));
+	}
+
+	[Fact]
+	public async Task GetState_OutsideScheduledWork_ReturnsNone()
+	{
+		SetRecentEntries(Scheduled(5, Now.AddMinutes(-30), Now), Scheduled(6, Now.AddMinutes(30), Now.AddMinutes(60)));
+
+		var state = await _host.GetStateAsync(MaxAge, TestToken);
+
+		state.ScheduledWork.Should().BeNull();
+	}
+
+	[Fact]
+	public async Task GetState_WhileTracking_ReturnsNoScheduledWork()
+	{
+		_worklogState.Setup(s => s.ActiveWork).Returns(Entry("PROJ-1", Now.AddHours(-2), "Coding"));
+		SetRecentEntries(Scheduled(5, Now.AddMinutes(-15), Now.AddMinutes(15)));
+
+		var state = await _host.GetStateAsync(MaxAge, TestToken);
+
+		state.ScheduledWork.Should().BeNull();
+	}
+
+	[Fact]
+	public async Task GetState_DoesNotOfferWorkPlannedForLater()
+	{
+		SetRecentEntries(Entry("PROJ-1", Now.AddHours(-2), "Coding"), Scheduled(5, Now.AddHours(1), Now.AddHours(2)));
+
+		var state = await _host.GetStateAsync(MaxAge, TestToken);
+
+		state.LastWork!.TicketId.Should().Be("PROJ-1");
+	}
+
+	[Fact]
+	public async Task GetState_RaisesStateChangedWhenTheNextScheduledWorkBeginsOrEnds()
+	{
+		SetRecentEntries(Scheduled(5, Now.AddMinutes(-15), Now.AddMinutes(15)), Scheduled(6, Now.AddMinutes(30), Now.AddMinutes(60)));
+		var raised = 0;
+		_host.StateChanged += (_, _) => raised++;
+
+		await _host.GetStateAsync(MaxAge, TestToken);
+
+		_timeProvider.Timers.Should().ContainSingle().Which.DueTime.Should().Be(TimeSpan.FromMinutes(15));
+		_timeProvider.Timers[0].Fire();
+		raised.Should().Be(1);
+	}
+
+	[Fact]
+	public async Task GetState_ReplacesTheTimerOfThePreviousRead()
+	{
+		SetRecentEntries(Scheduled(5, Now.AddMinutes(30), Now.AddMinutes(60)));
+		await _host.GetStateAsync(MaxAge, TestToken);
+
+		SetRecentEntries();
+		await _host.GetStateAsync(MaxAge, TestToken);
+
+		_timeProvider.Timers.Should().ContainSingle().Which.IsDisposed.Should().BeTrue();
+	}
+
+	[Fact]
+	public async Task StopWork_DuringScheduledWork_EndsItNow()
+	{
+		var meeting = Scheduled(5, Now.AddMinutes(-15), Now.AddMinutes(15));
+		SetRecentEntries(meeting);
+		_worklogState
+			.Setup(s => s.UpdateWorkEntryAsync(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<DateTime>(), It.IsAny<DateTime?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(Result.Success());
+
+		var result = await _host.StopWorkAsync(TestToken);
+
+		result.IsSuccess.Should().BeTrue();
+		_worklogState.Verify(s => s.UpdateWorkEntryAsync(5, null, meeting.StartTime, Now, "Standup", It.IsAny<CancellationToken>()), Times.Once);
+		_worklogState.Verify(s => s.StopTrackingAsync(It.IsAny<CancellationToken>()), Times.Never);
+		VerifySuccessReported("RemoteWorkStopped: Standup");
 	}
 
 	[Fact]
@@ -713,10 +807,38 @@ public class RemoteControlHostTests
 
 	private sealed class FixedTimeProvider : TimeProvider
 	{
+		public List<RecordedTimer> Timers { get; } = [];
+
 		public override TimeZoneInfo LocalTimeZone { get; } =
 			TimeZoneInfo.CreateCustomTimeZone("Test", TimeSpan.FromHours(1), "Test", "Test");
 
 		public override DateTimeOffset GetUtcNow() => new DateTimeOffset(Now, TimeSpan.FromHours(1)).ToUniversalTime();
+
+		public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
+		{
+			var timer = new RecordedTimer(() => callback(state), dueTime);
+			Timers.Add(timer);
+			return timer;
+		}
+	}
+
+	private sealed class RecordedTimer(Action callback, TimeSpan dueTime) : ITimer
+	{
+		public TimeSpan DueTime { get; } = dueTime;
+
+		public bool IsDisposed { get; private set; }
+
+		public void Fire() => callback();
+
+		public bool Change(TimeSpan dueTime, TimeSpan period) => throw new NotSupportedException();
+
+		public void Dispose() => IsDisposed = true;
+
+		public ValueTask DisposeAsync()
+		{
+			Dispose();
+			return ValueTask.CompletedTask;
+		}
 	}
 
 	private sealed class RecordingUiDispatcher : IUiDispatcher

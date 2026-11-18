@@ -1,5 +1,7 @@
 import type { KeyBoard } from "./key-board";
-import type { Favorite, Suggestion, WorkItem } from "./protocol";
+import type { Favorite, RemoteState, Suggestion, WorkItem } from "./protocol";
+
+type Work = Pick<WorkItem, "ticketId" | "description">;
 
 // One Dark Pro, same as the application
 const BACKGROUND_COLOR = "#282C34";
@@ -26,7 +28,14 @@ export type KeyView = {
 	lines: KeyLine[];
 };
 
-export function isActiveSuggestion(suggestion: Suggestion, activeWork: WorkItem | null | undefined): boolean {
+/**
+ * The work that counts as running: the tracked work, or else the scheduled work in progress.
+ */
+export function getCurrentWork(state: RemoteState | null | undefined): Work | null {
+	return state?.activeWork ?? state?.scheduledWork ?? null;
+}
+
+export function isActiveSuggestion(suggestion: Suggestion, activeWork: Work | null | undefined): boolean {
 	return !!activeWork && activeWork.ticketId === suggestion.ticketId && activeWork.description === suggestion.title;
 }
 
@@ -49,7 +58,7 @@ export function getSuggestionKeyView(suggestion: Suggestion, isActive: boolean, 
 /**
  * A template only opens a dialog, so it never counts as the running work.
  */
-export function isActiveFavorite(favorite: Favorite, activeWork: WorkItem | null | undefined): boolean {
+export function isActiveFavorite(favorite: Favorite, activeWork: Work | null | undefined): boolean {
 	return !favorite.showAsTemplate && !!activeWork && activeWork.ticketId === favorite.ticketId && activeWork.description === favorite.description;
 }
 

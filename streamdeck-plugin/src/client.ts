@@ -136,8 +136,8 @@ export class WorkTrackerClient {
 				return;
 			}
 
-			const { activeWork, lastWork, pomodoro } = message;
-			this.#setState({ activeWork, lastWork, pomodoro });
+			const { activeWork, scheduledWork, lastWork, pomodoro } = message;
+			this.#setState({ activeWork, scheduledWork: scheduledWork ?? null, lastWork, pomodoro });
 			return;
 		}
 

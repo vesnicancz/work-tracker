@@ -36,8 +36,9 @@ public class RemoteControlProtocolFixtureTests
 	public void State_MatchesTheFixture()
 	{
 		var state = new RemoteControlState(
-			new RemoteWorkItem("PROJ-1", "Coding", new DateTimeOffset(2026, 11, 4, 9, 30, 0, TimeSpan.FromHours(1))),
 			null,
+			new RemoteScheduledWork(null, "Standup", new DateTimeOffset(2026, 11, 4, 10, 0, 0, TimeSpan.FromHours(1)), new DateTimeOffset(2026, 11, 4, 10, 30, 0, TimeSpan.FromHours(1))),
+			new RemoteWorkItem("PROJ-1", "Coding", new DateTimeOffset(2026, 11, 4, 9, 30, 0, TimeSpan.FromHours(1))),
 			new RemotePomodoroState(StatusIndicatorState.ShortBreak, TimeSpan.FromSeconds(90), 2, 4));
 
 		ShouldMatchFixture(RemoteStateMessage.From(state), "state");
