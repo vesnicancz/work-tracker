@@ -8,6 +8,8 @@ export type WorkItem = {
 	ticketId: string | null;
 	description: string | null;
 	startedAt: string;
+	/** Null while the work is being tracked; WorkTracker versions from before it don't send it. */
+	endedAt?: string | null;
 };
 
 /**

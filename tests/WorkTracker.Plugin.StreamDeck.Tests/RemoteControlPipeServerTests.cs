@@ -10,7 +10,7 @@ namespace WorkTracker.Plugin.StreamDeck.Tests;
 
 public sealed class RemoteControlPipeServerTests : IAsyncLifetime
 {
-	private static readonly RemoteWorkItem Work = new("PROJ-1", "Coding", new DateTimeOffset(2026, 11, 4, 9, 30, 0, TimeSpan.FromHours(1)));
+	private static readonly RemoteWorkItem Work = new("PROJ-1", "Coding", new DateTimeOffset(2026, 11, 4, 9, 30, 0, TimeSpan.FromHours(1)), null);
 
 	private static readonly RemotePomodoroState Pomodoro = new(StatusIndicatorState.ShortBreak, TimeSpan.FromSeconds(90), 2, 4);
 

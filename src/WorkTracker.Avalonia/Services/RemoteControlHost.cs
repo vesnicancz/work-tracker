@@ -444,7 +444,7 @@ public sealed class RemoteControlHost : IRemoteControlHost, IDisposable
 			return null;
 		}
 
-		return new RemoteWorkItem(entry.TicketId, entry.Description, ToLocalOffset(entry.StartTime));
+		return new RemoteWorkItem(entry.TicketId, entry.Description, ToLocalOffset(entry.StartTime), ToLocalOffset(entry.EndTime));
 	}
 
 	private DateTime ToLocalTime(DateTimeOffset time) => TimeZoneInfo.ConvertTime(time, _timeProvider.LocalTimeZone).DateTime;

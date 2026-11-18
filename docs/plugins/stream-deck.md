@@ -20,7 +20,8 @@ Integrace má dvě části. **WorkTracker plugin** běží v GUI a na named pipe
 |------|---------------|-----------------------------------|
 | Práce běží | Ticket (nebo popis) a uplynulý čas | Zastaví práci |
 | Právě probíhá záznam s pevným časem od–do, třeba schůzka | Ticket (nebo popis) a rozsah `10:00–10:30`, modře | Ukončí záznam teď, třeba když schůzka skončila dřív |
-| Nic neběží | Poslední práce a `Stopped` | Znovu spustí poslední práci |
+| Nic neběží, poslední práce je z dneška | Poslední práce a `Stopped` | Znovu spustí poslední práci |
+| Nic neběží, poslední práce je ze dřívějška | Poslední práce a kdy skončila, tmavší šedou: `Fri 16:30` v posledním týdnu, starší `Nov 2` | Znovu spustí poslední práci |
 | Žádná práce v nastaveném limitu | `WorkTracker` a `No work` | Ukáže varování na pruhu |
 | WorkTracker neběží nebo má plugin vypnutý | `WorkTracker` a `Offline` | Ukáže varování na pruhu |
 
@@ -147,13 +148,15 @@ Neznámý příkaz vrátí chybu `Unknown command '…'`.
   "protocol": 1,
   "activeWork": null,
   "scheduledWork": { "ticketId": null, "description": "Standup", "startTime": "2026-11-04T10:00:00+01:00", "endTime": "2026-11-04T10:30:00+01:00" },
-  "lastWork": { "ticketId": "PROJ-1", "description": "Coding", "startedAt": "2026-11-04T09:30:00+01:00" },
+  "lastWork": { "ticketId": "PROJ-1", "description": "Coding", "startedAt": "2026-11-04T09:30:00+01:00", "endedAt": "2026-11-04T10:00:00+01:00" },
   "workedTime": { "todaySeconds": 20520, "weekSeconds": 116100, "running": true, "dailyTargetSeconds": 28800, "weeklyTargetSeconds": 144000 },
   "pomodoro": { "phase": "shortBreak", "remainingSeconds": 90, "completedPomodoros": 2, "pomodorosBeforeLongBreak": 4 }
 }
 ```
 
 `scheduledWork` je záznam s pevným začátkem i koncem, jehož čas zahrnuje tuto chvíli. Během sledované práce je `null` a `lastWork` taky. `lastWork` nikdy není záznam naplánovaný na později. Pole `scheduledWork` přibylo bez zvýšení verze protokolu: starší klient ho ignoruje, a když ho starší WorkTracker nepošle, klient ho bere jako `null`.
+
+`endedAt` u `activeWork` a `lastWork` říká, kdy práce skončila, u běžící práce je `null`. Přibylo také bez zvýšení verze, klient bez něj ukáže `Stopped` jako dřív.
 
 `workedTime` je odpracovaný čas dnes a od pondělí v sekundách k okamžiku odeslání, `running` říká, jestli dál přibývá. Cíle pochází z konfigurace pluginu, týdenní je pětinásobek denního. Pole přibylo stejně jako `scheduledWork` bez zvýšení verze protokolu, klient ho od staršího WorkTrackeru bere jako `null` a ukáže pomlčku.
 

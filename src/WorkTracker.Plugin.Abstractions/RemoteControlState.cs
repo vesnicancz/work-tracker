@@ -24,7 +24,8 @@ public sealed record RemoteControlState(
 /// <summary>
 /// A work entry. At least one of <paramref name="TicketId"/> and <paramref name="Description"/> is set.
 /// </summary>
-public sealed record RemoteWorkItem(string? TicketId, string? Description, DateTimeOffset StartedAt);
+/// <param name="EndedAt">When the work stopped, <c>null</c> while it is being tracked.</param>
+public sealed record RemoteWorkItem(string? TicketId, string? Description, DateTimeOffset StartedAt, DateTimeOffset? EndedAt);
 
 /// <summary>
 /// A work entry with a fixed time. At least one of <paramref name="TicketId"/> and <paramref name="Description"/> is set.
