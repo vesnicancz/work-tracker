@@ -42,7 +42,7 @@ public class RemoteControlProtocolFixtureTests
 			new RemoteWorkedTime(TimeSpan.FromMinutes(342), TimeSpan.FromMinutes(1935), true),
 			new RemotePomodoroState(StatusIndicatorState.ShortBreak, TimeSpan.FromSeconds(90), 2, 4));
 
-		ShouldMatchFixture(RemoteStateMessage.From(state, TimeSpan.FromHours(8)), "state");
+		ShouldMatchFixture(RemoteStateMessage.From(state, new StreamDeckOptions(TimeSpan.FromDays(7), TimeSpan.FromHours(8))), "state");
 	}
 
 	[Fact]
@@ -68,6 +68,30 @@ public class RemoteControlProtocolFixtureTests
 		};
 
 		ShouldMatchFixture(new RemoteResponse(4, true, null, Favorites: favorites), "favorites-result");
+	}
+
+	[Fact]
+	public void WorkedTimeResult_MatchesTheFixture()
+	{
+		var summary = new RemoteWorkedTimeSummary(new DateOnly(2026, 11, 2), new DateOnly(2026, 11, 8), TimeSpan.FromMinutes(2310));
+
+		var response = new RemoteResponse(
+			5,
+			true,
+			null,
+			WorkedTime: RemoteWorkedTimeSummaryMessage.From(summary, RemoteWorkedTimePeriod.Week, new StreamDeckOptions(TimeSpan.FromDays(7), TimeSpan.FromHours(8))));
+
+		ShouldMatchFixture(response, "worked-time-result");
+	}
+
+	[Fact]
+	public void WorkedTimeRequest_IsReadFromTheFixture()
+	{
+		var request = JsonSerializer.Deserialize<RemoteRequest>(Fixture("worked-time-request"), RemoteControlProtocol.JsonOptions)!;
+
+		request.Command.Should().Be(RemoteControlProtocol.Commands.GetWorkedTime);
+		request.Date.Should().Be(new DateOnly(2026, 11, 4));
+		request.Period.Should().Be(RemoteWorkedTimePeriod.Week);
 	}
 
 	[Fact]

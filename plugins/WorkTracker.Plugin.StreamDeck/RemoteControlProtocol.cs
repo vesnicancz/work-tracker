@@ -34,6 +34,7 @@ internal static class RemoteControlProtocol
 		public const string AddWork = "addWork";
 		public const string GetSuggestions = "getSuggestions";
 		public const string GetFavorites = "getFavorites";
+		public const string GetWorkedTime = "getWorkedTime";
 		public const string ShowNewWorkDialog = "showNewWorkDialog";
 		public const string StartPomodoro = "startPomodoro";
 		public const string StopPomodoro = "stopPomodoro";
@@ -41,9 +42,26 @@ internal static class RemoteControlProtocol
 	}
 }
 
-internal sealed record RemoteRequest(long? Id, string? Command, string? TicketId, string? Description, int? Minutes, DateTimeOffset? StartTime, DateTimeOffset? EndTime);
+/// <param name="Date">The local day for <see cref="RemoteControlProtocol.Commands.GetWorkedTime"/>, as <c>2026-11-16</c>.</param>
+/// <param name="Period"><c>day</c> or <c>week</c>, for <see cref="RemoteControlProtocol.Commands.GetWorkedTime"/>.</param>
+internal sealed record RemoteRequest(
+	long? Id,
+	string? Command,
+	string? TicketId,
+	string? Description,
+	int? Minutes,
+	DateTimeOffset? StartTime,
+	DateTimeOffset? EndTime,
+	DateOnly? Date = null,
+	RemoteWorkedTimePeriod? Period = null);
 
-internal sealed record RemoteResponse(long? Id, bool Success, string? Error, RemoteSuggestions? Suggestions = null, IReadOnlyList<RemoteFavorite>? Favorites = null)
+internal sealed record RemoteResponse(
+	long? Id,
+	bool Success,
+	string? Error,
+	RemoteSuggestions? Suggestions = null,
+	IReadOnlyList<RemoteFavorite>? Favorites = null,
+	RemoteWorkedTimeSummaryMessage? WorkedTime = null)
 {
 	public string Type => "result";
 }
@@ -59,11 +77,11 @@ internal sealed record RemoteStateMessage(
 
 	public int Protocol => RemoteControlProtocol.Version;
 
-	public static RemoteStateMessage From(RemoteControlState state, TimeSpan dailyTarget) => new(
+	public static RemoteStateMessage From(RemoteControlState state, StreamDeckOptions options) => new(
 		RemoteWorkMessage.From(state.ActiveWork),
 		RemoteScheduledWorkMessage.From(state.ScheduledWork),
 		RemoteWorkMessage.From(state.LastWork),
-		RemoteWorkedTimeMessage.From(state.WorkedTime, dailyTarget),
+		RemoteWorkedTimeMessage.From(state.WorkedTime, options),
 		new RemotePomodoroMessage(
 			state.Pomodoro.Phase,
 			(int)state.Pomodoro.TimeRemaining.TotalSeconds,
@@ -99,14 +117,24 @@ internal sealed record RemoteScheduledWorkMessage(string? TicketId, string? Desc
 /// </summary>
 internal sealed record RemoteWorkedTimeMessage(int TodaySeconds, int WeekSeconds, bool Running, int DailyTargetSeconds, int WeeklyTargetSeconds)
 {
-	private const int WorkDaysPerWeek = 5;
-
-	public static RemoteWorkedTimeMessage From(RemoteWorkedTime time, TimeSpan dailyTarget) => new(
+	public static RemoteWorkedTimeMessage From(RemoteWorkedTime time, StreamDeckOptions options) => new(
 		(int)time.Today.TotalSeconds,
 		(int)time.Week.TotalSeconds,
 		time.IsRunning,
-		(int)dailyTarget.TotalSeconds,
-		(int)dailyTarget.TotalSeconds * WorkDaysPerWeek);
+		(int)options.DailyTarget.TotalSeconds,
+		(int)options.WeeklyTarget.TotalSeconds);
+}
+
+/// <summary>
+/// The answer to <see cref="RemoteControlProtocol.Commands.GetWorkedTime"/>, with the target of the period.
+/// </summary>
+internal sealed record RemoteWorkedTimeSummaryMessage(DateOnly FirstDay, DateOnly LastDay, int Seconds, int TargetSeconds)
+{
+	public static RemoteWorkedTimeSummaryMessage From(RemoteWorkedTimeSummary summary, RemoteWorkedTimePeriod period, StreamDeckOptions options) => new(
+		summary.FirstDay,
+		summary.LastDay,
+		(int)summary.Worked.TotalSeconds,
+		(int)(period == RemoteWorkedTimePeriod.Week ? options.WeeklyTarget : options.DailyTarget).TotalSeconds);
 }
 
 internal sealed record RemotePomodoroMessage(

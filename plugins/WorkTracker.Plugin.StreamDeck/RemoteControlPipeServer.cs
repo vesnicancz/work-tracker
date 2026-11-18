@@ -170,7 +170,7 @@ internal sealed class RemoteControlPipeServer(string pipeName, IRemoteControlHos
 				{
 					var currentOptions = options();
 					var state = await host.GetStateAsync(currentOptions.ResumeWindow, cancellationToken);
-					await WriteAsync(pipe, writeLock, RemoteStateMessage.From(state, currentOptions.DailyTarget), cancellationToken);
+					await WriteAsync(pipe, writeLock, RemoteStateMessage.From(state, currentOptions), cancellationToken);
 				}
 				catch (Exception ex) when (ex is not (OperationCanceledException or IOException))
 				{
@@ -222,6 +222,11 @@ internal sealed class RemoteControlPipeServer(string pipeName, IRemoteControlHos
 				return new RemoteResponse(request.Id, true, null, Favorites: host.GetFavorites());
 			}
 
+			if (request.Command == Commands.GetWorkedTime)
+			{
+				return await GetWorkedTimeAsync(request, cancellationToken);
+			}
+
 			var result = await ExecuteAsync(request, cancellationToken);
 			return new RemoteResponse(request.Id, result.IsSuccess, result.Error);
 		}
@@ -234,6 +239,17 @@ internal sealed class RemoteControlPipeServer(string pipeName, IRemoteControlHos
 			logger.LogError(ex, "Stream Deck command {Command} failed", request.Command);
 			return new RemoteResponse(request.Id, false, ex.Message);
 		}
+	}
+
+	private async Task<RemoteResponse> GetWorkedTimeAsync(RemoteRequest request, CancellationToken cancellationToken)
+	{
+		if (request.Date is not { } date || request.Period is not { } period)
+		{
+			return new RemoteResponse(request.Id, false, "The date or the period is missing.");
+		}
+
+		var summary = await host.GetWorkedTimeAsync(date, period, cancellationToken);
+		return new RemoteResponse(request.Id, true, null, WorkedTime: RemoteWorkedTimeSummaryMessage.From(summary, period, options()));
 	}
 
 	private async Task<RemoteSuggestions> GetSuggestionsAsync(CancellationToken cancellationToken)

@@ -1,3 +1,4 @@
+import { formatMonthDay, getCalendarDaysBetween, WEEKDAYS } from "./dates.ts";
 import type { RemoteState, ScheduledWork, WorkItem } from "./protocol";
 
 // One Dark Pro, same as the application
@@ -7,10 +8,7 @@ const IDLE_COLOR = "#ABB2BF";
 const OFFLINE_COLOR = "#5C6370";
 const EARLIER_COLOR = "#5C6370";
 
-const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const DAYS_SHOWN_AS_WEEKDAY = 6;
-const MILLISECONDS_PER_DAY = 86400000;
 
 const MILLISECONDS_PER_MINUTE = 60000;
 
@@ -77,17 +75,9 @@ function getLastWorkValue(work: WorkItem, now: Date): Pick<WorkDialView, "value"
 	return {
 		value: daysAgo <= DAYS_SHOWN_AS_WEEKDAY
 			? `${WEEKDAYS[ended.getDay()]} ${formatTimeOfDay(work.endedAt)}`
-			: `${MONTHS[ended.getMonth()]} ${ended.getDate()}`,
+			: formatMonthDay(ended),
 		color: EARLIER_COLOR
 	};
-}
-
-/**
- * Rounded, because a day with a change of daylight saving time has 23 or 25 hours.
- */
-function getCalendarDaysBetween(earlier: Date, later: Date): number {
-	const startOfDay = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
-	return Math.round((startOfDay(later) - startOfDay(earlier)) / MILLISECONDS_PER_DAY);
 }
 
 function getElapsedMilliseconds(work: WorkItem, now: Date): number {

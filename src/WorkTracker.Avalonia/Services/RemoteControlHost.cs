@@ -204,6 +204,19 @@ public sealed class RemoteControlHost : IRemoteControlHost, IDisposable
 			groups.Where(g => g.Error != null).Select(g => g.PluginName).ToList());
 	}
 
+	public async Task<RemoteWorkedTimeSummary> GetWorkedTimeAsync(DateOnly date, RemoteWorkedTimePeriod period, CancellationToken cancellationToken)
+	{
+		var day = date.ToDateTime(TimeOnly.MinValue);
+		var (firstDay, lastDay) = period == RemoteWorkedTimePeriod.Week ? _dateRangeService.GetWeekRange(day) : (day, day);
+		var now = Now;
+		var end = lastDay.AddDays(1) < now ? lastDay.AddDays(1) : now;
+
+		// From the day before: an entry from that evening can reach past midnight into the first day
+		var entries = await _workEntryService.GetWorkEntriesByDateRangeAsync(firstDay.AddDays(-1), lastDay, cancellationToken);
+
+		return new RemoteWorkedTimeSummary(DateOnly.FromDateTime(firstDay), DateOnly.FromDateTime(lastDay), SumWorkedTime(entries, firstDay, end));
+	}
+
 	public IReadOnlyList<RemoteFavorite> GetFavorites()
 	{
 		return _settingsService.Settings.FavoriteWorkItems
@@ -286,16 +299,17 @@ public sealed class RemoteControlHost : IRemoteControlHost, IDisposable
 	}
 
 	/// <summary>
-	/// Counts only the part of each entry between <paramref name="since"/> and <paramref name="now"/>:
-	/// an entry over midnight splits between the days, and one planned for later counts from its start.
+	/// Counts only the part of each entry between <paramref name="since"/> and <paramref name="until"/>,
+	/// which is never later than now: an entry over midnight splits between the days, one planned for later
+	/// counts from its start and the one being tracked up to now.
 	/// </summary>
-	private static TimeSpan SumWorkedTime(IEnumerable<WorkEntry> entries, DateTime since, DateTime now)
+	private static TimeSpan SumWorkedTime(IEnumerable<WorkEntry> entries, DateTime since, DateTime until)
 	{
 		var total = TimeSpan.Zero;
 		foreach (var entry in entries)
 		{
 			var start = entry.StartTime > since ? entry.StartTime : since;
-			var end = entry.EndTime is { } endTime && endTime < now ? endTime : now;
+			var end = entry.EndTime is { } endTime && endTime < until ? endTime : until;
 			if (end > start)
 			{
 				total += end - start;

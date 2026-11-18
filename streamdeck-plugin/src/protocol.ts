@@ -34,6 +34,16 @@ export type WorkedTime = {
 	weeklyTargetSeconds: number;
 };
 
+/**
+ * The answer to getWorkedTime: the time worked in a past or the current day or week, up to now.
+ */
+export type WorkedTimeSummary = {
+	firstDay: string;
+	lastDay: string;
+	seconds: number;
+	targetSeconds: number;
+};
+
 export type PomodoroPhase = "idle" | "work" | "shortBreak" | "longBreak";
 
 export type PomodoroState = {
@@ -78,6 +88,7 @@ export type CommandResult = {
 	error: string | null;
 	suggestions?: Suggestions | null;
 	favorites?: Favorite[] | null;
+	workedTime?: WorkedTimeSummary | null;
 };
 
 // WorkTracker versions from before the protocol had a version don't send one, and those from before
@@ -105,7 +116,8 @@ export type Command =
 	| "showNewWorkDialog"
 	| "startPomodoro"
 	| "stopPomodoro"
-	| "skipPomodoro";
+	| "skipPomodoro"
+	| "getWorkedTime";
 
 export type CommandArguments = {
 	ticketId?: string;
@@ -113,4 +125,6 @@ export type CommandArguments = {
 	minutes?: number;
 	startTime?: string;
 	endTime?: string;
+	date?: string;
+	period?: "day" | "week";
 };

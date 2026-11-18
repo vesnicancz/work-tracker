@@ -5,4 +5,9 @@ namespace WorkTracker.Plugin.StreamDeck;
 /// </summary>
 /// <param name="ResumeWindow">How long ago work may have started to be offered for resuming.</param>
 /// <param name="DailyTarget">How much work a day is aimed for. The week aims for five of them.</param>
-internal sealed record StreamDeckOptions(TimeSpan ResumeWindow, TimeSpan DailyTarget);
+internal sealed record StreamDeckOptions(TimeSpan ResumeWindow, TimeSpan DailyTarget)
+{
+	private const int WorkDaysPerWeek = 5;
+
+	public TimeSpan WeeklyTarget => DailyTarget * WorkDaysPerWeek;
+}

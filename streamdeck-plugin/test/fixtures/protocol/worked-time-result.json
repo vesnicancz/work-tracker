@@ -1,0 +1,9 @@
+{
+	"type": "result",
+	"id": 5,
+	"success": true,
+	"error": null,
+	"suggestions": null,
+	"favorites": null,
+	"workedTime": { "firstDay": "2026-11-02", "lastDay": "2026-11-08", "seconds": 138600, "targetSeconds": 144000 }
+}
