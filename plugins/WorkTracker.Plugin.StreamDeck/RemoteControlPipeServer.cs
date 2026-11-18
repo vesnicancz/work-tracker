@@ -11,7 +11,7 @@ namespace WorkTracker.Plugin.StreamDeck;
 /// Serves one client at a time on a named pipe restricted to the current user. The client is expected
 /// to reconnect: it comes and goes with the Stream Deck app, and this server with the GUI.
 /// </summary>
-internal sealed class RemoteControlPipeServer(string pipeName, IRemoteControlHost host, Func<TimeSpan> lastWorkMaxAge, ILogger logger) : IAsyncDisposable
+internal sealed class RemoteControlPipeServer(string pipeName, IRemoteControlHost host, Func<StreamDeckOptions> options, ILogger logger) : IAsyncDisposable
 {
 	/// <summary>
 	/// Wait before opening the pipe again after a failure, typically a second running instance of the
@@ -168,8 +168,9 @@ internal sealed class RemoteControlPipeServer(string pipeName, IRemoteControlHos
 			{
 				try
 				{
-					var state = await host.GetStateAsync(lastWorkMaxAge(), cancellationToken);
-					await WriteAsync(pipe, writeLock, RemoteStateMessage.From(state), cancellationToken);
+					var currentOptions = options();
+					var state = await host.GetStateAsync(currentOptions.ResumeWindow, cancellationToken);
+					await WriteAsync(pipe, writeLock, RemoteStateMessage.From(state, currentOptions.DailyTarget), cancellationToken);
 				}
 				catch (Exception ex) when (ex is not (OperationCanceledException or IOException))
 				{
@@ -248,7 +249,7 @@ internal sealed class RemoteControlPipeServer(string pipeName, IRemoteControlHos
 		Commands.ToggleWork => ToggleWorkAsync(cancellationToken),
 		Commands.StartWork => host.StartWorkAsync(request.TicketId, request.Description, cancellationToken),
 		Commands.StopWork => host.StopWorkAsync(cancellationToken),
-		Commands.ResumeWork => host.ResumeLastWorkAsync(lastWorkMaxAge(), cancellationToken),
+		Commands.ResumeWork => host.ResumeLastWorkAsync(options().ResumeWindow, cancellationToken),
 		Commands.ShiftStart => host.ShiftActiveWorkStartAsync(TimeSpan.FromMinutes(request.Minutes ?? 0), cancellationToken),
 		Commands.AddWork when request.StartTime is { } startTime => host.AddWorkEntryAsync(request.TicketId, request.Description, startTime, request.EndTime, cancellationToken),
 		Commands.AddWork => Task.FromResult(PluginResult.Failure("The start time is missing.", PluginErrorCategory.Validation)),
@@ -265,7 +266,7 @@ internal sealed class RemoteControlPipeServer(string pipeName, IRemoteControlHos
 	/// </summary>
 	private async Task<PluginResult> ToggleWorkAsync(CancellationToken cancellationToken)
 	{
-		var maxAge = lastWorkMaxAge();
+		var maxAge = options().ResumeWindow;
 		var state = await host.GetStateAsync(maxAge, cancellationToken);
 
 		return state.ActiveWork != null || state.ScheduledWork != null

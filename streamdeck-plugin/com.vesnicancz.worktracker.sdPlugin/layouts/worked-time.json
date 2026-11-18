@@ -1,0 +1,42 @@
+{
+	"$schema": "https://schemas.elgato.com/streamdeck/plugins/layout.json",
+	"id": "com.vesnicancz.worktracker.layout.worked-time",
+	"items": [
+		{
+			"key": "title",
+			"type": "text",
+			"rect": [12, 10, 176, 26],
+			"alignment": "left",
+			"text-overflow": "ellipsis",
+			"font": {
+				"size": 18,
+				"weight": 500
+			},
+			"value": "WorkTracker",
+			"color": "#5C6370"
+		},
+		{
+			"key": "value",
+			"type": "text",
+			"rect": [12, 38, 176, 34],
+			"alignment": "left",
+			"text-overflow": "ellipsis",
+			"font": {
+				"size": 24,
+				"weight": 600
+			},
+			"value": "Offline",
+			"color": "#5C6370"
+		},
+		{
+			"key": "progress",
+			"type": "bar",
+			"rect": [12, 80, 176, 8],
+			"subtype": 0,
+			"border_w": 0,
+			"bar_bg_c": "#3E4452",
+			"bar_fill_c": "#61AFEF",
+			"value": 0
+		}
+	]
+}

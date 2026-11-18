@@ -8,8 +8,8 @@ public interface IRemoteControlHost
 {
 	/// <summary>
 	/// Raised when anything in <see cref="RemoteControlState"/> changes, including when
-	/// <see cref="RemoteControlState.ScheduledWork"/> begins or ends. Running times are left out:
-	/// consumers count them from the values in the state themselves.
+	/// <see cref="RemoteControlState.ScheduledWork"/> begins or ends and when a new day begins. Running
+	/// times are left out: consumers count them from the values in the state themselves.
 	/// </summary>
 	event EventHandler? StateChanged;
 

@@ -3,6 +3,7 @@ import streamDeck from "@elgato/streamdeck";
 import { CloseFavoritesKey, FavoriteKey, NextFavoritesKey, OpenFavoritesKey } from "./actions/favorites";
 import { CloseSuggestionsKey, NextSuggestionsKey, OpenSuggestionsKey, SuggestionKey } from "./actions/suggestions";
 import { WorkDial } from "./actions/work-dial";
+import { WorkedTimeDial } from "./actions/worked-time";
 import { WorkTrackerClient } from "./client";
 import { readFavorites } from "./favorite-board";
 import { KeyBoard } from "./key-board";
@@ -14,6 +15,7 @@ const suggestionBoard = new KeyBoard(() => client.getSuggestions(), readSuggesti
 const favoriteBoard = new KeyBoard(() => client.getFavorites(), readFavorites);
 
 streamDeck.actions.registerAction(new WorkDial(client));
+streamDeck.actions.registerAction(new WorkedTimeDial(client));
 streamDeck.actions.registerAction(new OpenSuggestionsKey());
 streamDeck.actions.registerAction(new SuggestionKey(client, suggestionBoard));
 streamDeck.actions.registerAction(new NextSuggestionsKey(suggestionBoard));

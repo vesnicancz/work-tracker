@@ -21,6 +21,7 @@ public sealed class RemoteControlHost : IRemoteControlHost, IDisposable
 	private readonly IActionFeedbackService _actionFeedback;
 	private readonly ILocalizationService _localization;
 	private readonly IWorkEntryService _workEntryService;
+	private readonly IDateRangeService _dateRangeService;
 	private readonly IUiDispatcher _uiDispatcher;
 	private readonly TimeProvider _timeProvider;
 	private readonly ILogger<RemoteControlHost> _logger;
@@ -36,6 +37,7 @@ public sealed class RemoteControlHost : IRemoteControlHost, IDisposable
 		IActionFeedbackService actionFeedback,
 		ILocalizationService localization,
 		IWorkEntryService workEntryService,
+		IDateRangeService dateRangeService,
 		IUiDispatcher uiDispatcher,
 		TimeProvider timeProvider,
 		ILogger<RemoteControlHost> logger)
@@ -48,6 +50,7 @@ public sealed class RemoteControlHost : IRemoteControlHost, IDisposable
 		_actionFeedback = actionFeedback;
 		_localization = localization;
 		_workEntryService = workEntryService;
+		_dateRangeService = dateRangeService;
 		_uiDispatcher = uiDispatcher;
 		_timeProvider = timeProvider;
 		_logger = logger;
@@ -62,10 +65,12 @@ public sealed class RemoteControlHost : IRemoteControlHost, IDisposable
 	public async Task<RemoteControlState> GetStateAsync(TimeSpan lastWorkMaxAge, CancellationToken cancellationToken)
 	{
 		var now = Now;
+		var weekStart = _dateRangeService.GetWeekRange(now).start;
+		var lastWorkOldest = now - lastWorkMaxAge;
 		var activeWork = _worklogStateService.ActiveWork;
-		var entries = await GetEntriesSinceAsync(now - lastWorkMaxAge, now, cancellationToken);
+		var entries = await GetEntriesSinceAsync(lastWorkOldest < weekStart ? lastWorkOldest : weekStart, now, cancellationToken);
 		var scheduledWork = activeWork == null ? FindScheduledWork(entries, now) : null;
-		var lastWork = activeWork == null ? FindLastWork(entries, now - lastWorkMaxAge, now) : null;
+		var lastWork = activeWork == null ? FindLastWork(entries, lastWorkOldest, now) : null;
 		var pomodoro = _pomodoroService.GetSnapshot();
 
 		ScheduleStateChange(entries, now);
@@ -74,6 +79,7 @@ public sealed class RemoteControlHost : IRemoteControlHost, IDisposable
 			ToRemoteWorkItem(activeWork),
 			ToRemoteScheduledWork(scheduledWork),
 			ToRemoteWorkItem(lastWork),
+			GetWorkedTime(entries, weekStart, now),
 			new RemotePomodoroState(
 				ToIndicatorState(pomodoro.CurrentPhase),
 				pomodoro.TimeRemaining,
@@ -251,8 +257,9 @@ public sealed class RemoteControlHost : IRemoteControlHost, IDisposable
 	private void RaiseStateChanged() => StateChanged?.Invoke(this, EventArgs.Empty);
 
 	/// <summary>
-	/// The state changes on its own when scheduled work begins or ends, and nothing else would say so.
-	/// Each read of the state sets the timer again, the one that follows this one included.
+	/// The state changes on its own when scheduled work begins or ends and at midnight, when the time
+	/// worked today starts again, and nothing else would say so. Each read of the state sets the timer
+	/// again, the one that follows this one included.
 	/// </summary>
 	private void ScheduleStateChange(IReadOnlyList<WorkEntry> entries, DateTime now)
 	{
@@ -260,16 +267,42 @@ public sealed class RemoteControlHost : IRemoteControlHost, IDisposable
 			.Where(e => e.EndTime.HasValue)
 			.SelectMany(e => new[] { e.StartTime, e.EndTime!.Value })
 			.Where(time => time > now)
-			.Select(time => (DateTime?)time)
+			.Append(now.Date.AddDays(1))
 			.Min();
 
 		lock (_stateChangeTimerLock)
 		{
 			_stateChangeTimer?.Dispose();
-			_stateChangeTimer = next == null
-				? null
-				: _timeProvider.CreateTimer(_ => RaiseStateChanged(), null, next.Value - now, Timeout.InfiniteTimeSpan);
+			_stateChangeTimer = _timeProvider.CreateTimer(_ => RaiseStateChanged(), null, next - now, Timeout.InfiniteTimeSpan);
 		}
+	}
+
+	private static RemoteWorkedTime GetWorkedTime(IReadOnlyList<WorkEntry> entries, DateTime weekStart, DateTime now)
+	{
+		return new RemoteWorkedTime(
+			SumWorkedTime(entries, now.Date, now),
+			SumWorkedTime(entries, weekStart, now),
+			entries.Any(e => e.StartTime <= now && (e.EndTime == null || e.EndTime > now)));
+	}
+
+	/// <summary>
+	/// Counts only the part of each entry between <paramref name="since"/> and <paramref name="now"/>:
+	/// an entry over midnight splits between the days, and one planned for later counts from its start.
+	/// </summary>
+	private static TimeSpan SumWorkedTime(IEnumerable<WorkEntry> entries, DateTime since, DateTime now)
+	{
+		var total = TimeSpan.Zero;
+		foreach (var entry in entries)
+		{
+			var start = entry.StartTime > since ? entry.StartTime : since;
+			var end = entry.EndTime is { } endTime && endTime < now ? endTime : now;
+			if (end > start)
+			{
+				total += end - start;
+			}
+		}
+
+		return total;
 	}
 
 	/// <summary>
