@@ -423,7 +423,7 @@ Otevírá se kliknutím na **Nastavení** v levém dolním rohu hlavního okna. 
   - Verze, autor a popis pluginu.
   - Checkbox **Povolit plugin**.
   - **Konfigurační formulář** — dynamicky generovaný z `PluginConfigurationField` daného pluginu. Pole typu `Password` se ukládají do secure storage.
-  - **Údaje pro připojení** (u pluginů implementujících `IConnectionDetailsProvider`, např. MCP Server) — hodnoty, které zadáš v připojovaném programu, s tlačítkem pro zkopírování. Tajné hodnoty jsou maskované.
+  - **Údaje pro připojení** (u pluginů implementujících `IConnectionDetailsProvider`, např. MCP Server) — hodnoty, které zadáš v připojovaném programu, s tlačítkem pro zkopírování. Tajné hodnoty se nezobrazují, jen kopírují.
   - Tlačítko **Otestovat připojení** (u pluginů implementujících `ITestablePlugin`) s textovým výstupem výsledku.
 - Pokud nejsou nalezené žádné pluginy, záložka zobrazí zprávu „Nejsou k dispozici žádné pluginy“.
 

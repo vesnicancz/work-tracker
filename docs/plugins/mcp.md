@@ -44,13 +44,29 @@ Když je port obsazený, WorkTracker při startu nebo uložení nastavení uká�
 
 ## Připojení klienta
 
-V **Nastavení → Pluginy → MCP Server** je pod konfigurací sekce **Údaje pro připojení**: kompletní adresa a hlavička s tokenem, obojí s tlačítkem pro zkopírování. Ukazuje hodnoty z formuláře, server je začne používat až po uložení se zapnutým pluginem.
+V **Nastavení → Pluginy → MCP Server** je pod konfigurací sekce **Údaje pro připojení**: kompletní adresa a hlavička s tokenem, obojí s tlačítkem pro zkopírování (hlavička se jen kopíruje, nezobrazuje se). Ukazuje hodnoty z formuláře, server je začne používat až po uložení se zapnutým pluginem.
 
 Claude Code:
 
 ```
 claude mcp add --transport http worktracker http://localhost:47821/mcp --header "Authorization: Bearer <token>"
 ```
+
+Claude Desktop (**Settings → Developer → Edit Config**) se k lokálnímu HTTP serveru připojí přes můstek [`mcp-remote`](https://www.npmjs.com/package/mcp-remote), který potřebuje Node.js:
+
+```json
+{
+  "mcpServers": {
+    "worktracker": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "http://localhost:47821/mcp", "--transport", "http-only", "--header", "Authorization:${AUTH_HEADER}"],
+      "env": { "AUTH_HEADER": "Bearer <token>" }
+    }
+  }
+}
+```
+
+Za dvojtečkou v `Authorization:${AUTH_HEADER}` mezera být nesmí, na Windows se argumenty s mezerou mohou rozbít. Po uložení Claude Desktop úplně ukonči a spusť znovu. `mcp-remote` je komunitní balíček a token prochází přes něj.
 
 VS Code (`.vscode/mcp.json` nebo uživatelská konfigurace):
 

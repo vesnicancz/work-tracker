@@ -66,7 +66,7 @@ public sealed class McpPluginTests : IAsyncLifetime
 		_plugin.GetConnectionDetails(Configuration()).Should().BeEquivalentTo(
 		[
 			new PluginConnectionDetail("URL (Streamable HTTP)", Endpoint.ToString()),
-			new PluginConnectionDetail("HTTP header", $"Authorization: Bearer {Token}", IsSecret: true)
+			new PluginConnectionDetail("HTTP header (Authorization)", $"Authorization: Bearer {Token}", IsSecret: true)
 		]);
 	}
 
