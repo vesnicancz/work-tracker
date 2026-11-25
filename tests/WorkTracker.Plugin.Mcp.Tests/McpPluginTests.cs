@@ -284,6 +284,27 @@ public sealed class McpPluginTests : IAsyncLifetime
 		TextOf(result).Should().Be("Needs a ticket");
 	}
 
+	[Theory]
+	[InlineData(false, false, "There was no work to stop.")]
+	[InlineData(true, false, "Work stopped.")]
+	[InlineData(false, true, "Work stopped.")]
+	public async Task StopWork_SaysWhetherThereWasAny(bool active, bool scheduled, string expected)
+	{
+		var now = DateTimeOffset.Now;
+		_host
+			.Setup(h => h.GetStateAsync(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(new RemoteControlState(
+				active ? new RemoteWorkItem("PROJ-1", null, now, null) : null,
+				scheduled ? new RemoteScheduledWork(null, "Meeting", now, now.AddHours(1)) : null,
+				null,
+				new RemoteWorkedTime(TimeSpan.Zero, TimeSpan.Zero, false),
+				new RemotePomodoroState(StatusIndicatorState.Idle, TimeSpan.Zero, 0, 4)));
+		_host.Setup(h => h.StopWorkAsync(It.IsAny<CancellationToken>())).ReturnsAsync(PluginResult.Success());
+		await AttachAsync();
+
+		TextOf(await CallAsync("stop_work", [])).Should().Be(expected);
+	}
+
 	[Fact]
 	public async Task ListWorklogProviders_NamesTheModes()
 	{

@@ -818,6 +818,9 @@ Váš výkaz práce také ne.</value>
   <data name="RemoteNoRecentWork" xml:space="preserve">
     <value>Není žádná nedávná práce, na kterou by šlo navázat.</value>
   </data>
+  <data name="RemoteWorkAlreadyTracked" xml:space="preserve">
+    <value>Nějaká práce už se sleduje.</value>
+  </data>
   <data name="RemoteNoActiveWork" xml:space="preserve">
     <value>Žádná práce se právě nesleduje.</value>
   </data>

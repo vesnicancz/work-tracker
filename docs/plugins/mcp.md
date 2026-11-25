@@ -21,8 +21,8 @@ Server běží v GUI a jen se zapnutým pluginem. CLI plugin sice načte, ale se
 | `get_worked_time` | Odpracovaný čas za den nebo týden |
 | `get_suggestions` | Dnešní návrhy ze zapnutých pluginů, sdílené s dialogem návrhů včetně cache |
 | `get_favorites` | Oblíbené položky |
-| `start_work`, `stop_work`, `resume_last_work` | Spuštění, zastavení a navázání na poslední práci |
-| `add_work_entry` | Přidá záznam s časem. Selže, pokud by změnil jiný záznam než ten běžící |
+| `start_work`, `stop_work`, `resume_last_work` | Spuštění, zastavení a navázání na poslední práci. Navázat jde, jen když se nic nesleduje |
+| `add_work_entry` | Přidá záznam s časem. Běžící práci, která začala dřív a překrývá se s ním, ukončí na jeho začátku. Při jiném překryvu selže |
 | `update_work_entry` | Nahradí ticket a popis záznamu, časy nemění. Vynechaná hodnota se smaže |
 | `list_worklog_providers` | Zapnuté pluginy pro odesílání a jejich režimy |
 | `preview_worklogs` | Náhled toho, co by se odeslalo |

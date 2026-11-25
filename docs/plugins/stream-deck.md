@@ -126,7 +126,7 @@ Načítání návrhů běží mimo čtení příkazů, takže stisk ovladače na
 | `toggleWork` | | Zastaví běžící práci nebo ukončí probíhající záznam s pevným časem, jinak znovu spustí poslední práci |
 | `startWork` | `ticketId`, `description` | Spustí novou práci |
 | `stopWork` | | Zastaví práci, a když žádná neběží, ukončí teď probíhající záznam s pevným časem |
-| `resumeWork` | | Znovu spustí poslední práci |
+| `resumeWork` | | Znovu spustí poslední práci. Selže, když se už nějaká sleduje |
 | `shiftStart` | `minutes` | Posune začátek běžící práce, kolize s jiným záznamem skončí chybou |
 | `addWork` | `ticketId`, `description`, `startTime`, `endTime` | Vloží záznam s daným časem (`startTime` je povinný, bez `endTime` práce běží dál), běžící práce začatá před ním skončí na jeho začátku, každá jiná kolize skončí chybou |
 | `getSuggestions` | | Vrátí dnešní návrhy v poli `suggestions` odpovědi |
