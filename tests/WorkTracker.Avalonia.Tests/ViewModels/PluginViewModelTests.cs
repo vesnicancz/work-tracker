@@ -8,6 +8,33 @@ namespace WorkTracker.Avalonia.Tests.ViewModels;
 
 public class PluginViewModelTests
 {
+	// --- Connection details ---
+
+	[Fact]
+	public void ConnectionDetails_FollowTheEditedConfiguration()
+	{
+		var mock = MockPluginFactory.CreatePlugin("p", "P", new PluginConfigurationField { Key = "port", Label = "Port", DefaultValue = "1" });
+		mock.As<IConnectionDetailsProvider>()
+			.Setup(p => p.GetConnectionDetails(It.IsAny<IReadOnlyDictionary<string, string>>()))
+			.Returns((IReadOnlyDictionary<string, string> c) => [new PluginConnectionDetail("Address", c["port"])]);
+		var vm = new PluginViewModel(mock.Object);
+		vm.ConnectionDetails.Single().Value.Should().Be("1");
+
+		vm.ApplyConfiguration(new Dictionary<string, string> { ["port"] = "2" });
+		vm.ConnectionDetails.Single().Value.Should().Be("2");
+
+		vm.ConfigurationFields.Single().Value = "3";
+		vm.ConnectionDetails.Single().Value.Should().Be("3");
+	}
+
+	[Fact]
+	public void ConnectionDetails_PluginWithoutThem_AreEmpty()
+	{
+		var vm = new PluginViewModel(MockPluginFactory.CreatePlugin().Object);
+
+		vm.HasConnectionDetails.Should().BeFalse();
+	}
+
 	// --- Metadata properties ---
 
 	[Fact]

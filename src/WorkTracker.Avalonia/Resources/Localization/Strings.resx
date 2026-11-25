@@ -431,6 +431,12 @@ Time: {2}</value>
   <data name="PluginDescription" xml:space="preserve">
     <value>Description</value>
   </data>
+  <data name="PluginConnection" xml:space="preserve">
+    <value>Connection details</value>
+  </data>
+  <data name="Copy" xml:space="preserve">
+    <value>Copy</value>
+  </data>
   <data name="TestConnection" xml:space="preserve">
     <value>Test Connection</value>
   </data>
@@ -781,6 +787,24 @@ Neither is your timesheet.</value>
   </data>
   <data name="RemoteEntryAdded" xml:space="preserve">
     <value>Entry added: {0} ({1})</value>
+  </data>
+  <data name="RemoteEntryUpdated" xml:space="preserve">
+    <value>Entry changed: {0}</value>
+  </data>
+  <data name="RemoteEntryNotFound" xml:space="preserve">
+    <value>There is no entry {0}.</value>
+  </data>
+  <data name="RemoteProviderNotFound" xml:space="preserve">
+    <value>There is no enabled provider '{0}'.</value>
+  </data>
+  <data name="RemoteSubmissionModeInvalid" xml:space="preserve">
+    <value>The submission mode is not supported.</value>
+  </data>
+  <data name="RemoteNothingToSubmit" xml:space="preserve">
+    <value>There is no completed work to submit.</value>
+  </data>
+  <data name="RemotePluginAttachFailed" xml:space="preserve">
+    <value>{0} could not start: {1}</value>
   </data>
   <data name="RemotePomodoroStarted" xml:space="preserve">
     <value>Pomodoro started</value>

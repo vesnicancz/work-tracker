@@ -34,6 +34,7 @@
     <File Path="docs/plugins/goran-g3.md" />
     <File Path="docs/plugins/luxafor.md" />
     <File Path="docs/plugins/office365-calendar.md" />
+    <File Path="docs/plugins/mcp.md" />
     <File Path="docs/plugins/stream-deck.md" />
   </Folder>
   <Folder Name="/plugins/">
@@ -55,6 +56,7 @@
     <Project Path="tests/WorkTracker.Plugin.GoranG3.Tests/WorkTracker.Plugin.GoranG3.Tests.csproj" />
     <Project Path="tests/WorkTracker.Plugin.Luxafor.Tests/WorkTracker.Plugin.Luxafor.Tests.csproj" />
     <Project Path="tests/WorkTracker.Plugin.Office365Calendar.Tests/WorkTracker.Plugin.Office365Calendar.Tests.csproj" />
+    <Project Path="tests/WorkTracker.Plugin.Mcp.Tests/WorkTracker.Plugin.Mcp.Tests.csproj" />
     <Project Path="tests/WorkTracker.Plugin.StreamDeck.Tests/WorkTracker.Plugin.StreamDeck.Tests.csproj" />
     <Project Path="tests/WorkTracker.Tests.Common/WorkTracker.Tests.Common.csproj" />
   </Folder>

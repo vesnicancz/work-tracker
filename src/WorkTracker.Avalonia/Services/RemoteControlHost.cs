@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using WorkTracker.Application.Common;
+using WorkTracker.Application.DTOs;
 using WorkTracker.Application.Services;
 using WorkTracker.Domain.Entities;
 using WorkTracker.Plugin.Abstractions;
@@ -22,6 +23,7 @@ public sealed class RemoteControlHost : IRemoteControlHost, IDisposable
 	private readonly ILocalizationService _localization;
 	private readonly IWorkEntryService _workEntryService;
 	private readonly IDateRangeService _dateRangeService;
+	private readonly IWorklogSubmissionService _submissionService;
 	private readonly IUiDispatcher _uiDispatcher;
 	private readonly TimeProvider _timeProvider;
 	private readonly ILogger<RemoteControlHost> _logger;
@@ -38,6 +40,7 @@ public sealed class RemoteControlHost : IRemoteControlHost, IDisposable
 		ILocalizationService localization,
 		IWorkEntryService workEntryService,
 		IDateRangeService dateRangeService,
+		IWorklogSubmissionService submissionService,
 		IUiDispatcher uiDispatcher,
 		TimeProvider timeProvider,
 		ILogger<RemoteControlHost> logger)
@@ -51,6 +54,7 @@ public sealed class RemoteControlHost : IRemoteControlHost, IDisposable
 		_localization = localization;
 		_workEntryService = workEntryService;
 		_dateRangeService = dateRangeService;
+		_submissionService = submissionService;
 		_uiDispatcher = uiDispatcher;
 		_timeProvider = timeProvider;
 		_logger = logger;
@@ -217,6 +221,113 @@ public sealed class RemoteControlHost : IRemoteControlHost, IDisposable
 		return new RemoteWorkedTimeSummary(DateOnly.FromDateTime(firstDay), DateOnly.FromDateTime(lastDay), SumWorkedTime(entries, firstDay, end));
 	}
 
+	public async Task<IReadOnlyList<RemoteWorkEntry>> GetWorkEntriesAsync(DateOnly from, DateOnly to, CancellationToken cancellationToken)
+	{
+		var firstDay = from.ToDateTime(TimeOnly.MinValue);
+		var lastDay = to.ToDateTime(TimeOnly.MinValue);
+		var entries = await _workEntryService.GetWorkEntriesByDateRangeAsync(firstDay, lastDay, cancellationToken);
+
+		return entries
+			.Where(e => e.StartTime.Date >= firstDay && e.StartTime.Date <= lastDay)
+			.OrderBy(e => e.StartTime)
+			.Select(ToRemoteWorkEntry)
+			.ToList();
+	}
+
+	public Task<PluginResult<RemoteWorkEntry>> UpdateWorkEntryTextAsync(int id, string? ticketId, string? description, CancellationToken cancellationToken)
+	{
+		var newTicketId = NullIfBlank(ticketId);
+		var newDescription = NullIfBlank(description);
+
+		return RunAsync(
+			async () =>
+			{
+				var entry = await _workEntryService.GetWorkEntryByIdAsync(id, cancellationToken);
+				if (entry == null)
+				{
+					return PluginResult<RemoteWorkEntry>.Failure(_localization.GetFormattedString("RemoteEntryNotFound", id), PluginErrorCategory.NotFound);
+				}
+
+				var result = await _worklogStateService.UpdateWorkEntryAsync(id, newTicketId, entry.StartTime, entry.EndTime, newDescription, cancellationToken);
+				return result.IsSuccess
+					? PluginResult<RemoteWorkEntry>.Success(ToRemoteWorkEntry(entry) with { TicketId = newTicketId, Description = newDescription })
+					: PluginResult<RemoteWorkEntry>.Failure(_localization.LocalizeError(result), PluginErrorCategory.Validation);
+			},
+			() => _localization.GetFormattedString("RemoteEntryUpdated", DescribeWork(newTicketId, newDescription)),
+			cancellationToken);
+	}
+
+	public IReadOnlyList<RemoteWorklogProvider> GetWorklogProviders()
+	{
+		return _submissionService.GetAvailableProviders()
+			.Select(p => new RemoteWorklogProvider(p.Id, p.Name, p.SupportedModes))
+			.ToList();
+	}
+
+	public async Task<PluginResult<IReadOnlyList<RemoteWorklogDay>>> PreviewWorklogsAsync(DateOnly date, RemoteWorkedTimePeriod period, WorklogSubmissionMode mode, CancellationToken cancellationToken)
+	{
+		if (!mode.IsSingleMode())
+		{
+			return PluginResult<IReadOnlyList<RemoteWorklogDay>>.Failure(_localization["RemoteSubmissionModeInvalid"], PluginErrorCategory.Validation);
+		}
+
+		var days = await _submissionService.PreviewAsync(ToSubmissionPeriod(date, period), mode, cancellationToken);
+
+		return PluginResult<IReadOnlyList<RemoteWorklogDay>>.Success(days
+			.Select(day => new RemoteWorklogDay(
+				DateOnly.FromDateTime(day.SubmissionDate),
+				day.Worklogs.Select(w => new RemoteWorklog(w.TicketId, w.Description, ToLocalOffset(w.StartTime), w.DurationMinutes)).ToList()))
+			.ToList());
+	}
+
+	/// <remarks>
+	/// Builds the worklogs again instead of taking them from the caller, and stays off the UI thread:
+	/// it needs nothing from the window and an upload can take long.
+	/// </remarks>
+	public async Task<PluginResult<RemoteSubmissionResult>> SubmitWorklogsAsync(DateOnly date, RemoteWorkedTimePeriod period, WorklogSubmissionMode mode, string providerId, CancellationToken cancellationToken)
+	{
+		try
+		{
+			var provider = _submissionService.GetAvailableProviders().FirstOrDefault(p => p.Id == providerId);
+			if (provider == null)
+			{
+				return await FailSubmissionAsync(_localization.GetFormattedString("RemoteProviderNotFound", providerId), PluginErrorCategory.NotFound, cancellationToken);
+			}
+
+			if (!mode.IsSingleMode() || !provider.SupportedModes.HasFlag(mode))
+			{
+				return await FailSubmissionAsync(_localization["RemoteSubmissionModeInvalid"], PluginErrorCategory.Validation, cancellationToken);
+			}
+
+			var days = await _submissionService.PreviewAsync(ToSubmissionPeriod(date, period), mode, cancellationToken);
+			List<WorklogDto> worklogs = [.. days.SelectMany(day => day.Worklogs)];
+			if (worklogs.Count == 0)
+			{
+				return await FailSubmissionAsync(_localization["RemoteNothingToSubmit"], PluginErrorCategory.NotFound, cancellationToken);
+			}
+
+			var result = await _submissionService.SubmitCustomWorklogsAsync(worklogs, provider.Id, mode, cancellationToken);
+			if (result.IsFailure)
+			{
+				return await FailSubmissionAsync(_localization.LocalizeError(result), PluginErrorCategory.Internal, cancellationToken);
+			}
+
+			var submission = result.Value!;
+			await ReportSubmissionAsync(submission, provider.Name, cancellationToken);
+
+			return PluginResult<RemoteSubmissionResult>.Success(new RemoteSubmissionResult(
+				submission.TotalEntries,
+				submission.SuccessfulEntries,
+				submission.FailedEntries,
+				submission.Errors.Select(e => new RemoteSubmissionError(e.WorklogIndex, e.ErrorMessage)).ToList()));
+		}
+		catch (Exception ex) when (ex is not OperationCanceledException)
+		{
+			await _actionFeedback.ReportFailureAsync(_localization.GetFormattedString("RemoteActionFailed", ex.Message), cancellationToken);
+			throw;
+		}
+	}
+
 	public IReadOnlyList<RemoteFavorite> GetFavorites()
 	{
 		return _settingsService.Settings.FavoriteWorkItems
@@ -325,9 +436,10 @@ public sealed class RemoteControlHost : IRemoteControlHost, IDisposable
 	/// timer. A failure is always reported; a success only if the settings ask for it and
 	/// <paramref name="successMessage"/> has something to say.
 	/// </summary>
-	private async Task<PluginResult> RunAsync(Func<Task<PluginResult>> action, Func<string?> successMessage, CancellationToken cancellationToken)
+	private async Task<T> RunAsync<T>(Func<Task<T>> action, Func<string?> successMessage, CancellationToken cancellationToken)
+		where T : PluginResult
 	{
-		PluginResult result;
+		T result;
 		try
 		{
 			result = await OnUiThreadAsync(action, cancellationToken);
@@ -354,6 +466,25 @@ public sealed class RemoteControlHost : IRemoteControlHost, IDisposable
 	{
 		await _actionFeedback.ReportFailureAsync(error, cancellationToken);
 		return PluginResult.Failure(error, category);
+	}
+
+	private async Task<PluginResult<RemoteSubmissionResult>> FailSubmissionAsync(string error, PluginErrorCategory category, CancellationToken cancellationToken)
+	{
+		await _actionFeedback.ReportFailureAsync(error, cancellationToken);
+		return PluginResult<RemoteSubmissionResult>.Failure(error, category);
+	}
+
+	private Task ReportSubmissionAsync(SubmissionResult submission, string providerName, CancellationToken cancellationToken)
+	{
+		var message = _localization.FormatSubmissionStatus(submission, providerName);
+		if (submission.HasFailures)
+		{
+			return _actionFeedback.ReportFailureAsync(message, cancellationToken);
+		}
+
+		return _settingsService.Settings.ShowRemoteControlNotifications
+			? _actionFeedback.ReportSuccessAsync(message, cancellationToken)
+			: Task.CompletedTask;
 	}
 
 	/// <summary>
@@ -387,7 +518,7 @@ public sealed class RemoteControlHost : IRemoteControlHost, IDisposable
 		return endTime == null ? start : $"{start} – {ToLocalTime(endTime.Value):HH:mm}";
 	}
 
-	private Task<PluginResult> OnUiThreadAsync(Func<Task<PluginResult>> action, CancellationToken cancellationToken)
+	private Task<T> OnUiThreadAsync<T>(Func<Task<T>> action, CancellationToken cancellationToken)
 	{
 		return _uiDispatcher.InvokeAsync(action, cancellationToken);
 	}
@@ -460,6 +591,17 @@ public sealed class RemoteControlHost : IRemoteControlHost, IDisposable
 
 		return new RemoteWorkItem(entry.TicketId, entry.Description, ToLocalOffset(entry.StartTime), ToLocalOffset(entry.EndTime));
 	}
+
+	private RemoteWorkEntry ToRemoteWorkEntry(WorkEntry entry) =>
+		new(entry.Id, entry.TicketId, entry.Description, ToLocalOffset(entry.StartTime), ToLocalOffset(entry.EndTime));
+
+	private static SubmissionPeriod ToSubmissionPeriod(DateOnly date, RemoteWorkedTimePeriod period)
+	{
+		var day = date.ToDateTime(TimeOnly.MinValue);
+		return period == RemoteWorkedTimePeriod.Week ? SubmissionPeriod.WeekOf(day) : SubmissionPeriod.Day(day);
+	}
+
+	private static string? NullIfBlank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
 	private DateTime ToLocalTime(DateTimeOffset time) => TimeZoneInfo.ConvertTime(time, _timeProvider.LocalTimeZone).DateTime;
 

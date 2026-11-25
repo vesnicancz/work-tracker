@@ -1,6 +1,6 @@
 # MCP server jako plugin
 
-**Stav:** prototyp transportu hotový a ověřený, zbytek je návrh. Odkazy do kódu odpovídají stavu k 2026-11-18 (`809ba9b`), před implementací je ověř.
+**Stav:** implementováno, zbývá ruční ověření (viz konec). Odkazy do kódu odpovídají stavu k 2026-11-18 (`809ba9b`), tedy před implementací. Odchylky od návrhu: `PreviewWorklogsAsync` vrací `PluginResult`, aby mohl odmítnout neplatný režim, a nové typy jsou v `RemoteWorklogs.cs`.
 
 ## Proč
 
@@ -198,14 +198,14 @@ Načtení přes izolovaný `AssemblyLoadContext` testy v jednom procesu neověř
 
 ## Zbývá před sloučením
 
-- [ ] Rozšíření `IRemoteControlHost` a `RemoteControlHost` včetně lokalizace (cs, en).
-- [ ] Nástroje podle tabulky, `ServerInstructions`, přepínač odesílání.
-- [ ] Ošetření obsazeného portu.
-- [ ] Testy podle kapitoly výše.
+- [x] Rozšíření `IRemoteControlHost` a `RemoteControlHost` včetně lokalizace (cs, en).
+- [x] Nástroje podle tabulky, `ServerInstructions`, přepínač odesílání.
+- [x] Ošetření obsazeného portu (hlásí ho `RemoteControlCoordinator`).
+- [x] Testy podle kapitoly výše.
 - [ ] Ruční ověření v GUI s Claude Code na Windows a macOS.
-- [ ] `docs/plugins/mcp.md` (uživatelská dokumentace ve stylu `stream-deck.md`), odkaz z `README.md`, `README.cs.md`, `docs/plugin-development.md` a `docs/architecture.md`, soubor ve složce `/docs/plugins/` ve `WorkTracker.slnx`.
-- [ ] Plugin v matici `publish-plugins` v `.github/workflows/release.yml`.
-- [ ] Sekce Existing plugins v `CLAUDE.md`.
+- [x] `docs/plugins/mcp.md` (uživatelská dokumentace ve stylu `stream-deck.md`), odkaz z `README.md`, `README.cs.md`, `docs/plugin-development.md` a `docs/architecture.md`, soubor ve složce `/docs/plugins/` ve `WorkTracker.slnx`.
+- [x] Plugin v matici `publish-plugins` v `.github/workflows/release.yml`.
+- [x] Sekce Existing plugins v `CLAUDE.md`.
 
 ## Otevřené otázky
 

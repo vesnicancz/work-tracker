@@ -31,7 +31,8 @@ public class PluginConfigurationField
 	public bool IsRequired { get; init; }
 
 	/// <summary>
-	/// Default value for the field
+	/// Value the settings fill in when none is stored. It isn't applied anywhere else, so it can be a
+	/// new random one on every call, such as a generated token.
 	/// </summary>
 	public string? DefaultValue { get; init; }
 

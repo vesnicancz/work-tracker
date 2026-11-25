@@ -431,6 +431,12 @@ Popis: {1}
   <data name="PluginDescription" xml:space="preserve">
     <value>Popis</value>
   </data>
+  <data name="PluginConnection" xml:space="preserve">
+    <value>Údaje pro připojení</value>
+  </data>
+  <data name="Copy" xml:space="preserve">
+    <value>Kopírovat</value>
+  </data>
   <data name="TestConnection" xml:space="preserve">
     <value>Otestovat připojení</value>
   </data>
@@ -781,6 +787,24 @@ Váš výkaz práce také ne.</value>
   </data>
   <data name="RemoteEntryAdded" xml:space="preserve">
     <value>Záznam přidán: {0} ({1})</value>
+  </data>
+  <data name="RemoteEntryUpdated" xml:space="preserve">
+    <value>Záznam upraven: {0}</value>
+  </data>
+  <data name="RemoteEntryNotFound" xml:space="preserve">
+    <value>Záznam {0} neexistuje.</value>
+  </data>
+  <data name="RemoteProviderNotFound" xml:space="preserve">
+    <value>Poskytovatel '{0}' není zapnutý.</value>
+  </data>
+  <data name="RemoteSubmissionModeInvalid" xml:space="preserve">
+    <value>Režim odeslání není podporovaný.</value>
+  </data>
+  <data name="RemoteNothingToSubmit" xml:space="preserve">
+    <value>Není žádná dokončená práce k odeslání.</value>
+  </data>
+  <data name="RemotePluginAttachFailed" xml:space="preserve">
+    <value>{0} se nepodařilo spustit: {1}</value>
   </data>
   <data name="RemotePomodoroStarted" xml:space="preserve">
     <value>Pomodoro spuštěno</value>

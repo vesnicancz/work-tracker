@@ -68,6 +68,7 @@ work-tracker/
 │   ├── WorkTracker.Plugin.Office365Calendar/
 │   ├── WorkTracker.Plugin.GoranG3/
 │   ├── WorkTracker.Plugin.Luxafor/
+│   ├── WorkTracker.Plugin.Mcp/
 │   └── WorkTracker.Plugin.StreamDeck/
 ├── streamdeck-plugin/                    # Plugin pro aplikaci Stream Deck (TypeScript)
 ├── tests/                                # xUnit + Moq + FluentAssertions
@@ -80,6 +81,7 @@ work-tracker/
 │   ├── WorkTracker.Plugin.Atlassian.Tests/
 │   ├── WorkTracker.Plugin.GoranG3.Tests/
 │   ├── WorkTracker.Plugin.Luxafor.Tests/
+│   ├── WorkTracker.Plugin.Mcp.Tests/
 │   ├── WorkTracker.Plugin.Office365Calendar.Tests/
 │   ├── WorkTracker.Plugin.StreamDeck.Tests/
 │   └── WorkTracker.Tests.Common/         # Sdílené test helpery (WorkEntryBuilder, MockPluginFactory)
@@ -141,7 +143,7 @@ Pluginy samy nejsou spustitelné. Build:
 dotnet build plugins/WorkTracker.Plugin.Atlassian
 ```
 
-Pro lokální testování v Avalonia nic dalšího není potřeba: Development konfigurace (`appsettings.Development.json`, `Plugins:Directories`) načítá všech pět pluginů (CLI čtyři, bez Stream Decku) přímo z jejich `plugins/*/bin/Debug/net10.0`. Nový plugin tam stačí přidat do seznamu. `dotnet publish` pluginu do `bin/Debug/net10.0/plugins/` má smysl, jen když chceš vyzkoušet rozložení jako po instalaci.
+Pro lokální testování v Avalonia nic dalšího není potřeba: Development konfigurace (`appsettings.Development.json`, `Plugins:Directories`) načítá všech šest pluginů (CLI čtyři, bez Stream Decku a MCP) přímo z jejich `plugins/*/bin/Debug/net10.0`. Nový plugin tam stačí přidat do seznamu. `dotnet publish` pluginu do `bin/Debug/net10.0/plugins/` má smysl, jen když chceš vyzkoušet rozložení jako po instalaci.
 
 ---
 
@@ -583,7 +585,7 @@ Trigger: push tagu `v*`. Jobs:
 4. **publish-avalonia** (matrix: win-x64, win-arm64, linux-x64, osx-arm64) — Avalonia pro všechny platformy. macOS varianta navíc projde krokem *Bundle and sign .app* a místo zipu se z ní balí `.dmg` (viz níže).
 
    Obě matice mají stejnou sadu RID: co dostane GUI, dostane i CLI. Intel Macy (`osx-x64`) se nebuildí — Macy se prodávají s Apple Siliconem od roku 2020 a na těch starších rozjede .NET host z `osx-arm64` buildu Rosetta.
-5. **publish-plugins** (matrix: Atlassian, Luxafor, GoranG3, Office365Calendar, StreamDeck) — každý plugin samostatně. U StreamDecku navíc otestuje a sbalí `streamdeck-plugin/` do `.streamDeckPlugin` s verzí z tagu a přidá ho do kořene zipu vedle složky pluginu, obě části tak vycházejí společně.
+5. **publish-plugins** (matrix: Atlassian, Luxafor, GoranG3, Office365Calendar, Mcp, StreamDeck) — každý plugin samostatně. U StreamDecku navíc otestuje a sbalí `streamdeck-plugin/` do `.streamDeckPlugin` s verzí z tagu a přidá ho do kořene zipu vedle složky pluginu, obě části tak vycházejí společně.
 6. **release** — stáhne artifacty a vytvoří rovnou publikovaný GitHub Release s automaticky vygenerovanými poznámkami (`generate_release_notes`). Tag s pomlčkou (`v1.2.3-beta.1`) vyjde jako prerelease, který se nestane Latest. Ten akce nechá jako draft a publikuje ho až další krok, protože do publikovaného immutable releasu už soubory nahrát nejdou.
 
 Artifacty jsou framework‑dependent (bez runtime). Kdo chce self‑contained, buildí si sám.

@@ -2,6 +2,7 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using WorkTracker.Application.Common;
+using WorkTracker.Application.DTOs;
 using WorkTracker.Application.Services;
 using WorkTracker.Domain.Entities;
 using WorkTracker.Domain.Services;
@@ -22,6 +23,7 @@ public sealed class RemoteControlHostTests : IDisposable
 	private readonly Mock<IPomodoroService> _pomodoro = new();
 	private readonly Mock<IWorkEntryService> _workEntries = new();
 	private readonly Mock<IWorkSuggestionOrchestrator> _suggestions = new();
+	private readonly Mock<IWorklogSubmissionService> _submission = new();
 	private readonly Mock<IDialogService> _dialogs = new();
 	private readonly Mock<IActionFeedbackService> _feedback = new();
 	private readonly Mock<ILocalizationService> _localization = new();
@@ -55,6 +57,7 @@ public sealed class RemoteControlHostTests : IDisposable
 			_localization.Object,
 			_workEntries.Object,
 			new DateRangeService(),
+			_submission.Object,
 			_uiDispatcher,
 			_timeProvider,
 			NullLogger<RemoteControlHost>.Instance);
@@ -790,6 +793,142 @@ public sealed class RemoteControlHostTests : IDisposable
 		await _host.ShiftActiveWorkStartAsync(TimeSpan.FromMinutes(-5), TestToken);
 
 		_feedback.Verify(f => f.ReportFailureAsync("RemoteNoActiveWork", It.IsAny<CancellationToken>()), Times.Once);
+	}
+
+	[Fact]
+	public async Task GetWorkEntries_ReturnsThoseStartingInTheRangeInOrder()
+	{
+		SetRecentEntries(
+			Scheduled(3, Now, Now.AddHours(1)),
+			Scheduled(2, Now.AddDays(-1), Now.AddDays(-1).AddHours(1)),
+			Scheduled(1, Now.AddDays(-2), Now.AddDays(-1)),
+			Scheduled(4, Now.AddDays(1), Now.AddDays(1).AddHours(1)));
+		var today = DateOnly.FromDateTime(Now);
+
+		var entries = await _host.GetWorkEntriesAsync(today.AddDays(-1), today, TestToken);
+
+		entries.Select(e => e.Id).Should().Equal(2, 3);
+		entries[1].StartTime.Should().Be(new DateTimeOffset(Now, TimeSpan.FromHours(1)));
+	}
+
+	[Fact]
+	public async Task UpdateWorkEntryText_KeepsTheTimesAndClearsWhatIsMissing()
+	{
+		var entry = Scheduled(7, Now.AddHours(-2), Now.AddHours(-1));
+		_workEntries.Setup(s => s.GetWorkEntryByIdAsync(7, It.IsAny<CancellationToken>())).ReturnsAsync(entry);
+		_worklogState
+			.Setup(s => s.UpdateWorkEntryAsync(7, "PROJ-1", entry.StartTime, entry.EndTime, null, It.IsAny<CancellationToken>()))
+			.ReturnsAsync(Result.Success());
+
+		var result = await _host.UpdateWorkEntryTextAsync(7, " PROJ-1 ", " ", TestToken);
+
+		result.IsSuccess.Should().BeTrue();
+		result.Value!.TicketId.Should().Be("PROJ-1");
+		result.Value.Description.Should().BeNull();
+		VerifySuccessReported("RemoteEntryUpdated: PROJ-1");
+	}
+
+	[Fact]
+	public async Task UpdateWorkEntryText_UnknownEntry_IsNotFound()
+	{
+		var result = await _host.UpdateWorkEntryTextAsync(7, "PROJ-1", null, TestToken);
+
+		result.ErrorCategory.Should().Be(PluginErrorCategory.NotFound);
+		_worklogState.Verify(s => s.UpdateWorkEntryAsync(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<DateTime>(), It.IsAny<DateTime?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
+	}
+
+	private static DateOnly Today => DateOnly.FromDateTime(Now);
+
+	private void SetUpSubmission(Result<SubmissionResult> result, params WorklogDto[] worklogs)
+	{
+		_submission.Setup(s => s.GetAvailableProviders()).Returns([new ProviderInfo { Id = "tempo", Name = "Tempo", SupportedModes = WorklogSubmissionMode.Timed }]);
+		_submission
+			.Setup(s => s.PreviewAsync(It.IsAny<SubmissionPeriod>(), It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync([new WorklogSubmissionDto { SubmissionDate = Now.Date, Worklogs = [.. worklogs] }]);
+		_submission
+			.Setup(s => s.SubmitCustomWorklogsAsync(It.IsAny<IEnumerable<WorklogDto>>(), It.IsAny<string>(), It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()))
+			.ReturnsAsync(result);
+	}
+
+	private static WorklogDto Worklog() => new() { TicketId = "PROJ-1", StartTime = Now, EndTime = Now.AddHours(1), DurationMinutes = 60 };
+
+	private void VerifyNothingSubmitted()
+	{
+		_submission.Verify(s => s.SubmitCustomWorklogsAsync(It.IsAny<IEnumerable<WorklogDto>>(), It.IsAny<string>(), It.IsAny<WorklogSubmissionMode>(), It.IsAny<CancellationToken>()), Times.Never);
+	}
+
+	[Fact]
+	public async Task SubmitWorklogs_SubmitsThePreviewOfThePeriod()
+	{
+		var worklog = Worklog();
+		SetUpSubmission(Result.Success(new SubmissionResult { TotalEntries = 1, SuccessfulEntries = 1 }), worklog);
+
+		var result = await _host.SubmitWorklogsAsync(Today, RemoteWorkedTimePeriod.Week, WorklogSubmissionMode.Timed, "tempo", TestToken);
+
+		result.Value!.Successful.Should().Be(1);
+		_submission.Verify(s => s.PreviewAsync(SubmissionPeriod.WeekOf(Now.Date), WorklogSubmissionMode.Timed, It.IsAny<CancellationToken>()), Times.Once);
+		_submission.Verify(s => s.SubmitCustomWorklogsAsync(It.Is<IEnumerable<WorklogDto>>(w => w.Single() == worklog), "tempo", WorklogSubmissionMode.Timed, It.IsAny<CancellationToken>()), Times.Once);
+		VerifySuccessReported("SubmissionSuccess: 1, Tempo");
+	}
+
+	[Fact]
+	public async Task SubmitWorklogs_PartlyRefused_ReturnsAndReportsTheErrors()
+	{
+		SetUpSubmission(
+			Result.Success(new SubmissionResult { TotalEntries = 2, SuccessfulEntries = 1, FailedEntries = 1, Errors = [new SubmissionError { ErrorMessage = "No ticket", WorklogIndex = 1 }] }),
+			Worklog(), Worklog());
+
+		var result = await _host.SubmitWorklogsAsync(Today, RemoteWorkedTimePeriod.Day, WorklogSubmissionMode.Timed, "tempo", TestToken);
+
+		result.Value!.Errors.Should().Equal(new RemoteSubmissionError(1, "No ticket"));
+		_feedback.Verify(f => f.ReportFailureAsync("SubmissionPartial: 1, Tempo, 1", It.IsAny<CancellationToken>()), Times.Once);
+	}
+
+	[Theory]
+	[InlineData(WorklogSubmissionMode.Aggregated)]
+	[InlineData(WorklogSubmissionMode.Timed | WorklogSubmissionMode.Aggregated)]
+	public async Task SubmitWorklogs_UnsupportedMode_SubmitsNothing(WorklogSubmissionMode mode)
+	{
+		SetUpSubmission(Result.Success(new SubmissionResult()), Worklog());
+
+		var result = await _host.SubmitWorklogsAsync(Today, RemoteWorkedTimePeriod.Day, mode, "tempo", TestToken);
+
+		result.ErrorCategory.Should().Be(PluginErrorCategory.Validation);
+		VerifyNothingSubmitted();
+	}
+
+	[Fact]
+	public async Task SubmitWorklogs_UnknownProvider_SubmitsNothing()
+	{
+		SetUpSubmission(Result.Success(new SubmissionResult()), Worklog());
+
+		var result = await _host.SubmitWorklogsAsync(Today, RemoteWorkedTimePeriod.Day, WorklogSubmissionMode.Timed, "other", TestToken);
+
+		result.ErrorCategory.Should().Be(PluginErrorCategory.NotFound);
+		VerifyNothingSubmitted();
+	}
+
+	[Fact]
+	public async Task SubmitWorklogs_WithoutCompletedWork_SubmitsNothing()
+	{
+		SetUpSubmission(Result.Success(new SubmissionResult()));
+
+		var result = await _host.SubmitWorklogsAsync(Today, RemoteWorkedTimePeriod.Day, WorklogSubmissionMode.Timed, "tempo", TestToken);
+
+		result.IsFailure.Should().BeTrue();
+		VerifyNothingSubmitted();
+	}
+
+	[Fact]
+	public async Task PreviewWorklogs_ReturnsTheDaysWithLocalOffset()
+	{
+		SetUpSubmission(Result.Success(new SubmissionResult()), Worklog());
+
+		var result = await _host.PreviewWorklogsAsync(Today, RemoteWorkedTimePeriod.Day, WorklogSubmissionMode.Timed, TestToken);
+
+		var day = result.Value!.Should().ContainSingle().Subject;
+		day.Date.Should().Be(Today);
+		day.Worklogs.Should().Equal(new RemoteWorklog("PROJ-1", null, new DateTimeOffset(Now, TimeSpan.FromHours(1)), 60));
 	}
 
 	[Fact]

@@ -29,7 +29,7 @@ Plugin je samostatná .NET knihovna (`.dll`), která implementuje jedno nebo ví
 - Odesílání worklogů do externího systému (Tempo, Goran G3, jiný ERP)
 - Návrhy úkolů z externího zdroje (Jira, kalendář, ticketing systém)
 - Ovládání fyzických indikátorů (LED, status tabule)
-- Ovládání běžící aplikace z externího zařízení (Stream Deck)
+- Ovládání běžící aplikace z externího zařízení nebo programu (Stream Deck, MCP)
 
 Plugin žije ve své vlastní izolované assembly, aby:
 
@@ -847,12 +847,21 @@ Dokumentace: [plugins/luxafor.md](plugins/luxafor.md).
 
 - **`IRemoteControlPlugin`** — `IRemoteControlHost` nedostává z DI, ale v `AttachAsync`, protože jeho implementace žije v projektu Avalonia. `AttachAsync` volá `IRemoteControlCoordinator` na běžících instancích a vypnutý plugin aplikace ukončí, takže pipe existuje jen v GUI a jen se zapnutým pluginem. CLI plugin sice načte, ale nepřipojí, a proto plugin nesmí začít poslouchat už v `OnInitializeAsync`.
 - **`AttachAsync` musí být idempotentní** — volá se znovu při každém uložení Nastavení. Odpojení patří do `OnShutdownAsync`. Změna konfigurace pluginu znamená novou instanci a tím i nové spojení, klient se proto musí umět znovu připojit.
-- **`IRemoteControlHost`** — nabízí stav (`GetStateAsync`, událost `StateChanged`), práci se záznamy (`StartWorkAsync`, `StopWorkAsync`, `ResumeLastWorkAsync`, `ShiftActiveWorkStartAsync`, `AddWorkEntryAsync`), návrhy (`GetSuggestionsAsync`), oblíbené položky (`GetFavorites`), dialog nového záznamu (`ShowNewWorkEntryDialogAsync`) a Pomodoro (`StartPomodoroAsync`, `StopPomodoroAsync`, `SkipPomodoroPhaseAsync`).
-- **Příkazy běží na UI vlákně** — zajišťuje to `RemoteControlHost` přes `IUiDispatcher`, plugin to řešit nemusí. Metody hostitele jde volat z libovolného vlákna a `StateChanged` může přijít také z libovolného vlákna.
+- **`IRemoteControlHost`** — nabízí stav (`GetStateAsync`, událost `StateChanged`), práci se záznamy (`StartWorkAsync`, `StopWorkAsync`, `ResumeLastWorkAsync`, `ShiftActiveWorkStartAsync`, `AddWorkEntryAsync`, `GetWorkEntriesAsync`, `UpdateWorkEntryTextAsync`), odpracovaný čas (`GetWorkedTimeAsync`), odesílání worklogů (`GetWorklogProviders`, `PreviewWorklogsAsync`, `SubmitWorklogsAsync`), návrhy (`GetSuggestionsAsync`), oblíbené položky (`GetFavorites`), dialog nového záznamu (`ShowNewWorkEntryDialogAsync`) a Pomodoro (`StartPomodoroAsync`, `StopPomodoroAsync`, `SkipPomodoroPhaseAsync`).
+- **Příkazy běží na UI vlákně** (kromě odesílání worklogů) — zajišťuje to `RemoteControlHost` přes `IUiDispatcher`, plugin to řešit nemusí. Metody hostitele jde volat z libovolného vlákna a `StateChanged` může přijít také z libovolného vlákna.
 - **Výsledek příkazu oznamuje hostitel** — `RemoteControlHost` ukáže uživateli potvrzení nebo chybu přes `IActionFeedbackService`, plugin vlastní notifikace nezobrazuje. Potvrzení uživatel vypíná v nastavení, chyby se ukazují vždy. Bez potvrzení zůstává `ShiftActiveWorkStartAsync`, `SkipPomodoroPhaseAsync` (oznámí ho přechod fáze) a `ShowNewWorkEntryDialogAsync`. Text chyb hostitele je lokalizovaný, plugin ho proto nemá vyhodnocovat; k tomu slouží `PluginErrorCategory`.
 - **Druhá polovina je mimo .NET** — Stream Deck plugin v `streamdeck-plugin/` je TypeScript a s tímhle pluginem mluví přes named pipe.
 
 Dokumentace: [plugins/stream-deck.md](plugins/stream-deck.md).
+
+### `WorkTracker.Plugin.Mcp`
+
+- **`IRemoteControlPlugin`** jako Stream Deck, nástroje jsou tenká volání `IRemoteControlHost`.
+- **HTTP server bez ASP.NET Core** — sdílený framework `Microsoft.AspNetCore.App` GUI nenačítá a plugin si ho přinést nemůže. Server proto stojí na `HttpListener` a transportu z `ModelContextProtocol.Core`.
+- **`IConnectionDetailsProvider`** — vrací údaje pro připojení klienta (adresa, hlavička s tokenem), které Nastavení ukáže ke zkopírování. Volá se při každé úpravě formuláře na neinicializované instanci, takže pracuje jen s předanou konfigurací.
+- **Výjimka z `AttachAsync`** — `IRemoteControlCoordinator` ji zaloguje a ukáže uživateli, takže její text má být srozumitelný (obsazený port).
+
+Dokumentace: [plugins/mcp.md](plugins/mcp.md).
 
 ---
 

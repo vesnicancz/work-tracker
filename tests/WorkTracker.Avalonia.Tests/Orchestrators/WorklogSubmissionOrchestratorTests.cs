@@ -142,40 +142,4 @@ public class WorklogSubmissionOrchestratorTests
 	}
 
 	#endregion SubmitAsync
-
-	#region FormatSubmissionStatus
-
-	[Fact]
-	public void FormatSubmissionStatus_AllSuccess_ReturnsSuccessMessage()
-	{
-		var submission = new SubmissionResult { SuccessfulEntries = 3, FailedEntries = 0 };
-		_orchestrator.FormatSubmissionStatus(submission, "Tempo").Should().Contain("SubmissionSuccess");
-	}
-
-	[Fact]
-	public void FormatSubmissionStatus_AllFailed_ReturnsAllFailedMessage()
-	{
-		var submission = new SubmissionResult { TotalEntries = 3, SuccessfulEntries = 0, FailedEntries = 3 };
-		_orchestrator.FormatSubmissionStatus(submission, "Tempo").Should().Contain("SubmissionAllFailed");
-	}
-
-	[Fact]
-	public void FormatSubmissionStatus_Partial_ReturnsPartialMessage()
-	{
-		var submission = new SubmissionResult { SuccessfulEntries = 2, FailedEntries = 1 };
-		_orchestrator.FormatSubmissionStatus(submission, "Tempo").Should().Contain("SubmissionPartial");
-	}
-
-	[Fact]
-	public void FormatSubmissionStatus_ErrorWithoutAFailedEntry_ReturnsPartialMessage()
-	{
-		var submission = new SubmissionResult
-		{
-			SuccessfulEntries = 2,
-			Errors = [new SubmissionError { ErrorMessage = "Timesheet submit failed" }]
-		};
-		_orchestrator.FormatSubmissionStatus(submission, "Goran").Should().Contain("SubmissionPartial");
-	}
-
-	#endregion FormatSubmissionStatus
 }

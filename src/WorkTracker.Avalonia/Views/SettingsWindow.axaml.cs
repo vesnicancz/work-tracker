@@ -2,8 +2,13 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
+using Avalonia.Input.Platform;
+using Avalonia.Interactivity;
 using Avalonia.VisualTree;
+using Material.Icons;
+using Material.Icons.Avalonia;
 using WorkTracker.Avalonia.ViewModels;
+using WorkTracker.Plugin.Abstractions;
 
 namespace WorkTracker.Avalonia.Views;
 
@@ -47,6 +52,26 @@ public partial class SettingsWindow : Window
 		if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
 		{
 			BeginMoveDrag(e);
+		}
+	}
+
+	private async void OnCopyConnectionDetailClick(object? sender, RoutedEventArgs e)
+	{
+		if (Clipboard is not { } clipboard
+			|| sender is not Button { DataContext: PluginConnectionDetail detail, Content: MaterialIcon icon })
+		{
+			return;
+		}
+
+		try
+		{
+			await clipboard.SetTextAsync(detail.Value);
+			icon.Kind = MaterialIconKind.Check;
+		}
+		catch (Exception)
+		{
+			// Another program can hold the clipboard, and an exception here would end the application.
+			icon.Kind = MaterialIconKind.AlertCircleOutline;
 		}
 	}
 

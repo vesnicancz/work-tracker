@@ -1,4 +1,6 @@
 using System.Globalization;
+using System.Net;
+using System.Security.Cryptography;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
@@ -10,7 +12,7 @@ namespace WorkTracker.Plugin.Mcp;
 /// Lets AI assistants drive WorkTracker over MCP. The server listens on localhost only while this
 /// plugin is enabled and the GUI is running, and wants the access token from the configuration.
 /// </summary>
-public sealed class McpPlugin : RemoteControlPluginBase
+public sealed class McpPlugin : RemoteControlPluginBase, IConnectionDetailsProvider
 {
 	private const int DefaultPort = 47_821;
 
@@ -18,6 +20,7 @@ public sealed class McpPlugin : RemoteControlPluginBase
 	{
 		public const string Port = "port";
 		public const string AccessToken = "access_token";
+		public const string AllowWorklogSubmission = "allow_worklog_submission";
 	}
 
 	private readonly ILoggerFactory? _loggerFactory;
@@ -25,6 +28,7 @@ public sealed class McpPlugin : RemoteControlPluginBase
 	private McpHttpServer? _server;
 	private int _port = DefaultPort;
 	private string _accessToken = "";
+	private bool _allowWorklogSubmission;
 
 	public McpPlugin(ILogger<McpPlugin> logger)
 		: this(logger, null)
@@ -57,7 +61,7 @@ public sealed class McpPlugin : RemoteControlPluginBase
 			{
 				Key = ConfigKeys.Port,
 				Label = "Port",
-				Description = "The localhost port the MCP server listens on, at http://localhost:<port>/mcp.",
+				Description = "The localhost port the MCP server listens on.",
 				Type = PluginConfigurationFieldType.Number,
 				DefaultValue = DefaultPort.ToString(CultureInfo.InvariantCulture),
 				Placeholder = DefaultPort.ToString(CultureInfo.InvariantCulture),
@@ -68,21 +72,49 @@ public sealed class McpPlugin : RemoteControlPluginBase
 			{
 				Key = ConfigKeys.AccessToken,
 				Label = "Access token",
-				Description = "The MCP client sends it as \"Authorization: Bearer <token>\". Use a long random value.",
+				Description = "The MCP client sends it as \"Authorization: Bearer <token>\". A random one is generated for you.",
 				Type = PluginConfigurationFieldType.Password,
 				IsRequired = true,
+				DefaultValue = RandomNumberGenerator.GetHexString(64, lowercase: true),
 				ValidationPattern = "^\\S{16,}$",
 				ValidationMessage = "Must be at least 16 characters without spaces"
+			},
+			new PluginConfigurationField
+			{
+				Key = ConfigKeys.AllowWorklogSubmission,
+				Label = "Allow submitting worklogs",
+				Description = "Lets the MCP client submit worklogs through the enabled upload plugins. A submitted worklog can't be taken back.",
+				Type = PluginConfigurationFieldType.Checkbox,
+				DefaultValue = "false"
 			}
 		];
 	}
 
+	public IReadOnlyList<PluginConnectionDetail> GetConnectionDetails(IReadOnlyDictionary<string, string> configuration)
+	{
+		var port = ParsePort(configuration.GetValueOrDefault(ConfigKeys.Port));
+		List<PluginConnectionDetail> details = [new("URL (Streamable HTTP)", GetUrl(port))];
+
+		if (configuration.GetValueOrDefault(ConfigKeys.AccessToken) is { Length: > 0 } accessToken)
+		{
+			details.Add(new PluginConnectionDetail("HTTP header", $"Authorization: Bearer {accessToken}", IsSecret: true));
+		}
+
+		return details;
+	}
+
+	private static int ParsePort(string? value)
+	{
+		return int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var port) ? port : DefaultPort;
+	}
+
+	private static string GetUrl(int port) => $"http://localhost:{port}{McpHttpServer.Path}";
+
 	protected override Task<bool> OnInitializeAsync(IDictionary<string, string> configuration, CancellationToken cancellationToken)
 	{
-		_port = int.TryParse(GetConfigValue(ConfigKeys.Port), NumberStyles.None, CultureInfo.InvariantCulture, out var port)
-			? port
-			: DefaultPort;
+		_port = ParsePort(GetConfigValue(ConfigKeys.Port));
 		_accessToken = GetConfigValue(ConfigKeys.AccessToken) ?? "";
+		_allowWorklogSubmission = bool.TryParse(GetConfigValue(ConfigKeys.AllowWorklogSubmission), out var allow) && allow;
 
 		return Task.FromResult(_accessToken.Length > 0);
 	}
@@ -100,13 +132,23 @@ public sealed class McpPlugin : RemoteControlPluginBase
 			var options = new McpServerOptions
 			{
 				ServerInfo = new Implementation { Name = "WorkTracker", Version = Metadata.Version.ToString() },
-				ToolCollection = [.. WorkTrackerTools.Create(host)]
+				ServerInstructions = WorkTrackerTools.Instructions,
+				ToolCollection = [.. WorkTrackerTools.Create(host, _allowWorklogSubmission)]
 			};
 
 			var server = new McpHttpServer(_port, _accessToken, options, _loggerFactory, Logger);
-			server.Start();
+			try
+			{
+				server.Start();
+			}
+			catch (HttpListenerException ex)
+			{
+				await server.DisposeAsync();
+				throw new InvalidOperationException($"Can't listen on port {_port}: {ex.Message}", ex);
+			}
+
 			_server = server;
-			Logger.LogInformation("MCP server listening on http://localhost:{Port}{Path}", _port, McpHttpServer.Path);
+			Logger.LogInformation("MCP server listening on {Url}", GetUrl(_port));
 		}
 		finally
 		{
