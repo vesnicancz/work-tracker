@@ -29,7 +29,7 @@ public interface IRemoteControlHost
 	Task<PluginResult> StopWorkAsync(CancellationToken cancellationToken);
 
 	/// <summary>
-	/// Starts tracking the most recent work again.
+	/// Starts tracking the most recent work again. Fails while work is being tracked.
 	/// </summary>
 	/// <param name="lastWorkMaxAge">How long ago the work may have started. Fails when there is no such work.</param>
 	/// <param name="cancellationToken">Cancellation token.</param>

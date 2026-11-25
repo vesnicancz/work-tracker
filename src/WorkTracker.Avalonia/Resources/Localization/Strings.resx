@@ -818,6 +818,9 @@ Neither is your timesheet.</value>
   <data name="RemoteNoRecentWork" xml:space="preserve">
     <value>There is no recent work to resume.</value>
   </data>
+  <data name="RemoteWorkAlreadyTracked" xml:space="preserve">
+    <value>Work is already being tracked.</value>
+  </data>
   <data name="RemoteNoActiveWork" xml:space="preserve">
     <value>No work is being tracked.</value>
   </data>

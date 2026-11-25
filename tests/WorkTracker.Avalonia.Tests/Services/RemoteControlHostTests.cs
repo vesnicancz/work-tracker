@@ -410,6 +410,19 @@ public sealed class RemoteControlHostTests : IDisposable
 	}
 
 	[Fact]
+	public async Task ResumeLastWork_WhileTracking_FailsWithoutStarting()
+	{
+		var active = Entry("PROJ-1", Now.AddHours(-1), "Coding");
+		_worklogState.Setup(s => s.ActiveWork).Returns(active);
+		SetRecentEntries(active);
+
+		var result = await _host.ResumeLastWorkAsync(MaxAge, TestToken);
+
+		result.Error.Should().Be("RemoteWorkAlreadyTracked");
+		_worklogState.Verify(s => s.StartTrackingAsync(It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
+	}
+
+	[Fact]
 	public async Task ResumeLastWork_WithoutRecentWork_Fails()
 	{
 		var result = await _host.ResumeLastWorkAsync(MaxAge, TestToken);

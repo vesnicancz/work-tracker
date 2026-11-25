@@ -139,6 +139,12 @@ public sealed class RemoteControlHost : IRemoteControlHost, IDisposable
 
 	public async Task<PluginResult> ResumeLastWorkAsync(TimeSpan lastWorkMaxAge, CancellationToken cancellationToken)
 	{
+		// The most recent work would be the one being tracked, and resuming it would only split it in two
+		if (_worklogStateService.ActiveWork != null)
+		{
+			return await FailAsync(_localization["RemoteWorkAlreadyTracked"], PluginErrorCategory.Validation, cancellationToken);
+		}
+
 		var lastWork = await FindLastWorkAsync(lastWorkMaxAge, cancellationToken);
 		if (lastWork == null)
 		{
