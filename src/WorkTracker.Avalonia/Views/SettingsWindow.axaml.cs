@@ -80,7 +80,7 @@ public partial class SettingsWindow : Window
 		var source = e.Source as Visual;
 		while (source != null)
 		{
-			if (source is Button or TextBox or ComboBox or CheckBox or RadioButton
+			if (source is Button or TextBox or SelectableTextBlock or ComboBox or CheckBox or RadioButton
 				or ListBox or TabItem or ToggleButton or ScrollBar)
 			{
 				return true;

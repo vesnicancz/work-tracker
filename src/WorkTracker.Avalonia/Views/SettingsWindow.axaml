@@ -518,23 +518,21 @@
                                                 <Separator />
                                                 <TextBlock Text="{markup:Localize PluginConnection}" FontSize="12" Foreground="{DynamicResource TextMuted}" />
                                                 <ItemsControl ItemsSource="{Binding Plugins.SelectedItem.ConnectionDetails}">
-                                                    <ItemsControl.Styles>
-                                                        <Style Selector="TextBox.secret">
-                                                            <Setter Property="PasswordChar" Value="●" />
-                                                        </Style>
-                                                    </ItemsControl.Styles>
                                                     <ItemsControl.ItemTemplate>
                                                         <DataTemplate x:DataType="abstractions:PluginConnectionDetail">
                                                             <StackPanel Margin="0,0,0,8" Spacing="3">
                                                                 <TextBlock Text="{Binding Label}" FontSize="12" FontWeight="Medium" />
                                                                 <Grid ColumnDefinitions="*,Auto">
-                                                                    <TextBox Grid.Column="0"
-                                                                             Text="{Binding Value, Mode=OneWay}"
-                                                                             IsReadOnly="True"
-                                                                             Classes.secret="{Binding IsSecret}"
-                                                                             Classes.revealPasswordButton="{Binding IsSecret}"
-                                                                             FontSize="12" />
-                                                                    <!-- A masked TextBox doesn't allow copying, hence the button -->
+                                                                    <SelectableTextBlock Grid.Column="0"
+                                                                                         IsVisible="{Binding !IsSecret}"
+                                                                                         Text="{Binding Value}"
+                                                                                         FontSize="12" FontFamily="{DynamicResource FontFamilyMono}"
+                                                                                         TextWrapping="Wrap" VerticalAlignment="Center" />
+                                                                    <!-- A secret is only copied, never shown -->
+                                                                    <TextBlock Grid.Column="0"
+                                                                               IsVisible="{Binding IsSecret}"
+                                                                               Text="●●●●●●●●●●●●"
+                                                                               FontSize="12" VerticalAlignment="Center" />
                                                                     <Button Grid.Column="1" Click="OnCopyConnectionDetailClick"
                                                                             ToolTip.Tip="{markup:Localize Copy}"
                                                                             AutomationProperties.Name="{markup:Localize Copy}"

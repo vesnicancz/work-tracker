@@ -74,14 +74,13 @@ public class SettingsWindowPluginFieldsSmokeTests
 			boxes["Url"].PasswordChar.Should().Be('\0');
 			boxes["Url"].AcceptsReturn.Should().BeFalse();
 
-			var details = window.GetVisualDescendants().OfType<TextBox>()
+			var details = window.GetVisualDescendants().OfType<TextBlock>()
 				.Where(t => t.DataContext is PluginConnectionDetail && t.IsEffectivelyVisible)
-				.ToDictionary(t => ((PluginConnectionDetail)t.DataContext!).Label);
+				.Select(t => t.Text)
+				.ToList();
 
-			details["Address"].Text.Should().Be("http://localhost");
-			details["Address"].PasswordChar.Should().Be('\0');
-			details["Header"].PasswordChar.Should().NotBe('\0', "a secret must be masked");
-			details.Values.Should().OnlyContain(t => t.IsReadOnly);
+			details.Should().Contain(["Address", "http://localhost", "Header"]);
+			details.Should().NotContain("Bearer x", "a secret must not be shown");
 
 			window.GetVisualDescendants().OfType<TextBlock>()
 				.Where(t => t.IsEffectivelyVisible)

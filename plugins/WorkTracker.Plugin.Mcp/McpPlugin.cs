@@ -97,7 +97,7 @@ public sealed class McpPlugin : RemoteControlPluginBase, IConnectionDetailsProvi
 
 		if (configuration.GetValueOrDefault(ConfigKeys.AccessToken) is { Length: > 0 } accessToken)
 		{
-			details.Add(new PluginConnectionDetail("HTTP header", $"Authorization: Bearer {accessToken}", IsSecret: true));
+			details.Add(new PluginConnectionDetail("HTTP header (Authorization)", $"Authorization: Bearer {accessToken}", IsSecret: true));
 		}
 
 		return details;

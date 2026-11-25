@@ -14,5 +14,5 @@ public interface IConnectionDetailsProvider : IPluginDescriptor
 
 /// <param name="Label">What the value is</param>
 /// <param name="Value">The value to enter in the other program</param>
-/// <param name="IsSecret">Whether the value is masked until the user reveals it</param>
+/// <param name="IsSecret">Whether the value is only copied and never shown</param>
 public sealed record PluginConnectionDetail(string Label, string Value, bool IsSecret = false);
