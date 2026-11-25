@@ -52,7 +52,7 @@ Plugins load in isolated `AssemblyLoadContext` from the `Plugins:Directories` co
 - **`IWorklogUploadPlugin`** — Upload worklogs (e.g., Tempo)
 - **`IWorkSuggestionPlugin`** — Suggest work items (e.g., Jira issues)
 - **`IStatusIndicatorPlugin`** — Physical status indicators (e.g., Luxafor LED)
-- **`IRemoteControlPlugin`** — External controllers driving the running GUI (e.g., Stream Deck). Gets its `IRemoteControlHost` from `AttachAsync`, not from DI, because the implementation lives in the Avalonia project. `IRemoteControlCoordinator` attaches the running ones; the CLI never does, so these plugins are inert there.
+- **`IRemoteControlPlugin`** — External controllers driving the running GUI (e.g., Stream Deck, MCP). Gets its `IRemoteControlHost` from `AttachAsync`, not from DI, because the implementation lives in the Avalonia project. `IRemoteControlCoordinator` attaches the running ones; the CLI never does, so these plugins are inert there.
 
 **Plugin DI & lifecycle:**
 - Plugins are instantiated via `ActivatorUtilities.CreateInstance` from a plugin-scoped `ServiceCollection` (built in `PluginManager`).
@@ -70,7 +70,7 @@ Plugins load in isolated `AssemblyLoadContext` from the `Plugins:Directories` co
 
 **Plugin configuration** is primarily persisted in the user settings file, with `appsettings.json` (under the `Plugins` section) used only as an initial fallback.
 
-Existing plugins: `Plugin.Atlassian` (Tempo + Jira), `Plugin.Office365Calendar`, `Plugin.GoranG3`, `Plugin.Luxafor`, `Plugin.StreamDeck` (its Stream Deck app counterpart is the TypeScript project in `streamdeck-plugin/`, connected over a named pipe).
+Existing plugins: `Plugin.Atlassian` (Tempo + Jira), `Plugin.Office365Calendar`, `Plugin.GoranG3`, `Plugin.Luxafor`, `Plugin.Mcp` (MCP server on localhost inside the GUI), `Plugin.StreamDeck` (its Stream Deck app counterpart is the TypeScript project in `streamdeck-plugin/`, connected over a named pipe).
 
 ## Conventions
 

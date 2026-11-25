@@ -23,7 +23,7 @@ WorkTracker is a desktop application for tracking the time you spend on work ite
 - **Avalonia GUI** — a modern cross‑platform interface (Windows, Linux, macOS)
 - **CLI** — a terminal client (Spectre.Console) for quick use from the command line
 
-The core of the application is extended through plugins, loaded into isolated `AssemblyLoadContext`s. The plugins for Jira, Tempo, Office 365 Calendar, Goran G3, the Luxafor LED indicator and Stream Deck are published as separate `WorkTracker-Plugin-*.zip` packages. They are not part of the application package: download the ones you need and extract them into the `plugins/` directory next to the executable (for the GUI on macOS, into `~/Library/Application Support/WorkTracker/plugins/`).
+The core of the application is extended through plugins, loaded into isolated `AssemblyLoadContext`s. The plugins for Jira, Tempo, Office 365 Calendar, Goran G3, the Luxafor LED indicator, the MCP server and Stream Deck are published as separate `WorkTracker-Plugin-*.zip` packages. They are not part of the application package: download the ones you need and extract them into the `plugins/` directory next to the executable (for the GUI on macOS, into `~/Library/Application Support/WorkTracker/plugins/`).
 
 ### Main features
 
@@ -166,7 +166,7 @@ The application stores sensitive data (API tokens, passwords) through `ISecureSt
 
 `settings.json` holds only a placeholder `CS:{pluginId}:{fieldKey}` in their place, never plaintext. OAuth tokens for plugins using MSAL (Office 365 Calendar, Goran G3) live in an encrypted cache in `keys/`, and when the refresh token expires you need to sign in again through **Test Connection** (Office 365 Calendar in the browser, Goran G3 through the device code flow).
 
-> **Plugins in the CLI:** `WorkTracker.CLI` reads the enabled state and the plugin configuration from the same `settings.json` as the GUI, so `send` works from the terminal too. The plugin itself must also be extracted into the `plugins/` folder next to the CLI. Plugins are enabled and configured only in the GUI (Avalonia → **Settings → Plugins**) — the CLI only uses them. `WorkTracker.CLI providers` shows what is currently available. Except for Stream Deck, the plugin docs in [docs/plugins/](docs/plugins/) include a sample `appsettings.json` schema of the plugin as a reference for integrators with their own host.
+> **Plugins in the CLI:** `WorkTracker.CLI` reads the enabled state and the plugin configuration from the same `settings.json` as the GUI, so `send` works from the terminal too. The plugin itself must also be extracted into the `plugins/` folder next to the CLI. Plugins are enabled and configured only in the GUI (Avalonia → **Settings → Plugins**) — the CLI only uses them. `WorkTracker.CLI providers` shows what is currently available. Except for Stream Deck and MCP Server, the plugin docs in [docs/plugins/](docs/plugins/) include a sample `appsettings.json` schema of the plugin as a reference for integrators with their own host.
 
 > **Security:** Do not commit API tokens to Git.
 
@@ -181,7 +181,7 @@ WorkTracker supports four types of plugins:
 | **Worklog Upload** | `IWorklogUploadPlugin` | Uploading worklogs to external systems |
 | **Work Suggestion** | `IWorkSuggestionPlugin` | Suggesting work items (issues, calendar events) |
 | **Status Indicator** | `IStatusIndicatorPlugin` | Controlling physical status indicators (LEDs etc.) |
-| **Remote Control** | `IRemoteControlPlugin` | Controlling the running application from external devices (Stream Deck etc.) |
+| **Remote Control** | `IRemoteControlPlugin` | Controlling the running application from outside (Stream Deck, AI assistants etc.) |
 
 ### Bundled plugins
 
@@ -191,6 +191,7 @@ WorkTracker supports four types of plugins:
 | **Office 365 Calendar** | Work suggestions from calendar events (MSAL, sign-in in the browser) | [docs/plugins/office365-calendar.md](docs/plugins/office365-calendar.md) |
 | **Goran G3** | Worklog upload through an MCP server with Entra ID authentication | [docs/plugins/goran-g3.md](docs/plugins/goran-g3.md) |
 | **Luxafor** | Shows the Pomodoro phase on a Luxafor Bluetooth Pro LED | [docs/plugins/luxafor.md](docs/plugins/luxafor.md) |
+| **MCP Server** | Lets AI assistants read and control tracking over MCP | [docs/plugins/mcp.md](docs/plugins/mcp.md) |
 | **Stream Deck** | Controls tracking from a Stream Deck + controller | [docs/plugins/stream-deck.md](docs/plugins/stream-deck.md) |
 
 ### Writing your own plugin
@@ -264,6 +265,7 @@ work-tracker/
 │   ├── WorkTracker.Plugin.Office365Calendar/ # O365 Calendar suggestions
 │   ├── WorkTracker.Plugin.GoranG3/           # Goran G3 worklog upload
 │   ├── WorkTracker.Plugin.Luxafor/           # Luxafor LED status
+│   ├── WorkTracker.Plugin.Mcp/               # MCP server for AI assistants
 │   └── WorkTracker.Plugin.StreamDeck/        # Stream Deck, the WorkTracker side
 ├── streamdeck-plugin/                    # Stream Deck, the Stream Deck app side (TypeScript)
 ├── tests/                                # xUnit + Moq + FluentAssertions

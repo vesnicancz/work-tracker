@@ -252,6 +252,9 @@ jobs:
           - plugin: Office365Calendar
             project: plugins/WorkTracker.Plugin.Office365Calendar/WorkTracker.Plugin.Office365Calendar.csproj
             artifact: WorkTracker.Plugin.Office365Calendar
+          - plugin: Mcp
+            project: plugins/WorkTracker.Plugin.Mcp/WorkTracker.Plugin.Mcp.csproj
+            artifact: WorkTracker.Plugin.Mcp
           - plugin: StreamDeck
             project: plugins/WorkTracker.Plugin.StreamDeck/WorkTracker.Plugin.StreamDeck.csproj
             artifact: WorkTracker.Plugin.StreamDeck

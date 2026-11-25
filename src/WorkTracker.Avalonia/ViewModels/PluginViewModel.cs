@@ -11,6 +11,7 @@ namespace WorkTracker.Avalonia.ViewModels;
 public class PluginViewModel : ObservableObject
 {
 	private bool _isEnabled;
+	private IReadOnlyList<PluginConnectionDetail> _connectionDetails = [];
 
 	public IPluginDescriptor Plugin { get; }
 	public Dictionary<string, string> Configuration { get; } = new();
@@ -30,6 +31,8 @@ public class PluginViewModel : ObservableObject
 
 			ConfigurationFields.Add(new ConfigurationFieldViewModel(field, this));
 		}
+
+		RefreshConnectionDetails();
 	}
 
 	/// <summary>
@@ -47,7 +50,36 @@ public class PluginViewModel : ObservableObject
 		{
 			field.RefreshValue();
 		}
+
+		RefreshConnectionDetails();
 	}
+
+	public void RefreshConnectionDetails()
+	{
+		if (Plugin is IConnectionDetailsProvider provider)
+		{
+			ConnectionDetails = provider.GetConnectionDetails(Configuration);
+		}
+	}
+
+	/// <summary>
+	/// What to enter in the program that connects to the plugin, for the configuration as edited.
+	/// </summary>
+	public IReadOnlyList<PluginConnectionDetail> ConnectionDetails
+	{
+		get => _connectionDetails;
+		private set
+		{
+			if (!_connectionDetails.SequenceEqual(value))
+			{
+				_connectionDetails = value;
+				OnPropertyChanged();
+				OnPropertyChanged(nameof(HasConnectionDetails));
+			}
+		}
+	}
+
+	public bool HasConnectionDetails => ConnectionDetails.Count > 0;
 
 	public PluginSettingsEntry ToEntry() => new(Plugin, IsEnabled, new Dictionary<string, string>(Configuration));
 

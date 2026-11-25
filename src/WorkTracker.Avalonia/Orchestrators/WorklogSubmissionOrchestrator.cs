@@ -49,24 +49,9 @@ public class WorklogSubmissionOrchestrator : IWorklogSubmissionOrchestrator
 
 		if (result.IsSuccess && result.Value != null)
 		{
-			return new SubmissionOutcome(true, FormatSubmissionStatus(result.Value, providerName), result.Value.Errors);
+			return new SubmissionOutcome(true, _localization.FormatSubmissionStatus(result.Value, providerName), result.Value.Errors);
 		}
 
 		return new SubmissionOutcome(false, _localization.GetFormattedString("ErrorPrefix", result.Error), []);
-	}
-
-	internal string FormatSubmissionStatus(SubmissionResult submission, string providerName)
-	{
-		if (!submission.HasFailures)
-		{
-			return _localization.GetFormattedString("SubmissionSuccess", submission.SuccessfulEntries, providerName);
-		}
-
-		if (submission.SuccessfulEntries == 0)
-		{
-			return _localization.GetFormattedString("SubmissionAllFailed", submission.TotalEntries, providerName);
-		}
-
-		return _localization.GetFormattedString("SubmissionPartial", submission.SuccessfulEntries, providerName, submission.FailureCount);
 	}
 }

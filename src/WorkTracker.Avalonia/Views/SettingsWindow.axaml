@@ -6,6 +6,7 @@
         xmlns:markup="using:WorkTracker.Avalonia.Markup"
         xmlns:vm="using:WorkTracker.Avalonia.ViewModels"
         xmlns:shared="using:WorkTracker.Avalonia.ViewModels"
+        xmlns:abstractions="using:WorkTracker.Plugin.Abstractions"
         x:Class="WorkTracker.Avalonia.Views.SettingsWindow"
         x:DataType="vm:SettingsViewModel"
         mc:Ignorable="d"
@@ -511,6 +512,43 @@
                                                     </DataTemplate>
                                                 </ItemsControl.ItemTemplate>
                                             </ItemsControl>
+
+                                            <!-- Connection details -->
+                                            <StackPanel IsVisible="{Binding Plugins.SelectedItem.HasConnectionDetails, FallbackValue=False}" Spacing="10">
+                                                <Separator />
+                                                <TextBlock Text="{markup:Localize PluginConnection}" FontSize="12" Foreground="{DynamicResource TextMuted}" />
+                                                <ItemsControl ItemsSource="{Binding Plugins.SelectedItem.ConnectionDetails}">
+                                                    <ItemsControl.Styles>
+                                                        <Style Selector="TextBox.secret">
+                                                            <Setter Property="PasswordChar" Value="●" />
+                                                        </Style>
+                                                    </ItemsControl.Styles>
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate x:DataType="abstractions:PluginConnectionDetail">
+                                                            <StackPanel Margin="0,0,0,8" Spacing="3">
+                                                                <TextBlock Text="{Binding Label}" FontSize="12" FontWeight="Medium" />
+                                                                <Grid ColumnDefinitions="*,Auto">
+                                                                    <TextBox Grid.Column="0"
+                                                                             Text="{Binding Value, Mode=OneWay}"
+                                                                             IsReadOnly="True"
+                                                                             Classes.secret="{Binding IsSecret}"
+                                                                             Classes.revealPasswordButton="{Binding IsSecret}"
+                                                                             FontSize="12" />
+                                                                    <!-- A masked TextBox doesn't allow copying, hence the button -->
+                                                                    <Button Grid.Column="1" Click="OnCopyConnectionDetailClick"
+                                                                            ToolTip.Tip="{markup:Localize Copy}"
+                                                                            AutomationProperties.Name="{markup:Localize Copy}"
+                                                                            Background="Transparent" Padding="8,6" Margin="6,0,0,0"
+                                                                            BorderBrush="{DynamicResource CardBorder}" BorderThickness="1">
+                                                                        <material:MaterialIcon Kind="ContentCopy" Width="16" Height="16"
+                                                                                              Foreground="{DynamicResource TextMuted}" />
+                                                                    </Button>
+                                                                </Grid>
+                                                            </StackPanel>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </StackPanel>
 
                                             <!-- Test Connection -->
                                             <Button IsVisible="{Binding Plugins.SelectedItem.SupportsTestConnection}"

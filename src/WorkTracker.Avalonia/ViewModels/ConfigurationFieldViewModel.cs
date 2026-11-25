@@ -44,6 +44,7 @@ public class ConfigurationFieldViewModel : ObservableObject
 			_pluginViewModel.Configuration[Key] = value;
 			OnPropertyChanged();
 			OnPropertyChanged(nameof(BoolValue));
+			_pluginViewModel.RefreshConnectionDetails();
 		}
 	}
 

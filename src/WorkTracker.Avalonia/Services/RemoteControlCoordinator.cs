@@ -7,6 +7,8 @@ namespace WorkTracker.Avalonia.Services;
 public sealed class RemoteControlCoordinator(
 	IPluginManager pluginManager,
 	IRemoteControlHost host,
+	IActionFeedbackService actionFeedback,
+	ILocalizationService localization,
 	ILogger<RemoteControlCoordinator> logger) : IRemoteControlCoordinator
 {
 	public async Task SyncAsync(CancellationToken cancellationToken)
@@ -25,6 +27,7 @@ public sealed class RemoteControlCoordinator(
 			{
 				// One broken plugin must not keep the others from connecting, or fail saving the settings
 				logger.LogError(ex, "Failed to attach remote control plugin {Name}", plugin.Metadata.Name);
+				await actionFeedback.ReportFailureAsync(localization.GetFormattedString("RemotePluginAttachFailed", plugin.Metadata.Name, ex.Message), cancellationToken);
 			}
 		}
 	}

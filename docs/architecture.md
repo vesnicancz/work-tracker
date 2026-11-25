@@ -66,7 +66,7 @@ Pokud tě zajímá **jak napsat vlastní plugin**, jdi rovnou na [plugin-develop
 
 ┌─────────────────────────────────────────────────────────────────────┐
 │  Plugin.Abstractions  (samostatná knihovna)                         │
-│  - IPlugin, ITestablePlugin                                         │
+│  - IPlugin, ITestablePlugin, IConnectionDetailsProvider             │
 │  - IWorklogUploadPlugin, IWorkSuggestionPlugin, IStatusIndicator…   │
 │  - PluginBase, WorklogUploadPluginBase, …                           │
 │  - PluginMetadata, PluginResult<T>, PluginConfigurationField        │
@@ -79,7 +79,7 @@ Pokud tě zajímá **jak napsat vlastní plugin**, jdi rovnou na [plugin-develop
 │ .Atlassian     │ │ .GoranG3       │ │ .Luxafor   │ │ .Office365Cal. │
 └────────────────┘ └────────────────┘ └────────────┘ └────────────────┘
 
-Stejně na Abstractions závisí i Plugin.StreamDeck.
+Stejně na Abstractions závisí i Plugin.StreamDeck a Plugin.Mcp.
 ```
 
 ---
@@ -213,7 +213,7 @@ Detaily pro autory pluginů jsou v [plugin-development.md](plugin-development.md
 
 Samostatná knihovna (`WorkTracker.Plugin.Abstractions.dll`) obsahující pouze veřejné API:
 
-- `IPlugin`, `ITestablePlugin`
+- `IPlugin`, `ITestablePlugin`, `IConnectionDetailsProvider`
 - `IWorklogUploadPlugin`, `IWorkSuggestionPlugin`, `IStatusIndicatorPlugin`, `IRemoteControlPlugin` (a `IRemoteControlHost`, přes který plugin aplikaci ovládá)
 - Abstraktní base classes `PluginBase`, `WorklogUploadPluginBase`, `WorkSuggestionPluginBase`, `StatusIndicatorPluginBase`, `RemoteControlPluginBase`
 - Datové typy: `PluginMetadata`, `PluginConfigurationField`, `PluginResult<T>`, `PluginErrorCategory`, `PluginValidationResult`

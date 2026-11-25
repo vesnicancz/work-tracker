@@ -62,6 +62,38 @@ public interface IRemoteControlHost
 	Task<RemoteWorkedTimeSummary> GetWorkedTimeAsync(DateOnly date, RemoteWorkedTimePeriod period, CancellationToken cancellationToken);
 
 	/// <summary>
+	/// Gets the entries that start between the start of <paramref name="from"/> and the end of
+	/// <paramref name="to"/>, in order of their start.
+	/// </summary>
+	Task<IReadOnlyList<RemoteWorkEntry>> GetWorkEntriesAsync(DateOnly from, DateOnly to, CancellationToken cancellationToken);
+
+	/// <summary>
+	/// Replaces the ticket and the description of an entry, null clears it. The times stay as they are.
+	/// Fails when neither would be left.
+	/// </summary>
+	Task<PluginResult<RemoteWorkEntry>> UpdateWorkEntryTextAsync(int id, string? ticketId, string? description, CancellationToken cancellationToken);
+
+	/// <summary>
+	/// Gets the enabled worklog upload plugins.
+	/// </summary>
+	IReadOnlyList<RemoteWorklogProvider> GetWorklogProviders();
+
+	/// <summary>
+	/// Gets what <see cref="SubmitWorklogsAsync"/> would send for the same arguments, empty days included.
+	/// </summary>
+	/// <param name="date">The day, or any day of the week.</param>
+	/// <param name="period">Whether it is the day or its whole week.</param>
+	/// <param name="mode">A single mode, not a combination.</param>
+	/// <param name="cancellationToken">Cancellation token.</param>
+	Task<PluginResult<IReadOnlyList<RemoteWorklogDay>>> PreviewWorklogsAsync(DateOnly date, RemoteWorkedTimePeriod period, WorklogSubmissionMode mode, CancellationToken cancellationToken);
+
+	/// <summary>
+	/// Submits the completed work of the day or the week of <paramref name="date"/>. Can't be taken back.
+	/// Succeeds even when some worklogs were refused: see <see cref="RemoteSubmissionResult.Errors"/>.
+	/// </summary>
+	Task<PluginResult<RemoteSubmissionResult>> SubmitWorklogsAsync(DateOnly date, RemoteWorkedTimePeriod period, WorklogSubmissionMode mode, string providerId, CancellationToken cancellationToken);
+
+	/// <summary>
 	/// Gets the user's favorites, in the order from the settings.
 	/// </summary>
 	IReadOnlyList<RemoteFavorite> GetFavorites();

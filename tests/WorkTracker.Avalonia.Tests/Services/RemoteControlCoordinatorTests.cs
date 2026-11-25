@@ -11,13 +11,18 @@ public class RemoteControlCoordinatorTests
 {
 	private readonly Mock<IPluginManager> _pluginManager = new();
 	private readonly IRemoteControlHost _host = new Mock<IRemoteControlHost>().Object;
+	private readonly Mock<IActionFeedbackService> _feedback = new();
+	private readonly Mock<ILocalizationService> _localization = new();
 	private readonly RemoteControlCoordinator _coordinator;
 
 	private static CancellationToken TestToken => TestContext.Current.CancellationToken;
 
 	public RemoteControlCoordinatorTests()
 	{
-		_coordinator = new RemoteControlCoordinator(_pluginManager.Object, _host, NullLogger<RemoteControlCoordinator>.Instance);
+		_localization
+			.Setup(l => l.GetFormattedString(It.IsAny<string>(), It.IsAny<object[]>()))
+			.Returns((string key, object[] args) => $"{key}: {string.Join(", ", args)}");
+		_coordinator = new RemoteControlCoordinator(_pluginManager.Object, _host, _feedback.Object, _localization.Object, NullLogger<RemoteControlCoordinator>.Instance);
 	}
 
 	[Fact]
@@ -36,12 +41,13 @@ public class RemoteControlCoordinatorTests
 	{
 		var broken = new Mock<IRemoteControlPlugin>();
 		broken.Setup(p => p.Metadata).Returns(new PluginMetadata { Id = "broken", Name = "Broken", Version = new Version(1, 0), Author = "Test" });
-		broken.Setup(p => p.AttachAsync(It.IsAny<IRemoteControlHost>(), It.IsAny<CancellationToken>())).ThrowsAsync(new InvalidOperationException());
+		broken.Setup(p => p.AttachAsync(It.IsAny<IRemoteControlHost>(), It.IsAny<CancellationToken>())).ThrowsAsync(new InvalidOperationException("Port taken"));
 		var working = new Mock<IRemoteControlPlugin>();
 		_pluginManager.Setup(p => p.RemoteControlPlugins).Returns([broken.Object, working.Object]);
 
 		await _coordinator.Invoking(c => c.SyncAsync(TestToken)).Should().NotThrowAsync();
 
 		working.Verify(p => p.AttachAsync(_host, It.IsAny<CancellationToken>()), Times.Once);
+		_feedback.Verify(f => f.ReportFailureAsync("RemotePluginAttachFailed: Broken, Port taken", It.IsAny<CancellationToken>()), Times.Once);
 	}
 }

@@ -30,6 +30,10 @@ public class SettingsWindowPluginFieldsSmokeTests
 			new PluginConfigurationField { Key = "Query", Label = "Query", Type = PluginConfigurationFieldType.MultilineText },
 			new PluginConfigurationField { Key = "Url", Label = "Url", Type = PluginConfigurationFieldType.Url });
 
+		plugin.As<IConnectionDetailsProvider>()
+			.Setup(p => p.GetConnectionDetails(It.IsAny<IReadOnlyDictionary<string, string>>()))
+			.Returns([new PluginConnectionDetail("Address", "http://localhost"), new PluginConnectionDetail("Header", "Bearer x", IsSecret: true)]);
+
 		var orchestrator = new Mock<ISettingsOrchestrator>();
 		orchestrator.Setup(o => o.LoadPlugins()).Returns([new PluginSettingsEntry(plugin.Object, false, new Dictionary<string, string>())]);
 
@@ -69,6 +73,15 @@ public class SettingsWindowPluginFieldsSmokeTests
 			boxes["Query"].AcceptsReturn.Should().BeTrue("a multi-line field must take Enter as a new line");
 			boxes["Url"].PasswordChar.Should().Be('\0');
 			boxes["Url"].AcceptsReturn.Should().BeFalse();
+
+			var details = window.GetVisualDescendants().OfType<TextBox>()
+				.Where(t => t.DataContext is PluginConnectionDetail && t.IsEffectivelyVisible)
+				.ToDictionary(t => ((PluginConnectionDetail)t.DataContext!).Label);
+
+			details["Address"].Text.Should().Be("http://localhost");
+			details["Address"].PasswordChar.Should().Be('\0');
+			details["Header"].PasswordChar.Should().NotBe('\0', "a secret must be masked");
+			details.Values.Should().OnlyContain(t => t.IsReadOnly);
 
 			window.GetVisualDescendants().OfType<TextBlock>()
 				.Where(t => t.IsEffectivelyVisible)

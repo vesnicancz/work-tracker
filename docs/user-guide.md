@@ -33,7 +33,7 @@ Na stránce [Releases](https://github.com/vesnicancz/work-tracker/releases/lates
 |---------|-------|-----------|
 | `WorkTracker-{verze}-{platforma}.zip` / `.dmg` | GUI aplikace (na macOS jako `.dmg`) | `windows-x64`, `windows-arm64`, `linux-x64`, `macos-arm64` |
 | `WorkTracker-CLI-{verze}-{platforma}.zip` | Konzolová aplikace | `windows-x64`, `windows-arm64`, `linux-x64`, `macos-arm64` |
-| `WorkTracker-Plugin-{Name}-{verze}.zip` | Platformně neutrální pluginy (Atlassian, GoranG3, Luxafor, Office365Calendar, StreamDeck). StreamDeck obsahuje i doplněk do aplikace Stream Deck, viz [plugins/stream-deck.md](plugins/stream-deck.md) | — |
+| `WorkTracker-Plugin-{Name}-{verze}.zip` | Platformně neutrální pluginy (Atlassian, GoranG3, Luxafor, Mcp, Office365Calendar, StreamDeck). StreamDeck obsahuje i doplněk do aplikace Stream Deck, viz [plugins/stream-deck.md](plugins/stream-deck.md) | — |
 
 `macos-arm64` je build pro Macy s Apple Siliconem (M1 a novější).
 
@@ -398,7 +398,7 @@ Otevírá se kliknutím na **Nastavení** v levém dolním rohu hlavního okna. 
 - **Spouštění**:
   - **Spustit po přihlášení** — zaregistruje aplikaci do autostartu (Windows, Linux i macOS).
   - **Spustit minimalizovanou** — okno se při startu neobjeví, aplikace jede rovnou do tray.
-- **Oznámení** — sekce je vidět jen se zapnutým pluginem externího ovladače. **Akce z externích ovladačů** (výchozí zapnuto) potvrzuje akce spuštěné ze zařízení, jako je Stream Deck. Chyby se zobrazují i při vypnutí. Viz [Notifikace](#notifikace).
+- **Oznámení** — sekce je vidět jen se zapnutým pluginem externího ovladače. **Akce z externích ovladačů** (výchozí zapnuto) potvrzuje akce spuštěné ze zařízení, jako je Stream Deck, nebo AI asistentem přes MCP. Chyby se zobrazují i při vypnutí. Viz [Notifikace](#notifikace).
 - **Aktualizace** — **Kontrolovat aktualizace** zapíná/vypíná kontrolu nové verze na GitHubu při spuštění.
 - **Vzhled**:
   - **Sledovat systémové nastavení** — když je zapnuto, aplikace automaticky přepíná mezi denním a nočním motivem podle systémové preference. V tomto režimu se zobrazí dva dropdowny **Den** (jen světlé motivy) a **Noc** (jen tmavé motivy).
@@ -423,6 +423,7 @@ Otevírá se kliknutím na **Nastavení** v levém dolním rohu hlavního okna. 
   - Verze, autor a popis pluginu.
   - Checkbox **Povolit plugin**.
   - **Konfigurační formulář** — dynamicky generovaný z `PluginConfigurationField` daného pluginu. Pole typu `Password` se ukládají do secure storage.
+  - **Údaje pro připojení** (u pluginů implementujících `IConnectionDetailsProvider`, např. MCP Server) — hodnoty, které zadáš v připojovaném programu, s tlačítkem pro zkopírování. Tajné hodnoty jsou maskované.
   - Tlačítko **Otestovat připojení** (u pluginů implementujících `ITestablePlugin`) s textovým výstupem výsledku.
 - Pokud nejsou nalezené žádné pluginy, záložka zobrazí zprávu „Nejsou k dispozici žádné pluginy“.
 
@@ -754,6 +755,8 @@ Když spustíš akci jinde než v hlavním okně, nemusíš její výsledek vid�
 | Stream Deck a další externí ovladače: spuštění, zastavení a navázání na práci, přidání záznamu, spuštění a zastavení Pomodora | ano, lze vypnout v **Nastavení → Obecné → Oznámení** | vždy |
 | Stream Deck: posun začátku práce ovladačem | ne, odezva je přímo na zařízení | vždy |
 | Stream Deck: přeskočení Pomodoro fáze | oznámí ho přechod fáze | – |
+| MCP: úprava a odeslání záznamů | ano, lze vypnout tamtéž | vždy, i když se neodešle jen část |
+| Plugin externího ovladače, který se nepodařilo spustit, třeba kvůli obsazenému portu | – | vždy |
 | Tray menu: zastavení práce a oblíbená položka | ne, změna je vidět na ikoně | vždy |
 | Tray menu: **Nový záznam práce** a šablony | ne, otevře se dialog | vždy |
 | Globální zkratka a dialog nového záznamu ze Stream Decku | ne, otevře se dialog | jen v logu |
