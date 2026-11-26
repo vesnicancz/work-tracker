@@ -8,7 +8,7 @@ namespace WorkTracker.Avalonia.Tests.Services;
 [Collection("LocalizationTests")]
 public class LocalizationServiceTests : IDisposable
 {
-	private readonly LocalizationService _sut = new();
+	private readonly LocalizationService _sut = new(CultureInfo.CurrentUICulture);
 	private readonly CultureInfo _originalCulture = CultureInfo.CurrentCulture;
 	private readonly CultureInfo _originalUICulture = CultureInfo.CurrentUICulture;
 	private readonly LocalizationService? _originalInstance = LocalizationService.Instance;
@@ -17,7 +17,7 @@ public class LocalizationServiceTests : IDisposable
 	{
 		CultureInfo.CurrentCulture = _originalCulture;
 		CultureInfo.CurrentUICulture = _originalUICulture;
-		LocalizationService.SetInstance(_originalInstance ?? new LocalizationService());
+		LocalizationService.SetInstance(_originalInstance ?? new LocalizationService(CultureInfo.CurrentUICulture));
 	}
 
 	#region GetString
@@ -217,7 +217,7 @@ public class LocalizationServiceTests : IDisposable
 	[Fact]
 	public void SetInstance_SetsStaticInstance()
 	{
-		var instance = new LocalizationService();
+		var instance = new LocalizationService(CultureInfo.CurrentUICulture);
 		LocalizationService.SetInstance(instance);
 
 		LocalizationService.Instance.Should().BeSameAs(instance);

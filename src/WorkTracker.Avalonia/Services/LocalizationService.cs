@@ -32,13 +32,15 @@ public sealed class LocalizationService : ILocalizationService
 
 	public event PropertyChangedEventHandler? PropertyChanged;
 
-	public LocalizationService()
+	/// <param name="systemCulture">
+	/// What the "System" language option resolves to for the rest of the process lifetime. Taken
+	/// once at construction, because the <see cref="CurrentCulture"/> setter overwrites
+	/// <see cref="CultureInfo.CurrentUICulture"/>.
+	/// </param>
+	public LocalizationService(CultureInfo systemCulture)
 	{
 		_resourceManager = new ResourceManager(typeof(Strings));
-		// Snapshot the OS culture before anything can overwrite CultureInfo.CurrentUICulture -
-		// the CurrentCulture setter does exactly that, so this is the only chance to capture what
-		// the "System" language option should resolve to for the rest of the process lifetime.
-		_systemCulture = CultureInfo.CurrentUICulture;
+		_systemCulture = systemCulture;
 		_currentCulture = _systemCulture;
 	}
 

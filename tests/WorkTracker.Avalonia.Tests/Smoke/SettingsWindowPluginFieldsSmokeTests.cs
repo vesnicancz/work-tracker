@@ -1,3 +1,4 @@
+using System.Globalization;
 using Avalonia.Controls;
 using Avalonia.VisualTree;
 using FluentAssertions;
@@ -53,7 +54,7 @@ public class SettingsWindowPluginFieldsSmokeTests
 	public Task PluginFields_RenderAccordingToTheirType() => UiThread.Dispatch(() =>
 	{
 		var originalInstance = LocalizationService.Instance;
-		var localization = new LocalizationService();
+		var localization = new LocalizationService(CultureInfo.CurrentUICulture);
 		LocalizationService.SetInstance(localization);
 		localization.ApplyLanguage("en");
 
@@ -90,7 +91,7 @@ public class SettingsWindowPluginFieldsSmokeTests
 		finally
 		{
 			window.Close();
-			LocalizationService.SetInstance(originalInstance ?? new LocalizationService());
+			LocalizationService.SetInstance(originalInstance ?? new LocalizationService(CultureInfo.CurrentUICulture));
 		}
 	});
 }

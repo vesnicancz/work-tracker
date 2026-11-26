@@ -25,7 +25,7 @@ public class LocalizeExtensionTests
 
 		try
 		{
-			var localization = new LocalizationService();
+			var localization = new LocalizationService(CultureInfo.CurrentUICulture);
 			LocalizationService.SetInstance(localization);
 			localization.CurrentCulture = new CultureInfo("en");
 
@@ -46,7 +46,7 @@ public class LocalizeExtensionTests
 		{
 			CultureInfo.CurrentCulture = originalCulture;
 			CultureInfo.CurrentUICulture = originalUICulture;
-			LocalizationService.SetInstance(originalInstance ?? new LocalizationService());
+			LocalizationService.SetInstance(originalInstance ?? new LocalizationService(CultureInfo.CurrentUICulture));
 		}
 	});
 }
