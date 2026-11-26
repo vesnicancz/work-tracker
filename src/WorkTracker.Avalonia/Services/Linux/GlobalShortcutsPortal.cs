@@ -504,22 +504,20 @@ internal sealed class GlobalShortcutsPortal : IAsyncDisposable
 				var code = reader.ReadUInt32();
 				return new PortalResponse(code, reader.ReadDictionaryOfStringToVariantValue());
 			},
-			static (Exception? exception, PortalResponse response, object? _, object? state) =>
+			static (Notification<PortalResponse> notification) =>
 			{
-				var target = (TaskCompletionSource<PortalResponse>)state!;
-				if (exception != null)
+				var target = (TaskCompletionSource<PortalResponse>)notification.State!;
+				if (notification.HasValue)
 				{
-					target.TrySetException(exception);
+					target.TrySetResult(notification.Value);
 				}
-				else
+				else if (notification.Exception != null)
 				{
-					target.TrySetResult(response);
+					target.TrySetException(notification.Exception);
 				}
 			},
-			null,
-			completion,
-			false,
-			ObserverFlags.None).ConfigureAwait(false);
+			emitOnCapturedContext: false,
+			state: completion).ConfigureAwait(false);
 	}
 
 	private async Task SubscribeToSessionAsync(DBusConnection connection, string sessionHandle)
@@ -534,17 +532,15 @@ internal sealed class GlobalShortcutsPortal : IAsyncDisposable
 				Member = "Activated",
 			},
 			static (Message message, object? _) => ReadActivation(message),
-			static (Exception? exception, (string Session, string Shortcut) activation, object? _, object? state) =>
+			static (Notification<(string Session, string Shortcut)> notification) =>
 			{
-				if (exception == null)
+				if (notification.HasValue)
 				{
-					((GlobalShortcutsPortal)state!).OnActivated(activation.Session, activation.Shortcut);
+					((GlobalShortcutsPortal)notification.State!).OnActivated(notification.Value.Session, notification.Value.Shortcut);
 				}
 			},
-			null,
-			this,
-			false,
-			ObserverFlags.None).ConfigureAwait(false));
+			emitOnCapturedContext: false,
+			state: this).ConfigureAwait(false));
 
 		// The compositor can drop the session on its own (portal restart, user revoking the
 		// shortcut), and then nothing would ever fire again — notice it instead of looking bound.
@@ -558,17 +554,15 @@ internal sealed class GlobalShortcutsPortal : IAsyncDisposable
 				Member = "Closed",
 			},
 			static (Message _, object? _) => true,
-			static (Exception? exception, bool _, object? _, object? state) =>
+			static (Notification<bool> notification) =>
 			{
-				if (exception == null)
+				if (notification.HasValue)
 				{
-					((GlobalShortcutsPortal)state!).OnSessionClosed();
+					((GlobalShortcutsPortal)notification.State!).OnSessionClosed();
 				}
 			},
-			null,
-			this,
-			false,
-			ObserverFlags.None).ConfigureAwait(false));
+			emitOnCapturedContext: false,
+			state: this).ConfigureAwait(false));
 	}
 
 	/// <summary>
