@@ -26,11 +26,6 @@
     <PackageVersion Include="Avalonia.Fonts.Inter" Version="12.2.0" />
     <PackageVersion Include="Avalonia.Labs.Notifications" Version="12.2.0" />
     <PackageVersion Include="Avalonia.Themes.Fluent" Version="12.2.0" />
-    <!-- Transitive via Avalonia.FreeDesktop; referenced directly by the Avalonia project for the
-         GlobalShortcuts portal client. Kept at the version Avalonia and Avalonia.Labs.Notifications are
-         built against: both ship compiled calls into it, and a newer release that drops one of them
-         only fails at runtime on Linux (MissingMethodException), not in the build. -->
-    <PackageVersion Include="Tmds.DBus.Protocol" Version="0.94.1" />
     <!-- UI -->
     <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageVersion Include="Material.Icons.Avalonia" Version="3.0.2" />
