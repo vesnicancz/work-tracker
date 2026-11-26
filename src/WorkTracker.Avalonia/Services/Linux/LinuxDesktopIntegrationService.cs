@@ -228,10 +228,7 @@ public sealed class LinuxDesktopIntegrationService : IDesktopIntegrationService
 			using var bitmap = new Bitmap(source);
 			using var scaled = bitmap.CreateScaledBitmap(new PixelSize(size, size));
 			using var encoded = new MemoryStream();
-			// Saves PNG. Avalonia 12.1 deprecates this overload in favour of
-			// Save(Stream, PngBitmapEncoderOptions), which does not exist in 12.0 — switch to it
-			// when the Avalonia pin in Directory.Packages.props moves back up.
-			scaled.Save(encoded);
+			scaled.Save(encoded, PngBitmapEncoderOptions.Default);
 			return encoded.ToArray();
 		}
 		catch (Exception ex)
