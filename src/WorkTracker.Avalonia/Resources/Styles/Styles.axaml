@@ -135,6 +135,8 @@
         <!-- The picker forwards its focus to its inner TextBox, so as a tab stop of its own it traps
              Shift+Tab: leaving the TextBox backwards lands on the picker, which hands focus straight back. -->
         <Setter Property="KeyboardNavigation.IsTabStop" Value="False" />
+        <!-- Week rule and first day come from the current culture: ISO 8601 for Czech. -->
+        <Setter Property="IsWeekNumberVisible" Value="True" />
     </Style>
 
     <!-- Calendar popup: readable text on themed background -->
@@ -151,6 +153,9 @@
     </Style>
     <Style Selector="CalendarButton">
         <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+    </Style>
+    <Style Selector="CalendarItem /template/ Grid#PART_ElementWeekNumberLabels > ContentControl">
+        <Setter Property="Foreground" Value="{DynamicResource TextMuted}" />
     </Style>
 
     <!-- Button: themeable corner radius (applied to every button unless overridden inline) -->
