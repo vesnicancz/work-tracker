@@ -63,6 +63,31 @@ public class LanguageCatalogTests
 
 	#endregion
 
+	#region ResolveSystemCulture
+
+	[Theory]
+	[InlineData("cs-CZ")]
+	[InlineData("en")]
+	[InlineData("zh-Hans-CN")]
+	public void ResolveSystemCulture_KnownTag_ReturnsThatCulture(string tag)
+	{
+		LanguageCatalog.ResolveSystemCulture(tag, new CultureInfo("de-DE")).Name.Should().Be(tag);
+	}
+
+	[Theory]
+	[InlineData(null)]
+	[InlineData("")]
+	[InlineData("   ")]
+	[InlineData("not a tag")]
+	public void ResolveSystemCulture_MissingOrInvalidTag_ReturnsFallback(string? tag)
+	{
+		var fallback = new CultureInfo("de-DE");
+
+		LanguageCatalog.ResolveSystemCulture(tag, fallback).Should().BeSameAs(fallback);
+	}
+
+	#endregion
+
 	#region Catalog contents
 
 	[Fact]

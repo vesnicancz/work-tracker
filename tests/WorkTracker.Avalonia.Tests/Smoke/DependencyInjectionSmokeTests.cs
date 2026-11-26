@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using WorkTracker.Avalonia.Services;
@@ -28,7 +29,7 @@ public class DependencyInjectionSmokeTests
 		// Logging and IConfiguration are normally contributed by Host.CreateDefaultBuilder
 		services.AddLogging();
 		services.AddSingleton<IConfiguration>(configuration);
-		App.ConfigureAppServices(services, configuration, new LocalizationService());
+		App.ConfigureAppServices(services, configuration, new LocalizationService(CultureInfo.CurrentUICulture));
 
 		try
 		{

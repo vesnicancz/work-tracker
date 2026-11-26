@@ -44,7 +44,7 @@ public class SettingsWindowLanguageSmokeTests
 		var originalUICulture = CultureInfo.CurrentUICulture;
 		var originalInstance = LocalizationService.Instance;
 
-		var localization = new LocalizationService();
+		var localization = new LocalizationService(CultureInfo.CurrentUICulture);
 		LocalizationService.SetInstance(localization);
 		localization.ApplyLanguage("en");
 
@@ -78,7 +78,7 @@ public class SettingsWindowLanguageSmokeTests
 		finally
 		{
 			window.Close();
-			LocalizationService.SetInstance(originalInstance ?? new LocalizationService());
+			LocalizationService.SetInstance(originalInstance ?? new LocalizationService(CultureInfo.CurrentUICulture));
 			CultureInfo.CurrentCulture = originalCulture;
 			CultureInfo.CurrentUICulture = originalUICulture;
 		}

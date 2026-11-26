@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Runtime.InteropServices;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -41,7 +42,12 @@ public partial class App : global::Avalonia.Application
 	public override void OnFrameworkInitializationCompleted()
 	{
 		// Initialize localization early — XAML markup extensions need it before any window is created
-		var localization = new LocalizationService();
+		// Resolved before anything can overwrite CultureInfo.CurrentUICulture - the localization
+		// service's CurrentCulture setter does exactly that.
+		var systemCulture = LanguageCatalog.ResolveSystemCulture(
+			PlatformSettings?.PreferredApplicationLanguage,
+			CultureInfo.CurrentUICulture);
+		var localization = new LocalizationService(systemCulture);
 		LocalizationService.SetInstance(localization);
 
 		if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)

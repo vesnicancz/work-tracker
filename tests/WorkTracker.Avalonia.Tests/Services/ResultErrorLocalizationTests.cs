@@ -1,3 +1,4 @@
+using System.Globalization;
 using FluentAssertions;
 using WorkTracker.Application.Common;
 using WorkTracker.Avalonia.Services;
@@ -23,7 +24,7 @@ public class ResultErrorLocalizationTests
 	[MemberData(nameof(Languages))]
 	public void EveryWorkEntryError_HasATranslation(string language)
 	{
-		var localization = new LocalizationService();
+		var localization = new LocalizationService(CultureInfo.CurrentUICulture);
 		localization.ApplyLanguage(language);
 
 		foreach (var error in AllErrors)
@@ -38,7 +39,7 @@ public class ResultErrorLocalizationTests
 	[Fact]
 	public void WorkEntryError_IsShownInTheLanguageOfTheApplication()
 	{
-		var localization = new LocalizationService();
+		var localization = new LocalizationService(CultureInfo.CurrentUICulture);
 		localization.ApplyLanguage("cs");
 
 		var text = localization.LocalizeError(Result.Failure(WorkEntryErrors.Overlap));
@@ -50,7 +51,7 @@ public class ResultErrorLocalizationTests
 	[Fact]
 	public void FailureWithoutACode_KeepsItsText()
 	{
-		var localization = new LocalizationService();
+		var localization = new LocalizationService(CultureInfo.CurrentUICulture);
 
 		localization.LocalizeError(Result.Failure("Unexpected error: boom")).Should().Be("Unexpected error: boom");
 	}

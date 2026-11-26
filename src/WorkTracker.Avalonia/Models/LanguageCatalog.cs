@@ -55,6 +55,29 @@ public static class LanguageCatalog
 	}
 
 	/// <summary>
+	/// Turns the language the operating system prefers for applications (a BCP 47 tag, which can
+	/// differ from the .NET UI culture, e.g. the Windows 11 preferred languages list) into the culture
+	/// the "system" option resolves to. Falls back to <paramref name="fallback"/> when the platform
+	/// reports nothing or a tag .NET does not know.
+	/// </summary>
+	public static CultureInfo ResolveSystemCulture(string? preferredLanguageTag, CultureInfo fallback)
+	{
+		if (string.IsNullOrWhiteSpace(preferredLanguageTag))
+		{
+			return fallback;
+		}
+
+		try
+		{
+			return CultureInfo.GetCultureInfo(preferredLanguageTag.Trim());
+		}
+		catch (CultureNotFoundException)
+		{
+			return fallback;
+		}
+	}
+
+	/// <summary>
 	/// Native language name, intentionally left untranslated - someone looking for English
 	/// recognises "English" even while the UI is in Czech.
 	/// </summary>
